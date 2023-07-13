@@ -208,7 +208,7 @@ class RobboGui extends Component {
    this.OCA.searchOttoDevices();
    this.ACA.searchArduinoDevices();
 
-   //this.QCA.searchQuadcopterDevices();
+   this.QCA.searchQuadcopterDevices();
 
   }
 

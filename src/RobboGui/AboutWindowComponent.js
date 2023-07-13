@@ -311,7 +311,7 @@ class AboutWindowComponent extends Component {
                     {/* Robbo Scratch v.3.75.0-ble-research-dev2 */}
                     {/*     Robbo Scratch v.3.77.0-bluetooth-firmware */}
                     {/* Robbo Scratch v.3.76-Otto-test-dev */}
-                       Robbo Scratch v.3.93.0
+                       Robbo Scratch v.3.95.0-quadcopter-dev
                      </div>
 
                      <div id="raw-1-about-window-content-column-2" className={styles.about_window_content_column}>
