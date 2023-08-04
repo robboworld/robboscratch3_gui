@@ -106,7 +106,7 @@ class QuadcopterPreviewComponent extends Component {
 
                 <div id={`quadcopter-${this.props.quadcopterIndex}-preview-pic`}  className={styles.quadcopterPreviewPic} >
 
-                  Q
+                  
 
                 </div>
 
