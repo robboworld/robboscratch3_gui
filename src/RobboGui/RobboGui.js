@@ -267,7 +267,7 @@ class RobboGui extends Component {
   this.OCA =  this.props.vm.getOCA();
   this.ACA =  this.props.vm.getACA();
 
-  //this.IOT = this.props.vm.getIOT();
+  this.IOT = this.props.vm.getIOT();
 
   var initial_coords_profiler = [300,300];
 
@@ -337,11 +337,11 @@ class RobboGui extends Component {
          </NewDraggableWindowComponent>
 
 
-        {/*  <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>
+          <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>
 
             <IotConnectionComponent VM={this.props.vm} IOT={this.IOT}/>
 
-          </NewDraggableWindowComponent> */}
+          </NewDraggableWindowComponent> 
         
 
        {/* <button id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{this.props.intl.formatMessage(messages.search_devices)} </button>*/}

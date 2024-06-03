@@ -56,12 +56,17 @@ const messages = defineMessages({
     connection_status: {
         id: 'gui.RobboGui.connection_status',
         description: ' ',
-        defaultMessage: 'Connection status',
+        defaultMessage: 'Broker connection status',
     },
     connection_log: {
         id: 'gui.RobboGui.connection_log',
         description: ' ',
-        defaultMessage: 'Connection log',
+        defaultMessage: 'Broker connection log',
+    },
+    internet_connection_status: {
+        id: 'gui.RobboGui.internet_connection_status',
+        description: ' ',
+        defaultMessage: 'Internet connection status',
     },
     connect: {
         id: 'gui.RobboGui.connect',
@@ -84,6 +89,8 @@ class IotConnectionComponent extends Component {
         this.handleProtocolChange = this.handleProtocolChange.bind(this);
         this.handleAdressChange = this.handleAdressChange.bind(this);
         this.handlePortChange = this.handlePortChange.bind(this);
+
+        this.internet_connection_status = false; 
     }
     onThisWindowClose() {
         console.log("iotconnection close");
@@ -120,6 +127,74 @@ class IotConnectionComponent extends Component {
     }
     generate() {
         this.props.generate(true);
+    }
+
+    //  async checkOnlineStatus () {
+    //     try {
+    //       const online = await fetch("http://robbo.ru");
+    //       return online.status >= 200 && online.status < 300; // either true or false
+    //     } catch (err) {
+    //       return false; // definitely offline
+    //     }
+    //   };
+
+
+    checkOnlineStatus () {
+
+        try {
+
+            fetch("http://robbo.ru").then((response)=>{
+
+                console.warn(`Internet connection response status: ${response.status}`);
+
+                if ( response.status >= 200 && response.status < 300 ) {
+                    
+                     this.internet_connection_status = true; 
+                }
+          }
+
+          ).catch((error)=>{
+                console.error(`Internet connection error: ${error}`);
+                this.internet_connection_status = false; 
+          });
+            
+        } catch (error) {
+
+            console.error(`Internet connection error: ${error}`);
+            this.internet_connection_status = false; 
+        }
+          
+            
+    };
+
+    startInternetConnectionCheckLoop(){
+
+        //var internet_connection_status = navigator.onLine; 
+
+       // var internet_connection_status =  this.checkOnlineStatus(); 
+
+       // console.warn(`internet_connection_status: ${internet_connection_status}`);
+       
+
+        var internet_connection_status_component = document.getElementById("raw-9-iot-connection-column-2");
+
+        let  internet_connection_status_LoopInterval = setInterval(() => {
+
+            this.checkOnlineStatus();  
+
+           // internet_connection_status = navigator.onLine; 
+
+            internet_connection_status_component.innerHTML = this.internet_connection_status ? "Connected" : "Disconnected";
+
+        },3000);
+    }
+
+    componentDidMount(){
+
+       // console.warn(`navigator.onLine: `);
+       // console.warn(navigator.onLine);
+
+       // this.startInternetConnectionCheckLoop();
     }
 
     render() {
@@ -209,11 +284,21 @@ class IotConnectionComponent extends Component {
                         </div>
                     </div>
 
-                    <div id="iot-connection-content-raw-9" className={styles.iot_connection_content_raw}>
+                  {/*  <div id="iot-connection-content-raw-9" className={styles.iot_connection_content_raw}>
                         <div id="raw-9-iot-connection-column-1" className={styles.iot_connection_content_column}>
-                            <button onClick={this.generate.bind(this)}> {this.props.intl.formatMessage(messages.generate)} </button>
+                            {this.props.intl.formatMessage(messages.internet_connection_status)}
                         </div>
+
                         <div id="raw-9-iot-connection-column-2" className={styles.iot_connection_content_column}>
+                           
+                        </div>
+                    </div> */}
+
+                    <div id="iot-connection-content-raw-10" className={styles.iot_connection_content_raw}>
+                       {/* <div id="raw-10-iot-connection-column-1" className={styles.iot_connection_content_column}>
+                                <button onClick={this.generate.bind(this)}> {this.props.intl.formatMessage(messages.generate)} </button>
+                            </div> */}
+                        <div id="raw-10-iot-connection-column-2" className={styles.iot_connection_content_column}>
                             <button onClick={this.connect.bind(this)}> {this.props.intl.formatMessage(messages.connect)} </button>
                         </div>
                     </div>

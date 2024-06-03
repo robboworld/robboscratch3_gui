@@ -817,15 +817,40 @@ const ActionMqttConnect = function (options, IOT) {
       dispatch(ActionUpdateIotBlockLog("Client is connected!"));
       IOT.connectionStatus = client.connected;
       dispatch(ActionUpdateIotBlockConnection(client.connected));
-    });
-    if (client !== 'undefined') {
+
       client.on("error", (error) => {
         IOT.connectionLog = error.toString();
         dispatch(ActionUpdateIotBlockLog(error.toString()));
         IOT.connectionStatus = client.connected;
         dispatch(ActionUpdateIotBlockConnection(client.connected));        
-      })
-    } else {
+      });
+
+      client.on("reconnect", () => {
+        IOT.connectionLog = "Client is reconnecting!";
+        dispatch(ActionUpdateIotBlockLog("Client is reconnecting!"));
+        IOT.connectionStatus = client.connected;
+        dispatch(ActionUpdateIotBlockConnection(client.connected));
+
+      });  
+
+      client.on("close", () => {
+        IOT.connectionLog = "Client is closed!";
+        dispatch(ActionUpdateIotBlockLog("Client is closed!"));
+        IOT.connectionStatus = client.connected;
+        dispatch(ActionUpdateIotBlockConnection(client.connected));
+
+      });  
+
+      client.on("offline", () => {
+        IOT.connectionLog = "Client is offline!";
+        dispatch(ActionUpdateIotBlockLog("Client is offline!"));
+        IOT.connectionStatus = client.connected;
+        dispatch(ActionUpdateIotBlockConnection(client.connected));
+
+      });  
+
+    });
+    if (client === 'undefined') {
       IOT.connectionLog = "Client is undefined!";
       dispatch(ActionUpdateIotBlockLog("Client is undefined!"));
     }

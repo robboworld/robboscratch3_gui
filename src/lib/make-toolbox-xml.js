@@ -6,14 +6,14 @@ const blockSeparator = '<sep gap="36"/>'; // At default scale, about 28px
 
 
 const iotBlocks = function () {
-    const default_baddr = "test.mosquitto.org";
-    const default_bport = 8080;
+    const default_baddr = "test.mosquitto.org"; //test.mosquitto.org
+    const default_bport = 8080;               //8080
     const default_protocol = "ws";
     const default_topicname = "lux";
     const actuator_topicname = "lux";
     const default_message = "1";
-    const default_uname = "mail@domain";
-    const default_pass = "pass";
+    const default_uname = "mail@domain ";      //mail@domain  
+    const default_pass = "pass";             //pass 
     const default_client_id = "";
     const default_delay = 0;
     const default_pref = "default_robbo_prefix/";
@@ -1756,7 +1756,7 @@ const makeToolboxXML = function (isStage, targetId,config, categoriesXML,
         quadcopter(isStage, targetId), gap, //modified_by_Yaroslav
         otto(false, targetId), gap,
         newcat(false),gap,
-        //iotBlocks(isStage, targetId),
+        iotBlocks(isStage, targetId),
         motion(isStage, targetId), gap,
         looks(isStage, targetId, costumeName, backdropName), gap,
         sound(isStage, targetId, soundName), gap,

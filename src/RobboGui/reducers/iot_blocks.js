@@ -1,9 +1,9 @@
 const initialState = {
-    login: "mail@domain",
-    pass: "pass",
+    login: "mail@domain",                   //mail@domain
+    pass: "pass",                           //pass
     broker_protocol: "ws",
-    broker_adress: "test.mosquitto.org",
-    broker_port: 8080,
+    broker_adress: "test.mosquitto.org",          //test.mosquitto.org
+    broker_port: 8080,                     //8080
     connection_status: false,
     connection_log: "",
 

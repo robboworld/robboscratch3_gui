@@ -499,11 +499,11 @@ class RobboMenu extends Component {
 
                       )}>{"Trigger profiler window"} </div>   */}  
 
-            {/*  <div id="trigger-iot-connection" onClick={this.triggerIotConnectionWindow.bind(this)} className={classNames(
+             <div id="trigger-iot-connection" onClick={this.triggerIotConnectionWindow.bind(this)} className={classNames(
  
                          { [styles.robbo_menu_item]: true }
  
-                        )}>{this.props.intl.formatMessage(messages.iot_connection)}</div>  */}
+                        )}>{this.props.intl.formatMessage(messages.iot_connection)}</div>   
 
 
                <div id="trigger-settings-window" onClick={this.triggerSettingsWindow.bind(this)} className={classNames(
