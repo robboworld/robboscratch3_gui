@@ -1,6 +1,6 @@
 import bindAll from 'lodash.bindall';
 import React from 'react';
-
+import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {intlShape, injectIntl} from 'react-intl';
 
@@ -8,12 +8,13 @@ import {
     openSpriteLibrary,
     closeSpriteLibrary
 } from '../reducers/modals';
-
 import {activateTab, COSTUMES_TAB_INDEX, BLOCKS_TAB_INDEX} from '../reducers/editor-tab';
 import {setReceivedBlocks} from '../reducers/hovered-target';
+import {showStandardAlert, closeAlertWithId} from '../reducers/alerts';
 import {setRestore} from '../reducers/restore-deletion';
 import DragConstants from '../lib/drag-constants';
 import TargetPaneComponent from '../components/target-pane/target-pane.jsx';
+import {BLOCKS_DEFAULT_SCALE} from '../lib/layout-constants';
 import spriteLibraryContent from '../lib/libraries/sprites.json';
 import {handleFileUpload, spriteUpload} from '../lib/file-uploader.js';
 import sharedMessages from '../lib/shared-messages';
@@ -105,9 +106,12 @@ class TargetPane extends React.Component {
         }
     }
     handleSurpriseSpriteClick () {
-        const item = spriteLibraryContent[Math.floor(Math.random() * spriteLibraryContent.length)];
+        const surpriseSprites = spriteLibraryContent.filter(sprite =>
+            (sprite.tags.indexOf('letters') === -1) && (sprite.tags.indexOf('numbers') === -1)
+        );
+        const item = surpriseSprites[Math.floor(Math.random() * surpriseSprites.length)];
         randomizeSpritePosition(item);
-        this.props.vm.addSprite(JSON.stringify(item.json))
+        this.props.vm.addSprite(JSON.stringify(item))
             .then(this.handleActivateBlocksTab);
     }
     handlePaintSpriteClick () {
@@ -127,7 +131,7 @@ class TargetPane extends React.Component {
         this.props.onActivateTab(BLOCKS_TAB_INDEX);
     }
     handleNewSprite (spriteJSONString) {
-        this.props.vm.addSprite(spriteJSONString)
+        return this.props.vm.addSprite(spriteJSONString)
             .then(this.handleActivateBlocksTab);
     }
     handleFileUploadClick () {
@@ -135,19 +139,59 @@ class TargetPane extends React.Component {
     }
     handleSpriteUpload (e) {
         const storage = this.props.vm.runtime.storage;
-        const costumeSuffix = this.props.intl.formatMessage(sharedMessages.costume, {index: 1});
-        handleFileUpload(e.target, (buffer, fileType, fileName) => {
-            spriteUpload(buffer, fileType, fileName, storage, this.handleNewSprite, costumeSuffix);
-        });
+        this.props.onShowImporting();
+        handleFileUpload(e.target, (buffer, fileType, fileName, fileIndex, fileCount) => {
+            spriteUpload(buffer, fileType, fileName, storage, newSprite => {
+                this.handleNewSprite(newSprite)
+                    .then(() => {
+                        if (fileIndex === fileCount - 1) {
+                            this.props.onCloseImporting();
+                        }
+                    })
+                    .catch(this.props.onCloseImporting);
+            }, this.props.onCloseImporting);
+        }, this.props.onCloseImporting);
     }
     setFileInput (input) {
         this.fileInput = input;
     }
     handleBlockDragEnd (blocks) {
         if (this.props.hoveredTarget.sprite && this.props.hoveredTarget.sprite !== this.props.editingTarget) {
-            this.props.vm.shareBlocksToTarget(blocks, this.props.hoveredTarget.sprite, this.props.editingTarget);
+            this.shareBlocks(blocks, this.props.hoveredTarget.sprite, this.props.editingTarget);
             this.props.onReceivedBlocks(true);
         }
+    }
+    shareBlocks (blocks, targetId, optFromTargetId) {
+        // Position the top-level block based on the scroll position.
+        const topBlock = blocks.find(block => block.topLevel);
+        if (topBlock) {
+            let metrics;
+            if (this.props.workspaceMetrics.targets[targetId]) {
+                metrics = this.props.workspaceMetrics.targets[targetId];
+            } else {
+                metrics = {
+                    scrollX: 0,
+                    scrollY: 0,
+                    scale: BLOCKS_DEFAULT_SCALE
+                };
+            }
+
+            // Determine position of the top-level block based on the target's workspace metrics.
+            const {scrollX, scrollY, scale} = metrics;
+            const posY = -scrollY + 30;
+            let posX;
+            if (this.props.isRtl) {
+                posX = scrollX + 30;
+            } else {
+                posX = -scrollX + 30;
+            }
+
+            // Actually apply the position!
+            topBlock.x = posX / scale;
+            topBlock.y = posY / scale;
+        }
+
+        return this.props.vm.shareBlocksToTarget(blocks, targetId, optFromTargetId);
     }
     handleDrop (dragInfo) {
         const {sprite: targetId} = this.props.hoveredTarget;
@@ -184,21 +228,25 @@ class TargetPane extends React.Component {
                 }, targetId);
             } else if (dragInfo.dragType === DragConstants.BACKPACK_CODE) {
                 fetchCode(dragInfo.payload.bodyUrl)
-                    .then(blocks => {
-                        this.props.vm.shareBlocksToTarget(blocks, targetId);
-                        this.props.vm.refreshWorkspace();
-                    });
+                    .then(blocks => this.shareBlocks(blocks, targetId))
+                    .then(() => this.props.vm.refreshWorkspace());
             }
         }
     }
     render () {
+        /* eslint-disable no-unused-vars */
         const {
-            onActivateTab, // eslint-disable-line no-unused-vars
-            onReceivedBlocks, // eslint-disable-line no-unused-vars
-            onHighlightTarget, // eslint-disable-line no-unused-vars
-            dispatchUpdateRestore, // eslint-disable-line no-unused-vars
+            dispatchUpdateRestore,
+            isRtl,
+            onActivateTab,
+            onCloseImporting,
+            onHighlightTarget,
+            onReceivedBlocks,
+            onShowImporting,
+            workspaceMetrics,
             ...componentProps
         } = this.props;
+        /* eslint-enable no-unused-vars */
         return (
             <TargetPaneComponent
                 {...componentProps}
@@ -233,16 +281,20 @@ const {
 
 TargetPane.propTypes = {
     intl: intlShape.isRequired,
+    onCloseImporting: PropTypes.func,
+    onShowImporting: PropTypes.func,
     ...targetPaneProps
 };
 
 const mapStateToProps = state => ({
     editingTarget: state.scratchGui.targets.editingTarget,
     hoveredTarget: state.scratchGui.hoveredTarget,
+    isRtl: state.locales.isRtl,
+    spriteLibraryVisible: state.scratchGui.modals.spriteLibrary,
     sprites: state.scratchGui.targets.sprites,
     stage: state.scratchGui.targets.stage,
     raiseSprites: state.scratchGui.blockDrag,
-    spriteLibraryVisible: state.scratchGui.modals.spriteLibrary
+    workspaceMetrics: state.scratchGui.workspaceMetrics
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -264,7 +316,9 @@ const mapDispatchToProps = dispatch => ({
     },
     onHighlightTarget: id => {
         dispatch(highlightTarget(id));
-    }
+    },
+    onCloseImporting: () => dispatch(closeAlertWithId('importingAsset')),
+    onShowImporting: () => dispatch(showStandardAlert('importingAsset'))
 });
 
 export default injectIntl(connect(
