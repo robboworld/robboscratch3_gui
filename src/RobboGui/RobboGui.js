@@ -337,11 +337,11 @@ class RobboGui extends Component {
          </NewDraggableWindowComponent>
 
 
-          <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>
+        {/*  <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>
 
             <IotConnectionComponent VM={this.props.vm} IOT={this.IOT}/>
 
-          </NewDraggableWindowComponent> 
+          </NewDraggableWindowComponent>  */}
         
 
        {/* <button id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{this.props.intl.formatMessage(messages.search_devices)} </button>*/}

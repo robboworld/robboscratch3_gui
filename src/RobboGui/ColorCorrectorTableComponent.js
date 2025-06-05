@@ -487,9 +487,9 @@ class ColorCorrectorTableComponent extends Component {
     var sum = rgb_arr[0]+rgb_arr[1]+rgb_arr[2];
     if(typeof(rgb_arr)!='undefined'){
       switch(color){
-        case "R": return rgb_arr[0]*100/sum+"%";
-        case "G": return rgb_arr[1]*100/sum+"%";
-        case "B": return rgb_arr[2]*100/sum+"%";
+        case "R": return Math.round( rgb_arr[0]*100/sum ) +  "%";
+        case "G": return Math.round( rgb_arr[1]*100/sum ) +  "%";
+        case "B": return Math.round( rgb_arr[2]*100/sum ) +  "%";
       }
     } else console.error("Unrecognized Error lol");
   }
