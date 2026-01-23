@@ -213,8 +213,42 @@ class SearchPanelDeviceComponent extends Component {
         
    }
 
-   componentDidUpdate(){
+   updateIconBasedOnRealState() {
+     let allDevices = this.props.DCA.getDevices();
+     let realDevice = null;
+     for (let i = 0; i < allDevices.length; i++) {
+       if (allDevices[i] && allDevices[i].getPortName() === this.props.devicePort) {
+         realDevice = allDevices[i];
+         break;
+       }
+     }
+     
+     if (!realDevice) {
+       return;
+     }
+     
+     const realState = realDevice.getState();
+     let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
+     
+     if (!device_status_icon) {
+       return;
+     }
+     
+     if (realState === 6) {
+       device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/green.png" />`;
+     } else if (realState === 0 || realState === 2 || realState === 3) {
+       device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
+     } else if (realState === 7 || realState === 8) {
+       device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/red.png" />`;
+     }
+   }
 
+   componentDidUpdate(){
+     // СНАЧАЛА обновляем иконку на основе реального статуса устройства
+     // Это должно быть сделано ДО регистрации callback, чтобы избежать мигания
+     this.updateIconBasedOnRealState();
+     
+     // Затем регистрируем callback статуса
      this.props.DCA.registerDeviceStatusChangeCallback(this.props.devicePort,this.onStatusChange.bind(this));
 
      this.props.DCA.registerFirmwareVersionDiffersCallback(this.props.devicePort, (result) => {
@@ -243,8 +277,6 @@ class SearchPanelDeviceComponent extends Component {
    }
 
     componentDidMount(){
-
-
     this.DCA =  this.props.DCA;
     this.RCA =  this.props.RCA;
     this.LCA =  this.props.LCA;
@@ -253,6 +285,10 @@ class SearchPanelDeviceComponent extends Component {
     this.ACA =  this.props.ACA;
 
     this.dots_counter = 1;
+    
+    requestAnimationFrame(() => {
+      this.updateIconBasedOnRealState();
+    });
 
    
 
@@ -289,10 +325,13 @@ class SearchPanelDeviceComponent extends Component {
 
 
   onStatusChange(result_obj){
-
         let state = result_obj.state;
-            //let deviceId =  result_obj.deviceId;
-            this.deviceId =  result_obj.deviceId;
+        //let deviceId =  result_obj.deviceId;
+        this.deviceId =  result_obj.deviceId;
+        
+        // Всегда обновляем иконку на основе реального статуса устройства
+        // а не на основе callback, чтобы избежать мигания
+        this.updateIconBasedOnRealState();
 
 
 
@@ -369,7 +408,6 @@ class SearchPanelDeviceComponent extends Component {
 
     }
                 if (state == 0){
-
                     //init here
 
                     this.firmware_version_differs = false; 
@@ -378,7 +416,7 @@ class SearchPanelDeviceComponent extends Component {
                    
                     status_field.innerHTML = this.props.intl.formatMessage(messages.try_connect_to_port);
 
-                    device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
+                    this.updateIconBasedOnRealState();
  
                     info_field.innerHTML = "";
  
@@ -395,14 +433,14 @@ class SearchPanelDeviceComponent extends Component {
 
 
                 }else if (state == 2){
-
-                  
-
                    this.firmware_version_differs = false; 
                    this.isFlashing = false;
 
                   // status_field.innerHTML = "Connected";
                      status_field.innerHTML = this.props.intl.formatMessage(messages.port_opened);;
+                     
+                     // Иконка устанавливается на основе реального статуса через updateIconBasedOnRealState()
+                     this.updateIconBasedOnRealState();
 
                    info_field.innerHTML = "";
 
@@ -433,7 +471,7 @@ class SearchPanelDeviceComponent extends Component {
 
                     status_field.innerHTML = device_name + " " + this.props.intl.formatMessage(messages.device_connected);
 
-                    device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/green.png" />`;
+                    this.updateIconBasedOnRealState();
 
                     if (!this.firmware_version_differs){
 
@@ -627,10 +665,6 @@ class SearchPanelDeviceComponent extends Component {
 
 
 searchDevices(){
-
-
-    console.warn("serachPanelDeviceComponent searchDevices");
-
     let search_panel = document.getElementById(`SearchPanelComponent`);
 
     search_panel.style.display = "block";
@@ -650,16 +684,9 @@ searchDevices(){
 
 
 flashingShowDetails(){
-
- //console.log("flashingShowDetails")   
-
 if (this.props.draggable_window[this.props.draggableWindowId].isShowing !== true){
-
-   // console.log(`onShowFlashingStatusWindow draggableWindowId: ${this.props.draggableWindowId}`);      
     this.props.onShowFlashingStatusWindow(this.props.draggableWindowId);
-
   }
-
 }
 
 flashingHideDetails(){

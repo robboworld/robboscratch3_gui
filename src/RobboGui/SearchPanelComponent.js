@@ -95,42 +95,70 @@ class SearchPanelComponent extends Component {
 
     });
 
-    this.DCA.registerDevicesNotFoundCallback(() => {
-
+     this.DCA.registerDevicesNotFoundCallback(() => {
       let search_device_button =  document.getElementById(`robbo_search_devices`);
-      search_device_button.style.pointerEvents = "auto";
+      if (search_device_button) {
+        search_device_button.style.pointerEvents = "auto";
+      }
 
+      let allDevices = this.DCA.getDevices();
+      
+      if (allDevices.length > 0) {
+        this.device_list = [];
+        for (let index = 0; index < allDevices.length; index++) {
+          let device = {
+            devicePort: allDevices[index].getPortName(),
+            isBluetooth: allDevices[index].isBluetoothDevice(),
+            isMacBluetooth: false
+          }
+          this.device_list.push(device);
+        }
+        
         this.setState((previousState, currentProps) => {
-
-            return {
-                devices:[]
-              };
-            });
+          return {
+            devices: this.device_list
+          };
+        });
+      } else {
+        this.setState((previousState, currentProps) => {
+          return {
+            devices: []
+          };
+        });
+      }
 
      });
 
      this.DCA.registerBluetoothDevicesNotFoundCallback(() => {
-
       this.bluetooth_devices_state = "not_found";
 
-          if (this.device_list.length > 0){
+      let allDevices = this.DCA.getDevices();
 
-            this.setState((previousState, currentProps) => {
-
-              return {
-                  devices:this.device_list
-                };
-              });
-
-          }else{
-
-            this.setState((previousState, currentProps) => {
-
-              return {
-                  devices:[]
-                };
-              });
+      if (allDevices.length > 0) {
+        this.device_list = [];
+        for (let index = 0; index < allDevices.length; index++) {
+          let device = {
+            devicePort: allDevices[index].getPortName(),
+            isBluetooth: allDevices[index].isBluetoothDevice(),
+            isMacBluetooth: false
           }
+          this.device_list.push(device);
+        }
+      }
+
+      if (this.device_list.length > 0){
+        this.setState((previousState, currentProps) => {
+          return {
+            devices: this.device_list
+          };
+        });
+      } else {
+        this.setState((previousState, currentProps) => {
+          return {
+            devices: []
+          };
+        });
+      }
 
           
      });
@@ -138,66 +166,26 @@ class SearchPanelComponent extends Component {
    
 
      this.DCA.registerDeviceFoundCallback(() => {
-
       this.is_bluetooth_devices_not_found = false;
 
        let devices = this.DCA.getDevices();
 
        this.device_list = [];
 
-        console.warn("devices: ");
-        console.warn(devices);
-
        for (let index = 0; index < devices.length; index++){
-
              let device = {
-
-                     
                 devicePort: devices[index].getPortName(),
                 isBluetooth: devices[index].isBluetoothDevice(),
                 isMacBluetooth: false
-                // isMacBluetooth: devices[index].isMacBluetooth()
-                
-                //  deviceId: devices[index].getDeviceID() 
-            
             }
-
             this.device_list.push(device);
-
-            // console.warn("device");
-            // console.warn(device);
-
-            // console.warn("device list: ");
-            // console.warn(this.device_list);
-
        }
 
-
         this.setState((previousState, currentProps) => {
-
-            // let devices =  previousState.devices;
-
-            // // devices.push(device);
-
-            //  if (this.device_ports.indexOf(device.devicePort) == -1){
-
-            //     this.device_ports.push(device.devicePort);
-
-            //     devices.push(device);
-            // }
-
-             console.warn("device list: ");
-             console.warn(this.device_list);
-
-
-         
             return {
-                devices:this.device_list
+                devices: this.device_list
               };
             });
-        
-    
-
     });
 
 
@@ -209,12 +197,7 @@ class SearchPanelComponent extends Component {
   }
 
   onThisWindowClose(){
-
-    console.log("Search Panel close");
-    //this.props.onSearchPanelWindowClose(this.draggableWindowId);
-
     ReactDOM.findDOMNode(this).style.display = "none";
-
   }
 
   render() {
