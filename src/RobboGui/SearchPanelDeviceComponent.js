@@ -170,6 +170,36 @@ const messages = defineMessages({
 Пожалуйста, удалите старые устройства из списка блютуз устройств.`
 
     },
+    bluetooth_error_274C: {
+        id: 'gui.SearchPanel.bluetooth_error_274C',
+        description: ' ',
+        defaultMessage: 'Не удалось установить соединение. Устройство может быть недоступно, уже подключено к другому устройству, или возникла проблема с сетью. (0x274C)'
+    },
+    bluetooth_error_274D: {
+        id: 'gui.SearchPanel.bluetooth_error_274D',
+        description: ' ',
+        defaultMessage: 'Соединение отклонено устройством. (0x274D)'
+    },
+    bluetooth_error_2711: {
+        id: 'gui.SearchPanel.bluetooth_error_2711',
+        description: ' ',
+        defaultMessage: 'Устройство не найдено или недоступно. (0x2711)'
+    },
+    bluetooth_error_2740: {
+        id: 'gui.SearchPanel.bluetooth_error_2740',
+        description: ' ',
+        defaultMessage: 'Устройство уже подключено к другому устройству. Попробуйте отключить устройство и подключить снова. (0x2740)'
+    },
+    bluetooth_error_connection: {
+        id: 'gui.SearchPanel.bluetooth_error_connection',
+        description: ' ',
+        defaultMessage: 'Не удалось подключиться к Bluetooth устройству. Убедитесь, что устройство включено и доступно для подключения.'
+    },
+    bluetooth_error_already_connected: {
+        id: 'gui.SearchPanel.bluetooth_error_already_connected',
+        description: ' ',
+        defaultMessage: 'Устройство уже подключено. Попробуйте отключить устройство и подключить снова.'
+    },
     try_connect_to_port:{
 
 
@@ -640,7 +670,39 @@ class SearchPanelDeviceComponent extends Component {
 
                     }else if ((this.props.isBluetooth) && (this.props.devicePort.indexOf("bluetooth_") !== -1)){
 
-                        info_field.innerHTML = result_obj.error.msg + "<br/>" +  this.props.intl.formatMessage(messages.device_cannot_open_old_bluetooth_com);
+                        // Используем интернационализированное сообщение на основе кода ошибки
+                        let errorMessage = result_obj.error.msg;
+                        if (result_obj.error.errorCode) {
+                            const errorCode = result_obj.error.errorCode;
+                            let messageKey = null;
+                            
+                            switch (errorCode) {
+                                case '274C':
+                                    messageKey = messages.bluetooth_error_274C;
+                                    break;
+                                case '274D':
+                                    messageKey = messages.bluetooth_error_274D;
+                                    break;
+                                case '2711':
+                                    messageKey = messages.bluetooth_error_2711;
+                                    break;
+                                case '2740':
+                                    messageKey = messages.bluetooth_error_2740;
+                                    break;
+                                case 'CONNECTION_ERROR':
+                                    messageKey = messages.bluetooth_error_connection;
+                                    break;
+                                case 'ALREADY_CONNECTED':
+                                    messageKey = messages.bluetooth_error_already_connected;
+                                    break;
+                            }
+                            
+                            if (messageKey) {
+                                errorMessage = this.props.intl.formatMessage(messageKey);
+                            }
+                        }
+                        
+                        info_field.innerHTML = errorMessage;
                         
                     }
                     
