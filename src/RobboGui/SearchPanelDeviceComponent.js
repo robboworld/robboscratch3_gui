@@ -160,6 +160,11 @@ const messages = defineMessages({
         defaultMessage: 'Попробуйте переподключить устройство. Или использовать другой usb разъём.'
 
     },
+    device_reconnecting:{
+        id: 'gui.SearchPanel.device_reconnecting',
+        description: ' ',
+        defaultMessage: 'Потеряно соединение, попытка восстановить соединение'
+    },
     device_cannot_open_old_bluetooth_com:{
 
 
@@ -558,6 +563,31 @@ class SearchPanelDeviceComponent extends Component {
                     }
 
 
+                } else if (state == 9){ //Reconnecting (state - RECONNECTING)
+                    
+                    search_device_button.style.pointerEvents = "auto";
+
+                    let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
+                    let search_panel = document.getElementById(`SearchPanelComponent`);
+
+                    // Открываем панель поиска
+                    search_panel.style.display = "block";
+
+                    // Формируем сообщение о переподключении (без количества попыток)
+                    let reconnectMessage = this.props.intl.formatMessage(messages.device_reconnecting);
+                    status_field.innerHTML = reconnectMessage;
+                    
+                    // Показываем желтую иконку (процесс переподключения)
+                    device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
+
+                    // Скрываем кнопки прошивки
+                    flashing_show_details_icon.style.display = "none";
+                    flashing_button.style.display = "none";
+
+                    // Скрываем дополнительную информацию
+                    info_field.style.display = "none";
+                    info_field.innerHTML = "";
+
                 } else if (state == 8){ //Port doesn't respond (state - TIMEOUT)
 
                     search_device_button.style.pointerEvents = "auto";
@@ -567,27 +597,24 @@ class SearchPanelDeviceComponent extends Component {
                     info_field.style.display = "inline-block";
 
                     if ((result_obj.error.code == 1) && (!this.isFlashing)){ //Device was good but connection lost.
-
-
-                        let NO_RESPONSE_TIMEOUT =  this.DCA.getTimeoutVars().NO_RESPONSE_TIMEOUT;   
-
-                        // info_field.innerHTML = this.props.intl.formatMessage(messages.device_no_response_details) + " " + NO_RESPONSE_TIMEOUT 
-                        //         + " " + this.props.intl.formatMessage(messages.milliseconds);
-
-                        status_field.innerHTML = this.props.intl.formatMessage(messages.device_connection_lost);
-                        info_field.innerHTML = "";
-
-                        alert(this.props.devicePort + " " + this.props.intl.formatMessage(messages.device_connection_lost));
-
-
+                        // Убираем alert - переподключение происходит автоматически
+                        // Автоматическое переподключение уже инициировано в bluetooth-chrome.js
+                        // Просто открываем панель поиска - состояние RECONNECTING будет установлено автоматически
+                        
                         let search_panel = document.getElementById(`SearchPanelComponent`);
                         search_panel.style.display = "block";
 
-                        device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/red.png" />`;
+                        // Показываем сообщение о переподключении сразу
+                        status_field.innerHTML = this.props.intl.formatMessage(messages.device_reconnecting);
+                        info_field.innerHTML = "";
+                        info_field.style.display = "none";
 
-                        //flashing_show_details_icon.style.display = "none";
-                        //flashing_button.style.display = "none";
+                        // Показываем желтую иконку (процесс переподключения)
+                        device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
 
+                        // Скрываем кнопки прошивки
+                        flashing_show_details_icon.style.display = "none";
+                        flashing_button.style.display = "none";
 
                     }else if (result_obj.error.code == -1){ //We cann't get any usefull info from the device
 
