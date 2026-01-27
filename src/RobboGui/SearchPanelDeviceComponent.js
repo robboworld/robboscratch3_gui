@@ -360,12 +360,53 @@ class SearchPanelDeviceComponent extends Component {
 
 
   onStatusChange(result_obj){
-        let state = result_obj.state;
-        //let deviceId =  result_obj.deviceId;
-        this.deviceId =  result_obj.deviceId;
+        // Проверяем, что этот callback вызван для правильного устройства
+        // Получаем реальное устройство по порту и проверяем его deviceId
+        const allDevices = this.props.DCA.getDevices();
+        const realDevice = allDevices.find(dev => dev && dev.getPortName() === this.props.devicePort);
+        
+        if (!realDevice) {
+          // Устройство не найдено, возможно оно было удалено
+          console.warn(`[GUI_DEBUG] Device ${this.props.devicePort} not found, ignoring status change`);
+          return;
+        }
+        
+        // Получаем deviceId напрямую от устройства для гарантии правильности
+        const realDeviceId = realDevice.getDeviceID();
+        const realState = realDevice.getState();
+        
+        // Используем реальные значения от устройства, а не из result_obj
+        // чтобы гарантировать, что статус соответствует именно этому устройству
+        const deviceId = realDeviceId !== undefined ? realDeviceId : (result_obj.deviceId !== undefined ? result_obj.deviceId : -1);
+        const state = realState !== undefined ? realState : result_obj.state;
+        
+        // Сохраняем ошибку из result_obj, если она есть (она может быть специфичной для этого события)
+        // Но проверяем, что ошибка относится к правильному типу устройства
+        let error = result_obj.error;
+        if (error && error.msg) {
+          const errorMsg = error.msg.toLowerCase();
+          const isComPortError = errorMsg.indexOf('com port') !== -1 || 
+                                errorMsg.indexOf('getoverlappedresult') !== -1 ||
+                                errorMsg.indexOf('writing to com port') !== -1;
+          
+          // Bluetooth устройства не должны получать ошибки COM порта (это ошибки USB устройств)
+          if (this.props.isBluetooth && this.props.devicePort.startsWith('bluetooth_') && isComPortError) {
+            console.warn(`[GUI_DEBUG] Filtering COM port error for Bluetooth device ${this.props.devicePort}: ${error.msg}`);
+            error = null; // Игнорируем ошибку COM порта для Bluetooth устройств
+          }
+          
+          // USB устройства не должны получать Bluetooth ошибки
+          if (!this.props.isBluetooth && !this.props.devicePort.startsWith('bluetooth_') && 
+              (errorMsg.indexOf('bluetooth') !== -1 && !isComPortError)) {
+            console.warn(`[GUI_DEBUG] Filtering Bluetooth error for USB device ${this.props.devicePort}: ${error.msg}`);
+            error = null; // Игнорируем Bluetooth ошибки для USB устройств
+          }
+        }
+        
+        // Обновляем this.deviceId для использования в других методах
+        this.deviceId = deviceId;
         
         // Всегда обновляем иконку на основе реального статуса устройства
-        // а не на основе callback, чтобы избежать мигания
         this.updateIconBasedOnRealState();
 
 
@@ -388,7 +429,8 @@ class SearchPanelDeviceComponent extends Component {
 
            let  device_name = "";
 
-    switch (this.deviceId) {
+    // Используем deviceId, полученный напрямую от устройства
+    switch (deviceId) {
 
       case -1:
 
@@ -442,6 +484,7 @@ class SearchPanelDeviceComponent extends Component {
       default:
 
     }
+        
                 if (state == 0){
                     //init here
 
@@ -596,7 +639,7 @@ class SearchPanelDeviceComponent extends Component {
 
                     info_field.style.display = "inline-block";
 
-                    if ((result_obj.error.code == 1) && (!this.isFlashing)){ //Device was good but connection lost.
+                    if (error && error.code == 1 && (!this.isFlashing)){ //Device was good but connection lost.
                         // Убираем alert - переподключение происходит автоматически
                         // Автоматическое переподключение уже инициировано в bluetooth-chrome.js
                         // Просто открываем панель поиска - состояние RECONNECTING будет установлено автоматически
@@ -616,7 +659,7 @@ class SearchPanelDeviceComponent extends Component {
                         flashing_show_details_icon.style.display = "none";
                         flashing_button.style.display = "none";
 
-                    }else if (result_obj.error.code == -1){ //We cann't get any usefull info from the device
+                    }else if (error && error.code == -1){ //We cann't get any usefull info from the device
 
 
                        
@@ -690,17 +733,16 @@ class SearchPanelDeviceComponent extends Component {
                     flashing_show_details_icon.style.display = "none";
                     flashing_button.style.display = "none";
 
+                    if (error && (this.props.devicePort.indexOf("rfcom") != -1) && (error.msg && error.msg.indexOf("cannot open /dev/rfcom") != -1 ) ){
 
-                    if ( (this.props.devicePort.indexOf("rfcom") != -1) && (result_obj.error.msg.indexOf("cannot open /dev/rfcom") != -1 ) ){
+                         info_field.innerHTML = error.msg + "<br/>" + this.props.intl.formatMessage(messages.bluetooth_linux_hint) ;
 
-                         info_field.innerHTML = result_obj.error.msg + "<br/>" + this.props.intl.formatMessage(messages.bluetooth_linux_hint) ;
-
-                    }else if ((this.props.isBluetooth) && (this.props.devicePort.indexOf("bluetooth_") !== -1)){
+                    }else if (error && (this.props.isBluetooth) && (this.props.devicePort.indexOf("bluetooth_") !== -1)){
 
                         // Используем интернационализированное сообщение на основе кода ошибки
-                        let errorMessage = result_obj.error.msg;
-                        if (result_obj.error.errorCode) {
-                            const errorCode = result_obj.error.errorCode;
+                        let errorMessage = error.msg || '';
+                        if (error.errorCode) {
+                            const errorCode = error.errorCode;
                             let messageKey = null;
                             
                             switch (errorCode) {
@@ -733,9 +775,9 @@ class SearchPanelDeviceComponent extends Component {
                         
                     }
                     
-                    else{
+                    else if (error){
 
-                        info_field.innerHTML = result_obj.error.msg + "<br/>" +  this.props.intl.formatMessage(messages.device_try_to_reconnect);
+                        info_field.innerHTML = error.msg + "<br/>" +  this.props.intl.formatMessage(messages.device_try_to_reconnect);
 
                     }
 
