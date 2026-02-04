@@ -16,7 +16,7 @@ import {
   ActionCreateNewDraggableWindow
 } from './actions/sensor_actions';
 
-const VERSION = 'Robbo Scratch v.3.107.1-alpha';
+const VERSION = 'Robbo Scratch v.3.108.0-alpha';
 
 const messages = defineMessages({
   about_window: {
