@@ -40,14 +40,14 @@
 
 .quadcopter_status_connected{
 
-    background-image: url('/build/static/robbo_assets/copter_status_connected.png');
+    background-image: url('../../static/robbo_assets/copter_status_connected.png');
    background-repeat: no-repeat;
 
 }
 
 .quadcopter_status_disconnected{
 
-    background-image: url('/build/static/robbo_assets/copter_status_disconnected.png');
+    background-image: url('../../static/robbo_assets/copter_status_disconnected.png');
     background-repeat: no-repeat;
 
 }
@@ -55,7 +55,7 @@
 
 .quadcopter_loading_icon{
 
-     background-image: url(/build/static/robbo_assets/searching.gif);
+     background-image: url(../../static/robbo_assets/searching.gif);
     /* background-size: 30px; */
     min-width: 20px;
     min-height: 20px;

@@ -14,6 +14,7 @@ import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import { node_process } from '../lib/platform';
 
 const messages = defineMessages({
 

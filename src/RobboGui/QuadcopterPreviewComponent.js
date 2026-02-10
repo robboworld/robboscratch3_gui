@@ -12,7 +12,7 @@ class QuadcopterPreviewComponent extends Component {
     copter_searching_icon = document.getElementById(`quadcopter-preview-${this.props.quadcopterIndex}`);
     if (typeof (copter_searching_icon) != 'undefined') {
       if (quadcopter_is_searching) {
-        copter_searching_icon.style.backgroundImage = " url(/build/static/robbo_assets/searching.gif)";
+        copter_searching_icon.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
         copter_searching_icon.style.backgroundRepeat = "no-repeat";
         copter_searching_icon.style.backgroundPosition = "center";
       } else {

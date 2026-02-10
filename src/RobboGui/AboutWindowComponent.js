@@ -15,6 +15,7 @@ import {
   ActionTriggerNewDraggableWindow,
   ActionCreateNewDraggableWindow
 } from './actions/sensor_actions';
+import { node_process, node_os } from '../lib/platform';
 
 const VERSION = 'Robbo Scratch v.3.108.0-alpha';
 
@@ -95,23 +96,32 @@ class AboutWindowComponent extends Component {
     const os_field = document.getElementById(
       `raw-5-about-window-content-column-2`
     );
+    if (!os_field) return;
 
-    getos((e, os) => {
-      if (e) return console.error(e);
+    const setOsText = (text) => { os_field.innerHTML = text; };
 
-      console.warn(os);
-
-      os_field.innerHTML =
-        os.os +
-        ' ' +
-        (typeof node_os.release() !== 'undefined'
-          ? node_os.release()
-          : '') +
-        ' ' +
-        (typeof os.dist !== 'undefined' ? os.dist : '') +
-        ' ' +
-        (typeof os.release !== 'undefined' ? os.release : '');
-    });
+    if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+      try {
+        const getos = require('getos');
+        getos((e, os) => {
+          if (e) return console.error(e);
+          console.warn(os);
+          setOsText(
+            os.os +
+            ' ' +
+            (typeof node_os.release !== 'undefined' ? node_os.release() : '') +
+            ' ' +
+            (typeof os.dist !== 'undefined' ? os.dist : '') +
+            ' ' +
+            (typeof os.release !== 'undefined' ? os.release : '')
+          );
+        });
+      } catch (err) {
+        setOsText(node_os.release ? node_os.release() : '');
+      }
+    } else {
+      setOsText(node_os.release ? node_os.release() : '');
+    }
   }
 
   startProfiling() {
@@ -491,7 +501,7 @@ class AboutWindowComponent extends Component {
               id="raw-7-about-window-content-column-2"
               className={styles.about_window_value_column}
             >
-              {node_os.cpus()[0].model}
+              {node_os.cpus().length ? node_os.cpus()[0].model : ''}
             </div>
 
             <div

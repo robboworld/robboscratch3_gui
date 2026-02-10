@@ -32,7 +32,7 @@ class RobotPreviewComponent extends Component {
         //  robot_searching_icon.classList.remove(styles.robot_loading_icon_showing);
         //  robot_searching_icon.classList.add(styles.robot_loading_icon_showing);
 
-            robot_searching_icon.style.backgroundImage = " url(/build/static/robbo_assets/searching.gif)";
+            robot_searching_icon.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
             robot_searching_icon.style.backgroundRepeat = "no-repeat";
             robot_searching_icon.style.backgroundPosition = "center";
 

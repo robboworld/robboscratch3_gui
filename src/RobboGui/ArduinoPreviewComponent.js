@@ -25,7 +25,7 @@ class ArduinoPreviewComponent extends Component {
 
 
 
-            Arduino_searching_icon.style.backgroundImage = " url(/build/static/robbo_assets/searching.gif)";
+            Arduino_searching_icon.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
             Arduino_searching_icon.style.backgroundRepeat = "no-repeat";
             Arduino_searching_icon.style.backgroundPosition = "center";
 

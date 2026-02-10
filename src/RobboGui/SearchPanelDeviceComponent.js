@@ -270,11 +270,11 @@ class SearchPanelDeviceComponent extends Component {
      }
      
      if (realState === 6) {
-       device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/green.png" />`;
+       device_status_icon.innerHTML = `<img src = "./static/robbo_assets/green.png" />`;
      } else if (realState === 0 || realState === 2 || realState === 3) {
-       device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
+       device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
      } else if (realState === 7 || realState === 8) {
-       device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/red.png" />`;
+       device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
      }
    }
 
@@ -538,7 +538,7 @@ class SearchPanelDeviceComponent extends Component {
 
                     status_field.innerHTML = this.props.intl.formatMessage(messages.device_checking_serial);
 
-                    device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
+                    device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
 
 
                 }else if (state == 6){
@@ -621,7 +621,7 @@ class SearchPanelDeviceComponent extends Component {
                     status_field.innerHTML = reconnectMessage;
                     
                     // Показываем желтую иконку (процесс переподключения)
-                    device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
+                    device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
 
                     // Скрываем кнопки прошивки
                     flashing_show_details_icon.style.display = "none";
@@ -653,7 +653,7 @@ class SearchPanelDeviceComponent extends Component {
                         info_field.style.display = "none";
 
                         // Показываем желтую иконку (процесс переподключения)
-                        device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
+                        device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
 
                         // Скрываем кнопки прошивки
                         flashing_show_details_icon.style.display = "none";
@@ -683,7 +683,7 @@ class SearchPanelDeviceComponent extends Component {
 
                         status_field.innerHTML =  this.props.intl.formatMessage(messages.device_no_response); 
 
-                        device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/red.png" />`;
+                        device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
                         
                        let need_to_flash_msg = this.props.intl.formatMessage(messages.device_no_response_alert_details,{device_port:this.props.devicePort});
 
@@ -785,7 +785,7 @@ class SearchPanelDeviceComponent extends Component {
 
                      status_field.innerHTML = this.props.intl.formatMessage(messages.device_port_error); 
 
-                     device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/red.png" />`;
+                     device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
 
                       let search_panel = document.getElementById(`SearchPanelComponent`);
                       search_panel.style.display = "block";
@@ -899,7 +899,7 @@ onFlashingStatusChanged(status){
 
         search_device_button.removeAttribute("disabled");
 
-        //flashing_short_status_field.style.backgroundImage = " url(/build/static/robbo_assets/status_ok.svg)";
+        //flashing_short_status_field.style.backgroundImage = " url(./static/robbo_assets/status_ok.svg)";
        
         flashing_button.style.backgroundImage = "";
 
@@ -914,7 +914,7 @@ onFlashingStatusChanged(status){
         flashingStatusComponent.style.backgroundColor = "red";
         search_device_button.removeAttribute("disabled");
 
-      //  flashing_short_status_field.style.backgroundImage = " url(/build/static/robbo_assets/status_error.svg)";
+      //  flashing_short_status_field.style.backgroundImage = " url(./static/robbo_assets/status_error.svg)";
 
 
       //  flashing_button.style.backgroundImage = "";
@@ -926,7 +926,7 @@ onFlashingStatusChanged(status){
         flashing_button.removeAttribute("disabled");
 
         let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
-        device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/red.png" />`;
+        device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
 
         let search_panel = document.getElementById(`SearchPanelComponent`);
         search_panel.style.display = "block";
@@ -961,7 +961,7 @@ flashDevice(){
 
 
     //flashing_button.style.display = "inline-block";
-    flashing_button.style.backgroundImage = " url(/build/static/robbo_assets/searching.gif)";
+    flashing_button.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
     flashing_button.style.backgroundColor = "#FFFF99"; //Light yellow2
     flashing_button.style.backgroundRepeat = "no-repeat";
     flashing_button.style.backgroundPosition = "center";
@@ -977,7 +977,7 @@ flashDevice(){
     info_field.innerHTML =   this.props.intl.formatMessage(messages.flashing_in_progress_details); 
 
      let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
-     device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/yellow.png" />`;
+     device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
 
 
     var cId =  this.props.flashingStatusComponentId;
@@ -1096,7 +1096,7 @@ flashDevice(){
                   
                           search_device_button.removeAttribute("disabled");
                   
-                          //flashing_short_status_field.style.backgroundImage = " url(/build/static/robbo_assets/status_ok.svg)";
+                          //flashing_short_status_field.style.backgroundImage = " url(./static/robbo_assets/status_ok.svg)";
                          
                           flashing_button.style.backgroundImage = "";
                   
@@ -1111,7 +1111,7 @@ flashDevice(){
                           flashingStatusComponent.style.backgroundColor = "red";
                           search_device_button.removeAttribute("disabled");
                   
-                        //  flashing_short_status_field.style.backgroundImage = " url(/build/static/robbo_assets/status_error.svg)";
+                        //  flashing_short_status_field.style.backgroundImage = " url(./static/robbo_assets/status_error.svg)";
                   
                   
                         //  flashing_button.style.backgroundImage = "";
@@ -1123,7 +1123,7 @@ flashDevice(){
                           flashing_button.removeAttribute("disabled");
                   
                           let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
-                          device_status_icon.innerHTML = `<img src = "/build/static/robbo_assets/red.png" />`;
+                          device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
                   
                           let search_panel = document.getElementById(`SearchPanelComponent`);
                           search_panel.style.display = "block";

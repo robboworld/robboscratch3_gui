@@ -206,17 +206,21 @@ class Blocks extends React.Component {
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
         this.props.vm.setLocale(this.props.locale, this.props.messages)
             .then(() => {
-                this.workspace.getFlyout().setRecyclingEnabled(false);
+                const flyout = this.workspace.getFlyout();
+                if (flyout) flyout.setRecyclingEnabled(false);
                 this.props.vm.refreshWorkspace();
                 this.requestToolboxUpdate();
                 this.withToolboxUpdates(() => {
-                    this.workspace.getFlyout().setRecyclingEnabled(true);
+                    const flyoutAfter = this.workspace.getFlyout();
+                    if (flyoutAfter) flyoutAfter.setRecyclingEnabled(true);
                 });
             });
     }
 
     updateToolbox () {
         this.toolboxUpdateTimeout = false;
+
+        if (!this.workspace || !this.workspace.toolbox_) return;
 
         const categoryId = this.workspace.toolbox_.getSelectedCategoryId();
         const offset = this.workspace.toolbox_.getCategoryScrollOffset();

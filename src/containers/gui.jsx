@@ -87,9 +87,9 @@ class GUI extends React.Component {
 
   }
 
-  autoSaveProject(){
-
-    this.props.vm.saveProjectSb3_auto();
+  autoSaveProject () {
+    this.props.vm.saveProjectSb3_auto()
+      .catch(() => {}); // empty/invalid project or serialization error — ignore
   }
 
   startProjectAutosaving(){

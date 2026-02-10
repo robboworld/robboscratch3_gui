@@ -23,7 +23,7 @@ class OttoPreviewComponent extends Component {
 
 
 
-            Otto_searching_icon.style.backgroundImage = " url(/build/static/robbo_assets/searching.gif)";
+            Otto_searching_icon.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
             Otto_searching_icon.style.backgroundRepeat = "no-repeat";
             Otto_searching_icon.style.backgroundPosition = "center";
 

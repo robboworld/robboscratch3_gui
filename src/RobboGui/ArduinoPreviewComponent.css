@@ -40,7 +40,7 @@
 .arduino_status_connected{
 
    /* background-color: green;*/
-   background-image: url('/build/static/robbo_assets/arduino_status_connected.png');
+   background-image: url('../../static/robbo_assets/arduino_status_connected.png');
    background-repeat: no-repeat;
 
 }
@@ -49,7 +49,7 @@
 
    /* background-color: red;*/
 
-    background-image: url('/build/static/robbo_assets/arduino_status_disconnected.png');
+    background-image: url('../../static/robbo_assets/arduino_status_disconnected.png');
     background-repeat: no-repeat;
 
 }
@@ -57,7 +57,7 @@
 
 .arduino_loading_icon{
 
-     background-image: url(/build/static/robbo_assets/searching.gif);
+     background-image: url(../../static/robbo_assets/searching.gif);
     /* background-size: 30px; */
     min-width: 20px;
     min-height: 20px;
