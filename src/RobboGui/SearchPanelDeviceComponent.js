@@ -40,22 +40,22 @@ const messages = defineMessages({
     device_quadcopter: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_quadcopter',
         description: ' ',
-        defaultMessage: 'Квадрокоптер'
+        defaultMessage: 'Quadcopter'
     },
     quadcopter_searching: {
         id: 'gui.SearchPanel.quadcopter_searching',
         description: ' ',
-        defaultMessage: 'Поиск квадрокоптера...'
+        defaultMessage: 'Searching for quadcopter...'
     },
     quadcopter_connected: {
         id: 'gui.SearchPanel.quadcopter_connected',
         description: ' ',
-        defaultMessage: 'Квадрокоптер подключён'
+        defaultMessage: 'Quadcopter connected'
     },
     quadcopter_disconnected: {
         id: 'gui.SearchPanel.quadcopter_disconnected',
         description: ' ',
-        defaultMessage: 'Квадрокоптер не подключён'
+        defaultMessage: 'Quadcopter not connected'
     },
     device_unknown: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_unknown',
@@ -253,7 +253,8 @@ class SearchPanelDeviceComponent extends Component {
         super();
 
         this.state = {
-            devices: []
+            devices: [],
+            quadcopterStatusTick: 0  // force re-render when QCA status changes so icon updates
         };
 
         this.deviceId = -1;
@@ -341,6 +342,10 @@ class SearchPanelDeviceComponent extends Component {
         if (this.props.isQuadcopter && this.props.QCA) {
             this.props.QCA.registerQuadcopterStatusChangeCallback((radioState, searching_in_progress) => {
                 this.updateIconBasedOnRealState();
+                // Force re-render so componentDidUpdate runs and icon stays in sync (avoids React overwriting DOM)
+                setTimeout(() => {
+                    if (this.setState) this.setState({ quadcopterStatusTick: Date.now() });
+                }, 0);
             });
         }
 
