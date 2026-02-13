@@ -6,42 +6,42 @@ import { connect } from 'react-redux';
 
 
 import styles from './SearchPanelComponent.css';
-import {ActionAddNewFoundDevice} from './actions/sensor_actions';
+import { ActionAddNewFoundDevice } from './actions/sensor_actions';
 
 import FirmwareFlasherFlashingStatusComponent from './FirmwareFlasherFlashingStatusComponent';
 import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
 
 import DraggableWindowComponent from './DraggableWindowComponent';
 
-import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 import { node_process } from '../lib/platform';
 
 const messages = defineMessages({
 
-    devices_not_found: {
+  devices_not_found: {
 
-        id: 'gui.RobboGui.devices_not_found',
-        description: ' ',
-        defaultMessage: 'No devices available for connection.'
-    },
-    bluetooth_devices_not_found: {
+    id: 'gui.RobboGui.devices_not_found',
+    description: ' ',
+    defaultMessage: 'No devices available for connection.'
+  },
+  bluetooth_devices_not_found: {
 
-      id: 'gui.RobboGui.bluetooth_devices_not_found',
-      description: ' ',
-      defaultMessage: 'Не обнаружены доступные для подключения блютуз устройства. Обратитесь к инструкции пользователя (FAQ).'
+    id: 'gui.RobboGui.bluetooth_devices_not_found',
+    description: ' ',
+    defaultMessage: 'Не обнаружены доступные для подключения блютуз устройства. Обратитесь к инструкции пользователя (FAQ).'
   },
   bluetooth_searching: {
 
     id: 'gui.RobboGui.bluetooth_searching',
     description: ' ',
     defaultMessage: 'Ищем блютуз устройства'
-},
+  },
   try_to_install_drivers: {
 
     id: 'gui.RobboGui.try_to_install_drivers',
     description: ' ',
     defaultMessage: 'Попробуйте установить или обновить драйвера для usb порта.'
-}
+  }
 });
 
 
@@ -49,23 +49,23 @@ const messages = defineMessages({
 class SearchPanelComponent extends Component {
 
 
-    constructor(){ 
+  constructor() {
 
-        super();  
-        this.state = {  
-           devices: []
-        }; 
-        
-        this.device_list = [];
+    super();
+    this.state = {
+      devices: []
+    };
 
-        this.bluetooth_devices_state = "searching";
-        
-   }
+    this.device_list = [];
+
+    this.bluetooth_devices_state = "searching";
+
+  }
 
 
-    componentDidMount () {
+  componentDidMount() {
 
-   
+
 
     // this.DCA =  this.props.deviceControlInterfaces.DCA;
     // this.RCA =  this.props.deviceControlInterfaces.RCA;
@@ -74,12 +74,12 @@ class SearchPanelComponent extends Component {
     // this.OCA =  this.props.deviceControlInterfaces.OCA;
     // this.ACA =  this.props.deviceControlInterfaces.ACA;
 
-    this.DCA =  this.props.DCA;
-    this.RCA =  this.props.RCA;
-    this.LCA =  this.props.LCA;
-    this.QCA =  this.props.QCA;
-    this.OCA =  this.props.OCA;
-    this.ACA =  this.props.ACA;
+    this.DCA = this.props.DCA;
+    this.RCA = this.props.RCA;
+    this.LCA = this.props.LCA;
+    this.QCA = this.props.QCA;
+    this.OCA = this.props.OCA;
+    this.ACA = this.props.ACA;
 
     this.draggableWindowId = this.props.draggableWindowId;
 
@@ -96,58 +96,63 @@ class SearchPanelComponent extends Component {
 
     });
 
-     this.DCA.registerDevicesNotFoundCallback(() => {
-      let search_device_button =  document.getElementById(`robbo_search_devices`);
+    this.DCA.registerDevicesNotFoundCallback(() => {
+      let search_device_button = document.getElementById(`robbo_search_devices`);
       if (search_device_button) {
         search_device_button.style.pointerEvents = "auto";
       }
 
       let allDevices = this.DCA.getDevices();
-      
-      if (allDevices.length > 0) {
-        this.device_list = [];
-        for (let index = 0; index < allDevices.length; index++) {
-          let device = {
-            devicePort: allDevices[index].getPortName(),
-            isBluetooth: allDevices[index].isBluetoothDevice(),
-            isMacBluetooth: false
-          }
-          this.device_list.push(device);
-        }
-        
-        this.setState((previousState, currentProps) => {
-          return {
-            devices: this.device_list
-          };
-        });
-      } else {
-        this.setState((previousState, currentProps) => {
-          return {
-            devices: []
-          };
+      this.device_list = [];
+      for (let index = 0; index < allDevices.length; index++) {
+        let device = {
+          devicePort: allDevices[index].getPortName(),
+          isBluetooth: allDevices[index].isBluetoothDevice(),
+          isMacBluetooth: false
+        };
+        this.device_list.push(device);
+      }
+      // Квадрокоптер (Crazyradio USB) — показываем в списке всегда; на Web будет «не подключён»
+      if (this.QCA) {
+        this.device_list.push({
+          devicePort: 'Quadcopter',
+          isBluetooth: false,
+          isMacBluetooth: false,
+          isQuadcopter: true
         });
       }
 
-     });
+      this.setState((previousState, currentProps) => {
+        return {
+          devices: this.device_list
+        };
+      });
 
-     this.DCA.registerBluetoothDevicesNotFoundCallback(() => {
+    });
+
+    this.DCA.registerBluetoothDevicesNotFoundCallback(() => {
       this.bluetooth_devices_state = "not_found";
 
       let allDevices = this.DCA.getDevices();
-
-      if (allDevices.length > 0) {
-        this.device_list = [];
-        for (let index = 0; index < allDevices.length; index++) {
-          let device = {
-            devicePort: allDevices[index].getPortName(),
-            isBluetooth: allDevices[index].isBluetoothDevice(),
-            isMacBluetooth: false
-          }
-          this.device_list.push(device);
-        }
+      this.device_list = [];
+      for (let index = 0; index < allDevices.length; index++) {
+        let device = {
+          devicePort: allDevices[index].getPortName(),
+          isBluetooth: allDevices[index].isBluetoothDevice(),
+          isMacBluetooth: false
+        };
+        this.device_list.push(device);
+      }
+      if (this.QCA) {
+        this.device_list.push({
+          devicePort: 'Quadcopter',
+          isBluetooth: false,
+          isMacBluetooth: false,
+          isQuadcopter: true
+        });
       }
 
-      if (this.device_list.length > 0){
+      if (this.device_list.length > 0) {
         this.setState((previousState, currentProps) => {
           return {
             devices: this.device_list
@@ -156,33 +161,39 @@ class SearchPanelComponent extends Component {
       } else {
         this.setState((previousState, currentProps) => {
           return {
-            devices: []
+            devices: this.device_list
           };
         });
       }
 
-          
-     });
 
-   
+    });
 
-     this.DCA.registerDeviceFoundCallback(() => {
+
+
+    this.DCA.registerDeviceFoundCallback(() => {
       this.is_bluetooth_devices_not_found = false;
 
-       let devices = this.DCA.getDevices();
+      let devices = this.DCA.getDevices();
+      this.device_list = [];
+      for (let index = 0; index < devices.length; index++) {
+        let device = {
+          devicePort: devices[index].getPortName(),
+          isBluetooth: devices[index].isBluetoothDevice(),
+          isMacBluetooth: false
+        };
+        this.device_list.push(device);
+      }
+      if (this.QCA) {
+        this.device_list.push({
+          devicePort: 'Quadcopter',
+          isBluetooth: false,
+          isMacBluetooth: false,
+          isQuadcopter: true
+        });
+      }
 
-       this.device_list = [];
-
-       for (let index = 0; index < devices.length; index++){
-             let device = {
-                devicePort: devices[index].getPortName(),
-                isBluetooth: devices[index].isBluetoothDevice(),
-                isMacBluetooth: false
-            }
-            this.device_list.push(device);
-       }
-
-        this.setState((previousState, currentProps) => {
+      this.setState((previousState, currentProps) => {
             return {
                 devices: this.device_list
               };
@@ -197,107 +208,104 @@ class SearchPanelComponent extends Component {
 
   }
 
-  onThisWindowClose(){
+  onThisWindowClose() {
     ReactDOM.findDOMNode(this).style.display = "none";
   }
 
   render() {
 
-  return (
+    return (
 
 
-    <div id="SearchPanelComponent" className={styles.search_panel}>
+      <div id="SearchPanelComponent" className={styles.search_panel}>
 
 
-          <div id="SearchPanelComponent-tittle" className={styles.search_panel_tittle}>
+        <div id="SearchPanelComponent-tittle" className={styles.search_panel_tittle}>
 
 
-              <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
+          <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
 
-
-              </div>
 
           </div>
 
-           <div id="SearchPanelComponent-body" className={styles.search_panel_body}>
+        </div>
 
-               <div id="SearchPanelComponent-devices-list">
+        <div id="SearchPanelComponent-body" className={styles.search_panel_body}>
 
-                {
+          <div id="SearchPanelComponent-devices-list">
 
-
-                   this.state.devices.map((device, index) =>
-
-                        {
+            {
 
 
-
-
-
-                         return  <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7+index}  key={index + "search-panel-devices-list"}  devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth}   DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} OCA={this.OCA} ACA={this.ACA}/>
-
-
-
-                        }
-
-                    )
-
-                }    
-
-
-         {
-
-           this.state.devices.map((device, index) =>
-
-              {
+              this.state.devices.map((device, index) => {
 
 
 
 
 
-                return     <DraggableWindowComponent key={index + "devices-list-draggable"} draggableWindowId={7+index}>
+                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={index + "search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
-                              <FirmwareFlasherFlashingStatusComponent key={index + "devices-list-status"} componentId={index}  draggableWindowId={7+index}  DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA}/>
 
-                          </DraggableWindowComponent>
+
+              }
+
+              )
+
+            }
+
+
+            {
+
+              this.state.devices.map((device, index) => {
+
+
+
+
+
+                return <DraggableWindowComponent key={index + "devices-list-draggable"} draggableWindowId={7 + index}>
+
+                  <FirmwareFlasherFlashingStatusComponent key={index + "devices-list-status"} componentId={index} draggableWindowId={7 + index} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
+
+                </DraggableWindowComponent>
 
 
 
 
               }
 
-          )
+              )
 
 
 
-          }
+            }
 
-          {
+            {
 
-             ( this.state.devices.length == 0)?<div className={styles.devices_not_found}>{this.props.intl.formatMessage(messages.devices_not_found)}</div>:""
+              (this.state.devices.length == 0) ? <div className={styles.devices_not_found}>{this.props.intl.formatMessage(messages.devices_not_found)}</div> : ""
 
-          }
+            }
 
-          {
+            {
 
-            ( (this.bluetooth_devices_state == "searching") && (node_process.platform === "win32"))?<div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div>:""
+              ((this.bluetooth_devices_state == "searching") && (node_process.platform === "win32")) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
 
-          }
+            }
 
-          {
-             ( (this.bluetooth_devices_state == "not_found") && (node_process.platform === "win32")) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div>:""
+            {
+              ((this.bluetooth_devices_state == "not_found") && (node_process.platform === "win32")) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div> : ""
 
-          }
-
-
-               </div>  
+            }
 
 
-          </div>    
+          </div>
 
-  </div>  
 
-  )};
+        </div>
+
+      </div>
+
+    )
+  };
 
 
 

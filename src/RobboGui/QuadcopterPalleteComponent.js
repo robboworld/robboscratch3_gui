@@ -73,11 +73,13 @@ class QuadcopterPalleteComponent extends Component {
     let bat_level = 0;
 
     var battery_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-battery-level_type-analog`);
-
+    if (!battery_sensor_component || !battery_sensor_component.children[0] || !battery_sensor_component.children[0].children[1]) return;
     var battery_sensor_value_field = battery_sensor_component.children[0].children[1].children[0];
+    if (!battery_sensor_value_field) return;
 
         this.batteryWarningLoop = setInterval(() => {
 
+                if (!this.props.QCA) return;
                 bat_level =  this.props.QCA.get_battery_level();
 
                 if (this.props.QCA.isQuadcopterConnected()){
@@ -107,58 +109,56 @@ class QuadcopterPalleteComponent extends Component {
 
   startGetDataLoop(){
 
-
     var battery_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-battery-level_type-analog`);
-
+    if (!battery_sensor_component || !battery_sensor_component.children[0] || !battery_sensor_component.children[0].children[1] || !battery_sensor_component.children[0].children[1].children[0]) return;
     var battery_sensor_value_field = battery_sensor_component.children[0].children[1].children[0];
 
-
     var x_coord_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-coord-x_type-analog`);
-
+    if (!x_coord_sensor_component || !x_coord_sensor_component.children[0] || !x_coord_sensor_component.children[0].children[1] || !x_coord_sensor_component.children[0].children[1].children[0]) return;
     var x_coord_sensor_value_field = x_coord_sensor_component.children[0].children[1].children[0];
 
-
-
     var y_coord_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-coord-y_type-analog`);
-
+    if (!y_coord_sensor_component || !y_coord_sensor_component.children[0] || !y_coord_sensor_component.children[0].children[1] || !y_coord_sensor_component.children[0].children[1].children[0]) return;
     var y_coord_sensor_value_field = y_coord_sensor_component.children[0].children[1].children[0];
 
-
     var z_coord_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-coord-z_type-analog`);
-
+    if (!z_coord_sensor_component || !z_coord_sensor_component.children[0] || !z_coord_sensor_component.children[0].children[1] || !z_coord_sensor_component.children[0].children[1].children[0]) return;
     var z_coord_sensor_value_field  = z_coord_sensor_component.children[0].children[1].children[0];
 
     var yaw_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-yaw_type-analog`);
-
+    if (!yaw_sensor_component || !yaw_sensor_component.children[0] || !yaw_sensor_component.children[0].children[1] || !yaw_sensor_component.children[0].children[1].children[0]) return;
     var yaw_sensor_value_field  = yaw_sensor_component.children[0].children[1].children[0];
 
+    this.getDataLoopInterval = setInterval(() => {
 
-
-    var getDataLoopInterval = setInterval(() => {
-
-          battery_sensor_value_field.innerHTML = this.props.QCA.get_battery_level() + " % "; // + this.props.QCA.get_battery_level_raw() + "V";
-
-          x_coord_sensor_value_field.innerHTML =  this.props.QCA.telemetry_palette_get_coord("X") + " " + this.props.intl.formatMessage(messages.meters); //this.props.QCA.get_coord("X");
-
-          y_coord_sensor_value_field.innerHTML =  this.props.QCA.telemetry_palette_get_coord("Y") + " " + this.props.intl.formatMessage(messages.meters); //this.props.QCA.get_coord("Y");
-
+          if (!this.props.QCA) return;
+          battery_sensor_value_field.innerHTML = this.props.QCA.get_battery_level() + " % ";
+          x_coord_sensor_value_field.innerHTML =  this.props.QCA.telemetry_palette_get_coord("X") + " " + this.props.intl.formatMessage(messages.meters);
+          y_coord_sensor_value_field.innerHTML =  this.props.QCA.telemetry_palette_get_coord("Y") + " " + this.props.intl.formatMessage(messages.meters);
           z_coord_sensor_value_field.innerHTML = this.props.QCA.telemetry_palette_get_coord("Z") + " " + this.props.intl.formatMessage(messages.meters);
-
           yaw_sensor_value_field.innerHTML     = this.props.QCA.telemetry_palette_get_coord("W") + " " + this.props.intl.formatMessage(messages.degrees);
 
 
     },50);
 
-
-
   }
 
   componentDidMount(){
 
-
       this.startGetDataLoop();
       this.startBatteryWarningLoop();
 
+  }
+
+  componentWillUnmount() {
+    if (this.batteryWarningLoop) {
+      clearInterval(this.batteryWarningLoop);
+      this.batteryWarningLoop = null;
+    }
+    if (this.getDataLoopInterval) {
+      clearInterval(this.getDataLoopInterval);
+      this.getDataLoopInterval = null;
+    }
   }
 
 
