@@ -7,7 +7,7 @@ import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-int
 
 import styles from  './SettingsWindowComponent.css';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
-
+import { node_process } from '../lib/platform';
 
 const messages = defineMessages({
   settings_window: {
@@ -463,24 +463,29 @@ class SettingsWindowComponent extends Component {
     this.DCA_maxes_bluetooth = this.VM.DCA.getMaxValuesOfIntervalsBluetooth();
 
     this.readSettings().then((result) => {
-      var fullscreen_interval_component =  document.getElementById("raw-1-settings-window-content-column-2").children[0];
-      var normal_mode_interval_component =  document.getElementById("raw-2-settings-window-content-column-2").children[0];
-      var no_response_time_component =  document.getElementById("raw-3-settings-window-content-column-2").children[0];
-      var no_start_timeout_component =  document.getElementById("raw-4-settings-window-content-column-2").children[0];
-      var device_handle_timeout_component =  document.getElementById("raw-5-settings-window-content-column-2").children[0];
-      var uno_timeout_component =  document.getElementById("raw-6-settings-window-content-column-2").children[0];
+      const el = (id) => document.getElementById(id);
+      const child0 = (id) => { const n = el(id); return n && n.children && n.children[0] ? n.children[0] : null; };
+
+      var fullscreen_interval_component = child0("raw-1-settings-window-content-column-2");
+      var normal_mode_interval_component = child0("raw-2-settings-window-content-column-2");
+      var no_response_time_component = child0("raw-3-settings-window-content-column-2");
+      var no_start_timeout_component = child0("raw-4-settings-window-content-column-2");
+      var device_handle_timeout_component = child0("raw-5-settings-window-content-column-2");
+      var uno_timeout_component = child0("raw-6-settings-window-content-column-2");
+
+      if (!fullscreen_interval_component || !normal_mode_interval_component) return;
 
       if(node_process.platform === "win32"){ //CHANGE TO "win32"
-        var no_response_time_component_bluetooth =  document.getElementById("raw-7-settings-window-content-column-2").children[0];
-        var no_start_timeout_component_bluetooth =  document.getElementById("raw-8-settings-window-content-column-2").children[0];
-        var device_handle_timeout_component_bluetooth =  document.getElementById("raw-9-settings-window-content-column-2").children[0];
-        var uno_timeout_component_bluetooth =  document.getElementById("raw-10-settings-window-content-column-2").children[0];
+        var no_response_time_component_bluetooth = child0("raw-7-settings-window-content-column-2");
+        var no_start_timeout_component_bluetooth = child0("raw-8-settings-window-content-column-2");
+        var device_handle_timeout_component_bluetooth = child0("raw-9-settings-window-content-column-2");
+        var uno_timeout_component_bluetooth = child0("raw-10-settings-window-content-column-2");
       }
 
      // var motors_inverted_component = document.getElementById("raw-11-settings-window-content-column-2").children[0];
 
-      var left_motor_inverted_component = document.getElementById("raw-11-settings-window-content-column-2").children[0];
-      var right_motor_inverted_component = document.getElementById("raw-12-settings-window-content-column-2").children[0];
+      var left_motor_inverted_component = child0("raw-11-settings-window-content-column-2");
+      var right_motor_inverted_component = child0("raw-12-settings-window-content-column-2");
 
       if (result.file_exists){
         try {
@@ -495,20 +500,20 @@ class SettingsWindowComponent extends Component {
           let no_start_timeout = Math.round(Number(settings_data.device_no_start_timeout));
           let uno_timeout = Math.round(Number(settings_data.device_uno_start_search_timeout));
           let device_handle_timeout = Math.round(Number(settings_data.device_handle_timeout));
-          no_response_time_component.value=no_response_timeout;
-          no_start_timeout_component.value=no_start_timeout;
-          device_handle_timeout_component.value=device_handle_timeout;
-          uno_timeout_component.value=uno_timeout;
+          if (no_response_time_component) no_response_time_component.value = no_response_timeout;
+          if (no_start_timeout_component) no_start_timeout_component.value = no_start_timeout;
+          if (device_handle_timeout_component) device_handle_timeout_component.value = device_handle_timeout;
+          if (uno_timeout_component) uno_timeout_component.value = uno_timeout;
 
           if(node_process.platform === "win32"){ //CHANGE TO "win32"
             let no_response_timeout_bluetooth = Math.round(Number(settings_data.device_response_timeout_bluetooth));
             let no_start_timeout_bluetooth = Math.round(Number(settings_data.device_no_start_timeout_bluetooth));
             let uno_timeout_bluetooth = Math.round(Number(settings_data.device_uno_start_search_timeout_bluetooth));
             let device_handle_timeout_bluetooth = Math.round(Number(settings_data.device_handle_timeout_bluetooth));
-            no_response_time_component_bluetooth.value=no_response_timeout_bluetooth;
-            no_start_timeout_component_bluetooth.value=no_start_timeout_bluetooth;
-            device_handle_timeout_component_bluetooth.value=device_handle_timeout_bluetooth;
-            uno_timeout_component_bluetooth.value=uno_timeout_bluetooth;
+            if (no_response_time_component_bluetooth) no_response_time_component_bluetooth.value = no_response_timeout_bluetooth;
+            if (no_start_timeout_component_bluetooth) no_start_timeout_component_bluetooth.value = no_start_timeout_bluetooth;
+            if (device_handle_timeout_component_bluetooth) device_handle_timeout_component_bluetooth.value = device_handle_timeout_bluetooth;
+            if (uno_timeout_component_bluetooth) uno_timeout_component_bluetooth.value = uno_timeout_bluetooth;
           }
 
 
@@ -521,20 +526,20 @@ class SettingsWindowComponent extends Component {
           console.warn(`Read completed for left_motors_inverted_setting_checked: ${settings_data.left_motor_inverted_setting_checked}`);
           console.warn(`Read completed for right_motors_inverted_setting_checked: ${settings_data.right_motor_inverted_setting_checked}`);
           if (typeof(settings_data.left_motor_inverted_setting_checked) !== 'undefined'){
-            left_motor_inverted_component.checked = settings_data.left_motor_inverted_setting_checked;
-            this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked; 
+            if (left_motor_inverted_component) left_motor_inverted_component.checked = settings_data.left_motor_inverted_setting_checked;
+            this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked;
 
           }else{
-            left_motor_inverted_component.checked = false;
-            this.VM.runtime.left_motor_inverted = false; 
+            if (left_motor_inverted_component) left_motor_inverted_component.checked = false;
+            this.VM.runtime.left_motor_inverted = false;
           }
 
           if (typeof(settings_data.right_motor_inverted_setting_checked) !== 'undefined'){
-            right_motor_inverted_component.checked = settings_data.right_motor_inverted_setting_checked;
-            this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked; 
+            if (right_motor_inverted_component) right_motor_inverted_component.checked = settings_data.right_motor_inverted_setting_checked;
+            this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked;
 
           }else{
-            right_motor_inverted_component.checked = false;
+            if (right_motor_inverted_component) right_motor_inverted_component.checked = false;
             this.VM.runtime.right_motor_inverted = false; 
           }
 

@@ -37,7 +37,7 @@
 .close_icon{
 
     float:right;
-    background-image: url('/build/static/robbo_assets/icon_close_window.png');
+    background-image: url('../../static/robbo_assets/icon_close_window.png');
     width: 27px;
     height: 27px;
 

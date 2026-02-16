@@ -195,10 +195,9 @@ const ProjectSaverHOC = function (WrappedComponent) {
                 });
         }
 
-        __ROBBO__autoSaveProject(){
-
-              this.props.vm.saveProjectSb3_auto();
-
+        __ROBBO__autoSaveProject () {
+            this.props.vm.saveProjectSb3_auto()
+                .catch(() => {}); // empty/invalid project or serialization error — ignore
         }
 
         /**

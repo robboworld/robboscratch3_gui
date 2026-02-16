@@ -26,7 +26,7 @@ class LaboratoryPreviewComponent extends Component {
 
        if (is_lab_searching){
 
-            lab_searching_icon.style.backgroundImage = " url(/build/static/robbo_assets/searching.gif)";
+            lab_searching_icon.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
             lab_searching_icon.style.backgroundRepeat = "no-repeat";
             lab_searching_icon.style.backgroundPosition = "center";
 

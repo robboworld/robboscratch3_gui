@@ -43,7 +43,7 @@
       margin-top: 7px;
       min-width: 30px;
       min-height: 30px;
-      background-image: url("/build/static/robbo_assets/show_details.svg");
+      background-image: url("../../static/robbo_assets/show_details.svg");
       background-repeat: no-repeat;
       position: relative;
       top: 20px;

@@ -60,7 +60,7 @@ text-align: center;
 
   text-align: center;
 
-  /*background-image: url('/build/static/robbo_assets/bubblesvg.svg');*/
+  /*background-image: url('../../static/robbo_assets/bubblesvg.svg');*/
   background-color: white;
 
 }
@@ -68,7 +68,7 @@ text-align: center;
 .close_icon{
 
     float:right;
-    background-image: url('/build/static/robbo_assets/icon_close_window_old.svg');
+    background-image: url('../../static/robbo_assets/icon_close_window_old.svg');
     width: 16px;
     height: 16px;
     margin-top: 7px;

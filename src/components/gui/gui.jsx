@@ -196,7 +196,13 @@ const GUIComponent = props => {
         connectDropTarget, //modified_by_Yaroslav
         isOver,
         ...componentProps
-    } = omit(props, 'dispatch');
+    } = omit(props, [
+        'dispatch',
+        'onSensorChooseWindowDrop',
+        'onColorCorrectorWindowDrop',
+        'onDraggableWindowDrop',
+        'onNewDraggableWindowDrop'
+    ]);
     if (children) {
         return <Box {...componentProps}>{children}</Box>;
     }

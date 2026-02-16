@@ -16,14 +16,14 @@ class OttoPreviewComponent extends Component {
 
     Otto_searching_icon = document.getElementById(`otto-preview-${this.props.ottoIndex}`);
 
-    if (typeof( Otto_searching_icon) != 'undefined'){
+    if (Otto_searching_icon){
 
 
       if (false){
 
 
 
-            Otto_searching_icon.style.backgroundImage = " url(/build/static/robbo_assets/searching.gif)";
+            Otto_searching_icon.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
             Otto_searching_icon.style.backgroundRepeat = "no-repeat";
             Otto_searching_icon.style.backgroundPosition = "center";
 
@@ -38,6 +38,8 @@ class OttoPreviewComponent extends Component {
       }
 
       Otto_connection_status = document.getElementById(`otto-preview-${this.props.ottoIndex}`);
+
+      if (!Otto_connection_status) return;
 
       if (otto_state == 6){
 
