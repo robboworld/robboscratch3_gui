@@ -64,8 +64,7 @@ class SearchPanelComponent extends Component {
 
 
   componentDidMount() {
-
-
+    this._isMounted = true;
 
     // this.DCA =  this.props.deviceControlInterfaces.DCA;
     // this.RCA =  this.props.deviceControlInterfaces.RCA;
@@ -101,111 +100,70 @@ class SearchPanelComponent extends Component {
       if (search_device_button) {
         search_device_button.style.pointerEvents = "auto";
       }
-
-      let allDevices = this.DCA.getDevices();
-      this.device_list = [];
-      for (let index = 0; index < allDevices.length; index++) {
-        let device = {
-          devicePort: allDevices[index].getPortName(),
-          isBluetooth: allDevices[index].isBluetoothDevice(),
-          isMacBluetooth: false
-        };
-        this.device_list.push(device);
-      }
-      // Квадрокоптер (Crazyradio USB) — показываем в списке всегда; на Web будет «не подключён»
-      if (this.QCA) {
-        this.device_list.push({
-          devicePort: 'Quadcopter',
-          isBluetooth: false,
-          isMacBluetooth: false,
-          isQuadcopter: true
-        });
-      }
-
-      this.setState((previousState, currentProps) => {
-        return {
-          devices: this.device_list
-        };
-      });
-
+      this._refreshDeviceList();
     });
 
     this.DCA.registerBluetoothDevicesNotFoundCallback(() => {
       this.bluetooth_devices_state = "not_found";
-
-      let allDevices = this.DCA.getDevices();
-      this.device_list = [];
-      for (let index = 0; index < allDevices.length; index++) {
-        let device = {
-          devicePort: allDevices[index].getPortName(),
-          isBluetooth: allDevices[index].isBluetoothDevice(),
-          isMacBluetooth: false
-        };
-        this.device_list.push(device);
-      }
-      if (this.QCA) {
-        this.device_list.push({
-          devicePort: 'Quadcopter',
-          isBluetooth: false,
-          isMacBluetooth: false,
-          isQuadcopter: true
-        });
-      }
-
-      if (this.device_list.length > 0) {
-        this.setState((previousState, currentProps) => {
-          return {
-            devices: this.device_list
-          };
-        });
-      } else {
-        this.setState((previousState, currentProps) => {
-          return {
-            devices: this.device_list
-          };
-        });
-      }
-
-
+      this._refreshDeviceList();
     });
 
 
 
     this.DCA.registerDeviceFoundCallback(() => {
       this.is_bluetooth_devices_not_found = false;
-
-      let devices = this.DCA.getDevices();
-      this.device_list = [];
-      for (let index = 0; index < devices.length; index++) {
-        let device = {
-          devicePort: devices[index].getPortName(),
-          isBluetooth: devices[index].isBluetoothDevice(),
-          isMacBluetooth: false
-        };
-        this.device_list.push(device);
-      }
-      if (this.QCA) {
-        this.device_list.push({
-          devicePort: 'Quadcopter',
-          isBluetooth: false,
-          isMacBluetooth: false,
-          isQuadcopter: true
-        });
-      }
-
-      this.setState((previousState, currentProps) => {
-            return {
-                devices: this.device_list
-              };
-            });
+      this._refreshDeviceList();
     });
 
+    if (this.QCA) {
+      this._wasDongleAvailable = false;
+      this.QCA.registerQuadcopterStatusChangeCallback(() => {
+        let now = typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable();
+        if (now !== this._wasDongleAvailable) {
+          this._wasDongleAvailable = now;
+          this._refreshDeviceList();
+        }
+      });
+    }
 
 
 
 
 
 
+
+  }
+
+  _refreshDeviceList() {
+    let allDevices = this.DCA.getDevices();
+    let newList = [];
+    for (let index = 0; index < allDevices.length; index++) {
+      newList.push({
+        devicePort: allDevices[index].getPortName(),
+        isBluetooth: allDevices[index].isBluetoothDevice(),
+        isMacBluetooth: false
+      });
+    }
+    if (this.QCA && typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable()) {
+      newList.push({
+        devicePort: 'Quadcopter',
+        isBluetooth: false,
+        isMacBluetooth: false,
+        isQuadcopter: true
+      });
+    }
+    if (!this._isMounted) return;
+    this.device_list = newList;
+    const prev = this.state.devices;
+    const listChanged = prev.length !== newList.length ||
+      newList.some((d, i) => !prev[i] || prev[i].devicePort !== d.devicePort || Boolean(prev[i].isQuadcopter) !== Boolean(d.isQuadcopter));
+    if (listChanged) {
+      this.setState({ devices: newList });
+    }
+  }
+
+  componentWillUnmount() {
+    this._isMounted = false;
   }
 
   onThisWindowClose() {
@@ -243,7 +201,7 @@ class SearchPanelComponent extends Component {
 
 
 
-                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={index + "search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
+                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
 
 

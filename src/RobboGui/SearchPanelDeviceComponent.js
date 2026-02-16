@@ -254,7 +254,11 @@ class SearchPanelDeviceComponent extends Component {
 
         this.state = {
             devices: [],
-            quadcopterStatusTick: 0  // force re-render when QCA status changes so icon updates
+            deviceState: 0,
+            deviceId: -1,
+            deviceError: null,
+            quadcopterConnected: false,
+            quadcopterSearching: false
         };
 
         this.deviceId = -1;
@@ -269,57 +273,71 @@ class SearchPanelDeviceComponent extends Component {
 
     }
 
-    updateIconBasedOnRealState() {
-        if (this.props.isQuadcopter && this.props.QCA) {
-            let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
-            let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
-            if (!device_status_icon || !status_field) return;
-            const connected = this.props.QCA.isQuadcopterConnected();
-            const searching = this.props.QCA.isQuadcopterSearching();
-            if (connected) {
-                device_status_icon.innerHTML = `<img src = "./static/robbo_assets/green.png" />`;
-                status_field.innerHTML = this.props.intl.formatMessage(messages.quadcopter_connected);
-            } else if (searching) {
-                device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
-                status_field.innerHTML = this.props.intl.formatMessage(messages.quadcopter_searching);
-            } else {
-                device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
-                status_field.innerHTML = this.props.intl.formatMessage(messages.quadcopter_disconnected);
-            }
-            return;
-        }
-        let allDevices = this.props.DCA.getDevices();
-        let realDevice = null;
-        for (let i = 0; i < allDevices.length; i++) {
-            if (allDevices[i] && allDevices[i].getPortName() === this.props.devicePort) {
-                realDevice = allDevices[i];
-                break;
-            }
-        }
-
-        if (!realDevice) {
-            return;
-        }
-
-        const realState = realDevice.getState();
-        let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
-
-        if (!device_status_icon) {
-            return;
-        }
-
-        if (realState === 6) {
-            device_status_icon.innerHTML = `<img src = "./static/robbo_assets/green.png" />`;
-        } else if (realState === 0 || realState === 2 || realState === 3) {
-            device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
-        } else if (realState === 7 || realState === 8) {
-            device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
+    getDeviceName(deviceId) {
+        switch (deviceId) {
+            case 0: case 3: return this.props.intl.formatMessage(messages.device_robot);
+            case 1: case 2: case 4: return this.props.intl.formatMessage(messages.device_lab);
+            case 5: return this.props.intl.formatMessage(messages.device_otto);
+            case 6: return this.props.intl.formatMessage(messages.device_arduino);
+            default: return this.props.intl.formatMessage(messages.device_unknown);
         }
     }
 
-    componentDidUpdate() {
-        // Обновляем иконку на основе реального статуса устройства
-        this.updateIconBasedOnRealState();
+    getStatusDisplay() {
+        if (this.props.isQuadcopter && this.props.QCA) {
+            const { quadcopterConnected, quadcopterSearching } = this.state;
+            if (quadcopterConnected) {
+                return { iconSrc: './static/robbo_assets/green.png', statusText: this.props.intl.formatMessage(messages.quadcopter_connected) };
+            }
+            if (quadcopterSearching) {
+                return { iconSrc: './static/robbo_assets/yellow.png', statusText: this.props.intl.formatMessage(messages.quadcopter_searching) };
+            }
+            return { iconSrc: './static/robbo_assets/red.png', statusText: this.props.intl.formatMessage(messages.quadcopter_disconnected) };
+        }
+        const { deviceState, deviceId, deviceError } = this.state;
+        const deviceName = this.getDeviceName(deviceId);
+        let statusText = '';
+        let iconSrc = './static/robbo_assets/yellow.png';
+        if (deviceState === 6) {
+            statusText = deviceName + ' ' + this.props.intl.formatMessage(messages.device_connected);
+            iconSrc = './static/robbo_assets/green.png';
+        } else if (deviceState === 0) {
+            statusText = this.props.intl.formatMessage(messages.try_connect_to_port);
+        } else if (deviceState === 2) {
+            statusText = this.props.intl.formatMessage(messages.port_opened);
+        } else if (deviceState === 3) {
+            statusText = this.props.intl.formatMessage(messages.device_checking_serial);
+        } else if (deviceState === 8) {
+            if (deviceError && deviceError.code === 1) {
+                statusText = this.props.intl.formatMessage(messages.device_reconnecting);
+            } else {
+                statusText = this.props.intl.formatMessage(messages.device_no_response);
+                iconSrc = './static/robbo_assets/red.png';
+            }
+        } else if (deviceState === 7) {
+            statusText = this.props.intl.formatMessage(messages.device_port_error);
+            iconSrc = './static/robbo_assets/red.png';
+        } else if (deviceState === 9) {
+            statusText = this.props.intl.formatMessage(messages.device_reconnecting);
+        }
+        return { iconSrc, statusText };
+    }
+
+    syncStateFromDevice() {
+        if (this.props.isQuadcopter) return;
+        const allDevices = this.props.DCA.getDevices();
+        const realDevice = allDevices.find(dev => dev && dev.getPortName() === this.props.devicePort);
+        if (!realDevice) return;
+        const realState = realDevice.getState();
+        const rawId = realDevice.getDeviceID();
+        const normalizedId = rawId !== undefined ? rawId : -1;
+        if (realState !== this.state.deviceState || normalizedId !== this.state.deviceId) {
+            this.setState({ deviceState: realState, deviceId: normalizedId });
+        }
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        this.syncStateFromDevice();
     }
 
     componentWillUnmount() {
@@ -340,12 +358,16 @@ class SearchPanelDeviceComponent extends Component {
         this.dots_counter = 1;
 
         if (this.props.isQuadcopter && this.props.QCA) {
-            this.props.QCA.registerQuadcopterStatusChangeCallback((radioState, searching_in_progress) => {
-                this.updateIconBasedOnRealState();
-                // Force re-render so componentDidUpdate runs and icon stays in sync (avoids React overwriting DOM)
-                setTimeout(() => {
-                    if (this.setState) this.setState({ quadcopterStatusTick: Date.now() });
-                }, 0);
+            this._lastQuadcopterConnected = null;
+            this._lastQuadcopterSearching = null;
+            this.props.QCA.registerQuadcopterStatusChangeCallback(() => {
+                const connected = this.props.QCA.isQuadcopterConnected();
+                const searching = this.props.QCA.isQuadcopterSearching();
+                if (this._lastQuadcopterConnected !== connected || this._lastQuadcopterSearching !== searching) {
+                    this._lastQuadcopterConnected = connected;
+                    this._lastQuadcopterSearching = searching;
+                    this.setState({ quadcopterConnected: connected, quadcopterSearching: searching });
+                }
             });
         }
 
@@ -364,9 +386,9 @@ class SearchPanelDeviceComponent extends Component {
             });
         }
 
-        requestAnimationFrame(() => {
-            this.updateIconBasedOnRealState();
-        });
+        if (!this.props.isQuadcopter) {
+            this.syncStateFromDevice();
+        }
 
 
 
@@ -446,13 +468,8 @@ class SearchPanelDeviceComponent extends Component {
             }
         }
 
-        // Обновляем this.deviceId для использования в других методах
         this.deviceId = deviceId;
-
-        // Всегда обновляем иконку на основе реального статуса устройства
-        this.updateIconBasedOnRealState();
-
-
+        this.setState({ deviceState: state, deviceId, deviceError: error });
 
         let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
         let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
@@ -526,16 +543,8 @@ class SearchPanelDeviceComponent extends Component {
         }
 
         if (state == 0) {
-            //init here
-
             this.firmware_version_differs = false;
             this.isFlashing = false;
-
-
-            status_field.innerHTML = this.props.intl.formatMessage(messages.try_connect_to_port);
-
-            this.updateIconBasedOnRealState();
-
             info_field.innerHTML = "";
 
             info_field.style.display = "none";
@@ -553,13 +562,6 @@ class SearchPanelDeviceComponent extends Component {
         } else if (state == 2) {
             this.firmware_version_differs = false;
             this.isFlashing = false;
-
-            // status_field.innerHTML = "Connected";
-            status_field.innerHTML = this.props.intl.formatMessage(messages.port_opened);;
-
-            // Иконка устанавливается на основе реального статуса через updateIconBasedOnRealState()
-            this.updateIconBasedOnRealState();
-
             info_field.innerHTML = "";
 
             info_field.style.display = "none";
@@ -576,21 +578,10 @@ class SearchPanelDeviceComponent extends Component {
 
         } else if (state == 3) {
 
-            status_field.innerHTML = this.props.intl.formatMessage(messages.device_checking_serial);
-
-            device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
-
 
         } else if (state == 6) {
-
             search_device_button.style.pointerEvents = "auto";
-
             let result = this.firmware_version_differs_cb_result;
-
-            status_field.innerHTML = device_name + " " + this.props.intl.formatMessage(messages.device_connected);
-
-            this.updateIconBasedOnRealState();
-
             if (!this.firmware_version_differs) {
 
                 info_field.innerHTML = "";
@@ -654,11 +645,6 @@ class SearchPanelDeviceComponent extends Component {
 
             if (search_panel) search_panel.style.display = "block";
 
-            let reconnectMessage = this.props.intl.formatMessage(messages.device_reconnecting);
-            status_field.innerHTML = reconnectMessage;
-
-            device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
-
             flashing_show_details_icon.style.display = "none";
             flashing_button.style.display = "none";
 
@@ -680,15 +666,8 @@ class SearchPanelDeviceComponent extends Component {
                 let search_panel = document.getElementById(`SearchPanelComponent`);
                 if (search_panel) search_panel.style.display = "block";
 
-                // Показываем сообщение о переподключении сразу
-                status_field.innerHTML = this.props.intl.formatMessage(messages.device_reconnecting);
                 info_field.innerHTML = "";
                 info_field.style.display = "none";
-
-                // Показываем желтую иконку (процесс переподключения)
-                device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
-
-                // Скрываем кнопки прошивки
                 flashing_show_details_icon.style.display = "none";
                 flashing_button.style.display = "none";
 
@@ -713,10 +692,6 @@ class SearchPanelDeviceComponent extends Component {
                 }
 
 
-
-                status_field.innerHTML = this.props.intl.formatMessage(messages.device_no_response);
-
-                device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
 
                 let need_to_flash_msg = this.props.intl.formatMessage(messages.device_no_response_alert_details, { device_port: this.props.devicePort });
 
@@ -814,17 +789,10 @@ class SearchPanelDeviceComponent extends Component {
 
             }
 
-
-
-            status_field.innerHTML = this.props.intl.formatMessage(messages.device_port_error);
-
-            device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
-
             let search_panel = document.getElementById(`SearchPanelComponent`);
             search_panel.style.display = "block";
 
         }
-
     }
 
 
@@ -850,19 +818,17 @@ class SearchPanelDeviceComponent extends Component {
 
 
     flashingShowDetails() {
-        if (this.props.draggable_window[this.props.draggableWindowId].isShowing !== true) {
+        const windowState = this.props.draggable_window && this.props.draggable_window[this.props.draggableWindowId];
+        if (windowState && windowState.isShowing !== true) {
             this.props.onShowFlashingStatusWindow(this.props.draggableWindowId);
         }
     }
 
     flashingHideDetails() {
-
-        if (this.props.draggable_window[this.props.draggableWindowId].isShowing == true) {
-
+        const windowState = this.props.draggable_window && this.props.draggable_window[this.props.draggableWindowId];
+        if (windowState && windowState.isShowing === true) {
             this.props.onHideFlashingStatusWindow(this.props.draggableWindowId);
-
         }
-
     }
 
     onFlashingStatusChanged(status) {
@@ -1146,10 +1112,6 @@ class SearchPanelDeviceComponent extends Component {
                     flashingStatusComponent.style.backgroundColor = "red";
                     search_device_button.removeAttribute("disabled");
 
-                    //  flashing_short_status_field.style.backgroundImage = " url(./static/robbo_assets/status_error.svg)";
-
-
-                    //  flashing_button.style.backgroundImage = "";
                     flashing_button.style.backgroundImage = "-webkit-linear-gradient(top,#ff0000,#ff0000)";
                     flashing_button.style.backgroundColor = "#ff0000";
                     flashing_button.style.textAlign = "center";
@@ -1157,8 +1119,7 @@ class SearchPanelDeviceComponent extends Component {
 
                     flashing_button.removeAttribute("disabled");
 
-                    let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
-                    device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
+                    this.setState({ deviceState: 8 });
 
                     let search_panel = document.getElementById(`SearchPanelComponent`);
                     search_panel.style.display = "block";
@@ -1196,18 +1157,13 @@ class SearchPanelDeviceComponent extends Component {
 
 
     render() {
-
-
-
-
         const displayPortName = this.props.isQuadcopter
             ? this.props.intl.formatMessage(messages.device_quadcopter)
             : this.props.devicePort;
         const showFlashButton = !this.props.isQuadcopter;
+        const { iconSrc, statusText } = this.getStatusDisplay();
 
         return (
-
-
 
             <div id={`search-panel-device-component`} className={styles.firmware_flasher_device_component}>
 
@@ -1219,14 +1175,11 @@ class SearchPanelDeviceComponent extends Component {
                 </div>
 
                 <div id={`search-panel-device-status-icon-${this.props.Id}`} className={styles.search_panel_device_status_icon}>
-
-
+                    {iconSrc ? <img src={iconSrc} alt="" /> : null}
                 </div>
 
                 <div id={`search-panel-device-status-${this.props.Id}`} className={styles.search_panel_device_element}>
-
-
-
+                    {statusText}
                 </div>
 
                 <div id={`search-panel-device-info-${this.props.Id}`} className={styles.search_panel_device_element}>

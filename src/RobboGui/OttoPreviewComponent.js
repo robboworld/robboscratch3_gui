@@ -16,7 +16,7 @@ class OttoPreviewComponent extends Component {
 
     Otto_searching_icon = document.getElementById(`otto-preview-${this.props.ottoIndex}`);
 
-    if (typeof( Otto_searching_icon) != 'undefined'){
+    if (Otto_searching_icon){
 
 
       if (false){
@@ -38,6 +38,8 @@ class OttoPreviewComponent extends Component {
       }
 
       Otto_connection_status = document.getElementById(`otto-preview-${this.props.ottoIndex}`);
+
+      if (!Otto_connection_status) return;
 
       if (otto_state == 6){
 

@@ -6,28 +6,24 @@ import { ActionTriggerDraggableWindow } from './actions/sensor_actions'
 
 class QuadcopterPreviewComponent extends Component {
   onQuadcopterStatusChange(quadcopter_state, quadcopter_is_searching) {
-    var copter_searching_icon;
-    var copter_connection_status;
     quadcopter_is_searching = false;
-    copter_searching_icon = document.getElementById(`quadcopter-preview-${this.props.quadcopterIndex}`);
-    if (typeof (copter_searching_icon) != 'undefined') {
-      if (quadcopter_is_searching) {
-        copter_searching_icon.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
-        copter_searching_icon.style.backgroundRepeat = "no-repeat";
-        copter_searching_icon.style.backgroundPosition = "center";
-      } else {
-        copter_searching_icon.style.backgroundImage = "";
-      }
-      copter_connection_status = document.getElementById(`quadcopter-preview-${this.props.quadcopterIndex}`);
-      if (quadcopter_state == "connected") {
-        copter_connection_status.classList.remove(styles.quadcopter_status_connected);
-        copter_connection_status.classList.remove(styles.quadcopter_status_disconnected);
-        copter_connection_status.classList.add(styles.quadcopter_status_connected);
-      } else {
-        copter_connection_status.classList.remove(styles.quadcopter_status_disconnected);
-        copter_connection_status.classList.remove(styles.quadcopter_status_connected);
-        copter_connection_status.classList.add(styles.quadcopter_status_disconnected);
-      }
+    const el = document.getElementById(`quadcopter-preview-${this.props.quadcopterIndex}`);
+    if (!el) return;
+    if (quadcopter_is_searching) {
+      el.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
+      el.style.backgroundRepeat = "no-repeat";
+      el.style.backgroundPosition = "center";
+    } else {
+      el.style.backgroundImage = "";
+    }
+    if (quadcopter_state == "connected") {
+      el.classList.remove(styles.quadcopter_status_connected);
+      el.classList.remove(styles.quadcopter_status_disconnected);
+      el.classList.add(styles.quadcopter_status_connected);
+    } else {
+      el.classList.remove(styles.quadcopter_status_disconnected);
+      el.classList.remove(styles.quadcopter_status_connected);
+      el.classList.add(styles.quadcopter_status_disconnected);
     }
   }
   componentDidMount() {

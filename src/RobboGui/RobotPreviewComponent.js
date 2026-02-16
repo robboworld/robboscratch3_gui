@@ -21,7 +21,7 @@ class RobotPreviewComponent extends Component {
     robot_searching_icon = document.getElementById(`robot-preview-${this.props.robotIndex}`);
 
 
-    if (typeof(robot_searching_icon) != 'undefined'){
+    if (robot_searching_icon){
 
       if (is_robot_searching){
 
@@ -53,7 +53,7 @@ class RobotPreviewComponent extends Component {
      // robot_connection_status = document.getElementById(`robot-${this.props.robotIndex}-connection-status`);
        robot_connection_status = document.getElementById(`robot-preview-${this.props.robotIndex}`);
 
-    
+    if (!robot_connection_status) return;
 
       if (robot_state == 6){
 
