@@ -1029,9 +1029,7 @@ class SearchPanelDeviceComponent extends Component {
         this.OCA.stopDataRecievingProcess();
         this.ACA.stopDataRecievingProcess();
 
-        this.DCA.discon(this.props.devicePort, () => {
-
-            this.DCA.flashFirmware(this.props.devicePort, config, (status) => {
+        this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, (status) => {
 
                 if ((status.indexOf("Block") == -1) && (status.indexOf("Error") == -1) && (status.indexOf("Uploading") == -1) && (status.indexOf("Port closed") == -1)) {
 
@@ -1103,7 +1101,6 @@ class SearchPanelDeviceComponent extends Component {
                 }
 
             });
-        });
 
 
         //  this.LCA.discon();
