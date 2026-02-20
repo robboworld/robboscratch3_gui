@@ -319,6 +319,10 @@ class SearchPanelDeviceComponent extends Component {
             iconSrc = './static/robbo_assets/red.png';
         } else if (deviceState === 9) {
             statusText = this.props.intl.formatMessage(messages.device_reconnecting);
+        } else if (deviceState === 10) {
+            statusText = this.props.intl.formatMessage(messages.flashing_in_progress_details);
+            iconSrc = './static/robbo_assets/yellow.png';
+            console.warn('[FLASH_ICON] getStatusDisplay: deviceState=10 FLASHING -> yellow icon, port=' + (this.props.devicePort || ''));
         }
         return { iconSrc, statusText };
     }
@@ -469,6 +473,9 @@ class SearchPanelDeviceComponent extends Component {
         }
 
         this.deviceId = deviceId;
+        if (state === 10) {
+            console.warn('[FLASH_ICON] onStatusChange: received state=10 FLASHING for port=' + this.props.devicePort);
+        }
         this.setState({ deviceState: state, deviceId, deviceError: error });
 
         let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
@@ -961,8 +968,7 @@ class SearchPanelDeviceComponent extends Component {
         if (status_field) status_field.innerHTML = this.props.intl.formatMessage(messages.flashing_in_progress);
         if (info_field) info_field.innerHTML = this.props.intl.formatMessage(messages.flashing_in_progress_details);
 
-        let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
-        if (device_status_icon) device_status_icon.innerHTML = `<img src = "./static/robbo_assets/yellow.png" />`;
+        // Иконку не трогаем через innerHTML — она управляется React по deviceState (state 10 приходит из disco() в VM)
 
         var cId = this.props.flashingStatusComponentId;
         var firmwareFlasherFlashingStatusComponent = document.getElementById(`firmware-flasher-flashing-status-component-${cId}`);
@@ -1031,76 +1037,76 @@ class SearchPanelDeviceComponent extends Component {
 
         this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, (status) => {
 
-                if ((status.indexOf("Block") == -1) && (status.indexOf("Error") == -1) && (status.indexOf("Uploading") == -1) && (status.indexOf("Port closed") == -1)) {
+            if ((status.indexOf("Block") == -1) && (status.indexOf("Error") == -1) && (status.indexOf("Uploading") == -1) && (status.indexOf("Port closed") == -1)) {
 
-                    if (flashingLogComponent) createDiv(flashingLogComponent, null, null, null, null, styles, status, null);
+                if (flashingLogComponent) createDiv(flashingLogComponent, null, null, null, null, styles, status, null);
 
-                    var dots = "";
+                var dots = "";
 
-                    for (var i = 0; i < this.dots_counter; i++) {
+                for (var i = 0; i < this.dots_counter; i++) {
 
-                        dots += ".";
-                    }
+                    dots += ".";
+                }
 
-                    if (flashingStatusComponent) flashingStatusComponent.innerHTML = "Waiting.." + dots;
+                if (flashingStatusComponent) flashingStatusComponent.innerHTML = "Waiting.." + dots;
 
-                    if (this.dots_counter == 1) {
+                if (this.dots_counter == 1) {
 
-                        this.dots_counter = 2;
-
-                    } else {
-
-                        this.dots_counter = 1;
-
-                    }
+                    this.dots_counter = 2;
 
                 } else {
 
-                    if (flashingStatusComponent) flashingStatusComponent.innerHTML = status;
+                    this.dots_counter = 1;
 
                 }
 
-                if (flashingLogComponent) flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
+            } else {
 
-                if ((status.indexOf("Port closed") !== -1)) {
+                if (flashingStatusComponent) flashingStatusComponent.innerHTML = status;
 
-                    if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "green";
+            }
 
-                    if (search_device_button) search_device_button.removeAttribute("disabled");
+            if (flashingLogComponent) flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
 
-                    if (flashing_button) {
-                        flashing_button.style.backgroundImage = "";
-                        flashing_button.removeAttribute("disabled");
-                        flashing_button.style.display = "inline-block";
-                    }
+            if ((status.indexOf("Port closed") !== -1)) {
 
-                    this.searchDevices(); //search devices
+                if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "green";
 
-                } else if ((status.indexOf("Error") !== -1)) {
+                if (search_device_button) search_device_button.removeAttribute("disabled");
 
-                    if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
-                    if (search_device_button) search_device_button.removeAttribute("disabled");
-
-                    if (flashing_button) {
-                        flashing_button.style.backgroundImage = "-webkit-linear-gradient(top,#ff0000,#ff0000)";
-                        flashing_button.style.backgroundColor = "#ff0000";
-                        flashing_button.style.textAlign = "center";
-                        flashing_button.innerText = this.props.intl.formatMessage(messages.error);
-                        flashing_button.removeAttribute("disabled");
-                    }
-
-                    this.setState({ deviceState: 8 });
-
-                    let search_panel = document.getElementById(`SearchPanelComponent`);
-                    if (search_panel) search_panel.style.display = "block";
-
-                } else {
-
-                    if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "#FFFF99"; //Light yellow2
-
+                if (flashing_button) {
+                    flashing_button.style.backgroundImage = "";
+                    flashing_button.removeAttribute("disabled");
+                    flashing_button.style.display = "inline-block";
                 }
 
-            });
+                this.searchDevices(); //search devices
+
+            } else if ((status.indexOf("Error") !== -1)) {
+
+                if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
+                if (search_device_button) search_device_button.removeAttribute("disabled");
+
+                if (flashing_button) {
+                    flashing_button.style.backgroundImage = "-webkit-linear-gradient(top,#ff0000,#ff0000)";
+                    flashing_button.style.backgroundColor = "#ff0000";
+                    flashing_button.style.textAlign = "center";
+                    flashing_button.innerText = this.props.intl.formatMessage(messages.error);
+                    flashing_button.removeAttribute("disabled");
+                }
+
+                this.setState({ deviceState: 8 });
+
+                let search_panel = document.getElementById(`SearchPanelComponent`);
+                if (search_panel) search_panel.style.display = "block";
+
+            } else {
+
+                if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "#FFFF99"; //Light yellow2
+
+            }
+
+        });
 
 
         //  this.LCA.discon();
