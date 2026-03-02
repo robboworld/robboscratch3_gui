@@ -172,6 +172,31 @@ const messages = defineMessages({
         description: ' ',
         defaultMessage: 'Идёт прошивка.'
     },
+    otto_flash_which_mode: {
+        id: 'gui.SearchPanel.otto_flash_which_mode',
+        description: ' ',
+        defaultMessage: 'Какие настройки прошивки использовать?'
+    },
+    otto_flash_arduino: {
+        id: 'gui.SearchPanel.otto_flash_arduino',
+        description: ' ',
+        defaultMessage: 'Arduino'
+    },
+    otto_flash_nulllab: {
+        id: 'gui.SearchPanel.otto_flash_nulllab',
+        description: ' ',
+        defaultMessage: 'Null Lab'
+    },
+    otto_flash_auto: {
+        id: 'gui.SearchPanel.otto_flash_auto',
+        description: ' ',
+        defaultMessage: 'Авто'
+    },
+    otto_flash_version_unchanged_try_arduino: {
+        id: 'gui.SearchPanel.otto_flash_version_unchanged_try_arduino',
+        description: ' ',
+        defaultMessage: 'Версия не изменилась. Попробовать прошить как Arduino?'
+    },
     device_try_to_reconnect: {
 
 
@@ -258,7 +283,8 @@ class SearchPanelDeviceComponent extends Component {
             deviceId: -1,
             deviceError: null,
             quadcopterConnected: false,
-            quadcopterSearching: false
+            quadcopterSearching: false,
+            showOttoFlashChoice: false
         };
 
         this.deviceId = -1;
@@ -268,6 +294,10 @@ class SearchPanelDeviceComponent extends Component {
         this.firmware_version_differs_cb_result = {};
 
         this.isFlashing = false;
+
+        this.ottoVersionBeforeAutoFlash = null;
+
+        this.ottoAutoFlashPending = false;
 
         this.isRasberry = false;
 
@@ -380,6 +410,14 @@ class SearchPanelDeviceComponent extends Component {
             this.props.DCA.registerFirmwareVersionDiffersCallback(this.props.devicePort, (result) => {
                 this.firmware_version_differs = true;
                 this.firmware_version_differs_cb_result = result;
+                if (this.ottoAutoFlashPending) {
+                    this.ottoAutoFlashPending = false;
+                    if (this.ottoVersionBeforeAutoFlash != null && result.current_device_firmware === this.ottoVersionBeforeAutoFlash) {
+                        if (confirm(this.props.intl.formatMessage(messages.otto_flash_version_unchanged_try_arduino))) {
+                            this.flashDevice('arduino');
+                        }
+                    }
+                }
                 let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
                 if (info_field) {
                     info_field.style.display = "inline-block";
@@ -476,7 +514,7 @@ class SearchPanelDeviceComponent extends Component {
         if (state === 10) {
             console.warn('[FLASH_ICON] onStatusChange: received state=10 FLASHING for port=' + this.props.devicePort);
         }
-        this.setState({ deviceState: state, deviceId, deviceError: error });
+        this.setState({ deviceState: state, deviceId, deviceError: error, showOttoFlashChoice: state === 6 || state === 8 ? this.state.showOttoFlashChoice : false });
 
         let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
         let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
@@ -618,8 +656,11 @@ class SearchPanelDeviceComponent extends Component {
 
             if (need_flash_device) {
 
-
-                this.flashDevice();
+                if (deviceId === 5) {
+                    this.setState({ showOttoFlashChoice: true });
+                } else {
+                    this.flashDevice();
+                }
 
             } else if (!this.firmware_version_differs) { //We don't need to close panel if firmware versions differ.
 
@@ -718,7 +759,11 @@ class SearchPanelDeviceComponent extends Component {
 
                 if (need_flash_device) {
 
-                    this.flashDevice();
+                    if (deviceId === 5) {
+                        this.setState({ showOttoFlashChoice: true });
+                    } else {
+                        this.flashDevice();
+                    }
 
                 }
 
@@ -940,7 +985,14 @@ class SearchPanelDeviceComponent extends Component {
     }
 
 
-    flashDevice() {
+    flashDevice(ottoFlashMode) {
+
+        this.setState({ showOttoFlashChoice: false });
+
+        if (this.deviceId === 5 && ottoFlashMode === 'auto' && this.firmware_version_differs_cb_result && this.firmware_version_differs_cb_result.current_device_firmware != null) {
+            this.ottoVersionBeforeAutoFlash = this.firmware_version_differs_cb_result.current_device_firmware;
+            this.ottoAutoFlashPending = true;
+        }
 
         this.isFlashing = true;
 
@@ -983,12 +1035,13 @@ class SearchPanelDeviceComponent extends Component {
         config.device = {};
 
         config.device.device_id = this.deviceId;
-        if (this.deviceId === 5 && this.props.VM && this.props.VM.runtime && this.props.VM.runtime.otto_use_null_lab === true) {
-          config.device.use_null_lab = true;
-          config.device.null_lab_baud = (this.props.VM.runtime.firmware_null_lab_baud_rate != null && this.props.VM.runtime.firmware_null_lab_baud_rate >= 9600 && this.props.VM.runtime.firmware_null_lab_baud_rate <= 115200)
-            ? this.props.VM.runtime.firmware_null_lab_baud_rate : 57600;
-          config.device.null_lab_block_delay = (this.props.VM.runtime.firmware_null_lab_block_transmit_delay != null && this.props.VM.runtime.firmware_null_lab_block_transmit_delay >= 50 && this.props.VM.runtime.firmware_null_lab_block_transmit_delay <= 500)
-            ? this.props.VM.runtime.firmware_null_lab_block_transmit_delay : 100;
+        if (this.deviceId === 5) {
+          const useNullLab = ottoFlashMode === 'null_lab' || ottoFlashMode === 'auto';
+          if (useNullLab) {
+            config.device.use_null_lab = true;
+            config.device.null_lab_baud = 115200;
+            config.device.null_lab_block_delay = 100;
+          }
         }
         // config.device.device_firmware_version = this.props.deviceFirmwareVersion;
 
@@ -1091,6 +1144,7 @@ class SearchPanelDeviceComponent extends Component {
 
             } else if ((status.indexOf("Error") !== -1)) {
 
+                this.ottoAutoFlashPending = false;
                 if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
                 if (search_device_button) search_device_button.removeAttribute("disabled");
 
@@ -1171,8 +1225,17 @@ class SearchPanelDeviceComponent extends Component {
                 {showFlashButton && (
                     <div id={`search-panel-device-flash-button-element-${this.props.Id}`} className={styles.search_panel_device_element}>
 
-                        <button id={`search-panel-device-flash-button-${this.props.Id}`} className={styles.device_flash_button} onClick={this.flashDevice.bind(this)}>{this.props.intl.formatMessage(messages.flash_device)} </button>
+                        <button id={`search-panel-device-flash-button-${this.props.Id}`} className={styles.device_flash_button} onClick={() => this.flashDevice()}>{this.props.intl.formatMessage(messages.flash_device)} </button>
 
+                    </div>
+                )}
+
+                {showFlashButton && this.state.showOttoFlashChoice && (
+                    <div id={`otto-flash-mode-choice-${this.props.Id}`} className={styles.search_panel_device_element}>
+                        <span>{this.props.intl.formatMessage(messages.otto_flash_which_mode)}</span>
+                        <button type="button" onClick={() => this.flashDevice('arduino')}>{this.props.intl.formatMessage(messages.otto_flash_arduino)}</button>
+                        <button type="button" onClick={() => this.flashDevice('null_lab')}>{this.props.intl.formatMessage(messages.otto_flash_nulllab)}</button>
+                        <button type="button" onClick={() => this.flashDevice('auto')}>{this.props.intl.formatMessage(messages.otto_flash_auto)}</button>
                     </div>
                 )}
 
