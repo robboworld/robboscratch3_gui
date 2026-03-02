@@ -983,6 +983,13 @@ class SearchPanelDeviceComponent extends Component {
         config.device = {};
 
         config.device.device_id = this.deviceId;
+        if (this.deviceId === 5 && this.props.VM && this.props.VM.runtime && this.props.VM.runtime.otto_use_null_lab === true) {
+          config.device.use_null_lab = true;
+          config.device.null_lab_baud = (this.props.VM.runtime.firmware_null_lab_baud_rate != null && this.props.VM.runtime.firmware_null_lab_baud_rate >= 9600 && this.props.VM.runtime.firmware_null_lab_baud_rate <= 115200)
+            ? this.props.VM.runtime.firmware_null_lab_baud_rate : 57600;
+          config.device.null_lab_block_delay = (this.props.VM.runtime.firmware_null_lab_block_transmit_delay != null && this.props.VM.runtime.firmware_null_lab_block_transmit_delay >= 50 && this.props.VM.runtime.firmware_null_lab_block_transmit_delay <= 500)
+            ? this.props.VM.runtime.firmware_null_lab_block_transmit_delay : 100;
+        }
         // config.device.device_firmware_version = this.props.deviceFirmwareVersion;
 
         //var dots_counter = 1;
