@@ -172,26 +172,6 @@ const messages = defineMessages({
         description: ' ',
         defaultMessage: 'Идёт прошивка.'
     },
-    otto_flash_which_mode: {
-        id: 'gui.SearchPanel.otto_flash_which_mode',
-        description: ' ',
-        defaultMessage: 'Какие настройки прошивки использовать?'
-    },
-    otto_flash_arduino: {
-        id: 'gui.SearchPanel.otto_flash_arduino',
-        description: ' ',
-        defaultMessage: 'Arduino'
-    },
-    otto_flash_nulllab: {
-        id: 'gui.SearchPanel.otto_flash_nulllab',
-        description: ' ',
-        defaultMessage: 'Null Lab'
-    },
-    otto_flash_auto: {
-        id: 'gui.SearchPanel.otto_flash_auto',
-        description: ' ',
-        defaultMessage: 'Авто'
-    },
     otto_flash_version_unchanged_try_arduino: {
         id: 'gui.SearchPanel.otto_flash_version_unchanged_try_arduino',
         description: ' ',
@@ -283,8 +263,7 @@ class SearchPanelDeviceComponent extends Component {
             deviceId: -1,
             deviceError: null,
             quadcopterConnected: false,
-            quadcopterSearching: false,
-            showOttoFlashChoice: false
+            quadcopterSearching: false
         };
 
         this.deviceId = -1;
@@ -514,7 +493,7 @@ class SearchPanelDeviceComponent extends Component {
         if (state === 10) {
             console.warn('[FLASH_ICON] onStatusChange: received state=10 FLASHING for port=' + this.props.devicePort);
         }
-        this.setState({ deviceState: state, deviceId, deviceError: error, showOttoFlashChoice: state === 6 || state === 8 ? this.state.showOttoFlashChoice : false });
+        this.setState({ deviceState: state, deviceId, deviceError: error });
 
         let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
         let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
@@ -657,7 +636,7 @@ class SearchPanelDeviceComponent extends Component {
             if (need_flash_device) {
 
                 if (deviceId === 5) {
-                    this.setState({ showOttoFlashChoice: true });
+                    this.flashDevice('auto');
                 } else {
                     this.flashDevice();
                 }
@@ -760,7 +739,7 @@ class SearchPanelDeviceComponent extends Component {
                 if (need_flash_device) {
 
                     if (deviceId === 5) {
-                        this.setState({ showOttoFlashChoice: true });
+                        this.flashDevice('auto');
                     } else {
                         this.flashDevice();
                     }
@@ -986,8 +965,6 @@ class SearchPanelDeviceComponent extends Component {
 
 
     flashDevice(ottoFlashMode) {
-
-        this.setState({ showOttoFlashChoice: false });
 
         if (this.deviceId === 5 && ottoFlashMode === 'auto' && this.firmware_version_differs_cb_result && this.firmware_version_differs_cb_result.current_device_firmware != null) {
             this.ottoVersionBeforeAutoFlash = this.firmware_version_differs_cb_result.current_device_firmware;
@@ -1227,15 +1204,6 @@ class SearchPanelDeviceComponent extends Component {
 
                         <button id={`search-panel-device-flash-button-${this.props.Id}`} className={styles.device_flash_button} onClick={() => this.flashDevice()}>{this.props.intl.formatMessage(messages.flash_device)} </button>
 
-                    </div>
-                )}
-
-                {showFlashButton && this.state.showOttoFlashChoice && (
-                    <div id={`otto-flash-mode-choice-${this.props.Id}`} className={styles.search_panel_device_element}>
-                        <span>{this.props.intl.formatMessage(messages.otto_flash_which_mode)}</span>
-                        <button type="button" onClick={() => this.flashDevice('arduino')}>{this.props.intl.formatMessage(messages.otto_flash_arduino)}</button>
-                        <button type="button" onClick={() => this.flashDevice('null_lab')}>{this.props.intl.formatMessage(messages.otto_flash_nulllab)}</button>
-                        <button type="button" onClick={() => this.flashDevice('auto')}>{this.props.intl.formatMessage(messages.otto_flash_auto)}</button>
                     </div>
                 )}
 
