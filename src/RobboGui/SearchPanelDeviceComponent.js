@@ -1012,12 +1012,24 @@ class SearchPanelDeviceComponent extends Component {
         config.device = {};
 
         config.device.device_id = this.deviceId;
+        if (this.props.VM && this.props.VM.runtime) {
+          const nanoTimeout = typeof this.props.VM.runtime.firmware_flasher_nano_detect_timeout === 'number' && this.props.VM.runtime.firmware_flasher_nano_detect_timeout >= 1000 && this.props.VM.runtime.firmware_flasher_nano_detect_timeout <= 10000
+            ? this.props.VM.runtime.firmware_flasher_nano_detect_timeout : 3000;
+          const blockDelay = typeof this.props.VM.runtime.firmware_block_transmit_delay === 'number' && this.props.VM.runtime.firmware_block_transmit_delay >= 50 && this.props.VM.runtime.firmware_block_transmit_delay <= 500
+            ? this.props.VM.runtime.firmware_block_transmit_delay : 100;
+          config.device.firmware_flasher_nano_detect_timeout = nanoTimeout;
+          config.device.firmware_block_transmit_delay = blockDelay;
+        }
         if (this.deviceId === 5) {
           const useNullLab = ottoFlashMode === 'null_lab' || ottoFlashMode === 'auto';
           if (useNullLab) {
             config.device.use_null_lab = true;
-            config.device.null_lab_baud = 115200;
-            config.device.null_lab_block_delay = 100;
+            const baud = this.props.VM && this.props.VM.runtime && typeof this.props.VM.runtime.firmware_null_lab_baud_rate === 'number' && this.props.VM.runtime.firmware_null_lab_baud_rate >= 9600 && this.props.VM.runtime.firmware_null_lab_baud_rate <= 115200
+              ? this.props.VM.runtime.firmware_null_lab_baud_rate : 57600;
+            const delay = this.props.VM && this.props.VM.runtime && typeof this.props.VM.runtime.firmware_null_lab_block_transmit_delay === 'number' && this.props.VM.runtime.firmware_null_lab_block_transmit_delay >= 50 && this.props.VM.runtime.firmware_null_lab_block_transmit_delay <= 500
+              ? this.props.VM.runtime.firmware_null_lab_block_transmit_delay : 100;
+            config.device.null_lab_baud = baud;
+            config.device.null_lab_block_delay = delay;
           }
         }
         // config.device.device_firmware_version = this.props.deviceFirmwareVersion;

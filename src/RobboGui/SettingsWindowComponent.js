@@ -69,6 +69,44 @@ const messages_for_Motor_settings = defineMessages({
 
 });
 
+const messages_for_firmware = defineMessages({
+  firmware_section: {
+    id: 'gui.RobboGui.settings_window.firmware_section',
+    description: ' ',
+    defaultMessage: 'Прошивка'
+  },
+  firmware_common_subsection: {
+    id: 'gui.RobboGui.settings_window.firmware_common_subsection',
+    description: ' ',
+    defaultMessage: 'Общие (Nano, UNO, лаборатория, Отто Arduino)'
+  },
+  firmware_nano_detect_timeout: {
+    id: 'gui.RobboGui.settings_window.firmware_nano_detect_timeout',
+    description: ' ',
+    defaultMessage: 'Таймаут определения при прошивке (мс, 1000–10000):'
+  },
+  firmware_block_transmit_delay: {
+    id: 'gui.RobboGui.settings_window.firmware_block_transmit_delay',
+    description: ' ',
+    defaultMessage: 'Задержка блока при прошивке (мс, 50–500):'
+  },
+  firmware_nulllab_subsection: {
+    id: 'gui.RobboGui.settings_window.firmware_nulllab_subsection',
+    description: ' ',
+    defaultMessage: 'Null Lab (Отто)'
+  },
+  otto_null_lab_baud: {
+    id: 'gui.RobboGui.settings_window.otto_null_lab_baud',
+    description: ' ',
+    defaultMessage: 'Скорость (baud) для Null Lab (9600–115200):'
+  },
+  otto_null_lab_block_delay: {
+    id: 'gui.RobboGui.settings_window.otto_null_lab_block_delay',
+    description: ' ',
+    defaultMessage: 'Задержка блока для Null Lab (мс, 50–500):'
+  },
+});
+
 const messages_for_DCA_intervals = defineMessages({
    for_usb: {
     id: 'gui.dca.for_usb',
@@ -288,6 +326,38 @@ class SettingsWindowComponent extends Component {
       settings_data.right_motor_inverted_setting_checked =  false;
     }
 
+    var nano_detect_component = document.getElementById("raw-16-settings-window-content-column-2");
+    var nano_detect_val = nano_detect_component && nano_detect_component.children && nano_detect_component.children[0] ? Math.round(Number(nano_detect_component.children[0].value)) : 3000;
+    if (typeof nano_detect_val === 'number' && nano_detect_val >= 1000 && nano_detect_val <= 10000) {
+      settings_data.firmware_flasher_nano_detect_timeout = nano_detect_val;
+    } else {
+      settings_data.firmware_flasher_nano_detect_timeout = 3000;
+    }
+
+    var block_delay_component = document.getElementById("raw-17-settings-window-content-column-2");
+    var block_delay_val = block_delay_component && block_delay_component.children && block_delay_component.children[0] ? Math.round(Number(block_delay_component.children[0].value)) : 100;
+    if (typeof block_delay_val === 'number' && block_delay_val >= 50 && block_delay_val <= 500) {
+      settings_data.firmware_block_transmit_delay = block_delay_val;
+    } else {
+      settings_data.firmware_block_transmit_delay = 100;
+    }
+
+    var null_lab_baud_component = document.getElementById("raw-14-settings-window-content-column-2");
+    var null_lab_baud_val = null_lab_baud_component && null_lab_baud_component.children && null_lab_baud_component.children[0] ? Math.round(Number(null_lab_baud_component.children[0].value)) : 57600;
+    if (typeof null_lab_baud_val === 'number' && null_lab_baud_val >= 9600 && null_lab_baud_val <= 115200) {
+      settings_data.firmware_null_lab_baud_rate = null_lab_baud_val;
+    } else {
+      settings_data.firmware_null_lab_baud_rate = 57600;
+    }
+
+    var null_lab_delay_component = document.getElementById("raw-15-settings-window-content-column-2");
+    var null_lab_delay_val = null_lab_delay_component && null_lab_delay_component.children && null_lab_delay_component.children[0] ? Math.round(Number(null_lab_delay_component.children[0].value)) : 100;
+    if (typeof null_lab_delay_val === 'number' && null_lab_delay_val >= 50 && null_lab_delay_val <= 500) {
+      settings_data.firmware_null_lab_block_transmit_delay = null_lab_delay_val;
+    } else {
+      settings_data.firmware_null_lab_block_transmit_delay = 100;
+    }
+
     let settings_data_serialized = JSON.stringify(settings_data);
 
     console.warn(settings_data_serialized);
@@ -309,6 +379,11 @@ class SettingsWindowComponent extends Component {
      
      this.VM.runtime.left_motor_inverted  =  left_motor_inverted_setting_checked; 
      this.VM.runtime.right_motor_inverted =  right_motor_inverted_setting_checked; 
+
+    this.VM.runtime.firmware_flasher_nano_detect_timeout = settings_data.firmware_flasher_nano_detect_timeout != null ? settings_data.firmware_flasher_nano_detect_timeout : 3000;
+    this.VM.runtime.firmware_block_transmit_delay = settings_data.firmware_block_transmit_delay != null ? settings_data.firmware_block_transmit_delay : 100;
+    this.VM.runtime.firmware_null_lab_baud_rate = settings_data.firmware_null_lab_baud_rate != null ? settings_data.firmware_null_lab_baud_rate : 57600;
+    this.VM.runtime.firmware_null_lab_block_transmit_delay = settings_data.firmware_null_lab_block_transmit_delay != null ? settings_data.firmware_null_lab_block_transmit_delay : 100;
 
     this.deleteSettingsFile(() => {
       this.saveSettingsData(settings_data_serialized);
@@ -395,6 +470,23 @@ class SettingsWindowComponent extends Component {
       var btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
       if (btSearchEl && btSearchEl.children[0]) {
         btSearchEl.children[0].checked = true;
+      }
+
+      var nano_detect_el = document.getElementById("raw-16-settings-window-content-column-2");
+      if (nano_detect_el && nano_detect_el.children && nano_detect_el.children[0]) {
+        nano_detect_el.children[0].value = 3000;
+      }
+      var block_delay_el = document.getElementById("raw-17-settings-window-content-column-2");
+      if (block_delay_el && block_delay_el.children && block_delay_el.children[0]) {
+        block_delay_el.children[0].value = 100;
+      }
+      var null_lab_baud_el = document.getElementById("raw-14-settings-window-content-column-2");
+      if (null_lab_baud_el && null_lab_baud_el.children && null_lab_baud_el.children[0]) {
+        null_lab_baud_el.children[0].value = 57600;
+      }
+      var null_lab_delay_el = document.getElementById("raw-15-settings-window-content-column-2");
+      if (null_lab_delay_el && null_lab_delay_el.children && null_lab_delay_el.children[0]) {
+        null_lab_delay_el.children[0].value = 100;
       }
   }
 
@@ -486,6 +578,30 @@ class SettingsWindowComponent extends Component {
             this.VM.runtime.right_motor_inverted = false; 
           }
 
+          var nano_detect_component = child0("raw-16-settings-window-content-column-2");
+          var nano_detect = settings_data.firmware_flasher_nano_detect_timeout != null ? Math.round(Number(settings_data.firmware_flasher_nano_detect_timeout)) : 3000;
+          if (nano_detect >= 1000 && nano_detect <= 10000 && nano_detect_component) nano_detect_component.value = nano_detect;
+          else if (nano_detect_component) nano_detect_component.value = 3000;
+          this.VM.runtime.firmware_flasher_nano_detect_timeout = nano_detect >= 1000 && nano_detect <= 10000 ? nano_detect : 3000;
+
+          var block_delay_component = child0("raw-17-settings-window-content-column-2");
+          var block_delay = settings_data.firmware_block_transmit_delay != null ? Math.round(Number(settings_data.firmware_block_transmit_delay)) : 100;
+          if (block_delay >= 50 && block_delay <= 500 && block_delay_component) block_delay_component.value = block_delay;
+          else if (block_delay_component) block_delay_component.value = 100;
+          this.VM.runtime.firmware_block_transmit_delay = block_delay >= 50 && block_delay <= 500 ? block_delay : 100;
+
+          var null_lab_baud_component = child0("raw-14-settings-window-content-column-2");
+          var null_lab_baud = settings_data.firmware_null_lab_baud_rate != null ? Math.round(Number(settings_data.firmware_null_lab_baud_rate)) : 57600;
+          if (null_lab_baud >= 9600 && null_lab_baud <= 115200 && null_lab_baud_component) null_lab_baud_component.value = null_lab_baud;
+          else if (null_lab_baud_component) null_lab_baud_component.value = 57600;
+          this.VM.runtime.firmware_null_lab_baud_rate = null_lab_baud >= 9600 && null_lab_baud <= 115200 ? null_lab_baud : 57600;
+
+          var null_lab_delay_component = child0("raw-15-settings-window-content-column-2");
+          var null_lab_delay = settings_data.firmware_null_lab_block_transmit_delay != null ? Math.round(Number(settings_data.firmware_null_lab_block_transmit_delay)) : 100;
+          if (null_lab_delay >= 50 && null_lab_delay <= 500 && null_lab_delay_component) null_lab_delay_component.value = null_lab_delay;
+          else if (null_lab_delay_component) null_lab_delay_component.value = 100;
+          this.VM.runtime.firmware_null_lab_block_transmit_delay = null_lab_delay >= 50 && null_lab_delay <= 500 ? null_lab_delay : 100;
+
         } catch (error) {
           console.error(error);
 
@@ -504,6 +620,18 @@ class SettingsWindowComponent extends Component {
           this.VM.runtime.right_motor_inverted = false; 
           left_motor_inverted_component.checked = false;
           right_motor_inverted_component.checked = false;
+          this.VM.runtime.firmware_flasher_nano_detect_timeout = 3000;
+          this.VM.runtime.firmware_block_transmit_delay = 100;
+          this.VM.runtime.firmware_null_lab_baud_rate = 57600;
+          this.VM.runtime.firmware_null_lab_block_transmit_delay = 100;
+          var nanoDef = child0("raw-16-settings-window-content-column-2");
+          if (nanoDef) nanoDef.value = 3000;
+          var blockDef = child0("raw-17-settings-window-content-column-2");
+          if (blockDef) blockDef.value = 100;
+          var nlBaud = child0("raw-14-settings-window-content-column-2");
+          if (nlBaud) nlBaud.value = 57600;
+          var nlDelay = child0("raw-15-settings-window-content-column-2");
+          if (nlDelay) nlDelay.value = 100;
         
           console.warn(`Set left_motor_inverted and right_motor_inverted  to FALSE due to the occured error.`);
 
@@ -522,6 +650,18 @@ class SettingsWindowComponent extends Component {
           this.VM.runtime.right_motor_inverted = false; 
           left_motor_inverted_component.checked = false;
           right_motor_inverted_component.checked = false;
+          this.VM.runtime.firmware_flasher_nano_detect_timeout = 3000;
+          this.VM.runtime.firmware_block_transmit_delay = 100;
+          this.VM.runtime.firmware_null_lab_baud_rate = 57600;
+          this.VM.runtime.firmware_null_lab_block_transmit_delay = 100;
+          var nanoDef2 = child0("raw-16-settings-window-content-column-2");
+          if (nanoDef2) nanoDef2.value = 3000;
+          var blockDef2 = child0("raw-17-settings-window-content-column-2");
+          if (blockDef2) blockDef2.value = 100;
+          var nlBaudDef = child0("raw-14-settings-window-content-column-2");
+          if (nlBaudDef) nlBaudDef.value = 57600;
+          var nlDelayDef = child0("raw-15-settings-window-content-column-2");
+          if (nlDelayDef) nlDelayDef.value = 100;
 
           console.warn(`Set left_motor_inverted and right_motor_inverted to FALSE due to settings data doesn't exist.`);
       }
@@ -708,6 +848,54 @@ class SettingsWindowComponent extends Component {
                 <div id="raw-12-settings-window-content-column-2" className={styles.settings_window_content_column}>
                     <input type="checkbox" />
                 </div>
+          </div>
+
+          <div id="settings-window-content-raw-firmware" className={styles.settings_window_content_raw}>
+            <div id="raw-firmware-title" className={styles.settings_window_content_column}>
+              <b>{this.props.intl.formatMessage(messages_for_firmware.firmware_section)}</b>
+            </div>
+          </div>
+          <div id="settings-window-content-raw-firmware-common" className={styles.settings_window_content_raw}>
+            <div id="raw-firmware-common-title" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_firmware.firmware_common_subsection)}
+            </div>
+          </div>
+          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
+            <div id="raw-16-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_firmware.firmware_nano_detect_timeout)}
+            </div>
+            <div id="raw-16-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="number" min={1000} max={10000} defaultValue={3000} />
+            </div>
+          </div>
+          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
+            <div id="raw-17-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_firmware.firmware_block_transmit_delay)}
+            </div>
+            <div id="raw-17-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="number" min={50} max={500} defaultValue={100} />
+            </div>
+          </div>
+          <div id="settings-window-content-raw-firmware-nulllab" className={styles.settings_window_content_raw}>
+            <div id="raw-firmware-nulllab-title" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_firmware.firmware_nulllab_subsection)}
+            </div>
+          </div>
+          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
+            <div id="raw-14-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_firmware.otto_null_lab_baud)}
+            </div>
+            <div id="raw-14-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="number" min={9600} max={115200} defaultValue={57600} />
+            </div>
+          </div>
+          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
+            <div id="raw-15-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_firmware.otto_null_lab_block_delay)}
+            </div>
+            <div id="raw-15-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="number" min={50} max={500} defaultValue={100} />
+            </div>
           </div>
 
           <div id="settings-window-content-raw-3" className={styles.settings_window_content_raw}>
