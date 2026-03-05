@@ -182,6 +182,11 @@ const messages = defineMessages({
         description: ' ',
         defaultMessage: 'Версия не изменилась. Попробовать прошить как Arduino?'
     },
+    otto_flash_retry_arduino_log: {
+        id: 'gui.SearchPanel.otto_flash_retry_arduino_log',
+        description: ' ',
+        defaultMessage: 'Версия не изменилась. Прошиваем как Arduino…'
+    },
     device_try_to_reconnect: {
 
 
@@ -255,6 +260,15 @@ const messages = defineMessages({
 
 });
 
+const FLASH_FLOW_DEBUG = false;
+const FLASH_FLOW_KEEP_STATUSES = {
+    session_start: true,
+    start_flash: true,
+    start_arduino_retry: true,
+    manual_retry_start: true,
+    session_finish: true
+};
+const AUTO_RETRY_START_DELAY_MS = 800;
 
 class SearchPanelDeviceComponent extends Component {
 
@@ -278,13 +292,48 @@ class SearchPanelDeviceComponent extends Component {
         this.firmware_version_differs_cb_result = {};
 
         this.isFlashing = false;
-
-        this.ottoVersionBeforeAutoFlash = null;
-
-        this.ottoAutoFlashPending = false;
+        this.flashSessionActive = false;
+        this.flashSessionId = 0;
+        this._activeFlashSessionId = null;
+        this.flashStage = 'idle';
+        this._flashConfigRef = null;
 
         this.isRasberry = false;
 
+    }
+
+    _logFlashFlow(source, status, extra = {}, always = false) {
+        if (!FLASH_FLOW_DEBUG && !FLASH_FLOW_KEEP_STATUSES[status]) return;
+        const sessionId = this._activeFlashSessionId != null ? this._activeFlashSessionId : '-';
+        const base = {
+            ts: new Date().toISOString(),
+            sessionId,
+            port: this.props && this.props.devicePort ? this.props.devicePort : '-',
+            deviceId: this.deviceId,
+            stage: this.flashStage,
+            source,
+            status
+        };
+        const payload = Object.assign({}, base, extra || {});
+        console.warn('[FLASH_FLOW] ' + JSON.stringify(payload));
+    }
+
+    _startFlashSession(initialStage, mode) {
+        this.flashSessionId += 1;
+        this._activeFlashSessionId = this.flashSessionId;
+        this.flashSessionActive = true;
+        this.flashStage = initialStage || 'single';
+        this.isFlashing = true;
+        this._logFlashFlow('flashDevice', 'session_start', { mode }, true);
+        return this._activeFlashSessionId;
+    }
+
+    _finishFlashSession(result) {
+        this._logFlashFlow('statusCallback', 'session_finish', { result }, true);
+        this.flashSessionActive = false;
+        this.flashStage = 'done';
+        this.isFlashing = false;
+        this._activeFlashSessionId = null;
     }
 
     getDeviceName(deviceId) {
@@ -394,13 +443,12 @@ class SearchPanelDeviceComponent extends Component {
             this.props.DCA.registerFirmwareVersionDiffersCallback(this.props.devicePort, (result) => {
                 this.firmware_version_differs = true;
                 this.firmware_version_differs_cb_result = result;
-                if (this.ottoAutoFlashPending) {
-                    this.ottoAutoFlashPending = false;
-                    if (this.ottoVersionBeforeAutoFlash != null && result.current_device_firmware === this.ottoVersionBeforeAutoFlash) {
-                        if (confirm(this.props.intl.formatMessage(messages.otto_flash_version_unchanged_try_arduino))) {
-                            this.flashDevice('arduino');
-                        }
-                    }
+                if (this.flashSessionActive) {
+                    this._logFlashFlow('firmwareVersionDiffersCb', 'ignored_due_to_active_session', {
+                        currentFirmware: result.current_device_firmware,
+                        requiredFirmware: result.need_firmware
+                    }, true);
+                    return;
                 }
                 let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
                 if (info_field) {
@@ -571,7 +619,15 @@ class SearchPanelDeviceComponent extends Component {
 
         }
 
+        if ([0, 2, 6, 8].indexOf(state) !== -1) {
+            this._logFlashFlow('onStatusChange', 'state_received', { state, hasError: !!error });
+        }
+
         if (state == 0) {
+            if (this.flashSessionActive) {
+                this._logFlashFlow('onStatusChange', 'state0_ignored_due_to_active_session', { state }, true);
+                return;
+            }
             this.firmware_version_differs = false;
             this.isFlashing = false;
             info_field.innerHTML = "";
@@ -589,6 +645,10 @@ class SearchPanelDeviceComponent extends Component {
 
 
         } else if (state == 2) {
+            if (this.flashSessionActive) {
+                this._logFlashFlow('onStatusChange', 'state2_ignored_due_to_active_session', { state }, true);
+                return;
+            }
             this.firmware_version_differs = false;
             this.isFlashing = false;
             info_field.innerHTML = "";
@@ -609,6 +669,10 @@ class SearchPanelDeviceComponent extends Component {
 
 
         } else if (state == 6) {
+            if (this.flashSessionActive) {
+                this._logFlashFlow('onStatusChange', 'state6_ignored_due_to_active_session', { state }, true);
+                return;
+            }
             search_device_button.style.pointerEvents = "auto";
             let result = this.firmware_version_differs_cb_result;
             if (!this.firmware_version_differs) {
@@ -686,6 +750,10 @@ class SearchPanelDeviceComponent extends Component {
             }
 
         } else if (state == 8) { //Port doesn't respond (state - TIMEOUT)
+            if (this.flashSessionActive) {
+                this._logFlashFlow('onStatusChange', 'state8_ignored_due_to_active_session', { state }, true);
+                return;
+            }
 
             search_device_button.style.pointerEvents = "auto";
 
@@ -856,6 +924,7 @@ class SearchPanelDeviceComponent extends Component {
     flashingShowDetails() {
         const windowState = this.props.draggable_window && this.props.draggable_window[this.props.draggableWindowId];
         if (windowState && windowState.isShowing !== true) {
+            this._logFlashFlow('flashWindow', 'show', { reason: 'manual_open' });
             this.props.onShowFlashingStatusWindow(this.props.draggableWindowId);
         }
     }
@@ -863,6 +932,7 @@ class SearchPanelDeviceComponent extends Component {
     flashingHideDetails() {
         const windowState = this.props.draggable_window && this.props.draggable_window[this.props.draggableWindowId];
         if (windowState && windowState.isShowing === true) {
+            this._logFlashFlow('flashWindow', 'hide', { reason: 'ui_state_change' });
             this.props.onHideFlashingStatusWindow(this.props.draggableWindowId);
         }
     }
@@ -968,17 +1038,45 @@ class SearchPanelDeviceComponent extends Component {
 
     }
 
+    _buildFlashConfig(ottoFlashMode) {
+        const config = { device: {} };
+        config.device.device_id = this.deviceId;
+        if (this.props.VM && this.props.VM.runtime) {
+            const nanoTimeout = typeof this.props.VM.runtime.firmware_flasher_nano_detect_timeout === 'number' && this.props.VM.runtime.firmware_flasher_nano_detect_timeout >= 1000 && this.props.VM.runtime.firmware_flasher_nano_detect_timeout <= 10000
+                ? this.props.VM.runtime.firmware_flasher_nano_detect_timeout : 3000;
+            const blockDelay = typeof this.props.VM.runtime.firmware_block_transmit_delay === 'number' && this.props.VM.runtime.firmware_block_transmit_delay >= 50 && this.props.VM.runtime.firmware_block_transmit_delay <= 500
+                ? this.props.VM.runtime.firmware_block_transmit_delay : 100;
+            config.device.firmware_flasher_nano_detect_timeout = nanoTimeout;
+            config.device.firmware_block_transmit_delay = blockDelay;
+        }
+        if (this.deviceId === 5) {
+            const useNullLab = ottoFlashMode === 'null_lab' || ottoFlashMode === 'auto';
+            if (useNullLab) {
+                config.device.use_null_lab = true;
+                const baud = this.props.VM && this.props.VM.runtime && typeof this.props.VM.runtime.firmware_null_lab_baud_rate === 'number' && this.props.VM.runtime.firmware_null_lab_baud_rate >= 9600 && this.props.VM.runtime.firmware_null_lab_baud_rate <= 115200
+                    ? this.props.VM.runtime.firmware_null_lab_baud_rate : 57600;
+                const delay = this.props.VM && this.props.VM.runtime && typeof this.props.VM.runtime.firmware_null_lab_block_transmit_delay === 'number' && this.props.VM.runtime.firmware_null_lab_block_transmit_delay >= 50 && this.props.VM.runtime.firmware_null_lab_block_transmit_delay <= 500
+                    ? this.props.VM.runtime.firmware_null_lab_block_transmit_delay : 100;
+                config.device.null_lab_baud = baud;
+                config.device.null_lab_block_delay = delay;
+            }
+        }
+        return config;
+    }
 
     flashDevice(ottoFlashMode) {
 
-        if (this.deviceId === 5 && ottoFlashMode === 'auto' && this.firmware_version_differs_cb_result && this.firmware_version_differs_cb_result.current_device_firmware != null) {
-            this.ottoVersionBeforeAutoFlash = this.firmware_version_differs_cb_result.current_device_firmware;
-            this.ottoAutoFlashPending = true;
+        const flashMode = ottoFlashMode || 'default';
+        if (this.flashSessionActive) {
+            this._logFlashFlow('flashDevice', 'ignored_parallel_start', { mode: flashMode }, true);
+            return;
         }
 
-        this.isFlashing = true;
+        const initialStage = (this.deviceId === 5 && flashMode === 'auto') ? 'null_lab' : 'single';
+        const currentSessionId = this._startFlashSession(initialStage, flashMode);
 
         if (this.props.onShowFlashingStatusWindow) {
+            this._logFlashFlow('flashWindow', 'show', { reason: 'flash_start' });
             this.props.onShowFlashingStatusWindow(this.props.draggableWindowId);
         }
 
@@ -1003,7 +1101,6 @@ class SearchPanelDeviceComponent extends Component {
         if (info_field) info_field.innerHTML = this.props.intl.formatMessage(messages.flashing_in_progress_details);
 
         // Иконку не трогаем через innerHTML — она управляется React по deviceState (state 10 приходит из disco() в VM)
-
         var cId = this.props.flashingStatusComponentId;
         var firmwareFlasherFlashingStatusComponent = document.getElementById(`firmware-flasher-flashing-status-component-${cId}`);
         var flashingStatusComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[1] ? firmwareFlasherFlashingStatusComponent.children[1] : null;
@@ -1012,136 +1109,57 @@ class SearchPanelDeviceComponent extends Component {
         if (flashingStatusComponent) flashingStatusComponent.innerHTML = "";
         if (flashingLogComponent) flashingLogComponent.innerHTML = "";
 
-
-        var config = {};
-        config.device = {};
-
-        config.device.device_id = this.deviceId;
-        if (this.props.VM && this.props.VM.runtime) {
-          const nanoTimeout = typeof this.props.VM.runtime.firmware_flasher_nano_detect_timeout === 'number' && this.props.VM.runtime.firmware_flasher_nano_detect_timeout >= 1000 && this.props.VM.runtime.firmware_flasher_nano_detect_timeout <= 10000
-            ? this.props.VM.runtime.firmware_flasher_nano_detect_timeout : 3000;
-          const blockDelay = typeof this.props.VM.runtime.firmware_block_transmit_delay === 'number' && this.props.VM.runtime.firmware_block_transmit_delay >= 50 && this.props.VM.runtime.firmware_block_transmit_delay <= 500
-            ? this.props.VM.runtime.firmware_block_transmit_delay : 100;
-          config.device.firmware_flasher_nano_detect_timeout = nanoTimeout;
-          config.device.firmware_block_transmit_delay = blockDelay;
-        }
-        if (this.deviceId === 5) {
-          const useNullLab = ottoFlashMode === 'null_lab' || ottoFlashMode === 'auto';
-          if (useNullLab) {
-            config.device.use_null_lab = true;
-            const baud = this.props.VM && this.props.VM.runtime && typeof this.props.VM.runtime.firmware_null_lab_baud_rate === 'number' && this.props.VM.runtime.firmware_null_lab_baud_rate >= 9600 && this.props.VM.runtime.firmware_null_lab_baud_rate <= 115200
-              ? this.props.VM.runtime.firmware_null_lab_baud_rate : 57600;
-            const delay = this.props.VM && this.props.VM.runtime && typeof this.props.VM.runtime.firmware_null_lab_block_transmit_delay === 'number' && this.props.VM.runtime.firmware_null_lab_block_transmit_delay >= 50 && this.props.VM.runtime.firmware_null_lab_block_transmit_delay <= 500
-              ? this.props.VM.runtime.firmware_null_lab_block_transmit_delay : 100;
-            config.device.null_lab_baud = baud;
-            config.device.null_lab_block_delay = delay;
-          }
-        }
-        // config.device.device_firmware_version = this.props.deviceFirmwareVersion;
-
-        //var dots_counter = 1;
-
+        var config = this._buildFlashConfig(flashMode);
+        config.device.flash_session_id = currentSessionId;
+        this._flashConfigRef = config;
         this.dots_counter = 1;
 
-        var styles = {
+        this._logFlashFlow('flashDevice', 'start_flash', {
+            sessionId: currentSessionId,
+            mode: flashMode,
+            useNullLab: !!(config && config.device && config.device.use_null_lab)
+        }, true);
 
-            margin: '10px'
-
-        }
-
-
-        // if ([0,3].indexOf(this.deviceId) != -1){
-
-        //     this.RCA.stopDataRecievingProcess();
-        //     this.RCA.discon(()=>{
-
-        //         this.DCA.flashFirmware(this.props.devicePort,config,this.onFlashingStatusChanged.bind(this));
-        //     });
-
-        // }else if ([1,2,4].indexOf(this.deviceId) != -1){
-
-        //       this.LCA.stopDataRecievingProcess();
-        //       this.LCA.discon(()=>{
-
-        //         this.DCA.flashFirmware(this.props.devicePort,config,this.onFlashingStatusChanged.bind(this));
-        //     });
-
-        // }else if ([5].indexOf(this.deviceId) != -1){
-
-        //       this.OCA.stopDataRecievingProcess();
-        //       this.OCA.discon(()=>{
-
-        //         this.DCA.flashFirmware(this.props.devicePort,config,this.onFlashingStatusChanged.bind(this));
-        //     });
-
-        // }else if ([6].indexOf(this.deviceId) != -1){
-
-        //       this.ACA.stopDataRecievingProcess();
-        //       this.ACA.discon(()=>{
-
-        //         this.DCA.flashFirmware(this.props.devicePort,config,this.onFlashingStatusChanged.bind(this));
-        //     });
-
-        // }else{
+        var styles = { margin: '10px' };
 
         this.RCA.stopDataRecievingProcess();
         this.LCA.stopDataRecievingProcess();
         this.OCA.stopDataRecievingProcess();
         this.ACA.stopDataRecievingProcess();
 
+        const suppressVerifyConfirmInAutoFlow = (this.deviceId === 5 && flashMode === 'auto');
         var statusCallback = (status) => {
+            if (!this.flashSessionActive || this._activeFlashSessionId !== currentSessionId) {
+                this._logFlashFlow('statusCallback', 'ignored_stale_session', { status, callbackSessionId: currentSessionId }, true);
+                return;
+            }
+            this._logFlashFlow('statusCallback', 'status', { status });
 
             if ((status.indexOf("Block") == -1) && (status.indexOf("Error") == -1) && (status.indexOf("Uploading") == -1) && (status.indexOf("Port closed") == -1)) {
-
                 if (flashingLogComponent) createDiv(flashingLogComponent, null, null, null, null, styles, status, null);
-
                 var dots = "";
-
                 for (var i = 0; i < this.dots_counter; i++) {
-
                     dots += ".";
                 }
-
                 if (flashingStatusComponent) flashingStatusComponent.innerHTML = "Waiting.." + dots;
-
-                if (this.dots_counter == 1) {
-
-                    this.dots_counter = 2;
-
-                } else {
-
-                    this.dots_counter = 1;
-
-                }
-
+                this.dots_counter = this.dots_counter == 1 ? 2 : 1;
             } else {
-
                 if (flashingStatusComponent) flashingStatusComponent.innerHTML = status;
-
             }
 
             if (flashingLogComponent) flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
 
             if ((status.indexOf("Port closed") !== -1)) {
-
-                this.ottoAutoFlashPending = false;
-                this.ottoVersionBeforeAutoFlash = null;
-
                 if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "green";
-
                 if (search_device_button) search_device_button.removeAttribute("disabled");
-
                 if (flashing_button) {
                     flashing_button.style.backgroundImage = "";
                     flashing_button.removeAttribute("disabled");
                     flashing_button.style.display = "inline-block";
                 }
-
-                this.searchDevices(); //search devices
-
+                this._finishFlashSession('success');
+                this.searchDevices();
             } else if ((status.indexOf("Error") !== -1)) {
-
-                this.ottoAutoFlashPending = false;
                 if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
                 if (search_device_button) search_device_button.removeAttribute("disabled");
 
@@ -1159,26 +1177,79 @@ class SearchPanelDeviceComponent extends Component {
                 if (search_panel) search_panel.style.display = "block";
 
                 var isVerifyFailure = (status.indexOf("Firmware was not updated") !== -1) || (status.indexOf("verification timeout") !== -1);
-                if (isVerifyFailure && confirm(this.props.intl.formatMessage(messages.firmware_verify_failed_try_again))) {
-                    this.RCA.stopDataRecievingProcess();
-                    this.LCA.stopDataRecievingProcess();
-                    this.OCA.stopDataRecievingProcess();
-                    this.ACA.stopDataRecievingProcess();
-                    this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, statusCallback);
+                if (isVerifyFailure) {
+                    if (!suppressVerifyConfirmInAutoFlow) {
+                        const tryAgain = confirm(this.props.intl.formatMessage(messages.firmware_verify_failed_try_again));
+                        this._logFlashFlow('statusCallback', 'verify_failure_confirm', { tryAgain }, true);
+                        if (tryAgain) {
+                            this.RCA.stopDataRecievingProcess();
+                            this.LCA.stopDataRecievingProcess();
+                            this.OCA.stopDataRecievingProcess();
+                            this.ACA.stopDataRecievingProcess();
+                            var retryConfig = this._flashConfigRef || config;
+                            if (retryConfig && retryConfig.device && retryConfig.device.flash_session_id == null) {
+                                retryConfig.device.flash_session_id = currentSessionId;
+                            }
+                            this.flashStage = 'manual_retry';
+                            this._logFlashFlow('statusCallback', 'manual_retry_start', {
+                                useNullLab: !!(retryConfig && retryConfig.device && retryConfig.device.use_null_lab)
+                            }, true);
+                            this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, retryConfig, statusCallback);
+                            return;
+                        }
+                    } else {
+                        this._logFlashFlow('statusCallback', 'verify_failure_auto_no_confirm', {
+                            stage: this.flashStage
+                        }, true);
+                    }
                 }
 
+                this._finishFlashSession('error');
             } else {
-
                 if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "#FFFF99"; //Light yellow2
-
                 if (status.indexOf("Upload complete. Verifying") !== -1) {
-                    this.searchDevices();
+                    this.flashStage = 'verify';
+                    this._logFlashFlow('statusCallback', 'verify_started_search_suppressed', {}, true);
                 }
             }
-
         };
 
-        this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, statusCallback);
+        var onVerifyFailure = null;
+        if (this.deviceId === 5 && flashMode === 'auto') {
+            onVerifyFailure = (verifyContext = {}) => {
+                if (!this.flashSessionActive || this._activeFlashSessionId !== currentSessionId) {
+                    this._logFlashFlow('onVerifyFailure', 'ignored_stale_session', { callbackSessionId: currentSessionId }, true);
+                    return;
+                }
+                this._logFlashFlow('onVerifyFailure', 'triggered', verifyContext, true);
+                if (flashingLogComponent) {
+                    createDiv(flashingLogComponent, null, null, null, null, styles, this.props.intl.formatMessage(messages.otto_flash_retry_arduino_log), null);
+                    flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
+                }
+                this.RCA.stopDataRecievingProcess();
+                this.LCA.stopDataRecievingProcess();
+                this.OCA.stopDataRecievingProcess();
+                this.ACA.stopDataRecievingProcess();
+                var arduinoConfig = this._buildFlashConfig('arduino');
+                arduinoConfig.device.flash_session_id = currentSessionId;
+                this._flashConfigRef = arduinoConfig;
+                this.flashStage = 'retry_wait';
+                setTimeout(() => {
+                    if (!this.flashSessionActive || this._activeFlashSessionId !== currentSessionId) {
+                        this._logFlashFlow('onVerifyFailure', 'retry_delay_skipped_stale_session', { callbackSessionId: currentSessionId }, true);
+                        return;
+                    }
+                    this.flashStage = 'arduino_retry';
+                    this._logFlashFlow('onVerifyFailure', 'start_arduino_retry', {
+                        useNullLab: !!(arduinoConfig && arduinoConfig.device && arduinoConfig.device.use_null_lab),
+                        delayMs: AUTO_RETRY_START_DELAY_MS
+                    }, true);
+                    this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, arduinoConfig, statusCallback);
+                }, AUTO_RETRY_START_DELAY_MS);
+            };
+        }
+
+        this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, statusCallback, onVerifyFailure);
 
 
         //  this.LCA.discon();
