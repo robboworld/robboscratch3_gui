@@ -13,4 +13,13 @@ const node_os = (typeof process !== 'undefined' && process.versions && process.v
   ? require('os')
   : { release: () => '', cpus: () => [{ model: '' }] };
 
-export { node_process, node_os };
+/**
+ * True when running on desktop (Windows, Linux or macOS) — show Bluetooth settings and search UI.
+ * In web build returns false (node_process.platform is '').
+ */
+function isDesktopWithBluetooth() {
+  const p = node_process.platform;
+  return p === 'win32' || p === 'linux' || p === 'darwin';
+}
+
+export { node_process, node_os, isDesktopWithBluetooth };

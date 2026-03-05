@@ -29,7 +29,7 @@ import NewDraggableWindowComponent from './NewDraggableWindowComponent';
 import ProfilerWindowComponent from './ProfilerWindowComponent';
 
 import IotConnectionComponent from './IotConnectionComponent';
-
+import { getSettingsFromStorage, applySettingsToDCA } from '../lib/settingsLoader';
 
 import { withAlert } from 'react-alert';
 
@@ -104,6 +104,18 @@ class RobboGui extends Component {
   }
 
   componentDidMount(){
+      if (this.props.vm) {
+        getSettingsFromStorage().then((r) => {
+          if (r.file_exists && r.file) {
+            try {
+              const data = JSON.parse(r.file);
+              applySettingsToDCA(this.props.vm, data);
+            } catch (e) {
+              // ignore parse errors
+            }
+          }
+        });
+      }
 
       // this.DCA.registerFirmwareVersionDiffersCallback((result) => {
 
