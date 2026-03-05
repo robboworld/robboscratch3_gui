@@ -103,6 +103,11 @@ const messages = defineMessages({
         description: ' ',
         defaultMessage: 'Ошибка!'
     },
+    firmware_verify_failed_try_again: {
+        id: 'gui.SearchPanel.firmware_verify_failed_try_again',
+        description: ' ',
+        defaultMessage: 'Прошивка не обновилась. Попробовать снова?'
+    },
     device_connected: {
 
         id: 'gui.SearchPanel.device_connected',
@@ -1084,7 +1089,7 @@ class SearchPanelDeviceComponent extends Component {
         this.OCA.stopDataRecievingProcess();
         this.ACA.stopDataRecievingProcess();
 
-        this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, (status) => {
+        var statusCallback = (status) => {
 
             if ((status.indexOf("Block") == -1) && (status.indexOf("Error") == -1) && (status.indexOf("Uploading") == -1) && (status.indexOf("Port closed") == -1)) {
 
@@ -1119,6 +1124,9 @@ class SearchPanelDeviceComponent extends Component {
 
             if ((status.indexOf("Port closed") !== -1)) {
 
+                this.ottoAutoFlashPending = false;
+                this.ottoVersionBeforeAutoFlash = null;
+
                 if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "green";
 
                 if (search_device_button) search_device_button.removeAttribute("disabled");
@@ -1150,13 +1158,27 @@ class SearchPanelDeviceComponent extends Component {
                 let search_panel = document.getElementById(`SearchPanelComponent`);
                 if (search_panel) search_panel.style.display = "block";
 
+                var isVerifyFailure = (status.indexOf("Firmware was not updated") !== -1) || (status.indexOf("verification timeout") !== -1);
+                if (isVerifyFailure && confirm(this.props.intl.formatMessage(messages.firmware_verify_failed_try_again))) {
+                    this.RCA.stopDataRecievingProcess();
+                    this.LCA.stopDataRecievingProcess();
+                    this.OCA.stopDataRecievingProcess();
+                    this.ACA.stopDataRecievingProcess();
+                    this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, statusCallback);
+                }
+
             } else {
 
                 if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "#FFFF99"; //Light yellow2
 
+                if (status.indexOf("Upload complete. Verifying") !== -1) {
+                    this.searchDevices();
+                }
             }
 
-        });
+        };
+
+        this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, statusCallback);
 
 
         //  this.LCA.discon();
