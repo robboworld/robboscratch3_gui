@@ -29,7 +29,7 @@ import NewDraggableWindowComponent from './NewDraggableWindowComponent';
 import ProfilerWindowComponent from './ProfilerWindowComponent';
 
 import IotConnectionComponent from './IotConnectionComponent';
-import { getSettingsFromStorage, applySettingsToDCA } from '../lib/settingsLoader';
+import { getSettingsFromStorage, applySettingsToDCA, applyFirmwareSettingsToRuntime } from '../lib/settingsLoader';
 
 import { withAlert } from 'react-alert';
 
@@ -106,13 +106,19 @@ class RobboGui extends Component {
   componentDidMount(){
       if (this.props.vm) {
         getSettingsFromStorage().then((r) => {
+          let firmwareSettingsApplied = false;
           if (r.file_exists && r.file) {
             try {
               const data = JSON.parse(r.file);
               applySettingsToDCA(this.props.vm, data);
+              applyFirmwareSettingsToRuntime(this.props.vm, data);
+              firmwareSettingsApplied = true;
             } catch (e) {
               // ignore parse errors
             }
+          }
+          if (!firmwareSettingsApplied) {
+            applyFirmwareSettingsToRuntime(this.props.vm, {});
           }
         });
       }

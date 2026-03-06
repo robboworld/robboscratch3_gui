@@ -6,6 +6,101 @@
 const PERSISTENT = 1;
 const SETTINGS_FILENAME = 'settings.json';
 
+export const FIRMWARE_SETTINGS_DEFAULTS = Object.freeze({
+  detect_timeout_ms: 3000,
+  block_transmit_delay: 20,
+  baud_rate: 115200
+});
+
+export const FIRMWARE_SETTINGS_LIMITS = Object.freeze({
+  detect_timeout_ms: Object.freeze({ min: 1000, max: 10000 }),
+  block_transmit_delay: Object.freeze({ min: 20, max: 200 }),
+  baud_rate: Object.freeze({ min: 9600, max: 115200 })
+});
+
+function toRoundedNumber(value) {
+  const rounded = Math.round(Number(value));
+  return Number.isFinite(rounded) ? rounded : null;
+}
+
+function pickFirstDefined(...values) {
+  for (let index = 0; index < values.length; index++) {
+    if (values[index] != null) {
+      return values[index];
+    }
+  }
+  return undefined;
+}
+
+function normalizeFirmwareSetting(value, limits, fallback) {
+  const normalizedValue = toRoundedNumber(value);
+  if (normalizedValue != null && normalizedValue >= limits.min && normalizedValue <= limits.max) {
+    return normalizedValue;
+  }
+  return fallback;
+}
+
+export function normalizeFirmwareSettings(rawSettings = {}) {
+  return {
+    detect_timeout_ms: normalizeFirmwareSetting(
+      pickFirstDefined(
+        rawSettings.firmware_detect_timeout_ms,
+        rawSettings.firmware_flasher_nano_detect_timeout
+      ),
+      FIRMWARE_SETTINGS_LIMITS.detect_timeout_ms,
+      FIRMWARE_SETTINGS_DEFAULTS.detect_timeout_ms
+    ),
+    block_transmit_delay: normalizeFirmwareSetting(
+      rawSettings.firmware_block_transmit_delay,
+      FIRMWARE_SETTINGS_LIMITS.block_transmit_delay,
+      FIRMWARE_SETTINGS_DEFAULTS.block_transmit_delay
+    ),
+    baud_rate: normalizeFirmwareSetting(
+      pickFirstDefined(
+        rawSettings.firmware_baud_rate,
+        rawSettings.firmware_null_lab_baud_rate
+      ),
+      FIRMWARE_SETTINGS_LIMITS.baud_rate,
+      FIRMWARE_SETTINGS_DEFAULTS.baud_rate
+    )
+  };
+}
+
+export function getFirmwareSettingsStorageData(rawSettings = {}) {
+  const firmwareSettings = normalizeFirmwareSettings(rawSettings);
+  return {
+    firmware_detect_timeout_ms: firmwareSettings.detect_timeout_ms,
+    firmware_block_transmit_delay: firmwareSettings.block_transmit_delay,
+    firmware_baud_rate: firmwareSettings.baud_rate
+  };
+}
+
+export function getFirmwareSettingsFromRuntime(runtime) {
+  if (!runtime) {
+    return normalizeFirmwareSettings();
+  }
+
+  return normalizeFirmwareSettings({
+    firmware_detect_timeout_ms: runtime.firmware_detect_timeout_ms,
+    firmware_block_transmit_delay: runtime.firmware_block_transmit_delay,
+    firmware_baud_rate: runtime.firmware_baud_rate
+  });
+}
+
+export function applyFirmwareSettingsToRuntime(vm, settingsData = {}) {
+  const firmwareSettings = normalizeFirmwareSettings(settingsData);
+  if (!vm || !vm.runtime) {
+    return firmwareSettings;
+  }
+
+  const runtime = vm.runtime;
+  runtime.firmware_detect_timeout_ms = firmwareSettings.detect_timeout_ms;
+  runtime.firmware_block_transmit_delay = firmwareSettings.block_transmit_delay;
+  runtime.firmware_baud_rate = firmwareSettings.baud_rate;
+
+  return firmwareSettings;
+}
+
 /**
  * Reads settings.json from webkit persistent storage.
  * @returns {Promise<{ file_exists: boolean, file: string | null, err?: any }>}
