@@ -6,6 +6,15 @@ var robot_get_data_order = true;
 var mqtt = require('../../../../robboscratch3_vm/node_modules/mqtt');
 
 
+const ActionTriggerSim = function () {
+  return {
+    type: 'TRIGGER_SIM_EN',
+    payload: {
+      RCA: RCA_local
+    }
+  };
+};
+
 const ActionTriggerExtensionPack = function(){
 
 
@@ -871,6 +880,7 @@ const ActionGenerateIotBlocks = function (generate) {
 
 export {
 
+    ActionTriggerSim,
     ActionTriggerExtensionPack,
     ActionTriggerSensorChooseWindow,
     ActionDropSensorChooseWindow,

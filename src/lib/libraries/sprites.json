@@ -2311,7 +2311,6 @@
             "spriteInfo": {}
         }
     },
-
     {
         "name": "Cat 2",
         "md5": "01ae57fd339529445cb890978ef8a054.svg",
@@ -2361,7 +2360,6 @@
             "spriteInfo": {}
         }
     },
-
     {
         "name": "Catcher",
         "md5": "6700cf1d4d653283161d2bad20f74d39.svg",
@@ -5623,7 +5621,6 @@
             "spriteInfo": {}
         }
     },
-
     {
         "name": "Giraffe",
         "md5": "497baa643718a865b0621c1607696800.svg",
@@ -11077,12 +11074,12 @@
             "objName": "ROBBO",
             "sounds": [
                 {
-                  "soundName": "computer beep",
-                  "soundID": -1,
-                  "md5": "28c76b6bebd04be1383fe9ba4933d263.wav",
-                  "sampleCount": 9536,
-                  "rate": 11025,
-                  "format": ""
+                    "soundName": "computer beep",
+                    "soundID": -1,
+                    "md5": "28c76b6bebd04be1383fe9ba4933d263.wav",
+                    "sampleCount": 9536,
+                    "rate": 11025,
+                    "format": ""
                 }
             ],
             "costumes": [
@@ -13410,7 +13407,6 @@
             "spriteInfo": {}
         }
     },
-
     {
         "name": "Toucan",
         "md5": "6c8798e606abd728b112aecedb5dc249.svg",
@@ -18795,6 +18791,43 @@
             "scratchY": 9,
             "scale": 1,
             "direction": 90,
+            "rotationStyle": "normal",
+            "isDraggable": false,
+            "visible": true,
+            "spriteInfo": {}
+        }
+    },
+    {
+        "name": "RobboPlatform",
+        "md5": "RobboPlatform.svg",
+        "type": "sprite",
+        "tags": [
+            "robot",
+            "simulation"
+        ],
+        "info": [
+            0,
+            1,
+            1
+        ],
+        "json": {
+            "objName": "RobboPlatform",
+            "sounds": [],
+            "costumes": [
+                {
+                    "costumeName": "robbo-platform",
+                    "baseLayerID": -1,
+                    "baseLayerMD5": "RobboPlatform.svg",
+                    "bitmapResolution": 1,
+                    "rotationCenterX": 100,
+                    "rotationCenterY": 98
+                }
+            ],
+            "currentCostumeIndex": 0,
+            "scratchX": 0,
+            "scratchY": 0,
+            "scale": 0.3,
+            "direction": 0,
             "rotationStyle": "normal",
             "isDraggable": false,
             "visible": true,

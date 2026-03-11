@@ -2,8 +2,9 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import styles from './RobboMenu.css';
 import classNames from 'classnames';
-import {ActionTriggerExtensionPack} from './actions/sensor_actions';
+import {ActionTriggerSim, ActionTriggerExtensionPack} from './actions/sensor_actions';
 import {ActionTriggerLabExtSensors} from  './actions/sensor_actions';
+import spriteLibraryContent from '../lib/libraries/sprites.json';
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
@@ -17,6 +18,16 @@ import {createDiv,createDivShort} from './lib/lib.js';
 
 
 const messages = defineMessages({
+    sim_enable: {
+        id: 'gui.RobboMenu.sim_enable',
+        description: ' ',
+        defaultMessage: 'Включить симуляцию робота'
+    },
+    sim_disable: {
+        id: 'gui.RobboMenu.sim_disable',
+        description: ' ',
+        defaultMessage: 'Выключить симуляцию робота'
+    },
     extension_pack: {
         id: 'gui.RobboMenu.extension_pack',
         description: ' ',
@@ -123,6 +134,7 @@ class RobboMenu extends Component {
   constructor(){
     super();
 
+    this.is_sim_en = false;
     this.is_extension_pack_enabled = false;
     this.is_lab_ext_enabled = false;
 
@@ -187,6 +199,20 @@ class RobboMenu extends Component {
     }
 
      
+  }
+
+  triggerSimEn() {
+    const item = spriteLibraryContent.find(s => s.name === 'RobboPlatform') || spriteLibraryContent.find(s => s.name === 'Robot') || spriteLibraryContent[0];
+    if (!item || !item.json) return;
+    const spriteJson = Object.assign({}, item.json, { objName: 'Robbo Robot', size: 50 });
+    this.is_sim_en = !this.is_sim_en;
+    this.props.VM.runtime.sim_ac = !this.props.VM.runtime.sim_ac;
+    if (this.props.VM.runtime.sim_ac) {
+      this.props.VM.addSprite(spriteJson).then((result) => {
+        if (this.props.VM.setUTIL) this.props.VM.setUTIL();
+      }).catch(() => {});
+    }
+    this.props.onTriggerSimEn();
   }
 
   triggerExtensionPack(){
@@ -414,11 +440,9 @@ class RobboMenu extends Component {
 
                     )}>
 
-
-
-
-
-
+          <div id="trigger-sim-en" onClick={this.triggerSimEn.bind(this)} className={classNames(
+                        {[styles.robbo_menu_item]: true}
+                      )}>{(this.is_sim_en) ? this.props.intl.formatMessage(messages.sim_disable) : this.props.intl.formatMessage(messages.sim_enable)}</div>
 
           <div id="trigger-extension-pack" onClick={this.triggerExtensionPack.bind(this)} className={classNames(
 
@@ -545,7 +569,9 @@ const mapStateToProps =  state => ({
 
 const mapDispatchToProps = dispatch => ({
 
-
+    onTriggerSimEn: () => {
+      dispatch(ActionTriggerSim());
+    },
     onTriggerExtensionPack: () => {
 
         dispatch(ActionTriggerExtensionPack());

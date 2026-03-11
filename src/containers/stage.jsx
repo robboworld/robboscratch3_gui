@@ -3,13 +3,13 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Renderer from 'scratch-render';
 import VM from 'scratch-vm';
-import {connect} from 'react-redux';
+import { connect } from 'react-redux';
 
-import {STAGE_DISPLAY_SIZES} from '../lib/layout-constants';
-import {getEventXY} from '../lib/touch-utils';
+import { STAGE_DISPLAY_SIZES } from '../lib/layout-constants';
+import { getEventXY } from '../lib/touch-utils';
 import VideoProvider from '../lib/video/video-provider';
-import {SVGRenderer as V2SVGAdapter} from 'scratch-svg-renderer';
-import {BitmapAdapter as V2BitmapAdapter} from 'scratch-svg-renderer';
+import { SVGRenderer as V2SVGAdapter } from 'scratch-svg-renderer';
+import { BitmapAdapter as V2BitmapAdapter } from 'scratch-svg-renderer';
 
 import StageComponent from '../components/stage/stage.jsx';
 
@@ -22,7 +22,7 @@ const colorPickerRadius = 20;
 const dragThreshold = 3; // Same as the block drag threshold
 
 class Stage extends React.Component {
-    constructor (props) {
+    constructor(props) {
         super(props);
         bindAll(this, [
             'attachMouseEvents',
@@ -72,13 +72,13 @@ class Stage extends React.Component {
         this.props.vm.attachV2SVGAdapter(new V2SVGAdapter());
         this.props.vm.attachV2BitmapAdapter(new V2BitmapAdapter());
     }
-    componentDidMount () {
+    componentDidMount() {
         this.attachRectEvents();
         this.attachMouseEvents(this.canvas);
         this.updateRect();
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
     }
-    shouldComponentUpdate (nextProps, nextState) {
+    shouldComponentUpdate(nextProps, nextState) {
         return this.props.stageSize !== nextProps.stageSize ||
             this.props.isColorPicking !== nextProps.isColorPicking ||
             this.state.colorInfo !== nextState.colorInfo ||
@@ -87,7 +87,7 @@ class Stage extends React.Component {
             this.props.micIndicator !== nextProps.micIndicator ||
             this.props.isStarted !== nextProps.isStarted;
     }
-    componentDidUpdate (prevProps) {
+    componentDidUpdate(prevProps) {
         if (this.props.isColorPicking && !prevProps.isColorPicking) {
             this.startColorPickingLoop();
         } else if (!this.props.isColorPicking && prevProps.isColorPicking) {
@@ -96,29 +96,29 @@ class Stage extends React.Component {
         this.updateRect();
         this.renderer.resize(this.rect.width, this.rect.height);
     }
-    componentWillUnmount () {
+    componentWillUnmount() {
         this.detachMouseEvents(this.canvas);
         this.detachRectEvents();
         this.stopColorPickingLoop();
         this.props.vm.runtime.removeListener('QUESTION', this.questionListener);
     }
-    questionListener (question) {
-        this.setState({question: question});
+    questionListener(question) {
+        this.setState({ question: question });
     }
-    handleQuestionAnswered (answer) {
-        this.setState({question: null}, () => {
+    handleQuestionAnswered(answer) {
+        this.setState({ question: null }, () => {
             this.props.vm.runtime.emit('ANSWER', answer);
         });
     }
-    startColorPickingLoop () {
+    startColorPickingLoop() {
         this.intervalId = setInterval(() => {
-            this.setState({colorInfo: this.getColorInfo(this.pickX, this.pickY)});
+            this.setState({ colorInfo: this.getColorInfo(this.pickX, this.pickY) });
         }, 30);
     }
-    stopColorPickingLoop () {
+    stopColorPickingLoop() {
         clearInterval(this.intervalId);
     }
-    attachMouseEvents (canvas) {
+    attachMouseEvents(canvas) {
         document.addEventListener('mousemove', this.onMouseMove);
         document.addEventListener('mouseup', this.onMouseUp);
         document.addEventListener('touchmove', this.onMouseMove);
@@ -127,7 +127,7 @@ class Stage extends React.Component {
         canvas.addEventListener('touchstart', this.onMouseDown);
         canvas.addEventListener('wheel', this.onWheel);
     }
-    detachMouseEvents (canvas) {
+    detachMouseEvents(canvas) {
         document.removeEventListener('mousemove', this.onMouseMove);
         document.removeEventListener('mouseup', this.onMouseUp);
         document.removeEventListener('touchmove', this.onMouseMove);
@@ -136,33 +136,33 @@ class Stage extends React.Component {
         canvas.removeEventListener('touchstart', this.onMouseDown);
         canvas.removeEventListener('wheel', this.onWheel);
     }
-    attachRectEvents () {
+    attachRectEvents() {
         window.addEventListener('resize', this.updateRect);
         window.addEventListener('scroll', this.updateRect);
     }
-    detachRectEvents () {
+    detachRectEvents() {
         window.removeEventListener('resize', this.updateRect);
         window.removeEventListener('scroll', this.updateRect);
     }
-    updateRect () {
+    updateRect() {
         this.rect = this.canvas.getBoundingClientRect();
     }
-    getScratchCoords (x, y) {
+    getScratchCoords(x, y) {
         const nativeSize = this.renderer.getNativeSize();
         return [
             (nativeSize[0] / this.rect.width) * (x - (this.rect.width / 2)),
             (nativeSize[1] / this.rect.height) * (y - (this.rect.height / 2))
         ];
     }
-    getColorInfo (x, y) {
+    getColorInfo(x, y) {
         return {
             x: x,
             y: y,
             ...this.renderer.extractColor(x, y, colorPickerRadius)
         };
     }
-    handleDoubleClick (e) {
-        const {x, y} = getEventXY(e);
+    handleDoubleClick(e) {
+        const { x, y } = getEventXY(e);
         // Set editing target from cursor position, if clicking on a sprite.
         const mousePosition = [x - this.rect.left, y - this.rect.top];
         const drawableId = this.renderer.pick(mousePosition[0], mousePosition[1]);
@@ -171,8 +171,8 @@ class Stage extends React.Component {
         if (targetId === null) return;
         this.props.vm.setEditingTarget(targetId);
     }
-    onMouseMove (e) {
-        const {x, y} = getEventXY(e);
+    onMouseMove(e) {
+        const { x, y } = getEventXY(e);
         const mousePosition = [x - this.rect.left, y - this.rect.top];
 
         // Set the pickX/Y for the color picker loop to pick up
@@ -211,8 +211,8 @@ class Stage extends React.Component {
         };
         this.props.vm.postIOData('mouse', coordinates);
     }
-    onMouseUp (e) {
-        const {x, y} = getEventXY(e);
+    onMouseUp(e) {
+        const { x, y } = getEventXY(e);
         const mousePosition = [x - this.rect.left, y - this.rect.top];
         this.cancelMouseDownTimeout();
         this.setState({
@@ -232,9 +232,9 @@ class Stage extends React.Component {
         }
         this.props.vm.postIOData('mouse', data);
     }
-    onMouseDown (e) {
+    onMouseDown(e) {
         this.updateRect();
-        const {x, y} = getEventXY(e);
+        const { x, y } = getEventXY(e);
         const mousePosition = [x - this.rect.left, y - this.rect.top];
         if (e.button === 0 || (window.TouchEvent && e instanceof TouchEvent)) {
             this.setState({
@@ -263,30 +263,30 @@ class Stage extends React.Component {
             }
         }
         if (this.props.isColorPicking) {
-            const {r, g, b} = this.state.colorInfo.color;
+            const { r, g, b } = this.state.colorInfo.color;
             const componentToString = c => {
                 const hex = c.toString(16);
                 return hex.length === 1 ? `0${hex}` : hex;
             };
             const colorString = `#${componentToString(r)}${componentToString(g)}${componentToString(b)}`;
             this.props.onDeactivateColorPicker(colorString);
-            this.setState({colorInfo: null});
+            this.setState({ colorInfo: null });
         }
     }
-    onWheel (e) {
+    onWheel(e) {
         const data = {
             deltaX: e.deltaX,
             deltaY: e.deltaY
         };
         this.props.vm.postIOData('mouseWheel', data);
     }
-    cancelMouseDownTimeout () {
+    cancelMouseDownTimeout() {
         if (this.state.mouseDownTimeoutId !== null) {
             clearTimeout(this.state.mouseDownTimeoutId);
         }
-        this.setState({mouseDownTimeoutId: null});
+        this.setState({ mouseDownTimeoutId: null });
     }
-    drawDragCanvas (drawableData) {
+    drawDragCanvas(drawableData) {
         const {
             data,
             width,
@@ -307,16 +307,16 @@ class Stage extends React.Component {
         this.dragCanvas.style.top = `${-y}px`;
         this.dragCanvas.style.display = 'block';
     }
-    clearDragCanvas () {
+    clearDragCanvas() {
         this.dragCanvas.width = this.dragCanvas.height = 0;
         this.dragCanvas.style.display = 'none';
     }
-    positionDragCanvas (mouseX, mouseY) {
+    positionDragCanvas(mouseX, mouseY) {
         // mouseX/Y are relative to stage top/left, and dragCanvas is already
         // positioned so that the pick location is at (0,0).
         this.dragCanvas.style.transform = `translate(${mouseX}px, ${mouseY}px)`;
     }
-    onStartDrag (x, y) {
+    onStartDrag(x, y) {
         if (this.state.dragId) return;
         const drawableId = this.renderer.pick(x, y);
         if (drawableId === null) return;
@@ -341,10 +341,10 @@ class Stage extends React.Component {
         if (this.props.useEditorDragStyle) {
             this.drawDragCanvas(drawableData);
             this.positionDragCanvas(x, y);
-            this.props.vm.postSpriteInfo({visible: false});
+            this.props.vm.postSpriteInfo({ visible: false });
         }
     }
-    onStopDrag (mouseX, mouseY) {
+    onStopDrag(mouseX, mouseY) {
         const dragId = this.state.dragId;
         const commonStopDragActions = () => {
             this.props.vm.stopDrag(dragId);
@@ -356,7 +356,7 @@ class Stage extends React.Component {
         };
         if (this.props.useEditorDragStyle) {
             // Need to sequence these actions to prevent flickering.
-            const spriteInfo = {visible: true};
+            const spriteInfo = { visible: true };
             // First update the sprite position if dropped in the stage.
             if (mouseX > 0 && mouseX < this.rect.width &&
                 mouseY > 0 && mouseY < this.rect.height) {
@@ -377,10 +377,10 @@ class Stage extends React.Component {
             commonStopDragActions();
         }
     }
-    setDragCanvas (canvas) {
+    setDragCanvas(canvas) {
         this.dragCanvas = canvas;
     }
-    render () {
+    render() {
         const {
             vm, // eslint-disable-line no-unused-vars
             onActivateColorPicker, // eslint-disable-line no-unused-vars

@@ -93,6 +93,11 @@ const  reducer = function (state, action) {
 
 switch (action.type) {
 
+  case 'TRIGGER_SIM_EN':
+    sensors = immutable_copy(state);
+    sensors = handler_trigger_extension_pack(sensors, action.payload);
+    return sensors;
+
   case 'TRIGGER_EXTENSION_PACK':
 
 

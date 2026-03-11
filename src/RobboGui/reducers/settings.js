@@ -19,6 +19,11 @@ const  reducer = function (state, action) {
 
 switch (action.type) {
 
+  case 'TRIGGER_SIM_EN':
+    settings_state = Object.assign({}, state);
+    settings_state.is_sim_activated = !settings_state.is_sim_activated;
+    return settings_state;
+
   case 'TRIGGER_LAB_EXT_SENSORS':
 
 
