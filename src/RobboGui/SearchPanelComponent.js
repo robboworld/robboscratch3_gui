@@ -14,7 +14,7 @@ import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
-import { node_process } from '../lib/platform';
+import { isDesktopWithBluetooth } from '../lib/platform';
 
 const messages = defineMessages({
 
@@ -79,6 +79,7 @@ class SearchPanelComponent extends Component {
     this.QCA = this.props.QCA;
     this.OCA = this.props.OCA;
     this.ACA = this.props.ACA;
+    this.VM = this.props.VM;
 
     this.draggableWindowId = this.props.draggableWindowId;
 
@@ -201,7 +202,7 @@ class SearchPanelComponent extends Component {
 
 
 
-                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
+                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} VM={this.VM} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
 
 
@@ -245,12 +246,12 @@ class SearchPanelComponent extends Component {
 
             {
 
-              ((this.bluetooth_devices_state == "searching") && (node_process.platform === "win32")) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
+              ((this.bluetooth_devices_state == "searching") && isDesktopWithBluetooth()) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
 
             }
 
             {
-              ((this.bluetooth_devices_state == "not_found") && (node_process.platform === "win32")) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div> : ""
+              ((this.bluetooth_devices_state == "not_found") && isDesktopWithBluetooth()) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div> : ""
 
             }
 
