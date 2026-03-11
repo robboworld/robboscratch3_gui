@@ -3,10 +3,10 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { withAlert } from 'react-alert';
 
-import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 
-import styles from  './SettingsWindowComponent.css';
-import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
+import styles from './SettingsWindowComponent.css';
+import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
 import { node_process, isDesktopWithBluetooth } from '../lib/platform';
 import {
   getSettingsFromStorage,
@@ -23,10 +23,10 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'Настройки'
   },
-  intervals_for_blocks_chain:{
+  intervals_for_blocks_chain: {
     id: 'gui.RobboGui.intervals_for_blocks_chain',
     description: ' ',
-    defaultMessage: 'Intervals for blocks chain' 
+    defaultMessage: 'Intervals for blocks chain'
 
   },
   uno_search_timeout: {
@@ -43,7 +43,7 @@ const messages = defineMessages({
     id: 'gui.RobboGui.normal_mode_interval',
     description: ' ',
     defaultMessage: 'Интервал выполнения цепочки блоков в обычном режиме (1-500) (в мс): '
-  }, 
+  },
   save_settings: {
     id: 'gui.RobboGui.save_settings',
     description: ' ',
@@ -74,6 +74,14 @@ const messages_for_Motor_settings = defineMessages({
     defaultMessage: 'Motor settings: '
   },
 
+});
+
+const messages_for_sim = defineMessages({
+  sim_robot_bounds_enabled: {
+    id: 'gui.RobboGui.settings_window.sim_robot_bounds_enabled',
+    description: ' ',
+    defaultMessage: 'Границы сцены (2D-симулятор)'
+  },
 });
 
 const messages_for_firmware = defineMessages({
@@ -110,7 +118,7 @@ const messages_for_firmware = defineMessages({
 });
 
 const messages_for_DCA_intervals = defineMessages({
-   for_usb: {
+  for_usb: {
     id: 'gui.dca.for_usb',
     description: ' ',
     defaultMessage: 'Intervals for usb'
@@ -170,14 +178,14 @@ const messages_for_DCA_intervals = defineMessages({
 });
 
 class SettingsWindowComponent extends Component {
-  onThisWindowClose(){
+  onThisWindowClose() {
 
     console.log("SettingsWindow close");
     this.props.onSettingsWindowClose(4);
 
   }
 
-  readSettings(){
+  readSettings() {
     console.warn(`readSettings`);
     return getSettingsFromStorage();
   }
@@ -212,7 +220,7 @@ class SettingsWindowComponent extends Component {
     return firmwareSettings;
   }
 
-  saveDCASettings(){
+  saveDCASettings() {
     let DCA_settings_data = {
       device_response_timeout: this.DCA_defaults.NO_RESPONSE_TIME_DEFAULT,
       device_no_start_timeout: this.DCA_defaults.NO_START_TIMEOUT_DEFAULT,
@@ -222,7 +230,7 @@ class SettingsWindowComponent extends Component {
 
     var DCA_no_response_time = document.getElementById("raw-3-settings-window-content-column-2").children[0];
     let no_response_time = Math.round(Number(DCA_no_response_time.value));
-    if(typeof(no_response_time) === 'number' && no_response_time>0 && no_response_time<=this.DCA_maxes.NO_RESPONSE_TIME_MAX){
+    if (typeof (no_response_time) === 'number' && no_response_time > 0 && no_response_time <= this.DCA_maxes.NO_RESPONSE_TIME_MAX) {
       DCA_settings_data.device_response_timeout = no_response_time;
     } else {
       DCA_settings_data.device_response_timeout = this.DCA_defaults.NO_RESPONSE_TIME_DEFAULT;
@@ -230,15 +238,15 @@ class SettingsWindowComponent extends Component {
 
     var DCA_no_start_timeout = document.getElementById("raw-4-settings-window-content-column-2").children[0];
     let no_start_timeout = Math.round(Number(DCA_no_start_timeout.value));
-    if(typeof(no_start_timeout) === 'number' && no_start_timeout>0 && no_start_timeout<=this.DCA_maxes.NO_START_TIMEOUT_MAX){
+    if (typeof (no_start_timeout) === 'number' && no_start_timeout > 0 && no_start_timeout <= this.DCA_maxes.NO_START_TIMEOUT_MAX) {
       DCA_settings_data.device_no_start_timeout = no_start_timeout;
     } else {
       DCA_settings_data.device_no_start_timeout = this.DCA_defaults.NO_START_TIMEOUT_DEFAULT;
     }
-    
+
     var DCA_device_handle_timeout = document.getElementById("raw-5-settings-window-content-column-2").children[0];
     let device_handle_timeout = Math.round(Number(DCA_device_handle_timeout.value));
-    if(typeof(device_handle_timeout) === 'number' && device_handle_timeout>0 && device_handle_timeout<=this.DCA_maxes.DEVICE_HANDLE_TIMEOUT_MAX){
+    if (typeof (device_handle_timeout) === 'number' && device_handle_timeout > 0 && device_handle_timeout <= this.DCA_maxes.DEVICE_HANDLE_TIMEOUT_MAX) {
       DCA_settings_data.device_handle_timeout = device_handle_timeout;
     } else {
       DCA_settings_data.device_handle_timeout = this.DCA_defaults.DEVICE_HANDLE_TIMEOUT_DEFAULT;
@@ -246,28 +254,28 @@ class SettingsWindowComponent extends Component {
 
     var DCA_uno_search_timeout = document.getElementById("raw-6-settings-window-content-column-2").children[0];
     let uno_search_timeout = Math.round(Number(DCA_uno_search_timeout.value));
-    if(typeof(uno_search_timeout) === 'number' && uno_search_timeout>0 && uno_search_timeout<=device_handle_timeout){
+    if (typeof (uno_search_timeout) === 'number' && uno_search_timeout > 0 && uno_search_timeout <= device_handle_timeout) {
       DCA_settings_data.device_uno_start_search_timeout = uno_search_timeout;
     } else {
-      DCA_settings_data.device_uno_start_search_timeout = Math.round(device_handle_timeout/2);
-      var uno_timeout_component =  document.getElementById("raw-6-settings-window-content-column-2").children[0];
+      DCA_settings_data.device_uno_start_search_timeout = Math.round(device_handle_timeout / 2);
+      var uno_timeout_component = document.getElementById("raw-6-settings-window-content-column-2").children[0];
       uno_timeout_component.value = DCA_settings_data.device_uno_start_search_timeout;
     }
 
     return DCA_settings_data;
   }
 
-  saveDCASettingsBluetooth(){
+  saveDCASettingsBluetooth() {
     let DCA_settings_data = {
-      device_response_timeout_bluetooth: this.DCA_defaults_bluetooth.NO_RESPONSE_TIME_DEFAULT_BLUETOOTH   ,
-      device_no_start_timeout_bluetooth: this.DCA_defaults_bluetooth.NO_START_TIMEOUT_DEFAULT_BLUETOOTH   ,
+      device_response_timeout_bluetooth: this.DCA_defaults_bluetooth.NO_RESPONSE_TIME_DEFAULT_BLUETOOTH,
+      device_no_start_timeout_bluetooth: this.DCA_defaults_bluetooth.NO_START_TIMEOUT_DEFAULT_BLUETOOTH,
       device_handle_timeout_bluetooth: this.DCA_defaults_bluetooth.DEVICE_HANDLE_TIMEOUT_DEFAULT_BLUETOOTH,
       device_uno_start_search_timeout_bluetooth: this.DCA_defaults_bluetooth.UNO_TIMEOUT_DEFAULT_BLUETOOTH,
     };
 
     var DCA_no_response_time = document.getElementById("raw-7-settings-window-content-column-2").children[0];
     let no_response_time = Math.round(Number(DCA_no_response_time.value));
-    if(typeof(no_response_time) === 'number' && no_response_time>0 && no_response_time<=this.DCA_maxes_bluetooth.NO_RESPONSE_TIME_MAX_BLUETOOTH){
+    if (typeof (no_response_time) === 'number' && no_response_time > 0 && no_response_time <= this.DCA_maxes_bluetooth.NO_RESPONSE_TIME_MAX_BLUETOOTH) {
       DCA_settings_data.device_response_timeout_bluetooth = no_response_time;
     } else {
       DCA_settings_data.device_response_timeout_bluetooth = this.DCA_defaults_bluetooth.NO_RESPONSE_TIME_DEFAULT_BLUETOOTH;
@@ -275,15 +283,15 @@ class SettingsWindowComponent extends Component {
 
     var DCA_no_start_timeout = document.getElementById("raw-8-settings-window-content-column-2").children[0];
     let no_start_timeout = Math.round(Number(DCA_no_start_timeout.value));
-    if(typeof(no_start_timeout) === 'number' && no_start_timeout>0 && no_start_timeout<=this.DCA_maxes_bluetooth.NO_START_TIMEOUT_MAX_BLUETOOTH){
+    if (typeof (no_start_timeout) === 'number' && no_start_timeout > 0 && no_start_timeout <= this.DCA_maxes_bluetooth.NO_START_TIMEOUT_MAX_BLUETOOTH) {
       DCA_settings_data.device_no_start_timeout = no_start_timeout;
     } else {
       DCA_settings_data.device_no_start_timeout_bluetooth = this.DCA_defaults_bluetooth.NO_START_TIMEOUT_DEFAULT_BLUETOOTH;
     }
-    
+
     var DCA_device_handle_timeout = document.getElementById("raw-9-settings-window-content-column-2").children[0];
     let device_handle_timeout = Math.round(Number(DCA_device_handle_timeout.value));
-    if(typeof(device_handle_timeout) === 'number' && device_handle_timeout>0 && device_handle_timeout<=this.DCA_maxes.DEVICE_HANDLE_TIMEOUT_MAX){
+    if (typeof (device_handle_timeout) === 'number' && device_handle_timeout > 0 && device_handle_timeout <= this.DCA_maxes.DEVICE_HANDLE_TIMEOUT_MAX) {
       DCA_settings_data.device_handle_timeout_bluetooth = device_handle_timeout;
     } else {
       DCA_settings_data.device_handle_timeout_bluetooth = this.DCA_defaults_bluetooth.DEVICE_HANDLE_TIMEOUT_DEFAULT_BLUETOOTH;
@@ -291,25 +299,25 @@ class SettingsWindowComponent extends Component {
 
     var DCA_uno_search_timeout = document.getElementById("raw-10-settings-window-content-column-2").children[0];
     let uno_search_timeout = Math.round(Number(DCA_uno_search_timeout.value));
-    if(typeof(uno_search_timeout) === 'number' && uno_search_timeout>0 && uno_search_timeout<=device_handle_timeout){
+    if (typeof (uno_search_timeout) === 'number' && uno_search_timeout > 0 && uno_search_timeout <= device_handle_timeout) {
       DCA_settings_data.device_uno_start_search_timeout_bluetooth = uno_search_timeout;
     } else {
-      DCA_settings_data.device_uno_start_search_timeout_bluetooth = Math.round(device_handle_timeout/2);
-      var uno_timeout_component_bluetooth =  document.getElementById("raw-10-settings-window-content-column-2").children[0];
-      uno_timeout_component_bluetooth.value=DCA_settings_data.device_uno_start_search_timeout_bluetooth;
+      DCA_settings_data.device_uno_start_search_timeout_bluetooth = Math.round(device_handle_timeout / 2);
+      var uno_timeout_component_bluetooth = document.getElementById("raw-10-settings-window-content-column-2").children[0];
+      uno_timeout_component_bluetooth.value = DCA_settings_data.device_uno_start_search_timeout_bluetooth;
     }
 
     return DCA_settings_data;
   }
 
-  saveSettings(){
+  saveSettings() {
     let settings_data = {};
 
 
     //This settings are DCA settings
     let DCA_settings_data = this.saveDCASettings();
     Object.keys(DCA_settings_data).map((key) => {
-      settings_data[key]=DCA_settings_data[key];
+      settings_data[key] = DCA_settings_data[key];
     });
     //End of saving DCA settings
 
@@ -323,19 +331,19 @@ class SettingsWindowComponent extends Component {
       settings_data.bluetooth_search_enabled = btSearchEl.children[0].checked;
     }
     //End of saving DCA settings
-    
-    var fullscreen_interval_component =  document.getElementById("raw-1-settings-window-content-column-2").children[0];
-    let fullscreen_interval =  Math.round(Number(fullscreen_interval_component.value));
-    if(typeof(fullscreen_interval) === 'number' && fullscreen_interval>0 && typeof(settings_data.device_handle_timeout)!=='undefined'){
+
+    var fullscreen_interval_component = document.getElementById("raw-1-settings-window-content-column-2").children[0];
+    let fullscreen_interval = Math.round(Number(fullscreen_interval_component.value));
+    if (typeof (fullscreen_interval) === 'number' && fullscreen_interval > 0 && typeof (settings_data.device_handle_timeout) !== 'undefined') {
       settings_data.fullscreen_interval = fullscreen_interval;
     } else {
       settings_data.fullscreen_interval = this.VM.runtime.getFullscreenInterval();
     }
 
-    var normal_mode_interval_component =  document.getElementById("raw-2-settings-window-content-column-2").children[0];
-    let normal_mode_interval =  Math.round(Number(normal_mode_interval_component.value));
-    if(typeof(normal_mode_interval) === 'number' && normal_mode_interval>0 && typeof(settings_data.device_handle_timeout)!=='undefined'){
-      settings_data.normal_mode_interval =  normal_mode_interval;
+    var normal_mode_interval_component = document.getElementById("raw-2-settings-window-content-column-2").children[0];
+    let normal_mode_interval = Math.round(Number(normal_mode_interval_component.value));
+    if (typeof (normal_mode_interval) === 'number' && normal_mode_interval > 0 && typeof (settings_data.device_handle_timeout) !== 'undefined') {
+      settings_data.normal_mode_interval = normal_mode_interval;
     } else {
       settings_data.normal_mode_interval = this.VM.runtime.getNormalInterval();
     }
@@ -343,19 +351,26 @@ class SettingsWindowComponent extends Component {
     var left_motor_inverted_component = document.getElementById("raw-11-settings-window-content-column-2").children[0];
     var left_motor_inverted_setting_checked = Number(left_motor_inverted_component.checked);
     console.warn(`left_motor_inverted_setting_checked: ${left_motor_inverted_setting_checked}`);
-    if (typeof(left_motor_inverted_setting_checked) !== 'undefined'){
-      settings_data.left_motor_inverted_setting_checked =  left_motor_inverted_setting_checked;
+    if (typeof (left_motor_inverted_setting_checked) !== 'undefined') {
+      settings_data.left_motor_inverted_setting_checked = left_motor_inverted_setting_checked;
     } else {
-      settings_data.left_motor_inverted_setting_checked =  false;
+      settings_data.left_motor_inverted_setting_checked = false;
     }
 
     var right_motor_inverted_component = document.getElementById("raw-12-settings-window-content-column-2").children[0];
     var right_motor_inverted_setting_checked = Number(right_motor_inverted_component.checked);
     console.warn(`right_motor_inverted_setting_checked: ${right_motor_inverted_setting_checked}`);
-    if (typeof(right_motor_inverted_setting_checked) !== 'undefined'){
-      settings_data.right_motor_inverted_setting_checked =  right_motor_inverted_setting_checked;
+    if (typeof (right_motor_inverted_setting_checked) !== 'undefined') {
+      settings_data.right_motor_inverted_setting_checked = right_motor_inverted_setting_checked;
     } else {
-      settings_data.right_motor_inverted_setting_checked =  false;
+      settings_data.right_motor_inverted_setting_checked = false;
+    }
+
+    var simBoundsEl = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
+    if (simBoundsEl && simBoundsEl.children[0]) {
+      settings_data.sim_clamp_to_stage = simBoundsEl.children[0].checked;
+    } else {
+      settings_data.sim_clamp_to_stage = true;
     }
 
     const firmwareSettingsData = this.readFirmwareSettingsFromInputs();
@@ -369,7 +384,7 @@ class SettingsWindowComponent extends Component {
 
     //if ( (isNaN(fullscreen_interval)) || (typeof(fullscreen_interval) === 'undefined')) return
 
-    this.VM.runtime.clearAvTimeInterval();  
+    this.VM.runtime.clearAvTimeInterval();
     this.VM.runtime.setSettingsSaved();
 
     this.VM.runtime.setFullscreenInterval(fullscreen_interval);
@@ -379,11 +394,13 @@ class SettingsWindowComponent extends Component {
     this.VM.runtime.setNormalInterval(normal_mode_interval);
 
 
-     applySettingsToDCA(this.VM, settings_data);
+    applySettingsToDCA(this.VM, settings_data);
 
-     
-     this.VM.runtime.left_motor_inverted  =  left_motor_inverted_setting_checked; 
-     this.VM.runtime.right_motor_inverted =  right_motor_inverted_setting_checked; 
+
+    this.VM.runtime.left_motor_inverted = left_motor_inverted_setting_checked;
+    this.VM.runtime.right_motor_inverted = right_motor_inverted_setting_checked;
+
+    this.VM.runtime.sim_clamp_to_stage = settings_data.sim_clamp_to_stage !== false;
 
     applyFirmwareSettingsToRuntime(this.VM, settings_data);
 
@@ -392,93 +409,98 @@ class SettingsWindowComponent extends Component {
     });
   }
 
-  saveSettingsData(settings_data){
+  saveSettingsData(settings_data) {
     console.warn("saveSettings" + " data: " + settings_data);
 
-    function errorHandler(e){        
+    function errorHandler(e) {
       console.error("Error during saving settings: " + e);
     };
 
     function onInitFs(fs) {
       console.log('Opened file system: ' + fs.name);
-      fs.root.getFile("settings" + "." + "json", {create: true}, function(fileEntry) {
-        fileEntry.createWriter(function(fileWriter) {
-            fileWriter.onwriteend = function(e) {
-              console.log('Settings write completed.');
-            }
-            fileWriter.onerror = function(e) {
-              console.log('Settings writing failed: ' + e.toString());
-            };
-          var bb = new Blob([settings_data]); 
+      fs.root.getFile("settings" + "." + "json", { create: true }, function (fileEntry) {
+        fileEntry.createWriter(function (fileWriter) {
+          fileWriter.onwriteend = function (e) {
+            console.log('Settings write completed.');
+          }
+          fileWriter.onerror = function (e) {
+            console.log('Settings writing failed: ' + e.toString());
+          };
+          var bb = new Blob([settings_data]);
           fileWriter.write(bb);
         });
       }, errorHandler);
     };
 
-    navigator.webkitPersistentStorage.requestQuota(500*1024*1024, //500Мб
-          function(grantedBytes){
-            console.log("byte granted=" + grantedBytes);
-            window.webkitRequestFileSystem(PERSISTENT, grantedBytes, onInitFs, errorHandler);
-          }, errorHandler
-      );
+    navigator.webkitPersistentStorage.requestQuota(500 * 1024 * 1024, //500Мб
+      function (grantedBytes) {
+        console.log("byte granted=" + grantedBytes);
+        window.webkitRequestFileSystem(PERSISTENT, grantedBytes, onInitFs, errorHandler);
+      }, errorHandler
+    );
   }
 
-  deleteSettingsFile(callback){
-    var  errorHandler = function(e){
-      if((''+e).localeCompare("NotFoundError: A requested file or directory could not be found at the time an operation was processed.")!=0)
+  deleteSettingsFile(callback) {
+    var errorHandler = function (e) {
+      if (('' + e).localeCompare("NotFoundError: A requested file or directory could not be found at the time an operation was processed.") != 0)
         console.error("File error during removing bad settings file: " + e);
       else
-        if(typeof(callback) === 'function') callback();
+        if (typeof (callback) === 'function') callback();
     };
 
-    var _onInitFs = function(fs){
-          fs.root.getFile("settings.json", {create: false}, function(fileEntry) {
-            fileEntry.remove(() => {
-                console.log('File settings.json was removed.');
-                if(typeof(callback) === 'function') callback();
-              }, errorHandler);
+    var _onInitFs = function (fs) {
+      fs.root.getFile("settings.json", { create: false }, function (fileEntry) {
+        fileEntry.remove(() => {
+          console.log('File settings.json was removed.');
+          if (typeof (callback) === 'function') callback();
+        }, errorHandler);
       }, errorHandler);
     }
 
-    navigator.webkitPersistentStorage.requestQuota(500*1024*1024,
-      function(grantedBytes){
-    //      console.log("byte granted=" + grantedBytes);
-          window.webkitRequestFileSystem(PERSISTENT, grantedBytes, _onInitFs, errorHandler);
+    navigator.webkitPersistentStorage.requestQuota(500 * 1024 * 1024,
+      function (grantedBytes) {
+        //      console.log("byte granted=" + grantedBytes);
+        window.webkitRequestFileSystem(PERSISTENT, grantedBytes, _onInitFs, errorHandler);
       }, errorHandler);
   }
 
-  setDefaultsDCAValues(){
+  setDefaultsDCAValues() {
 
-      var no_response_time_component =  document.getElementById("raw-3-settings-window-content-column-2").children[0];
-      var no_start_timeout_component =  document.getElementById("raw-4-settings-window-content-column-2").children[0];
-      var device_handle_timeout_component =  document.getElementById("raw-5-settings-window-content-column-2").children[0];
-      var uno_timeout_component =  document.getElementById("raw-6-settings-window-content-column-2").children[0];
+    var no_response_time_component = document.getElementById("raw-3-settings-window-content-column-2").children[0];
+    var no_start_timeout_component = document.getElementById("raw-4-settings-window-content-column-2").children[0];
+    var device_handle_timeout_component = document.getElementById("raw-5-settings-window-content-column-2").children[0];
+    var uno_timeout_component = document.getElementById("raw-6-settings-window-content-column-2").children[0];
 
-      no_response_time_component.value =  this.DCA_defaults.NO_RESPONSE_TIME_DEFAULT;
-      no_start_timeout_component.value =  this.DCA_defaults.NO_START_TIMEOUT_DEFAULT;
-      device_handle_timeout_component.value =  this.DCA_defaults.DEVICE_HANDLE_TIMEOUT_DEFAULT;
-      uno_timeout_component.value =  this.DCA_defaults.UNO_TIMEOUT_DEFAULT;
+    no_response_time_component.value = this.DCA_defaults.NO_RESPONSE_TIME_DEFAULT;
+    no_start_timeout_component.value = this.DCA_defaults.NO_START_TIMEOUT_DEFAULT;
+    device_handle_timeout_component.value = this.DCA_defaults.DEVICE_HANDLE_TIMEOUT_DEFAULT;
+    uno_timeout_component.value = this.DCA_defaults.UNO_TIMEOUT_DEFAULT;
 
-      var no_response_time_component_bluetooth =  document.getElementById("raw-7-settings-window-content-column-2").children[0];
-      var no_start_timeout_component_bluetooth =  document.getElementById("raw-8-settings-window-content-column-2").children[0];
-      var device_handle_timeout_component_bluetooth =  document.getElementById("raw-9-settings-window-content-column-2").children[0];
-      var uno_timeout_component_bluetooth =  document.getElementById("raw-10-settings-window-content-column-2").children[0];
+    var no_response_time_component_bluetooth = document.getElementById("raw-7-settings-window-content-column-2").children[0];
+    var no_start_timeout_component_bluetooth = document.getElementById("raw-8-settings-window-content-column-2").children[0];
+    var device_handle_timeout_component_bluetooth = document.getElementById("raw-9-settings-window-content-column-2").children[0];
+    var uno_timeout_component_bluetooth = document.getElementById("raw-10-settings-window-content-column-2").children[0];
 
-      no_response_time_component_bluetooth.value = this.DCA_defaults_bluetooth.NO_RESPONSE_TIME_DEFAULT_BLUETOOTH;
-      no_start_timeout_component_bluetooth.value =  this.DCA_defaults_bluetooth.NO_START_TIMEOUT_DEFAULT_BLUETOOTH;
-      device_handle_timeout_component_bluetooth.value =  this.DCA_defaults_bluetooth.DEVICE_HANDLE_TIMEOUT_DEFAULT_BLUETOOTH;
-      uno_timeout_component_bluetooth.value =  this.DCA_defaults_bluetooth.UNO_TIMEOUT_DEFAULT_BLUETOOTH;
+    no_response_time_component_bluetooth.value = this.DCA_defaults_bluetooth.NO_RESPONSE_TIME_DEFAULT_BLUETOOTH;
+    no_start_timeout_component_bluetooth.value = this.DCA_defaults_bluetooth.NO_START_TIMEOUT_DEFAULT_BLUETOOTH;
+    device_handle_timeout_component_bluetooth.value = this.DCA_defaults_bluetooth.DEVICE_HANDLE_TIMEOUT_DEFAULT_BLUETOOTH;
+    uno_timeout_component_bluetooth.value = this.DCA_defaults_bluetooth.UNO_TIMEOUT_DEFAULT_BLUETOOTH;
 
-      var btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
-      if (btSearchEl && btSearchEl.children[0]) {
-        btSearchEl.children[0].checked = true;
-      }
+    var btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
+    if (btSearchEl && btSearchEl.children[0]) {
+      btSearchEl.children[0].checked = true;
+    }
 
-      this.applyFirmwareSettingsToInputs({});
+    var simBoundsElDef = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
+    if (simBoundsElDef && simBoundsElDef.children[0]) {
+      simBoundsElDef.children[0].checked = true;
+    }
+
+    this.applyFirmwareSettingsToInputs({});
   }
 
 
-  componentDidMount(){
+  componentDidMount() {
 
     this.VM = this.props.VM;
 
@@ -505,14 +527,14 @@ class SettingsWindowComponent extends Component {
       var device_handle_timeout_component_bluetooth = child0("raw-9-settings-window-content-column-2");
       var uno_timeout_component_bluetooth = child0("raw-10-settings-window-content-column-2");
 
-     // var motors_inverted_component = document.getElementById("raw-11-settings-window-content-column-2").children[0];
+      // var motors_inverted_component = document.getElementById("raw-11-settings-window-content-column-2").children[0];
 
       var left_motor_inverted_component = child0("raw-11-settings-window-content-column-2");
       var right_motor_inverted_component = child0("raw-12-settings-window-content-column-2");
 
-      if (result.file_exists){
+      if (result.file_exists) {
         try {
-          let settings_data =  JSON.parse(result.file);
+          let settings_data = JSON.parse(result.file);
 
           let fullscreen_interval = settings_data.fullscreen_interval || this.VM.runtime.getFullscreenInterval();
           let normal_mode_interval = settings_data.normal_mode_interval || this.VM.runtime.getNormalInterval();
@@ -547,23 +569,27 @@ class SettingsWindowComponent extends Component {
 
           console.warn(`Read completed for left_motors_inverted_setting_checked: ${settings_data.left_motor_inverted_setting_checked}`);
           console.warn(`Read completed for right_motors_inverted_setting_checked: ${settings_data.right_motor_inverted_setting_checked}`);
-          if (typeof(settings_data.left_motor_inverted_setting_checked) !== 'undefined'){
+          if (typeof (settings_data.left_motor_inverted_setting_checked) !== 'undefined') {
             if (left_motor_inverted_component) left_motor_inverted_component.checked = settings_data.left_motor_inverted_setting_checked;
             this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked;
 
-          }else{
+          } else {
             if (left_motor_inverted_component) left_motor_inverted_component.checked = false;
             this.VM.runtime.left_motor_inverted = false;
           }
 
-          if (typeof(settings_data.right_motor_inverted_setting_checked) !== 'undefined'){
+          if (typeof (settings_data.right_motor_inverted_setting_checked) !== 'undefined') {
             if (right_motor_inverted_component) right_motor_inverted_component.checked = settings_data.right_motor_inverted_setting_checked;
             this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked;
 
-          }else{
+          } else {
             if (right_motor_inverted_component) right_motor_inverted_component.checked = false;
-            this.VM.runtime.right_motor_inverted = false; 
+            this.VM.runtime.right_motor_inverted = false;
           }
+
+          var simBoundsEl = child0("raw-sim-bounds-settings-window-content-column-2");
+          if (simBoundsEl) simBoundsEl.checked = settings_data.sim_clamp_to_stage !== false;
+          this.VM.runtime.sim_clamp_to_stage = settings_data.sim_clamp_to_stage !== false;
 
           this.applyFirmwareSettingsToInputs(settings_data);
           applyFirmwareSettingsToRuntime(this.VM, settings_data);
@@ -573,41 +599,47 @@ class SettingsWindowComponent extends Component {
 
           this.deleteSettingsFile();
 
-          let fullscreen_interval =  this.VM.runtime.getFullscreenInterval();
+          let fullscreen_interval = this.VM.runtime.getFullscreenInterval();
           fullscreen_interval_component.value = fullscreen_interval;
 
-          let normal_mode_interval =  this.VM.runtime.getNormalInterval();
-          normal_mode_interval_component.value = normal_mode_interval; 
-
-          this.setDefaultsDCAValues();
-
-         
-          this.VM.runtime.left_motor_inverted = false; 
-          this.VM.runtime.right_motor_inverted = false; 
-          left_motor_inverted_component.checked = false;
-          right_motor_inverted_component.checked = false;
-          applyFirmwareSettingsToRuntime(this.VM, {});
-        
-          console.warn(`Set left_motor_inverted and right_motor_inverted  to FALSE due to the occured error.`);
-
-
-        }
-      }else{
-          let fullscreen_interval =  this.VM.runtime.getFullscreenInterval();
-          fullscreen_interval_component.value = fullscreen_interval;
-
-          let normal_mode_interval =  this.VM.runtime.getNormalInterval();
+          let normal_mode_interval = this.VM.runtime.getNormalInterval();
           normal_mode_interval_component.value = normal_mode_interval;
 
           this.setDefaultsDCAValues();
 
-          this.VM.runtime.left_motor_inverted = false; 
-          this.VM.runtime.right_motor_inverted = false; 
+
+          this.VM.runtime.left_motor_inverted = false;
+          this.VM.runtime.right_motor_inverted = false;
+          this.VM.runtime.sim_clamp_to_stage = true;
           left_motor_inverted_component.checked = false;
           right_motor_inverted_component.checked = false;
+          var simBoundsElErr = child0("raw-sim-bounds-settings-window-content-column-2");
+          if (simBoundsElErr) simBoundsElErr.checked = true;
           applyFirmwareSettingsToRuntime(this.VM, {});
 
-          console.warn(`Set left_motor_inverted and right_motor_inverted to FALSE due to settings data doesn't exist.`);
+          console.warn(`Set left_motor_inverted and right_motor_inverted  to FALSE due to the occured error.`);
+
+
+        }
+      } else {
+        let fullscreen_interval = this.VM.runtime.getFullscreenInterval();
+        fullscreen_interval_component.value = fullscreen_interval;
+
+        let normal_mode_interval = this.VM.runtime.getNormalInterval();
+        normal_mode_interval_component.value = normal_mode_interval;
+
+        this.setDefaultsDCAValues();
+
+        this.VM.runtime.left_motor_inverted = false;
+        this.VM.runtime.right_motor_inverted = false;
+        this.VM.runtime.sim_clamp_to_stage = true;
+        left_motor_inverted_component.checked = false;
+        right_motor_inverted_component.checked = false;
+        var simBoundsElNoFile = child0("raw-sim-bounds-settings-window-content-column-2");
+        if (simBoundsElNoFile) simBoundsElNoFile.checked = true;
+        applyFirmwareSettingsToRuntime(this.VM, {});
+
+        console.warn(`Set left_motor_inverted and right_motor_inverted to FALSE due to settings data doesn't exist.`);
       }
     });
   }
@@ -629,11 +661,11 @@ class SettingsWindowComponent extends Component {
 
             <div id="raw-intervals-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
 
-                   <b>{this.props.intl.formatMessage(messages.intervals_for_blocks_chain)}</b>
+              <b>{this.props.intl.formatMessage(messages.intervals_for_blocks_chain)}</b>
 
             </div>
 
-          
+
           </div>
 
 
@@ -646,7 +678,7 @@ class SettingsWindowComponent extends Component {
             <div id="raw-1-settings-window-content-column-2" className={styles.settings_window_content_column}>
               <input type="number" />
             </div>
-          
+
           </div>
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
@@ -655,31 +687,31 @@ class SettingsWindowComponent extends Component {
             </div>
 
             <div id="raw-2-settings-window-content-column-2" className={styles.settings_window_content_column}>
-                <input type="number" />
+              <input type="number" />
             </div>
           </div>
 
-            <div id="settings-window-content-raw-intervals-for-usb" className={styles.settings_window_content_raw}>
+          <div id="settings-window-content-raw-intervals-for-usb" className={styles.settings_window_content_raw}>
 
             <div id="raw-intervals-for-usb-settings-window-content-column-1" className={styles.settings_window_content_column}>
 
-                   <b>{this.props.intl.formatMessage(messages_for_DCA_intervals.for_usb)}</b>
+              <b>{this.props.intl.formatMessage(messages_for_DCA_intervals.for_usb)}</b>
 
             </div>
 
-          
+
           </div>
-        
+
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
             <div id="raw-3-settings-window-content-column-1" className={styles.settings_window_content_column}>
               {this.props.intl.formatMessage(messages_for_DCA_intervals.no_response_time)}
             </div>
 
             <div id="raw-3-settings-window-content-column-2" className={styles.settings_window_content_column}>
-                <input type="number" />
+              <input type="number" />
             </div>
           </div>
-        
+
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
             <div id="raw-4-settings-window-content-column-1" className={styles.settings_window_content_column}>
@@ -687,10 +719,10 @@ class SettingsWindowComponent extends Component {
             </div>
 
             <div id="raw-4-settings-window-content-column-2" className={styles.settings_window_content_column}>
-                <input type="number" />
+              <input type="number" />
             </div>
           </div>
-        
+
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
             <div id="raw-5-settings-window-content-column-1" className={styles.settings_window_content_column}>
@@ -698,7 +730,7 @@ class SettingsWindowComponent extends Component {
             </div>
 
             <div id="raw-5-settings-window-content-column-2" className={styles.settings_window_content_column}>
-                <input type="number" />
+              <input type="number" />
             </div>
           </div>
 
@@ -708,8 +740,8 @@ class SettingsWindowComponent extends Component {
             </div>
 
             <div id="raw-6-settings-window-content-column-2" className={styles.settings_window_content_column}>
-                <input type="number" />
-            </div>  
+              <input type="number" />
+            </div>
           </div>
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
@@ -761,13 +793,13 @@ class SettingsWindowComponent extends Component {
             <div id="raw-10-settings-window-content-column-2" className={styles.settings_window_content_column}>
               <input type="number" />
             </div>
-          </div> 
+          </div>
 
           <div id="settings-window-content-raw-motor-settings" className={styles.settings_window_content_raw}>
 
             <div id="raw-motor-settings-window-content-column-1" className={styles.settings_window_content_column}>
 
-                <b>{this.props.intl.formatMessage(messages_for_Motor_settings.motor_settings_tittle)}</b>
+              <b>{this.props.intl.formatMessage(messages_for_Motor_settings.motor_settings_tittle)}</b>
 
             </div>
 
@@ -775,23 +807,32 @@ class SettingsWindowComponent extends Component {
           </div>
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
-                <div id="raw-11-settings-window-content-column-1" className={styles.settings_window_content_column}>
-                  {this.props.intl.formatMessage(messages_for_Motor_settings.set_left_motor_invertion)}
-                </div>
+            <div id="raw-11-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_Motor_settings.set_left_motor_invertion)}
+            </div>
 
-                <div id="raw-11-settings-window-content-column-2" className={styles.settings_window_content_column}>
-                    <input type="checkbox" />
-                </div>
-          </div>    
+            <div id="raw-11-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="checkbox" />
+            </div>
+          </div>
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
-                <div id="raw-12-settings-window-content-column-1" className={styles.settings_window_content_column}>
-                  {this.props.intl.formatMessage(messages_for_Motor_settings.set_right_motor_invertion)}
-                </div>
+            <div id="raw-12-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_Motor_settings.set_right_motor_invertion)}
+            </div>
 
-                <div id="raw-12-settings-window-content-column-2" className={styles.settings_window_content_column}>
-                    <input type="checkbox" />
-                </div>
+            <div id="raw-12-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="checkbox" />
+            </div>
+          </div>
+
+          <div id="settings-window-content-raw-sim-bounds" className={styles.settings_window_content_raw}>
+            <div id="raw-sim-bounds-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_sim.sim_robot_bounds_enabled)}
+            </div>
+            <div id="raw-sim-bounds-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="checkbox" defaultChecked />
+            </div>
           </div>
 
           <div id="settings-window-content-raw-firmware" className={styles.settings_window_content_raw}>
@@ -848,12 +889,12 @@ class SettingsWindowComponent extends Component {
   };
 }
 
-const mapStateToProps =  state => ({});
+const mapStateToProps = state => ({});
 
 const mapDispatchToProps = dispatch => ({
   onSettingsWindowClose: () => {
-      dispatch(ActionTriggerDraggableWindow(4));
-    }
+    dispatch(ActionTriggerDraggableWindow(4));
+  }
 });
 
 export default injectIntl(connect(

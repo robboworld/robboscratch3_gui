@@ -17,7 +17,7 @@ import {
 } from './actions/sensor_actions';
 import { node_process, node_os } from '../lib/platform';
 
-const VERSION = 'Robbo Scratch v.3.111.0';
+const VERSION = 'Robbo Scratch v.3.111.1';
 
 const messages = defineMessages({
   about_window: {
