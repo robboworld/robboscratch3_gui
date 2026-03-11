@@ -435,7 +435,7 @@ class AboutWindowComponent extends Component {
               id="raw-5-about-window-content-column-2"
               className={styles.about_window_value_column}
             >
-              {/*node_process.platform + " " + node_os.release()*/}
+              {node_process.platform ? `${node_process.platform} ${node_os.release()}` : '—'}
             </div>
 
             <div
