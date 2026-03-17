@@ -1,6 +1,6 @@
 import {detectLocale} from '../../../src/lib/detect-locale.js';
 
-const supportedLocales = ['en', 'es', 'pt-br', 'de', 'it'];
+const supportedLocales = ['en', 'es', 'pt-br', 'de', 'it', 'ru'];
 
 Object.defineProperty(window.location,
     'search',
@@ -65,10 +65,14 @@ describe('detectLocale', () => {
             'language',
             {value: 'da'}
         );
-        expect(detectLocale(supportedLocales)).toEqual('en');
+        expect(detectLocale(supportedLocales)).toEqual('ru');
     });
 
     test('works with an empty locale', () => {
+        Object.defineProperty(window.navigator,
+            'language',
+            {value: 'en-US', configurable: true}
+        );
         Object.defineProperty(window.location,
             'search',
             {value: '?locale='}
