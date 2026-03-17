@@ -20,26 +20,10 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'Settings'
   },
-  intervals_for_blocks_chain: {
-    id: 'gui.RobboGui.intervals_for_blocks_chain',
-    description: ' ',
-    defaultMessage: 'Intervals for blocks chain'
-
-  },
   uno_search_timeout: {
     id: 'gui.RobboGui.uno_search_timeout',
     description: ' ',
     defaultMessage: 'Robbo search timeout'
-  },
-  fullscreen_interval: {
-    id: 'gui.RobboGui.fullscreen_interval',
-    description: ' ',
-    defaultMessage: 'Block chain execution interval in fullscreen (1-500) (ms): '
-  },
-  normal_mode_interval: {
-    id: 'gui.RobboGui.normal_mode_interval',
-    description: ' ',
-    defaultMessage: 'Block chain execution interval in normal mode (1-500) (ms): '
   },
   save_settings: {
     id: 'gui.RobboGui.save_settings',
@@ -156,20 +140,6 @@ class SettingsWindowComponent extends Component {
       settings_data.bluetooth_search_enabled = btSearchEl.children[0].checked;
     }
 
-    const fullscreen_interval_component = document.getElementById("raw-1-settings-window-content-column-2").children[0];
-    let fullscreen_interval = Math.round(Number(fullscreen_interval_component.value));
-    if (typeof fullscreen_interval !== 'number' || fullscreen_interval <= 0) {
-      fullscreen_interval = this.VM.runtime.getFullscreenInterval();
-    }
-    settings_data.fullscreen_interval = fullscreen_interval;
-
-    const normal_mode_interval_component = document.getElementById("raw-2-settings-window-content-column-2").children[0];
-    let normal_mode_interval = Math.round(Number(normal_mode_interval_component.value));
-    if (typeof normal_mode_interval !== 'number' || normal_mode_interval <= 0) {
-      normal_mode_interval = this.VM.runtime.getNormalInterval();
-    }
-    settings_data.normal_mode_interval = normal_mode_interval;
-
     const simBoundsEl = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
     settings_data.sim_clamp_to_stage = (simBoundsEl && simBoundsEl.children[0]) ? simBoundsEl.children[0].checked : true;
 
@@ -177,8 +147,6 @@ class SettingsWindowComponent extends Component {
 
     this.VM.runtime.clearAvTimeInterval();
     this.VM.runtime.setSettingsSaved();
-    this.VM.runtime.setFullscreenInterval(fullscreen_interval);
-    this.VM.runtime.setNormalInterval(normal_mode_interval);
     this.VM.runtime.sim_clamp_to_stage = settings_data.sim_clamp_to_stage !== false;
 
     applySettingsToDCA(this.VM, settings_data);
@@ -280,23 +248,14 @@ class SettingsWindowComponent extends Component {
         return n && n.children && n.children[0] ? n.children[0] : null;
       };
 
-      const fullscreen_interval_component = child0("raw-1-settings-window-content-column-2");
-      const normal_mode_interval_component = child0("raw-2-settings-window-content-column-2");
       const c1 = child0("raw-connection-1-settings-window-content-column-2");
       const c2 = child0("raw-connection-2-settings-window-content-column-2");
       const c3 = child0("raw-connection-3-settings-window-content-column-2");
       const c4 = child0("raw-connection-4-settings-window-content-column-2");
 
-      if (!fullscreen_interval_component || !normal_mode_interval_component) return;
-
       if (result.file_exists) {
         try {
           const settings_data = JSON.parse(result.file);
-
-          const fullscreen_interval = settings_data.fullscreen_interval || this.VM.runtime.getFullscreenInterval();
-          const normal_mode_interval = settings_data.normal_mode_interval || this.VM.runtime.getNormalInterval();
-          fullscreen_interval_component.value = fullscreen_interval;
-          normal_mode_interval_component.value = normal_mode_interval;
 
           const no_response = Math.round(Number(settings_data.device_response_timeout != null ? settings_data.device_response_timeout : settings_data.device_response_timeout_bluetooth));
           const no_start = Math.round(Number(settings_data.device_no_start_timeout != null ? settings_data.device_no_start_timeout : settings_data.device_no_start_timeout_bluetooth));
@@ -310,8 +269,6 @@ class SettingsWindowComponent extends Component {
           const btSearchEl = child0("raw-bt-search-settings-window-content-column-2");
           if (btSearchEl) btSearchEl.checked = settings_data.bluetooth_search_enabled !== false;
 
-          this.VM.runtime.setFullscreenInterval(fullscreen_interval);
-          this.VM.runtime.setNormalInterval(normal_mode_interval);
           applySettingsToDCA(this.VM, settings_data);
 
           this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked === 1 || settings_data.left_motor_inverted_setting_checked === true;
@@ -325,8 +282,6 @@ class SettingsWindowComponent extends Component {
         } catch (error) {
           console.error(error);
           this.deleteSettingsFile();
-          fullscreen_interval_component.value = this.VM.runtime.getFullscreenInterval();
-          normal_mode_interval_component.value = this.VM.runtime.getNormalInterval();
           this.setDefaultsDCAValues();
           this.VM.runtime.left_motor_inverted = false;
           this.VM.runtime.right_motor_inverted = false;
@@ -336,8 +291,6 @@ class SettingsWindowComponent extends Component {
           applyFirmwareSettingsToRuntime(this.VM, {});
         }
       } else {
-        fullscreen_interval_component.value = this.VM.runtime.getFullscreenInterval();
-        normal_mode_interval_component.value = this.VM.runtime.getNormalInterval();
         this.setDefaultsDCAValues();
         this.VM.runtime.left_motor_inverted = false;
         this.VM.runtime.right_motor_inverted = false;
@@ -365,24 +318,6 @@ class SettingsWindowComponent extends Component {
           <div id="settings-window-content-raw-simulation-title" className={styles.settings_window_content_raw}>
             <div id="raw-simulation-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
               <b>{this.props.intl.formatMessage(messages_for_sim.simulation_section)}</b>
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-1" className={styles.settings_window_content_raw}>
-            <div id="raw-1-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages.fullscreen_interval)}
-            </div>
-            <div id="raw-1-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-2-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages.normal_mode_interval)}
-            </div>
-            <div id="raw-2-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
             </div>
           </div>
 

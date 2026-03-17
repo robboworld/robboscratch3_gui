@@ -82,9 +82,7 @@ const StageHeaderComponent = function (props) {
             <Button
                 className={styles.stageButton}
                 onClick={() => {
-                                    vm.triggerCurrentStepTime(false);
                                     props.onSetStageUnFull.call(this);
-                                    
                                     }}
                 onKeyPress={onKeyPress}
             >
@@ -160,9 +158,7 @@ const StageHeaderComponent = function (props) {
                             <Button
                                 className={styles.stageButton}
                                 onClick={() => {
-                                    vm.triggerCurrentStepTime(true);
                                     props.onSetStageFull.call(this);
-                                    
                                     }}
                             >
                                 <img

@@ -5,7 +5,8 @@ import Renderer from 'scratch-render';
 import VM from 'scratch-vm';
 import { connect } from 'react-redux';
 
-import { STAGE_DISPLAY_SIZES } from '../lib/layout-constants';
+import layout, { STAGE_DISPLAY_SIZES } from '../lib/layout-constants';
+import { getStageDimensions } from '../lib/screen-utils';
 import { getEventXY } from '../lib/touch-utils';
 import VideoProvider from '../lib/video/video-provider';
 import { SVGRenderer as V2SVGAdapter } from 'scratch-svg-renderer';
@@ -76,6 +77,7 @@ class Stage extends React.Component {
         this.attachRectEvents();
         this.attachMouseEvents(this.canvas);
         this.updateRect();
+        this.applyStageSize();
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
     }
     shouldComponentUpdate(nextProps, nextState) {
@@ -94,7 +96,25 @@ class Stage extends React.Component {
             this.stopColorPickingLoop();
         }
         this.updateRect();
-        this.renderer.resize(this.rect.width, this.rect.height);
+        this.applyStageSize();
+    }
+    /**
+     * In fullscreen, render at native 480x360 and scale via CSS to avoid heavy draw buffer.
+     * In normal mode, render at display size as before.
+     */
+    applyStageSize() {
+        if (this.props.isFullScreen) {
+            this.renderer.resize(layout.standardStageWidth, layout.standardStageHeight);
+            const dims = getStageDimensions(this.props.stageSize, true);
+            this.canvas.style.width = `${dims.width}px`;
+            this.canvas.style.height = `${dims.height}px`;
+            this.rect = this.canvas.getBoundingClientRect();
+        } else {
+            this.canvas.style.width = '';
+            this.canvas.style.height = '';
+            this.updateRect();
+            this.renderer.resize(this.rect.width, this.rect.height);
+        }
     }
     componentWillUnmount() {
         this.detachMouseEvents(this.canvas);
@@ -146,6 +166,9 @@ class Stage extends React.Component {
     }
     updateRect() {
         this.rect = this.canvas.getBoundingClientRect();
+        if (this.props.isFullScreen) {
+            this.applyStageSize();
+        }
     }
     getScratchCoords(x, y) {
         const nativeSize = this.renderer.getNativeSize();

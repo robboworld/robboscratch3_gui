@@ -26,7 +26,6 @@ class StageHeader extends React.Component {
     }
     handleKeyPress (event) {
         if (event.key === 'Escape' && this.props.isFullScreen) {
-            this.props.vm.triggerCurrentStepTime(false); //isFullScreen?
             this.props.onSetStageUnFull(false);
         }
     }
