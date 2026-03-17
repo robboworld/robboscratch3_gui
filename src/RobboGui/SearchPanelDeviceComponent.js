@@ -31,12 +31,12 @@ const messages = defineMessages({
     device_otto: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_otto',
         description: ' ',
-        defaultMessage: 'Отто'
+        defaultMessage: 'Otto'
     },
     device_arduino: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_arduino',
         description: ' ',
-        defaultMessage: 'Ардуино'
+        defaultMessage: 'Arduino'
     },
     device_quadcopter: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_quadcopter',
@@ -71,7 +71,7 @@ const messages = defineMessages({
     flashing_device: {
         id: 'gui.FirmwareFlasherDeviceComponent.flashing_device',
         description: ' ',
-        defaultMessage: 'Прошиваем...'
+        defaultMessage: 'Flashing...'
     },
 
     update_firm_msg: {
@@ -96,157 +96,157 @@ const messages = defineMessages({
 
         id: 'gui.RobboGui.differ_firm_msg_device_maybe_incorrect',
         description: ' ',
-        defaultMessage: 'Возможна некорректная работа устройства.'
+        defaultMessage: 'Device may not work correctly.'
     },
     error: {
 
         id: 'gui.SearchPanel.error',
         description: ' ',
-        defaultMessage: 'Ошибка!'
+        defaultMessage: 'Error!'
     },
     firmware_verify_failed_try_again: {
         id: 'gui.SearchPanel.firmware_verify_failed_try_again',
         description: ' ',
-        defaultMessage: 'Прошивка не обновилась. Попробовать снова?'
+        defaultMessage: 'Firmware was not updated. Try again?'
     },
     device_connected: {
 
         id: 'gui.SearchPanel.device_connected',
         description: ' ',
-        defaultMessage: 'Устройство подключёно'
+        defaultMessage: 'Device connected'
     },
     device_checking_serial: {
 
         id: 'gui.SearchPanel.device_checking_serial',
         description: ' ',
-        defaultMessage: 'Проверяем серийный номер...'
+        defaultMessage: 'Checking serial number...'
     },
     device_no_response: {
 
         id: 'gui.SearchPanel.device_no_response',
         description: ' ',
-        defaultMessage: 'Обнаружено неизвестное устройство'
+        defaultMessage: 'Unknown device detected'
     },
     device_no_response_details: {
 
         id: 'gui.SearchPanel.device_no_response_details',
         description: ' ',
-        defaultMessage: 'Необходимо обновить прошивку.'
+        defaultMessage: 'Firmware update is required.'
     },
     device_no_response_alert_details: {
 
         id: 'gui.SearchPanel.device_no_response_alert_details',
         description: ' ',
-        defaultMessage: `К порту {device_port} подключено устройство, которое не распознаётся в Robbo Scratch.
-Вероятно в устройстве отсутствует прошивка,  либо загружена нестандартная прошивка. 
-                         
-Загрузить стандартную прошивку Robbo Scratch 3?`
+        defaultMessage: `A device connected to port {device_port} is not recognized by Robbo Scratch.
+The device may have no firmware or non-standard firmware loaded.
+
+Load standard Robbo Scratch 3 firmware?`
     },
     device_connection_lost: {
 
         id: 'gui.SearchPanel.device_connection_lost',
         description: ' ',
-        defaultMessage: 'Потеряна связь с устройством.'
+        defaultMessage: 'Connection to device lost.'
     },
     device_port_error: {
 
         id: 'gui.SearchPanel.device_port_error',
         description: ' ',
-        defaultMessage: 'Ошибка порта!'
+        defaultMessage: 'Port error!'
     },
     milliseconds: {
 
         id: 'gui.SearchPanel.milliseconds',
         description: ' ',
-        defaultMessage: ' мс'
+        defaultMessage: ' ms'
     },
     bluetooth_linux_hint: {
 
         id: 'gui.SearchPanel.bluetooth_linux_hint',
         description: ' ',
-        defaultMessage: 'В силу особенностей устройства Линукс Robbo Scratch нужно запустить с правами пользователя root.'
+        defaultMessage: 'Due to Linux specifics, Robbo Scratch must be run with root privileges.'
     },
     flashing_in_progress: {
 
         id: 'gui.SearchPanel.flashing_in_progress',
         description: ' ',
-        defaultMessage: 'Внимание!'
+        defaultMessage: 'Attention!'
     },
     flashing_in_progress_details: {
 
         id: 'gui.SearchPanel.flashing_in_progress_details',
         description: ' ',
-        defaultMessage: 'Идёт прошивка.'
+        defaultMessage: 'Flashing in progress.'
     },
     otto_flash_version_unchanged_try_arduino: {
         id: 'gui.SearchPanel.otto_flash_version_unchanged_try_arduino',
         description: ' ',
-        defaultMessage: 'Версия не изменилась. Попробовать прошить как Arduino?'
+        defaultMessage: 'Version unchanged. Try flashing as Arduino?'
     },
     otto_flash_retry_arduino_log: {
         id: 'gui.SearchPanel.otto_flash_retry_arduino_log',
         description: ' ',
-        defaultMessage: 'Версия не изменилась. Прошиваем как Arduino…'
+        defaultMessage: 'Version unchanged. Flashing as Arduino…'
     },
     device_try_to_reconnect: {
 
 
         id: 'gui.SearchPanel.device_try_to_reconnect',
         description: ' ',
-        defaultMessage: 'Попробуйте переподключить устройство. Или использовать другой usb разъём.'
+        defaultMessage: 'Try reconnecting the device or use a different USB port.'
 
     },
     device_reconnecting: {
         id: 'gui.SearchPanel.device_reconnecting',
         description: ' ',
-        defaultMessage: 'Потеряно соединение, попытка восстановить соединение'
+        defaultMessage: 'Connection lost, attempting to reconnect'
     },
     device_cannot_open_old_bluetooth_com: {
 
 
         id: 'gui.SearchPanel.device_cannot_open_old_bluetooth_com',
         description: ' ',
-        defaultMessage: `Не удаётся открыть блютуз порт. 
-Вероятно этот порт остался после предыдущего подключения по блютуз. 
-Пожалуйста, удалите старые устройства из списка блютуз устройств.`
+        defaultMessage: `Unable to open Bluetooth port.
+This port may be left over from a previous Bluetooth connection.
+Please remove old devices from the Bluetooth devices list.`
 
     },
     bluetooth_error_274C: {
         id: 'gui.SearchPanel.bluetooth_error_274C',
         description: ' ',
-        defaultMessage: 'Не удалось установить соединение. Устройство может быть недоступно, уже подключено к другому устройству, или возникла проблема с сетью. (0x274C)'
+        defaultMessage: 'Failed to establish connection. Device may be unavailable, already connected to another device, or there may be a network issue. (0x274C)'
     },
     bluetooth_error_274D: {
         id: 'gui.SearchPanel.bluetooth_error_274D',
         description: ' ',
-        defaultMessage: 'Соединение отклонено устройством. (0x274D)'
+        defaultMessage: 'Connection rejected by device. (0x274D)'
     },
     bluetooth_error_2711: {
         id: 'gui.SearchPanel.bluetooth_error_2711',
         description: ' ',
-        defaultMessage: 'Устройство не найдено или недоступно. (0x2711)'
+        defaultMessage: 'Device not found or unavailable. (0x2711)'
     },
     bluetooth_error_2740: {
         id: 'gui.SearchPanel.bluetooth_error_2740',
         description: ' ',
-        defaultMessage: 'Устройство уже подключено к другому устройству. Попробуйте отключить устройство и подключить снова. (0x2740)'
+        defaultMessage: 'Device is already connected to another device. Try disconnecting and connecting again. (0x2740)'
     },
     bluetooth_error_connection: {
         id: 'gui.SearchPanel.bluetooth_error_connection',
         description: ' ',
-        defaultMessage: 'Не удалось подключиться к Bluetooth устройству. Убедитесь, что устройство включено и доступно для подключения.'
+        defaultMessage: 'Failed to connect to Bluetooth device. Make sure the device is on and available for connection.'
     },
     bluetooth_error_already_connected: {
         id: 'gui.SearchPanel.bluetooth_error_already_connected',
         description: ' ',
-        defaultMessage: 'Устройство уже подключено. Попробуйте отключить устройство и подключить снова.'
+        defaultMessage: 'Device is already connected. Try disconnecting and connecting again.'
     },
     try_connect_to_port: {
 
 
         id: 'gui.SearchPanel.try_connect_to_port',
         description: ' ',
-        defaultMessage: 'Пробуем подключиться к порту...'
+        defaultMessage: 'Connecting to port...'
 
     },
     port_opened: {
@@ -254,7 +254,7 @@ const messages = defineMessages({
 
         id: 'gui.SearchPanel.port_opened',
         description: ' ',
-        defaultMessage: 'Порт открыт'
+        defaultMessage: 'Port opened'
 
     }
 

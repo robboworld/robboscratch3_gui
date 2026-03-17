@@ -28,19 +28,19 @@ const messages = defineMessages({
 
     id: 'gui.RobboGui.bluetooth_devices_not_found',
     description: ' ',
-    defaultMessage: 'Не обнаружены доступные для подключения блютуз устройства. Обратитесь к инструкции пользователя (FAQ).'
+    defaultMessage: 'No Bluetooth devices available for connection. See user manual (FAQ).'
   },
   bluetooth_searching: {
 
     id: 'gui.RobboGui.bluetooth_searching',
     description: ' ',
-    defaultMessage: 'Ищем блютуз устройства'
+    defaultMessage: 'Searching for Bluetooth devices'
   },
   try_to_install_drivers: {
 
     id: 'gui.RobboGui.try_to_install_drivers',
     description: ' ',
-    defaultMessage: 'Попробуйте установить или обновить драйвера для usb порта.'
+    defaultMessage: 'Try installing or updating USB port drivers.'
   }
 });
 

@@ -21,12 +21,12 @@ const messages = defineMessages({
     sim_enable: {
         id: 'gui.RobboMenu.sim_enable',
         description: ' ',
-        defaultMessage: 'Включить симуляцию робота'
+        defaultMessage: 'Enable robot simulation'
     },
     sim_disable: {
         id: 'gui.RobboMenu.sim_disable',
         description: ' ',
-        defaultMessage: 'Выключить симуляцию робота'
+        defaultMessage: 'Disable robot simulation'
     },
     extension_pack: {
         id: 'gui.RobboMenu.extension_pack',
@@ -36,12 +36,12 @@ const messages = defineMessages({
     extension_pack_enable: {
         id: 'gui.RobboMenu.extension_pack_enable',
         description: ' ',
-        defaultMessage: 'Включить расширенный набор датчиков робота'
+        defaultMessage: 'Enable extended robot sensors pack'
     },
     extension_pack_disable: {
         id: 'gui.RobboMenu.extension_pack_disable',
         description: ' ',
-        defaultMessage: 'Выключить расширенный набор датчиков робота'
+        defaultMessage: 'Disable extended robot sensors pack'
     }, 
     lab_ext_sensors: {
         id: 'gui.RobboMenu.lab_ext_sensors',
@@ -51,12 +51,12 @@ const messages = defineMessages({
       lab_ext_sensors_enable: {
         id: 'gui.RobboMenu.lab_ext_sensors_enable',
         description: ' ',
-        defaultMessage: 'Включить внешние датчики лаборатории'
+        defaultMessage: 'Enable laboratory external sensors'
     },
      lab_ext_sensors_disable: {
         id: 'gui.RobboMenu.lab_ext_sensors_disable',
         description: ' ',
-        defaultMessage: 'Выключить внешние датчики лаборатории'
+        defaultMessage: 'Disable laboratory external sensors'
     }, 
     trigger_logging:{
 
@@ -76,14 +76,14 @@ const messages = defineMessages({
 
       id: 'gui.RobboMenu.trigger_settings_window',
       description: ' ',
-      defaultMessage: 'Настройки'
+      defaultMessage: 'Settings'
 
     },
     trigger_about_window:{
 
       id: 'gui.RobboMenu.trigger_about_window',
       description: ' ',
-      defaultMessage: 'О программе'
+      defaultMessage: 'About'
 
     },
     color_sensor_correction1:{

@@ -18,7 +18,7 @@ const messages = defineMessages({
   settings_window: {
     id: 'gui.RobboGui.settings_window',
     description: ' ',
-    defaultMessage: 'Настройки'
+    defaultMessage: 'Settings'
   },
   intervals_for_blocks_chain: {
     id: 'gui.RobboGui.intervals_for_blocks_chain',
@@ -34,17 +34,17 @@ const messages = defineMessages({
   fullscreen_interval: {
     id: 'gui.RobboGui.fullscreen_interval',
     description: ' ',
-    defaultMessage: 'Интервал выполнения цепочки блоков в полноэкранном режиме (1-500) (в мс): '
+    defaultMessage: 'Block chain execution interval in fullscreen (1-500) (ms): '
   },
   normal_mode_interval: {
     id: 'gui.RobboGui.normal_mode_interval',
     description: ' ',
-    defaultMessage: 'Интервал выполнения цепочки блоков в обычном режиме (1-500) (в мс): '
+    defaultMessage: 'Block chain execution interval in normal mode (1-500) (ms): '
   },
   save_settings: {
     id: 'gui.RobboGui.save_settings',
     description: ' ',
-    defaultMessage: 'Сохранить настройки '
+    defaultMessage: 'Save settings'
   },
 });
 
@@ -52,12 +52,12 @@ const messages_for_sim = defineMessages({
   simulation_section: {
     id: 'gui.RobboGui.settings_window.simulation_section',
     description: ' ',
-    defaultMessage: 'Симуляция'
+    defaultMessage: 'Simulation'
   },
   sim_robot_bounds_enabled: {
     id: 'gui.RobboGui.settings_window.sim_robot_bounds_enabled',
     description: ' ',
-    defaultMessage: 'Границы сцены (2D-симулятор)'
+    defaultMessage: 'Scene bounds (2D simulator)'
   },
 });
 

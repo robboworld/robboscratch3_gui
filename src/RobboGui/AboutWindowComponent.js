@@ -23,50 +23,50 @@ const messages = defineMessages({
   about_window: {
     id: 'gui.RobboGui.about_window',
     description: ' ',
-    defaultMessage: 'О программе'
+    defaultMessage: 'About'
   },
   start_profiling: {
     id: 'gui.RobboGui.start_profiling',
     description: ' ',
-    defaultMessage: 'Включить измерение производительности'
+    defaultMessage: 'Enable performance measurement'
   },
   stop_profiling: {
     id: 'gui.RobboGui.stop_profiling',
     description: ' ',
-    defaultMessage: 'Выключить измерение производительности'
+    defaultMessage: 'Disable performance measurement'
   },
   step_duration: {
     id: 'gui.RobboGui.step_duration',
     description: ' ',
     defaultMessage:
-      'Время полного выполнения цепочки блоков (в мс): '
+      'Full block chain execution time (ms): '
   },
   recieve_delta: {
     id: 'gui.RobboGui.recieve_delta',
     description: ' ',
     defaultMessage:
-      'Задержка между получением полного пакета телеметрии (в мс): '
+      'Delay between receiving full telemetry packet (ms): '
   },
   average_step_delay_time: {
     id: 'gui.RobboGui.average_step_delay_time',
     description: ' ',
     defaultMessage:
-      'Среднее время задержки между итерациями выполнения цепочки блоков (в мс): '
+      'Average delay between block chain execution iterations (ms): '
   },
   os_name_and_version: {
     id: 'gui.RobboGui.os_name_and_version',
     description: ' ',
-    defaultMessage: 'Операционная система: '
+    defaultMessage: 'Operating system: '
   },
   arch: {
     id: 'gui.RobboGui.arch',
     description: ' ',
-    defaultMessage: 'Архитектура: '
+    defaultMessage: 'Architecture: '
   },
   cpu: {
     id: 'gui.RobboGui.cpu',
     description: ' ',
-    defaultMessage: 'Процессор: '
+    defaultMessage: 'Processor: '
   },
   copy_to_clipboard: {
     id: 'gui.RobboGui.copy_to_clipboard',

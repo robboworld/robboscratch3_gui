@@ -112,17 +112,17 @@ const messages = defineMessages({
     pin20: {
         id: 'gui.RobboGui.ArduinoPalette.pin20',
         description: ' ',
-        defaultMessage: 'ПИН 20: '
+        defaultMessage: 'PIN 20: '
     },
     pin21: {
         id: 'gui.RobboGui.ArduinoPalette.pin21',
         description: ' ',
-        defaultMessage: 'ПИН 21: '
+        defaultMessage: 'PIN 21: '
     },
     arduino: {
         id: 'gui.RobboGui.ArduinoPalette.arduino',
         description: ' ',
-        defaultMessage: 'Ардуино'
+        defaultMessage: 'Arduino'
     }
   });
 
