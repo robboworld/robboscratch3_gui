@@ -15,9 +15,9 @@ import {
   ActionTriggerNewDraggableWindow,
   ActionCreateNewDraggableWindow
 } from './actions/sensor_actions';
-import { node_process, node_os } from '../lib/platform';
+import { node_process, node_os, getSystemInfoAsync } from '../lib/platform';
 
-const VERSION = 'Robbo Scratch v.3.111.3';
+const VERSION = 'Robbo Scratch v.3.111.4';
 
 const messages = defineMessages({
   about_window: {
@@ -76,8 +76,9 @@ const messages = defineMessages({
 });
 
 class AboutWindowComponent extends Component {
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
+    this.state = { systemInfo: null };
   }
 
   onThisWindowClose() {
@@ -93,35 +94,21 @@ class AboutWindowComponent extends Component {
     this.avTimeInterval = null;
     this.averageTime = 0;
 
+    const hasRobboGetSystemInfo = typeof window !== 'undefined' &&
+      typeof window.robboGetSystemInfo === 'function';
+    getSystemInfoAsync().then(systemInfo => {
+      this.setState({ systemInfo });
+    });
+
+    if (hasRobboGetSystemInfo) return;
+
     const os_field = document.getElementById(
       `raw-5-about-window-content-column-2`
     );
     if (!os_field) return;
 
     const setOsText = (text) => { os_field.innerHTML = text; };
-
-    if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-      try {
-        const getos = require('getos');
-        getos((e, os) => {
-          if (e) return console.error(e);
-          console.warn(os);
-          setOsText(
-            os.os +
-            ' ' +
-            (typeof node_os.release !== 'undefined' ? node_os.release() : '') +
-            ' ' +
-            (typeof os.dist !== 'undefined' ? os.dist : '') +
-            ' ' +
-            (typeof os.release !== 'undefined' ? os.release : '')
-          );
-        });
-      } catch (err) {
-        setOsText(node_os.release ? node_os.release() : '');
-      }
-    } else {
-      setOsText(node_os.release ? node_os.release() : '');
-    }
+    setOsText(node_process.platform ? `${node_process.platform} ${node_os.release()}` : (node_os.release ? node_os.release() : '—'));
   }
 
   startProfiling() {
@@ -285,6 +272,12 @@ class AboutWindowComponent extends Component {
   }
 
   render() {
+    const si = this.state.systemInfo;
+    const hasAnyFromIpc = si != null && (si.osLabel || si.platform || si.arch || si.cpuModel);
+    const useSystemInfo = hasAnyFromIpc;
+    const osDisplay = useSystemInfo ? (si.osLabel || si.platform + ' ' + (si.release || '') || '—') : (node_process.platform ? `${node_process.platform} ${node_os.release()}` : '—');
+    const archDisplay = useSystemInfo ? (si.arch || '—') : (node_process.arch || '—');
+    const cpuDisplay = useSystemInfo ? (si.cpuModel || '—') : (node_os.cpus().length ? node_os.cpus()[0].model : '—');
     return (
       <div id="about-window" className={styles.about_window}>
         <div
@@ -435,7 +428,7 @@ class AboutWindowComponent extends Component {
               id="raw-5-about-window-content-column-2"
               className={styles.about_window_value_column}
             >
-              {node_process.platform ? `${node_process.platform} ${node_os.release()}` : '—'}
+              {osDisplay}
             </div>
 
             <div
@@ -468,7 +461,7 @@ class AboutWindowComponent extends Component {
               id="raw-6-about-window-content-column-2"
               className={styles.about_window_value_column}
             >
-              {node_process.arch}
+              {archDisplay}
             </div>
 
             <div
@@ -501,7 +494,7 @@ class AboutWindowComponent extends Component {
               id="raw-7-about-window-content-column-2"
               className={styles.about_window_value_column}
             >
-              {node_os.cpus().length ? node_os.cpus()[0].model : ''}
+              {cpuDisplay}
             </div>
 
             <div
