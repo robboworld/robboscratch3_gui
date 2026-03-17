@@ -11,10 +11,7 @@ import { node_process, isDesktopWithBluetooth } from '../lib/platform';
 import {
   getSettingsFromStorage,
   applySettingsToDCA,
-  applyFirmwareSettingsToRuntime,
-  getFirmwareSettingsStorageData,
-  normalizeFirmwareSettings,
-  FIRMWARE_SETTINGS_DEFAULTS
+  applyFirmwareSettingsToRuntime
 } from '../lib/settingsLoader';
 
 const messages = defineMessages({
@@ -51,32 +48,12 @@ const messages = defineMessages({
   },
 });
 
-const messages_for_Motor_settings = defineMessages({
-
-  set_motors_invertion: {
-    id: 'gui.RobboGui.settings_window.set_motors_invertion',
-    description: ' ',
-    defaultMessage: 'Set motors invertion '
-  },
-  set_left_motor_invertion: {
-    id: 'gui.RobboGui.settings_window.set_left_motor_invertion',
-    description: ' ',
-    defaultMessage: 'Set left motor invertion '
-  },
-  set_right_motor_invertion: {
-    id: 'gui.RobboGui.settings_window.set_right_motor_invertion',
-    description: ' ',
-    defaultMessage: 'Set right  motor invertion '
-  },
-  motor_settings_tittle: {
-    id: 'gui.RobboGui.settings_window.motor_settings_tittle',
-    description: ' ',
-    defaultMessage: 'Motor settings: '
-  },
-
-});
-
 const messages_for_sim = defineMessages({
+  simulation_section: {
+    id: 'gui.RobboGui.settings_window.simulation_section',
+    description: ' ',
+    defaultMessage: 'Симуляция'
+  },
   sim_robot_bounds_enabled: {
     id: 'gui.RobboGui.settings_window.sim_robot_bounds_enabled',
     description: ' ',
@@ -84,44 +61,11 @@ const messages_for_sim = defineMessages({
   },
 });
 
-const messages_for_firmware = defineMessages({
-  firmware_section: {
-    id: 'gui.RobboGui.settings_window.firmware_section',
-    description: ' ',
-    defaultMessage: 'Прошивка'
-  },
-  firmware_common_subsection: {
-    id: 'gui.RobboGui.settings_window.firmware_common_subsection',
-    description: ' ',
-    defaultMessage: 'Общие (все устройства)'
-  },
-  firmware_nano_detect_timeout: {
-    id: 'gui.RobboGui.settings_window.firmware_nano_detect_timeout',
-    description: ' ',
-    defaultMessage: 'Таймаут определения при прошивке (мс, 1000–10000):'
-  },
-  firmware_block_transmit_delay: {
-    id: 'gui.RobboGui.settings_window.firmware_block_transmit_delay',
-    description: ' ',
-    defaultMessage: 'Задержка блока при прошивке (мс, 20–200):'
-  },
-  firmware_nulllab_subsection: {
-    id: 'gui.RobboGui.settings_window.firmware_nulllab_subsection',
-    description: ' ',
-    defaultMessage: 'Null Lab (Отто)'
-  },
-  otto_null_lab_baud: {
-    id: 'gui.RobboGui.settings_window.otto_null_lab_baud',
-    description: ' ',
-    defaultMessage: 'Скорость (baud) для Null Lab (9600–115200):'
-  },
-});
-
 const messages_for_DCA_intervals = defineMessages({
-  for_usb: {
-    id: 'gui.dca.for_usb',
+  device_connection_section: {
+    id: 'gui.dca.device_connection_section',
     description: ' ',
-    defaultMessage: 'Intervals for usb'
+    defaultMessage: 'Device connection'
   },
   no_response_time: {
     id: 'gui.dca.no_response_time',
@@ -142,33 +86,6 @@ const messages_for_DCA_intervals = defineMessages({
     id: 'gui.dca.uno_timeout',
     description: ' ',
     defaultMessage: 'UNO TIMEOUT'
-  },
-
-  no_response_time_bluetooth: {
-    id: 'gui.dca.no_response_time_bluetooth',
-    description: ' ',
-    defaultMessage: 'NO RESPONSE TIME'
-  },
-  no_start_timeout_bluetooth: {
-    id: 'gui.dca.no_start_timeout_bluetooth',
-    description: ' ',
-    defaultMessage: 'NO START TIMEOUT'
-  },
-  device_handle_timeout_bluetooth: {
-    id: 'gui.dca.device_handle_timeout_bluetooth',
-    description: ' ',
-    defaultMessage: 'DEVICE HANDLE TIMEOUT'
-  },
-  uno_timeout_bluetooth: {
-    id: 'gui.dca.uno_timeout_bluetooth',
-    description: ' ',
-    defaultMessage: 'UNO TIMEOUT'
-  },
-
-  for_bluetooth: {
-    id: 'gui.dca.for_bluetooth',
-    description: ' ',
-    defaultMessage: 'Intervals for bluetooth'
   },
   bluetooth_search_enabled: {
     id: 'gui.dca.bluetooth_search_enabled',
@@ -195,214 +112,77 @@ class SettingsWindowComponent extends Component {
     return component && component.children && component.children[0] ? component.children[0] : null;
   }
 
-  readFirmwareSettingsFromInputs() {
-    const nanoDetectInput = this.getInput("raw-16-settings-window-content-column-2");
-    const blockDelayInput = this.getInput("raw-17-settings-window-content-column-2");
-    const nullLabBaudInput = this.getInput("raw-14-settings-window-content-column-2");
-
-    return getFirmwareSettingsStorageData({
-      firmware_detect_timeout_ms: nanoDetectInput ? nanoDetectInput.value : undefined,
-      firmware_block_transmit_delay: blockDelayInput ? blockDelayInput.value : undefined,
-      firmware_baud_rate: nullLabBaudInput ? nullLabBaudInput.value : undefined
-    });
-  }
-
-  applyFirmwareSettingsToInputs(settingsData) {
-    const firmwareSettings = normalizeFirmwareSettings(settingsData);
-    const nanoDetectInput = this.getInput("raw-16-settings-window-content-column-2");
-    const blockDelayInput = this.getInput("raw-17-settings-window-content-column-2");
-    const nullLabBaudInput = this.getInput("raw-14-settings-window-content-column-2");
-
-    if (nanoDetectInput) nanoDetectInput.value = firmwareSettings.detect_timeout_ms;
-    if (blockDelayInput) blockDelayInput.value = firmwareSettings.block_transmit_delay;
-    if (nullLabBaudInput) nullLabBaudInput.value = firmwareSettings.baud_rate;
-
-    return firmwareSettings;
-  }
-
   saveDCASettings() {
-    let DCA_settings_data = {
-      device_response_timeout: this.DCA_defaults.NO_RESPONSE_TIME_DEFAULT,
-      device_no_start_timeout: this.DCA_defaults.NO_START_TIMEOUT_DEFAULT,
-      device_handle_timeout: this.DCA_defaults.DEVICE_HANDLE_TIMEOUT_DEFAULT,
-      device_uno_start_search_timeout: this.DCA_defaults.UNO_TIMEOUT_DEFAULT,
+    const def = this.DCA_defaults;
+    const max = this.DCA_maxes;
+    const v = (id) => { const el = this.getInput(id); return Number(el != null ? el.value : undefined); };
+    let no_response_time = Math.round(v("raw-connection-1-settings-window-content-column-2"));
+    let no_start_timeout = Math.round(v("raw-connection-2-settings-window-content-column-2"));
+    let device_handle_timeout = Math.round(v("raw-connection-3-settings-window-content-column-2"));
+    let uno_search_timeout = Math.round(v("raw-connection-4-settings-window-content-column-2"));
+
+    if (typeof no_response_time !== 'number' || no_response_time <= 0 || no_response_time > max.NO_RESPONSE_TIME_MAX) {
+      no_response_time = def.NO_RESPONSE_TIME_DEFAULT;
+    }
+    if (typeof no_start_timeout !== 'number' || no_start_timeout <= 0 || no_start_timeout > max.NO_START_TIMEOUT_MAX) {
+      no_start_timeout = def.NO_START_TIMEOUT_DEFAULT;
+    }
+    if (typeof device_handle_timeout !== 'number' || device_handle_timeout <= 0 || device_handle_timeout > max.DEVICE_HANDLE_TIMEOUT_MAX) {
+      device_handle_timeout = def.DEVICE_HANDLE_TIMEOUT_DEFAULT;
+    }
+    if (typeof uno_search_timeout !== 'number' || uno_search_timeout <= 0 || uno_search_timeout > device_handle_timeout) {
+      uno_search_timeout = Math.round(device_handle_timeout / 2);
+      const unoInput = this.getInput("raw-connection-4-settings-window-content-column-2");
+      if (unoInput) unoInput.value = uno_search_timeout;
+    }
+
+    return {
+      device_response_timeout: no_response_time,
+      device_no_start_timeout: no_start_timeout,
+      device_handle_timeout: device_handle_timeout,
+      device_uno_start_search_timeout: uno_search_timeout,
+      device_response_timeout_bluetooth: no_response_time,
+      device_no_start_timeout_bluetooth: no_start_timeout,
+      device_handle_timeout_bluetooth: device_handle_timeout,
+      device_uno_start_search_timeout_bluetooth: uno_search_timeout
     };
-
-    var DCA_no_response_time = document.getElementById("raw-3-settings-window-content-column-2").children[0];
-    let no_response_time = Math.round(Number(DCA_no_response_time.value));
-    if (typeof (no_response_time) === 'number' && no_response_time > 0 && no_response_time <= this.DCA_maxes.NO_RESPONSE_TIME_MAX) {
-      DCA_settings_data.device_response_timeout = no_response_time;
-    } else {
-      DCA_settings_data.device_response_timeout = this.DCA_defaults.NO_RESPONSE_TIME_DEFAULT;
-    }
-
-    var DCA_no_start_timeout = document.getElementById("raw-4-settings-window-content-column-2").children[0];
-    let no_start_timeout = Math.round(Number(DCA_no_start_timeout.value));
-    if (typeof (no_start_timeout) === 'number' && no_start_timeout > 0 && no_start_timeout <= this.DCA_maxes.NO_START_TIMEOUT_MAX) {
-      DCA_settings_data.device_no_start_timeout = no_start_timeout;
-    } else {
-      DCA_settings_data.device_no_start_timeout = this.DCA_defaults.NO_START_TIMEOUT_DEFAULT;
-    }
-
-    var DCA_device_handle_timeout = document.getElementById("raw-5-settings-window-content-column-2").children[0];
-    let device_handle_timeout = Math.round(Number(DCA_device_handle_timeout.value));
-    if (typeof (device_handle_timeout) === 'number' && device_handle_timeout > 0 && device_handle_timeout <= this.DCA_maxes.DEVICE_HANDLE_TIMEOUT_MAX) {
-      DCA_settings_data.device_handle_timeout = device_handle_timeout;
-    } else {
-      DCA_settings_data.device_handle_timeout = this.DCA_defaults.DEVICE_HANDLE_TIMEOUT_DEFAULT;
-    }
-
-    var DCA_uno_search_timeout = document.getElementById("raw-6-settings-window-content-column-2").children[0];
-    let uno_search_timeout = Math.round(Number(DCA_uno_search_timeout.value));
-    if (typeof (uno_search_timeout) === 'number' && uno_search_timeout > 0 && uno_search_timeout <= device_handle_timeout) {
-      DCA_settings_data.device_uno_start_search_timeout = uno_search_timeout;
-    } else {
-      DCA_settings_data.device_uno_start_search_timeout = Math.round(device_handle_timeout / 2);
-      var uno_timeout_component = document.getElementById("raw-6-settings-window-content-column-2").children[0];
-      uno_timeout_component.value = DCA_settings_data.device_uno_start_search_timeout;
-    }
-
-    return DCA_settings_data;
-  }
-
-  saveDCASettingsBluetooth() {
-    let DCA_settings_data = {
-      device_response_timeout_bluetooth: this.DCA_defaults_bluetooth.NO_RESPONSE_TIME_DEFAULT_BLUETOOTH,
-      device_no_start_timeout_bluetooth: this.DCA_defaults_bluetooth.NO_START_TIMEOUT_DEFAULT_BLUETOOTH,
-      device_handle_timeout_bluetooth: this.DCA_defaults_bluetooth.DEVICE_HANDLE_TIMEOUT_DEFAULT_BLUETOOTH,
-      device_uno_start_search_timeout_bluetooth: this.DCA_defaults_bluetooth.UNO_TIMEOUT_DEFAULT_BLUETOOTH,
-    };
-
-    var DCA_no_response_time = document.getElementById("raw-7-settings-window-content-column-2").children[0];
-    let no_response_time = Math.round(Number(DCA_no_response_time.value));
-    if (typeof (no_response_time) === 'number' && no_response_time > 0 && no_response_time <= this.DCA_maxes_bluetooth.NO_RESPONSE_TIME_MAX_BLUETOOTH) {
-      DCA_settings_data.device_response_timeout_bluetooth = no_response_time;
-    } else {
-      DCA_settings_data.device_response_timeout_bluetooth = this.DCA_defaults_bluetooth.NO_RESPONSE_TIME_DEFAULT_BLUETOOTH;
-    }
-
-    var DCA_no_start_timeout = document.getElementById("raw-8-settings-window-content-column-2").children[0];
-    let no_start_timeout = Math.round(Number(DCA_no_start_timeout.value));
-    if (typeof (no_start_timeout) === 'number' && no_start_timeout > 0 && no_start_timeout <= this.DCA_maxes_bluetooth.NO_START_TIMEOUT_MAX_BLUETOOTH) {
-      DCA_settings_data.device_no_start_timeout = no_start_timeout;
-    } else {
-      DCA_settings_data.device_no_start_timeout_bluetooth = this.DCA_defaults_bluetooth.NO_START_TIMEOUT_DEFAULT_BLUETOOTH;
-    }
-
-    var DCA_device_handle_timeout = document.getElementById("raw-9-settings-window-content-column-2").children[0];
-    let device_handle_timeout = Math.round(Number(DCA_device_handle_timeout.value));
-    if (typeof (device_handle_timeout) === 'number' && device_handle_timeout > 0 && device_handle_timeout <= this.DCA_maxes.DEVICE_HANDLE_TIMEOUT_MAX) {
-      DCA_settings_data.device_handle_timeout_bluetooth = device_handle_timeout;
-    } else {
-      DCA_settings_data.device_handle_timeout_bluetooth = this.DCA_defaults_bluetooth.DEVICE_HANDLE_TIMEOUT_DEFAULT_BLUETOOTH;
-    }
-
-    var DCA_uno_search_timeout = document.getElementById("raw-10-settings-window-content-column-2").children[0];
-    let uno_search_timeout = Math.round(Number(DCA_uno_search_timeout.value));
-    if (typeof (uno_search_timeout) === 'number' && uno_search_timeout > 0 && uno_search_timeout <= device_handle_timeout) {
-      DCA_settings_data.device_uno_start_search_timeout_bluetooth = uno_search_timeout;
-    } else {
-      DCA_settings_data.device_uno_start_search_timeout_bluetooth = Math.round(device_handle_timeout / 2);
-      var uno_timeout_component_bluetooth = document.getElementById("raw-10-settings-window-content-column-2").children[0];
-      uno_timeout_component_bluetooth.value = DCA_settings_data.device_uno_start_search_timeout_bluetooth;
-    }
-
-    return DCA_settings_data;
   }
 
   saveSettings() {
-    let settings_data = {};
+    const settings_data = this.saveDCASettings();
 
-
-    //This settings are DCA settings
-    let DCA_settings_data = this.saveDCASettings();
-    Object.keys(DCA_settings_data).map((key) => {
-      settings_data[key] = DCA_settings_data[key];
-    });
-    //End of saving DCA settings
-
-    //Saving DCA for bluetooth (block always visible in settings)
-    DCA_settings_data = this.saveDCASettingsBluetooth();
-    Object.keys(DCA_settings_data).map((key) => {
-      settings_data[key] = DCA_settings_data[key];
-    });
-    var btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
+    const btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
     if (btSearchEl && btSearchEl.children[0]) {
       settings_data.bluetooth_search_enabled = btSearchEl.children[0].checked;
     }
-    //End of saving DCA settings
 
-    var fullscreen_interval_component = document.getElementById("raw-1-settings-window-content-column-2").children[0];
+    const fullscreen_interval_component = document.getElementById("raw-1-settings-window-content-column-2").children[0];
     let fullscreen_interval = Math.round(Number(fullscreen_interval_component.value));
-    if (typeof (fullscreen_interval) === 'number' && fullscreen_interval > 0 && typeof (settings_data.device_handle_timeout) !== 'undefined') {
-      settings_data.fullscreen_interval = fullscreen_interval;
-    } else {
-      settings_data.fullscreen_interval = this.VM.runtime.getFullscreenInterval();
+    if (typeof fullscreen_interval !== 'number' || fullscreen_interval <= 0) {
+      fullscreen_interval = this.VM.runtime.getFullscreenInterval();
     }
+    settings_data.fullscreen_interval = fullscreen_interval;
 
-    var normal_mode_interval_component = document.getElementById("raw-2-settings-window-content-column-2").children[0];
+    const normal_mode_interval_component = document.getElementById("raw-2-settings-window-content-column-2").children[0];
     let normal_mode_interval = Math.round(Number(normal_mode_interval_component.value));
-    if (typeof (normal_mode_interval) === 'number' && normal_mode_interval > 0 && typeof (settings_data.device_handle_timeout) !== 'undefined') {
-      settings_data.normal_mode_interval = normal_mode_interval;
-    } else {
-      settings_data.normal_mode_interval = this.VM.runtime.getNormalInterval();
+    if (typeof normal_mode_interval !== 'number' || normal_mode_interval <= 0) {
+      normal_mode_interval = this.VM.runtime.getNormalInterval();
     }
+    settings_data.normal_mode_interval = normal_mode_interval;
 
-    var left_motor_inverted_component = document.getElementById("raw-11-settings-window-content-column-2").children[0];
-    var left_motor_inverted_setting_checked = Number(left_motor_inverted_component.checked);
-    console.warn(`left_motor_inverted_setting_checked: ${left_motor_inverted_setting_checked}`);
-    if (typeof (left_motor_inverted_setting_checked) !== 'undefined') {
-      settings_data.left_motor_inverted_setting_checked = left_motor_inverted_setting_checked;
-    } else {
-      settings_data.left_motor_inverted_setting_checked = false;
-    }
+    const simBoundsEl = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
+    settings_data.sim_clamp_to_stage = (simBoundsEl && simBoundsEl.children[0]) ? simBoundsEl.children[0].checked : true;
 
-    var right_motor_inverted_component = document.getElementById("raw-12-settings-window-content-column-2").children[0];
-    var right_motor_inverted_setting_checked = Number(right_motor_inverted_component.checked);
-    console.warn(`right_motor_inverted_setting_checked: ${right_motor_inverted_setting_checked}`);
-    if (typeof (right_motor_inverted_setting_checked) !== 'undefined') {
-      settings_data.right_motor_inverted_setting_checked = right_motor_inverted_setting_checked;
-    } else {
-      settings_data.right_motor_inverted_setting_checked = false;
-    }
-
-    var simBoundsEl = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
-    if (simBoundsEl && simBoundsEl.children[0]) {
-      settings_data.sim_clamp_to_stage = simBoundsEl.children[0].checked;
-    } else {
-      settings_data.sim_clamp_to_stage = true;
-    }
-
-    const firmwareSettingsData = this.readFirmwareSettingsFromInputs();
-    Object.keys(firmwareSettingsData).forEach((key) => {
-      settings_data[key] = firmwareSettingsData[key];
-    });
-
-    let settings_data_serialized = JSON.stringify(settings_data);
-
-    console.warn(settings_data_serialized);
-
-    //if ( (isNaN(fullscreen_interval)) || (typeof(fullscreen_interval) === 'undefined')) return
+    const settings_data_serialized = JSON.stringify(settings_data);
 
     this.VM.runtime.clearAvTimeInterval();
     this.VM.runtime.setSettingsSaved();
-
     this.VM.runtime.setFullscreenInterval(fullscreen_interval);
-
-    //  if ( (isNaN(normal_mode_interval)) || (typeof(normal_mode_interval) === 'undefined')) return;
-
     this.VM.runtime.setNormalInterval(normal_mode_interval);
-
-
-    applySettingsToDCA(this.VM, settings_data);
-
-
-    this.VM.runtime.left_motor_inverted = left_motor_inverted_setting_checked;
-    this.VM.runtime.right_motor_inverted = right_motor_inverted_setting_checked;
-
     this.VM.runtime.sim_clamp_to_stage = settings_data.sim_clamp_to_stage !== false;
 
-    applyFirmwareSettingsToRuntime(this.VM, settings_data);
+    applySettingsToDCA(this.VM, settings_data);
+    applyFirmwareSettingsToRuntime(this.VM, {});
 
     this.deleteSettingsFile(() => {
       this.saveSettingsData(settings_data_serialized);
@@ -465,181 +245,106 @@ class SettingsWindowComponent extends Component {
   }
 
   setDefaultsDCAValues() {
+    const def = this.DCA_defaults;
+    const c1 = this.getInput("raw-connection-1-settings-window-content-column-2");
+    const c2 = this.getInput("raw-connection-2-settings-window-content-column-2");
+    const c3 = this.getInput("raw-connection-3-settings-window-content-column-2");
+    const c4 = this.getInput("raw-connection-4-settings-window-content-column-2");
+    if (c1) c1.value = def.NO_RESPONSE_TIME_DEFAULT;
+    if (c2) c2.value = def.NO_START_TIMEOUT_DEFAULT;
+    if (c3) c3.value = def.DEVICE_HANDLE_TIMEOUT_DEFAULT;
+    if (c4) c4.value = def.UNO_TIMEOUT_DEFAULT;
 
-    var no_response_time_component = document.getElementById("raw-3-settings-window-content-column-2").children[0];
-    var no_start_timeout_component = document.getElementById("raw-4-settings-window-content-column-2").children[0];
-    var device_handle_timeout_component = document.getElementById("raw-5-settings-window-content-column-2").children[0];
-    var uno_timeout_component = document.getElementById("raw-6-settings-window-content-column-2").children[0];
-
-    no_response_time_component.value = this.DCA_defaults.NO_RESPONSE_TIME_DEFAULT;
-    no_start_timeout_component.value = this.DCA_defaults.NO_START_TIMEOUT_DEFAULT;
-    device_handle_timeout_component.value = this.DCA_defaults.DEVICE_HANDLE_TIMEOUT_DEFAULT;
-    uno_timeout_component.value = this.DCA_defaults.UNO_TIMEOUT_DEFAULT;
-
-    var no_response_time_component_bluetooth = document.getElementById("raw-7-settings-window-content-column-2").children[0];
-    var no_start_timeout_component_bluetooth = document.getElementById("raw-8-settings-window-content-column-2").children[0];
-    var device_handle_timeout_component_bluetooth = document.getElementById("raw-9-settings-window-content-column-2").children[0];
-    var uno_timeout_component_bluetooth = document.getElementById("raw-10-settings-window-content-column-2").children[0];
-
-    no_response_time_component_bluetooth.value = this.DCA_defaults_bluetooth.NO_RESPONSE_TIME_DEFAULT_BLUETOOTH;
-    no_start_timeout_component_bluetooth.value = this.DCA_defaults_bluetooth.NO_START_TIMEOUT_DEFAULT_BLUETOOTH;
-    device_handle_timeout_component_bluetooth.value = this.DCA_defaults_bluetooth.DEVICE_HANDLE_TIMEOUT_DEFAULT_BLUETOOTH;
-    uno_timeout_component_bluetooth.value = this.DCA_defaults_bluetooth.UNO_TIMEOUT_DEFAULT_BLUETOOTH;
-
-    var btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
+    const btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
     if (btSearchEl && btSearchEl.children[0]) {
       btSearchEl.children[0].checked = true;
     }
 
-    var simBoundsElDef = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
+    const simBoundsElDef = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
     if (simBoundsElDef && simBoundsElDef.children[0]) {
       simBoundsElDef.children[0].checked = true;
     }
-
-    this.applyFirmwareSettingsToInputs({});
   }
 
 
   componentDidMount() {
-
     this.VM = this.props.VM;
-
     this.DCA_defaults = this.VM.DCA.getDefaultValuesOfIntervals();
     this.DCA_maxes = this.VM.DCA.getMaxValuesOfIntervals();
     this.DCA_defaults_bluetooth = this.VM.DCA.getDefaultValuesOfIntervalsBluetooth();
     this.DCA_maxes_bluetooth = this.VM.DCA.getMaxValuesOfIntervalsBluetooth();
 
     this.readSettings().then((result) => {
-      const el = (id) => document.getElementById(id);
-      const child0 = (id) => { const n = el(id); return n && n.children && n.children[0] ? n.children[0] : null; };
+      const child0 = (id) => {
+        const n = document.getElementById(id);
+        return n && n.children && n.children[0] ? n.children[0] : null;
+      };
 
-      var fullscreen_interval_component = child0("raw-1-settings-window-content-column-2");
-      var normal_mode_interval_component = child0("raw-2-settings-window-content-column-2");
-      var no_response_time_component = child0("raw-3-settings-window-content-column-2");
-      var no_start_timeout_component = child0("raw-4-settings-window-content-column-2");
-      var device_handle_timeout_component = child0("raw-5-settings-window-content-column-2");
-      var uno_timeout_component = child0("raw-6-settings-window-content-column-2");
+      const fullscreen_interval_component = child0("raw-1-settings-window-content-column-2");
+      const normal_mode_interval_component = child0("raw-2-settings-window-content-column-2");
+      const c1 = child0("raw-connection-1-settings-window-content-column-2");
+      const c2 = child0("raw-connection-2-settings-window-content-column-2");
+      const c3 = child0("raw-connection-3-settings-window-content-column-2");
+      const c4 = child0("raw-connection-4-settings-window-content-column-2");
 
       if (!fullscreen_interval_component || !normal_mode_interval_component) return;
 
-      var no_response_time_component_bluetooth = child0("raw-7-settings-window-content-column-2");
-      var no_start_timeout_component_bluetooth = child0("raw-8-settings-window-content-column-2");
-      var device_handle_timeout_component_bluetooth = child0("raw-9-settings-window-content-column-2");
-      var uno_timeout_component_bluetooth = child0("raw-10-settings-window-content-column-2");
-
-      // var motors_inverted_component = document.getElementById("raw-11-settings-window-content-column-2").children[0];
-
-      var left_motor_inverted_component = child0("raw-11-settings-window-content-column-2");
-      var right_motor_inverted_component = child0("raw-12-settings-window-content-column-2");
-
       if (result.file_exists) {
         try {
-          let settings_data = JSON.parse(result.file);
+          const settings_data = JSON.parse(result.file);
 
-          let fullscreen_interval = settings_data.fullscreen_interval || this.VM.runtime.getFullscreenInterval();
-          let normal_mode_interval = settings_data.normal_mode_interval || this.VM.runtime.getNormalInterval();
+          const fullscreen_interval = settings_data.fullscreen_interval || this.VM.runtime.getFullscreenInterval();
+          const normal_mode_interval = settings_data.normal_mode_interval || this.VM.runtime.getNormalInterval();
           fullscreen_interval_component.value = fullscreen_interval;
           normal_mode_interval_component.value = normal_mode_interval;
 
-          let no_response_timeout = Math.round(Number(settings_data.device_response_timeout));
-          let no_start_timeout = Math.round(Number(settings_data.device_no_start_timeout));
-          let uno_timeout = Math.round(Number(settings_data.device_uno_start_search_timeout));
-          let device_handle_timeout = Math.round(Number(settings_data.device_handle_timeout));
-          if (no_response_time_component) no_response_time_component.value = no_response_timeout;
-          if (no_start_timeout_component) no_start_timeout_component.value = no_start_timeout;
-          if (device_handle_timeout_component) device_handle_timeout_component.value = device_handle_timeout;
-          if (uno_timeout_component) uno_timeout_component.value = uno_timeout;
+          const no_response = Math.round(Number(settings_data.device_response_timeout != null ? settings_data.device_response_timeout : settings_data.device_response_timeout_bluetooth));
+          const no_start = Math.round(Number(settings_data.device_no_start_timeout != null ? settings_data.device_no_start_timeout : settings_data.device_no_start_timeout_bluetooth));
+          const device_handle = Math.round(Number(settings_data.device_handle_timeout != null ? settings_data.device_handle_timeout : settings_data.device_handle_timeout_bluetooth));
+          const uno_timeout = Math.round(Number(settings_data.device_uno_start_search_timeout != null ? settings_data.device_uno_start_search_timeout : settings_data.device_uno_start_search_timeout_bluetooth));
+          if (c1) c1.value = no_response;
+          if (c2) c2.value = no_start;
+          if (c3) c3.value = device_handle;
+          if (c4) c4.value = uno_timeout;
 
-          let no_response_timeout_bluetooth = Math.round(Number(settings_data.device_response_timeout_bluetooth));
-          let no_start_timeout_bluetooth = Math.round(Number(settings_data.device_no_start_timeout_bluetooth));
-          let uno_timeout_bluetooth = Math.round(Number(settings_data.device_uno_start_search_timeout_bluetooth));
-          let device_handle_timeout_bluetooth = Math.round(Number(settings_data.device_handle_timeout_bluetooth));
-          if (no_response_time_component_bluetooth) no_response_time_component_bluetooth.value = no_response_timeout_bluetooth;
-          if (no_start_timeout_component_bluetooth) no_start_timeout_component_bluetooth.value = no_start_timeout_bluetooth;
-          if (device_handle_timeout_component_bluetooth) device_handle_timeout_component_bluetooth.value = device_handle_timeout_bluetooth;
-          if (uno_timeout_component_bluetooth) uno_timeout_component_bluetooth.value = uno_timeout_bluetooth;
-
-          var btSearchEl = child0("raw-bt-search-settings-window-content-column-2");
+          const btSearchEl = child0("raw-bt-search-settings-window-content-column-2");
           if (btSearchEl) btSearchEl.checked = settings_data.bluetooth_search_enabled !== false;
 
           this.VM.runtime.setFullscreenInterval(fullscreen_interval);
           this.VM.runtime.setNormalInterval(normal_mode_interval);
-
           applySettingsToDCA(this.VM, settings_data);
 
-          console.warn(`Read completed for left_motors_inverted_setting_checked: ${settings_data.left_motor_inverted_setting_checked}`);
-          console.warn(`Read completed for right_motors_inverted_setting_checked: ${settings_data.right_motor_inverted_setting_checked}`);
-          if (typeof (settings_data.left_motor_inverted_setting_checked) !== 'undefined') {
-            if (left_motor_inverted_component) left_motor_inverted_component.checked = settings_data.left_motor_inverted_setting_checked;
-            this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked;
+          this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked === 1 || settings_data.left_motor_inverted_setting_checked === true;
+          this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked === 1 || settings_data.right_motor_inverted_setting_checked === true;
 
-          } else {
-            if (left_motor_inverted_component) left_motor_inverted_component.checked = false;
-            this.VM.runtime.left_motor_inverted = false;
-          }
-
-          if (typeof (settings_data.right_motor_inverted_setting_checked) !== 'undefined') {
-            if (right_motor_inverted_component) right_motor_inverted_component.checked = settings_data.right_motor_inverted_setting_checked;
-            this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked;
-
-          } else {
-            if (right_motor_inverted_component) right_motor_inverted_component.checked = false;
-            this.VM.runtime.right_motor_inverted = false;
-          }
-
-          var simBoundsEl = child0("raw-sim-bounds-settings-window-content-column-2");
+          const simBoundsEl = child0("raw-sim-bounds-settings-window-content-column-2");
           if (simBoundsEl) simBoundsEl.checked = settings_data.sim_clamp_to_stage !== false;
           this.VM.runtime.sim_clamp_to_stage = settings_data.sim_clamp_to_stage !== false;
 
-          this.applyFirmwareSettingsToInputs(settings_data);
           applyFirmwareSettingsToRuntime(this.VM, settings_data);
-
         } catch (error) {
           console.error(error);
-
           this.deleteSettingsFile();
-
-          let fullscreen_interval = this.VM.runtime.getFullscreenInterval();
-          fullscreen_interval_component.value = fullscreen_interval;
-
-          let normal_mode_interval = this.VM.runtime.getNormalInterval();
-          normal_mode_interval_component.value = normal_mode_interval;
-
+          fullscreen_interval_component.value = this.VM.runtime.getFullscreenInterval();
+          normal_mode_interval_component.value = this.VM.runtime.getNormalInterval();
           this.setDefaultsDCAValues();
-
-
           this.VM.runtime.left_motor_inverted = false;
           this.VM.runtime.right_motor_inverted = false;
           this.VM.runtime.sim_clamp_to_stage = true;
-          left_motor_inverted_component.checked = false;
-          right_motor_inverted_component.checked = false;
-          var simBoundsElErr = child0("raw-sim-bounds-settings-window-content-column-2");
+          const simBoundsElErr = child0("raw-sim-bounds-settings-window-content-column-2");
           if (simBoundsElErr) simBoundsElErr.checked = true;
           applyFirmwareSettingsToRuntime(this.VM, {});
-
-          console.warn(`Set left_motor_inverted and right_motor_inverted  to FALSE due to the occured error.`);
-
-
         }
       } else {
-        let fullscreen_interval = this.VM.runtime.getFullscreenInterval();
-        fullscreen_interval_component.value = fullscreen_interval;
-
-        let normal_mode_interval = this.VM.runtime.getNormalInterval();
-        normal_mode_interval_component.value = normal_mode_interval;
-
+        fullscreen_interval_component.value = this.VM.runtime.getFullscreenInterval();
+        normal_mode_interval_component.value = this.VM.runtime.getNormalInterval();
         this.setDefaultsDCAValues();
-
         this.VM.runtime.left_motor_inverted = false;
         this.VM.runtime.right_motor_inverted = false;
         this.VM.runtime.sim_clamp_to_stage = true;
-        left_motor_inverted_component.checked = false;
-        right_motor_inverted_component.checked = false;
-        var simBoundsElNoFile = child0("raw-sim-bounds-settings-window-content-column-2");
+        const simBoundsElNoFile = child0("raw-sim-bounds-settings-window-content-column-2");
         if (simBoundsElNoFile) simBoundsElNoFile.checked = true;
         applyFirmwareSettingsToRuntime(this.VM, {});
-
-        console.warn(`Set left_motor_inverted and right_motor_inverted to FALSE due to settings data doesn't exist.`);
       }
     });
   }
@@ -657,96 +362,42 @@ class SettingsWindowComponent extends Component {
 
         <div id="settings-window-content" className={styles.settings_window_content}>
 
-          <div id="settings-window-content-raw-intervals-title" className={styles.settings_window_content_raw}>
-
-            <div id="raw-intervals-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
-
-              <b>{this.props.intl.formatMessage(messages.intervals_for_blocks_chain)}</b>
-
+          <div id="settings-window-content-raw-simulation-title" className={styles.settings_window_content_raw}>
+            <div id="raw-simulation-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              <b>{this.props.intl.formatMessage(messages_for_sim.simulation_section)}</b>
             </div>
-
-
           </div>
 
-
           <div id="settings-window-content-raw-1" className={styles.settings_window_content_raw}>
-
             <div id="raw-1-settings-window-content-column-1" className={styles.settings_window_content_column}>
               {this.props.intl.formatMessage(messages.fullscreen_interval)}
             </div>
-
             <div id="raw-1-settings-window-content-column-2" className={styles.settings_window_content_column}>
               <input type="number" />
             </div>
-
           </div>
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
             <div id="raw-2-settings-window-content-column-1" className={styles.settings_window_content_column}>
               {this.props.intl.formatMessage(messages.normal_mode_interval)}
             </div>
-
             <div id="raw-2-settings-window-content-column-2" className={styles.settings_window_content_column}>
               <input type="number" />
             </div>
           </div>
 
-          <div id="settings-window-content-raw-intervals-for-usb" className={styles.settings_window_content_raw}>
-
-            <div id="raw-intervals-for-usb-settings-window-content-column-1" className={styles.settings_window_content_column}>
-
-              <b>{this.props.intl.formatMessage(messages_for_DCA_intervals.for_usb)}</b>
-
+          <div id="settings-window-content-raw-sim-bounds" className={styles.settings_window_content_raw}>
+            <div id="raw-sim-bounds-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_sim.sim_robot_bounds_enabled)}
             </div>
-
-
-          </div>
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-3-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.no_response_time)}
-            </div>
-
-            <div id="raw-3-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
+            <div id="raw-sim-bounds-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="checkbox" defaultChecked />
             </div>
           </div>
 
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-4-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.no_start_timeout)}
-            </div>
-
-            <div id="raw-4-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
-            </div>
-          </div>
-
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
-            <div id="raw-5-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.device_handle_timeout)}
-            </div>
-
-            <div id="raw-5-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
-            <div id="raw-6-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.uno_timeout)}
-            </div>
-
-            <div id="raw-6-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-1337-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <b>{this.props.intl.formatMessage(messages_for_DCA_intervals.for_bluetooth)}</b>
+          <div id="settings-window-content-raw-connection-title" className={styles.settings_window_content_raw}>
+            <div id="raw-connection-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              <b>{this.props.intl.formatMessage(messages_for_DCA_intervals.device_connection_section)}</b>
             </div>
           </div>
 
@@ -760,118 +411,35 @@ class SettingsWindowComponent extends Component {
           </div>
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-7-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.no_response_time_bluetooth)}
+            <div id="raw-connection-1-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_DCA_intervals.no_response_time)}
             </div>
-            <div id="raw-7-settings-window-content-column-2" className={styles.settings_window_content_column}>
+            <div id="raw-connection-1-settings-window-content-column-2" className={styles.settings_window_content_column}>
               <input type="number" />
             </div>
           </div>
-
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-8-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.no_start_timeout_bluetooth)}
+            <div id="raw-connection-2-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_DCA_intervals.no_start_timeout)}
             </div>
-            <div id="raw-8-settings-window-content-column-2" className={styles.settings_window_content_column}>
+            <div id="raw-connection-2-settings-window-content-column-2" className={styles.settings_window_content_column}>
               <input type="number" />
             </div>
           </div>
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
-            <div id="raw-9-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.device_handle_timeout_bluetooth)}
+          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
+            <div id="raw-connection-3-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_DCA_intervals.device_handle_timeout)}
             </div>
-            <div id="raw-9-settings-window-content-column-2" className={styles.settings_window_content_column}>
+            <div id="raw-connection-3-settings-window-content-column-2" className={styles.settings_window_content_column}>
               <input type="number" />
             </div>
           </div>
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
-            <div id="raw-10-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.uno_timeout_bluetooth)}
+          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
+            <div id="raw-connection-4-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages_for_DCA_intervals.uno_timeout)}
             </div>
-            <div id="raw-10-settings-window-content-column-2" className={styles.settings_window_content_column}>
+            <div id="raw-connection-4-settings-window-content-column-2" className={styles.settings_window_content_column}>
               <input type="number" />
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-motor-settings" className={styles.settings_window_content_raw}>
-
-            <div id="raw-motor-settings-window-content-column-1" className={styles.settings_window_content_column}>
-
-              <b>{this.props.intl.formatMessage(messages_for_Motor_settings.motor_settings_tittle)}</b>
-
-            </div>
-
-
-          </div>
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
-            <div id="raw-11-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_Motor_settings.set_left_motor_invertion)}
-            </div>
-
-            <div id="raw-11-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="checkbox" />
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw} >
-            <div id="raw-12-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_Motor_settings.set_right_motor_invertion)}
-            </div>
-
-            <div id="raw-12-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="checkbox" />
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-sim-bounds" className={styles.settings_window_content_raw}>
-            <div id="raw-sim-bounds-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_sim.sim_robot_bounds_enabled)}
-            </div>
-            <div id="raw-sim-bounds-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="checkbox" defaultChecked />
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-firmware" className={styles.settings_window_content_raw}>
-            <div id="raw-firmware-title" className={styles.settings_window_content_column}>
-              <b>{this.props.intl.formatMessage(messages_for_firmware.firmware_section)}</b>
-            </div>
-          </div>
-          <div id="settings-window-content-raw-firmware-common" className={styles.settings_window_content_raw}>
-            <div id="raw-firmware-common-title" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_firmware.firmware_common_subsection)}
-            </div>
-          </div>
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-16-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_firmware.firmware_nano_detect_timeout)}
-            </div>
-            <div id="raw-16-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" min={1000} max={10000} defaultValue={FIRMWARE_SETTINGS_DEFAULTS.detect_timeout_ms} />
-            </div>
-          </div>
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-17-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_firmware.firmware_block_transmit_delay)}
-            </div>
-            <div id="raw-17-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" min={20} max={200} defaultValue={FIRMWARE_SETTINGS_DEFAULTS.block_transmit_delay} />
-            </div>
-          </div>
-          <div id="settings-window-content-raw-firmware-nulllab" className={styles.settings_window_content_raw}>
-            <div id="raw-firmware-nulllab-title" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_firmware.firmware_nulllab_subsection)}
-            </div>
-          </div>
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-14-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_firmware.otto_null_lab_baud)}
-            </div>
-            <div id="raw-14-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" min={9600} max={115200} defaultValue={FIRMWARE_SETTINGS_DEFAULTS.baud_rate} />
             </div>
           </div>
 
