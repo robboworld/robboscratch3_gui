@@ -1,13 +1,9 @@
-import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import { withAlert } from 'react-alert';
 
 import {
   defineMessages,
-  intlShape,
-  injectIntl,
-  FormattedMessage
+  injectIntl
 } from 'react-intl';
 
 import styles from './AboutWindowComponent.css';
@@ -15,9 +11,14 @@ import {
   ActionTriggerNewDraggableWindow,
   ActionCreateNewDraggableWindow
 } from './actions/sensor_actions';
-import { node_process, node_os, getSystemInfoAsync } from '../lib/platform';
+import {
+  node_process,
+  node_os,
+  getSystemInfoAsync,
+  formatArchitectureDisplay
+} from '../lib/platform';
 
-const VERSION = 'Robbo Scratch v.3.111.6';
+const VERSION = 'Robbo Scratch v.3.111.7';
 
 const messages = defineMessages({
   about_window: {
@@ -68,10 +69,35 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'Processor: '
   },
+  platform: {
+    id: 'gui.RobboGui.platform',
+    description: ' ',
+    defaultMessage: 'Platform: '
+  },
+  browser: {
+    id: 'gui.RobboGui.browser',
+    description: ' ',
+    defaultMessage: 'Browser: '
+  },
+  logical_cores: {
+    id: 'gui.RobboGui.logical_cores',
+    description: ' ',
+    defaultMessage: 'Logical cores: '
+  },
+  not_available_in_browser: {
+    id: 'gui.RobboGui.not_available_in_browser',
+    description: ' ',
+    defaultMessage: 'Not available in browser'
+  },
   copy_to_clipboard: {
     id: 'gui.RobboGui.copy_to_clipboard',
     description: ' ',
     defaultMessage: 'Copy to clipboard'
+  },
+  copy_system_info: {
+    id: 'gui.RobboGui.copy_system_info',
+    description: ' ',
+    defaultMessage: 'Copy system information'
   }
 });
 
@@ -94,21 +120,9 @@ class AboutWindowComponent extends Component {
     this.avTimeInterval = null;
     this.averageTime = 0;
 
-    const hasRobboGetSystemInfo = typeof window !== 'undefined' &&
-      typeof window.robboGetSystemInfo === 'function';
     getSystemInfoAsync().then(systemInfo => {
       this.setState({ systemInfo });
     });
-
-    if (hasRobboGetSystemInfo) return;
-
-    const os_field = document.getElementById(
-      `raw-5-about-window-content-column-2`
-    );
-    if (!os_field) return;
-
-    const setOsText = (text) => { os_field.innerHTML = text; };
-    setOsText(node_process.platform ? `${node_process.platform} ${node_os.release()}` : (node_os.release ? node_os.release() : '—'));
   }
 
   startProfiling() {
@@ -230,54 +244,128 @@ class AboutWindowComponent extends Component {
     this.VM.runtime.disableProfiling();
   }
 
-  copyToClipboard(param) {
+  copyToClipboard(textToCopy) {
     console.warn(`copyToClipboard()`);
 
-    let text_to_copy = '';
+    const text = textToCopy != null ? String(textToCopy) : '';
+    if (!text) return;
 
-    switch (param) {
-      case 'ver':
-        text_to_copy = document.getElementById(
-          `raw-1-about-window-content-column-1`
-        ).innerHTML;
-
-        break;
-
-      case 'os':
-        text_to_copy = document.getElementById(
-          `raw-5-about-window-content-column-2`
-        ).innerHTML;
-
-        break;
-
-      case 'arch':
-        text_to_copy = document.getElementById(
-          `raw-6-about-window-content-column-2`
-        ).innerHTML;
-
-        break;
-
-      case 'cpu':
-        text_to_copy = document.getElementById(
-          `raw-7-about-window-content-column-2`
-        ).innerHTML;
-
-        break;
-
-      default:
-        break;
+    if (typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text).catch(() => {
+        this.copyToClipboardWithExecCommand(text);
+      });
+      return;
     }
 
-    clipboardy.writeSync(text_to_copy);
+    this.copyToClipboardWithExecCommand(text);
+  }
+
+  copyToClipboardWithExecCommand(text) {
+    if (typeof document === 'undefined' || !document.body) return;
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      document.execCommand('copy');
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+
+  buildSystemInfoText(rows) {
+    const details = rows
+      .filter(row => row && row.label && row.value)
+      .map(row => `${row.label}${row.value}`);
+
+    return [VERSION].concat(details).join('\n');
+  }
+
+  renderInfoRow(rowId, label, value) {
+    return (
+      <div
+        key={rowId}
+        id={`about-window-content-raw-${rowId}`}
+        className={styles.about_window_content_raw}
+      >
+        <div
+          id={`raw-${rowId}-about-window-content-column-1`}
+          className={styles.about_window_content_column}
+        >
+          {label}
+        </div>
+
+        <div
+          id={`raw-${rowId}-about-window-content-column-2`}
+          className={styles.about_window_value_column}
+        >
+          {value}
+        </div>
+      </div>
+    );
   }
 
   render() {
-    const si = this.state.systemInfo;
-    const hasAnyFromIpc = si != null && (si.osLabel || si.platform || si.arch || si.cpuModel);
-    const useSystemInfo = hasAnyFromIpc;
-    const osDisplay = useSystemInfo ? (si.osLabel || si.platform + ' ' + (si.release || '') || '—') : (node_process.platform ? `${node_process.platform} ${node_os.release()}` : '—');
-    const archDisplay = useSystemInfo ? (si.arch || '—') : (node_process.arch || '—');
-    const cpuDisplay = useSystemInfo ? (si.cpuModel || '—') : (node_os.cpus().length ? node_os.cpus()[0].model : '—');
+    const si = this.state.systemInfo || {};
+    const intl = this.props.intl;
+    const browserUnavailable = intl.formatMessage(messages.not_available_in_browser);
+    const isWebSystemInfo = si.source === 'web';
+    const desktopCpuList = typeof node_os.cpus === 'function' ? node_os.cpus() : [];
+    const desktopRows = [
+      {
+        id: '5',
+        label: intl.formatMessage(messages.os_name_and_version),
+        value: si.source === 'desktop'
+          ? (si.osLabel || [si.platform, si.release].filter(Boolean).join(' ') || '—')
+          : (node_process.platform ? `${node_process.platform} ${node_os.release()}` : '—')
+      },
+      {
+        id: '6',
+        label: intl.formatMessage(messages.arch),
+        value: si.source === 'desktop'
+          ? (si.arch || '—')
+          : (formatArchitectureDisplay(node_process.arch) || '—')
+      },
+      {
+        id: '7',
+        label: intl.formatMessage(messages.cpu),
+        value: si.source === 'desktop'
+          ? (si.cpuModel || '—')
+          : (desktopCpuList.length ? desktopCpuList[0].model : '—')
+      }
+    ];
+    const webRows = [
+      {
+        id: '5',
+        label: intl.formatMessage(messages.platform),
+        value: si.platform || browserUnavailable
+      },
+      {
+        id: '6',
+        label: intl.formatMessage(messages.browser),
+        value: si.browser || browserUnavailable
+      },
+      {
+        id: '7',
+        label: intl.formatMessage(messages.arch),
+        value: formatArchitectureDisplay(si.arch) || browserUnavailable
+      },
+      {
+        id: '9',
+        label: intl.formatMessage(messages.logical_cores),
+        value: si.logicalCores || browserUnavailable
+      }
+    ];
+    const infoRows = isWebSystemInfo ? webRows : desktopRows;
+    const systemInfoText = this.buildSystemInfoText(infoRows);
     return (
       <div id="about-window" className={styles.about_window}>
         <div
@@ -311,11 +399,11 @@ class AboutWindowComponent extends Component {
               className={styles.about_window_content_column}
             >
               <button
-                id={`about-window-copy-to-clipboard-version`}
-                onClick={this.copyToClipboard.bind(this, 'ver')}
+                id={`about-window-copy-system-info`}
+                onClick={this.copyToClipboard.bind(this, systemInfoText)}
               >
                 {this.props.intl.formatMessage(
-                  messages.copy_to_clipboard
+                  messages.copy_system_info
                 )}{' '}
               </button>
             </div>
@@ -411,106 +499,7 @@ class AboutWindowComponent extends Component {
             ></div>
           </div>
 
-          <div
-            id="about-window-content-raw-5"
-            className={styles.about_window_content_raw}
-          >
-            <div
-              id="raw-5-about-window-content-column-1"
-              className={styles.about_window_content_column}
-            >
-              {this.props.intl.formatMessage(
-                messages.os_name_and_version
-              )}
-            </div>
-
-            <div
-              id="raw-5-about-window-content-column-2"
-              className={styles.about_window_value_column}
-            >
-              {osDisplay}
-            </div>
-
-            <div
-              id="raw-5-about-window-content-column-3"
-              className={styles.about_window_content_column}
-            >
-              <button
-                id={`about-window-copy-to-clipboard-os`}
-                onClick={this.copyToClipboard.bind(this, 'os')}
-              >
-                {this.props.intl.formatMessage(
-                  messages.copy_to_clipboard
-                )}{' '}
-              </button>
-            </div>
-          </div>
-
-          <div
-            id="about-window-content-raw-6"
-            className={styles.about_window_content_raw}
-          >
-            <div
-              id="raw-6-about-window-content-column-1"
-              className={styles.about_window_content_column}
-            >
-              {this.props.intl.formatMessage(messages.arch)}
-            </div>
-
-            <div
-              id="raw-6-about-window-content-column-2"
-              className={styles.about_window_value_column}
-            >
-              {archDisplay}
-            </div>
-
-            <div
-              id="raw-6-about-window-content-column-3"
-              className={styles.about_window_content_column}
-            >
-              <button
-                id={`about-window-copy-to-clipboard-arch`}
-                onClick={this.copyToClipboard.bind(this, 'arch')}
-              >
-                {this.props.intl.formatMessage(
-                  messages.copy_to_clipboard
-                )}{' '}
-              </button>
-            </div>
-          </div>
-
-          <div
-            id="about-window-content-raw-7"
-            className={styles.about_window_content_raw}
-          >
-            <div
-              id="raw-7-about-window-content-column-1"
-              className={styles.about_window_content_column}
-            >
-              {this.props.intl.formatMessage(messages.cpu)}
-            </div>
-
-            <div
-              id="raw-7-about-window-content-column-2"
-              className={styles.about_window_value_column}
-            >
-              {cpuDisplay}
-            </div>
-
-            <div
-              id="raw-7-about-window-content-column-3"
-              className={styles.about_window_content_column}
-            >
-              <button
-                id={`about-window-copy-to-clipboard-cpu`}
-                onClick={this.copyToClipboard.bind(this, 'cpu')}
-              >
-                {this.props.intl.formatMessage(
-                  messages.copy_to_clipboard
-                )}{' '}
-              </button>
-            </div>
-          </div>
+          {infoRows.map(row => this.renderInfoRow(row.id, row.label, row.value))}
         </div>
       </div>
     );

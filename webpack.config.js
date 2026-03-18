@@ -17,8 +17,11 @@ const base = {
     devtool: 'cheap-module-source-map',
     devServer: {
         contentBase: path.resolve(__dirname, 'build'),
-        host: '0.0.0.0',
-        port: process.env.PORT || 8601
+        host: '127.0.0.1',
+        port: process.env.PORT || 8601,
+        headers: {
+            'Permissions-Policy': 'unload=(self)'
+        }
     },
     output: {
         library: 'GUI',
@@ -29,8 +32,23 @@ const base = {
         ReactDOM: 'react-dom'
     },
     resolve: {
-        symlinks: false
+        symlinks: false,
+        alias: {
+            'scratch-render$': 'scratch-render/dist/web/scratch-render.js',
+            'scratch-vm$': 'scratch-vm/dist/web/scratch-vm.js',
+            'scratch-audio$': 'scratch-audio/dist.js'
+        }
     },
+    node: {
+        fs: 'empty',
+        path: 'empty',
+        os: 'empty',
+        crypto: 'empty',
+        stream: 'empty',
+        net: 'empty',
+        tls: 'empty'
+    },
+    target: 'web', // Явно указываем веб-таргет
     module: {
         rules: [{
             test: /\.jsx?$/,
@@ -48,7 +66,7 @@ const base = {
                         messagesDir: './translations/messages/'
                     }]],
                 presets: [
-                    ['@babel/preset-env', {targets: {browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']}}],
+                    ['@babel/preset-env', {useBuiltIns: 'entry'}],
                     '@babel/preset-react'
                 ]
             }
@@ -73,9 +91,7 @@ const base = {
                         return [
                             postcssImport,
                             postcssVars,
-                            autoprefixer({
-                                browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']
-                            })
+                	    autoprefixer()
                         ];
                     }
                 }
