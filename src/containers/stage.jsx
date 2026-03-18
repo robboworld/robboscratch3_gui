@@ -110,8 +110,6 @@ class Stage extends React.Component {
             this.canvas.style.height = `${dims.height}px`;
             this.rect = this.canvas.getBoundingClientRect();
         } else {
-            this.canvas.style.width = '';
-            this.canvas.style.height = '';
             this.updateRect();
             this.renderer.resize(this.rect.width, this.rect.height);
         }
