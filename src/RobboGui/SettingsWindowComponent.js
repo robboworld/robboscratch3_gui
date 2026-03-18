@@ -32,19 +32,6 @@ const messages = defineMessages({
   },
 });
 
-const messages_for_sim = defineMessages({
-  simulation_section: {
-    id: 'gui.RobboGui.settings_window.simulation_section',
-    description: ' ',
-    defaultMessage: 'Simulation'
-  },
-  sim_robot_bounds_enabled: {
-    id: 'gui.RobboGui.settings_window.sim_robot_bounds_enabled',
-    description: ' ',
-    defaultMessage: 'Scene bounds (2D simulator)'
-  },
-});
-
 const messages_for_DCA_intervals = defineMessages({
   device_connection_section: {
     id: 'gui.dca.device_connection_section',
@@ -140,14 +127,10 @@ class SettingsWindowComponent extends Component {
       settings_data.bluetooth_search_enabled = btSearchEl.children[0].checked;
     }
 
-    const simBoundsEl = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
-    settings_data.sim_clamp_to_stage = (simBoundsEl && simBoundsEl.children[0]) ? simBoundsEl.children[0].checked : true;
-
     const settings_data_serialized = JSON.stringify(settings_data);
 
     this.VM.runtime.clearAvTimeInterval();
     this.VM.runtime.setSettingsSaved();
-    this.VM.runtime.sim_clamp_to_stage = settings_data.sim_clamp_to_stage !== false;
 
     applySettingsToDCA(this.VM, settings_data);
     applyFirmwareSettingsToRuntime(this.VM, {});
@@ -228,10 +211,6 @@ class SettingsWindowComponent extends Component {
       btSearchEl.children[0].checked = true;
     }
 
-    const simBoundsElDef = document.getElementById("raw-sim-bounds-settings-window-content-column-2");
-    if (simBoundsElDef && simBoundsElDef.children[0]) {
-      simBoundsElDef.children[0].checked = true;
-    }
   }
 
 
@@ -274,10 +253,6 @@ class SettingsWindowComponent extends Component {
           this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked === 1 || settings_data.left_motor_inverted_setting_checked === true;
           this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked === 1 || settings_data.right_motor_inverted_setting_checked === true;
 
-          const simBoundsEl = child0("raw-sim-bounds-settings-window-content-column-2");
-          if (simBoundsEl) simBoundsEl.checked = settings_data.sim_clamp_to_stage !== false;
-          this.VM.runtime.sim_clamp_to_stage = settings_data.sim_clamp_to_stage !== false;
-
           applyFirmwareSettingsToRuntime(this.VM, settings_data);
         } catch (error) {
           console.error(error);
@@ -285,18 +260,12 @@ class SettingsWindowComponent extends Component {
           this.setDefaultsDCAValues();
           this.VM.runtime.left_motor_inverted = false;
           this.VM.runtime.right_motor_inverted = false;
-          this.VM.runtime.sim_clamp_to_stage = true;
-          const simBoundsElErr = child0("raw-sim-bounds-settings-window-content-column-2");
-          if (simBoundsElErr) simBoundsElErr.checked = true;
           applyFirmwareSettingsToRuntime(this.VM, {});
         }
       } else {
         this.setDefaultsDCAValues();
         this.VM.runtime.left_motor_inverted = false;
         this.VM.runtime.right_motor_inverted = false;
-        this.VM.runtime.sim_clamp_to_stage = true;
-        const simBoundsElNoFile = child0("raw-sim-bounds-settings-window-content-column-2");
-        if (simBoundsElNoFile) simBoundsElNoFile.checked = true;
         applyFirmwareSettingsToRuntime(this.VM, {});
       }
     });
@@ -314,21 +283,6 @@ class SettingsWindowComponent extends Component {
         </div>
 
         <div id="settings-window-content" className={styles.settings_window_content}>
-
-          <div id="settings-window-content-raw-simulation-title" className={styles.settings_window_content_raw}>
-            <div id="raw-simulation-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <b>{this.props.intl.formatMessage(messages_for_sim.simulation_section)}</b>
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-sim-bounds" className={styles.settings_window_content_raw}>
-            <div id="raw-sim-bounds-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_sim.sim_robot_bounds_enabled)}
-            </div>
-            <div id="raw-sim-bounds-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="checkbox" defaultChecked />
-            </div>
-          </div>
 
           <div id="settings-window-content-raw-connection-title" className={styles.settings_window_content_raw}>
             <div id="raw-connection-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
