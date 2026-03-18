@@ -7,7 +7,7 @@ import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-i
 
 import styles from './SettingsWindowComponent.css';
 import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
-import { node_process, isDesktopWithBluetooth } from '../lib/platform';
+import { isDesktopWithBluetooth } from '../lib/platform';
 import {
   getSettingsFromStorage,
   applySettingsToDCA,
@@ -290,14 +290,16 @@ class SettingsWindowComponent extends Component {
             </div>
           </div>
 
-          <div id="settings-window-content-raw-bt-search" className={styles.settings_window_content_raw}>
-            <div id="raw-bt-search-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.bluetooth_search_enabled)}
+          {isDesktopWithBluetooth() && (
+            <div id="settings-window-content-raw-bt-search" className={styles.settings_window_content_raw}>
+              <div id="raw-bt-search-settings-window-content-column-1" className={styles.settings_window_content_column}>
+                {this.props.intl.formatMessage(messages_for_DCA_intervals.bluetooth_search_enabled)}
+              </div>
+              <div id="raw-bt-search-settings-window-content-column-2" className={styles.settings_window_content_column}>
+                <input type="checkbox" defaultChecked />
+              </div>
             </div>
-            <div id="raw-bt-search-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="checkbox" defaultChecked />
-            </div>
-          </div>
+          )}
 
           <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
             <div id="raw-connection-1-settings-window-content-column-1" className={styles.settings_window_content_column}>

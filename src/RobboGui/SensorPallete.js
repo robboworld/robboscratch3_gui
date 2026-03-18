@@ -22,6 +22,7 @@ import ArduinoPreviewComponent from './ArduinoPreviewComponent';
 import ArduinoPalleteComponent from './ArduinoPalleteComponent';
 
 import DraggableWindowComponent from './DraggableWindowComponent';
+import { isDesktopWithBluetooth } from '../lib/platform';
 
 
 import {ActionTriggerExtensionPack} from './actions/sensor_actions';
@@ -80,6 +81,7 @@ class SensorPallete extends Component {
 
   render() {
 //  console.log(this.props.tracks);
+const showQuadcopterUi = isDesktopWithBluetooth();
 
  var initial_coords_robot = [200,200];
  var initial_coords_lab = [400,200];
@@ -96,18 +98,22 @@ class SensorPallete extends Component {
 
          <LaboratoryPreviewComponent LCA={this.props.LCA} labIndex={0} />
 
-        <QuadcopterPreviewComponent QCA={this.props.QCA} quadcopterIndex={0} /> 
+        {showQuadcopterUi && (
+          <QuadcopterPreviewComponent QCA={this.props.QCA} quadcopterIndex={0} />
+        )}
 
         <OttoPreviewComponent OCA={this.props.OCA} ottoIndex={0} />  
 
         <ArduinoPreviewComponent ACA={this.props.ACA} arduinoIndex={0}/> 
 
 
-       <DraggableWindowComponent draggableWindowId={0} initialCoords={initial_coords_quadcopter}>
+       {showQuadcopterUi && (
+         <DraggableWindowComponent draggableWindowId={0} initialCoords={initial_coords_quadcopter}>
 
-              <QuadcopterPalleteComponent QCA={this.props.QCA} quadcopterIndex={0}/>
+                <QuadcopterPalleteComponent QCA={this.props.QCA} quadcopterIndex={0}/>
 
-        </DraggableWindowComponent>  
+          </DraggableWindowComponent>
+       )}
 
 
         <DraggableWindowComponent draggableWindowId={1} initialCoords={initial_coords_robot}>

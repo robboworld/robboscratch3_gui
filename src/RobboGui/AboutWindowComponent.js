@@ -18,7 +18,14 @@ import {
   formatArchitectureDisplay
 } from '../lib/platform';
 
-const VERSION = 'Robbo Scratch v.3.111.7';
+const VERSION = 'Robbo Scratch v.3.112.0';
+const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
+  process &&
+  process.env &&
+  typeof process.env.ROBBO_BUILD_VERSION_SUFFIX === 'string')
+  ? process.env.ROBBO_BUILD_VERSION_SUFFIX
+  : '';
+const DISPLAY_VERSION = `${VERSION}${BUILD_VERSION_SUFFIX}`;
 
 const messages = defineMessages({
   about_window: {
@@ -286,7 +293,7 @@ class AboutWindowComponent extends Component {
       .filter(row => row && row.label && row.value)
       .map(row => `${row.label}${row.value}`);
 
-    return [VERSION].concat(details).join('\n');
+    return [DISPLAY_VERSION].concat(details).join('\n');
   }
 
   renderInfoRow(rowId, label, value) {
@@ -391,7 +398,7 @@ class AboutWindowComponent extends Component {
               id="raw-1-about-window-content-column-1"
               className={styles.about_window_content_column}
             >
-              {VERSION}
+              {DISPLAY_VERSION}
             </div>
 
             <div

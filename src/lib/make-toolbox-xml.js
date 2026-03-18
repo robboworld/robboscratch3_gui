@@ -1,4 +1,5 @@
 import ScratchBlocks from 'scratch-blocks';
+import { isDesktopWithBluetooth } from './platform';
 
 const categorySeparator = '<sep gap="36"/>';
 
@@ -1727,6 +1728,7 @@ const xmlClose = '</xml>';
 const makeToolboxXML = function (isStage, targetId,config, categoriesXML,
     costumeName = '', backdropName = '', soundName = '') {
     const gap = [categorySeparator];
+    const showQuadcopterInUi = isDesktopWithBluetooth();
 
     costumeName = xmlEscape(costumeName);
     backdropName = xmlEscape(backdropName);
@@ -1753,7 +1755,7 @@ const makeToolboxXML = function (isStage, targetId,config, categoriesXML,
 
         robot(false, targetId,isExtensionPackActivated,robot_is_scratchduino),gap, //modified_by_Yaroslav //toolbox generator main
         laboratory(false, targetId,isExternalSensorsActivated),gap, //modified_by_Yaroslav
-        quadcopter(isStage, targetId), gap, //modified_by_Yaroslav
+        ...(showQuadcopterInUi ? [quadcopter(isStage, targetId), gap] : []), //modified_by_Yaroslav
         otto(false, targetId), gap,
         newcat(false),gap,
        // iotBlocks(isStage, targetId),

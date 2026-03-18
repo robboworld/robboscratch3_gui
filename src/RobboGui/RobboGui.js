@@ -30,6 +30,7 @@ import ProfilerWindowComponent from './ProfilerWindowComponent';
 
 import IotConnectionComponent from './IotConnectionComponent';
 import { getSettingsFromStorage, applySettingsToDCA, applyFirmwareSettingsToRuntime } from '../lib/settingsLoader';
+import { isDesktopWithBluetooth } from '../lib/platform';
 
 import { withAlert } from 'react-alert';
 
@@ -226,7 +227,9 @@ class RobboGui extends Component {
    this.OCA.searchOttoDevices();
    this.ACA.searchArduinoDevices();
 
-   this.QCA.searchQuadcopterDevices();
+   if (isDesktopWithBluetooth()) {
+     this.QCA.searchQuadcopterDevices();
+   }
 
   }
 
