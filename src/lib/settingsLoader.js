@@ -105,9 +105,31 @@ export function applyFirmwareSettingsToRuntime(vm, settingsData = {}) {
  * Reads settings.json from webkit persistent storage.
  * @returns {Promise<{ file_exists: boolean, file: string | null, err?: any }>}
  */
+function isSettingsFileMissingError(e) {
+  if (!e) {
+    return false;
+  }
+  if (e.name === 'NotFoundError') {
+    return true;
+  }
+  if (typeof FileError !== 'undefined' && e.code === FileError.NOT_FOUND_ERR) {
+    return true;
+  }
+  return false;
+}
+
 export function getSettingsFromStorage() {
   return new Promise((resolve) => {
     function errorHandler(e) {
+      console.error('File error during settings reading: ' + e);
+      resolve({ file_exists: false, file: null, err: e });
+    }
+
+    function onGetFileError(e) {
+      if (isSettingsFileMissingError(e)) {
+        resolve({ file_exists: false, file: null, err: null });
+        return;
+      }
       console.error('File error during settings reading: ' + e);
       resolve({ file_exists: false, file: null, err: e });
     }
@@ -127,7 +149,7 @@ export function getSettingsFromStorage() {
         }, (e) => {
           resolve({ file_exists: false, file: null, err: e });
         });
-      }, errorHandler);
+      }, onGetFileError);
     }
 
     if (typeof navigator !== 'undefined' && navigator.webkitPersistentStorage && navigator.webkitPersistentStorage.requestQuota) {
