@@ -33,6 +33,7 @@ const messages = defineMessages({
 });
 
 const messages_for_DCA_intervals = defineMessages({
+  // id must stay a string literal (babel-plugin-react-intl extraction); same value as RobboMessageIds.dca.deviceConnectionSection
   device_connection_section: {
     id: 'gui.dca.device_connection_section',
     description: ' ',
