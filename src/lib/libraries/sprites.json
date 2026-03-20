@@ -18799,7 +18799,7 @@
     },
     {
         "name": "RobboPlatform",
-        "md5": "RobboPlatform.svg",
+        "md5": "robot_platform_top_down_black.png",
         "type": "sprite",
         "tags": [
             "robot",
@@ -18817,17 +18817,17 @@
                 {
                     "costumeName": "robbo-platform",
                     "baseLayerID": -1,
-                    "baseLayerMD5": "RobboPlatform.svg",
+                    "baseLayerMD5": "robot_platform_top_down_black.png",
                     "bitmapResolution": 1,
-                    "rotationCenterX": 100,
-                    "rotationCenterY": 98
+                    "rotationCenterX": 640,
+                    "rotationCenterY": 357
                 }
             ],
             "currentCostumeIndex": 0,
             "scratchX": 0,
             "scratchY": 0,
-            "scale": 0.3,
-            "direction": 0,
+            "scale": 0.1,
+            "direction": 90,
             "rotationStyle": "normal",
             "isDraggable": false,
             "visible": true,

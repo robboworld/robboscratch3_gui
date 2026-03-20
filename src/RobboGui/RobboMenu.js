@@ -204,7 +204,11 @@ class RobboMenu extends Component {
   triggerSimEn() {
     const item = spriteLibraryContent.find(s => s.name === 'RobboPlatform') || spriteLibraryContent.find(s => s.name === 'Robot') || spriteLibraryContent[0];
     if (!item || !item.json) return;
-    const spriteJson = Object.assign({}, item.json, { objName: 'Robbo Robot', size: 50 });
+    // The simulation robot size is tuned for the current RobboPlatform costume dimensions
+    // (bitmap-based, not the old SVG). Sensor probes are sampled with fixed offsets
+    // in world coordinates, so if the rendered size changes, sensor alignment breaks.
+    // 194/576 ~= 0.337 => 50 * 0.337 ~= 16.8
+    const spriteJson = Object.assign({}, item.json, { objName: 'Robbo Robot', size: 17 });
     this.is_sim_en = !this.is_sim_en;
     this.props.VM.runtime.sim_ac = !this.props.VM.runtime.sim_ac;
     if (this.props.VM.runtime.sim_ac) {
