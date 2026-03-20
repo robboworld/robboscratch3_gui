@@ -18818,7 +18818,7 @@
                     "costumeName": "robbo-platform",
                     "baseLayerID": -1,
                     "baseLayerMD5": "robot_platform_top_down_black.png",
-                    "bitmapResolution": 1,
+                    "bitmapResolution": 2,
                     "rotationCenterX": 640,
                     "rotationCenterY": 357
                 }
@@ -18826,7 +18826,7 @@
             "currentCostumeIndex": 0,
             "scratchX": 0,
             "scratchY": 0,
-            "scale": 0.1,
+            "scale": 0.05,
             "direction": 90,
             "rotationStyle": "normal",
             "isDraggable": false,
