@@ -113,6 +113,11 @@ class SearchPanelComponent extends Component {
 
     this.DCA.registerDeviceFoundCallback(() => {
       this.is_bluetooth_devices_not_found = false;
+      let search_device_button = document.getElementById(`robbo_search_devices`);
+      if (search_device_button) {
+        search_device_button.style.pointerEvents = "auto";
+        search_device_button.removeAttribute("disabled");
+      }
       this._refreshDeviceList();
     });
 

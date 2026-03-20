@@ -347,7 +347,7 @@ class SearchPanelDeviceComponent extends Component {
         }
     }
 
-    /** Жирная колонка в панели поиска: на Desktop — имя порта (COM/tty); в Web — тип устройства, не сырой webserial:… */
+    /** Жирная колонка в панели поиска: на Desktop — имя устройства (когда готово) + порт; в Web — тип устройства. */
     getSearchPanelRowTitle() {
         if (this.props.isQuadcopter) {
             return this.props.intl.formatMessage(messages.device_quadcopter);
@@ -355,6 +355,9 @@ class SearchPanelDeviceComponent extends Component {
         const port = this.props.devicePort || '';
         if (port.indexOf('webserial:') === 0) {
             return this.getDeviceName(this.state.deviceId);
+        }
+        if (this.state.deviceState === 6 && this.state.deviceId !== -1) {
+            return `${this.getDeviceName(this.state.deviceId)} (${port})`;
         }
         return port;
     }
@@ -371,11 +374,10 @@ class SearchPanelDeviceComponent extends Component {
             return { iconSrc: './static/robbo_assets/red.png', statusText: this.props.intl.formatMessage(messages.quadcopter_disconnected) };
         }
         const { deviceState, deviceId, deviceError } = this.state;
-        const deviceName = this.getDeviceName(deviceId);
         let statusText = '';
         let iconSrc = './static/robbo_assets/yellow.png';
         if (deviceState === 6) {
-            statusText = deviceName + ' ' + this.props.intl.formatMessage(messages.device_connected);
+            statusText = this.props.intl.formatMessage(messages.device_connected);
             iconSrc = './static/robbo_assets/green.png';
         } else if (deviceState === 0) {
             statusText = this.props.intl.formatMessage(messages.try_connect_to_port);
