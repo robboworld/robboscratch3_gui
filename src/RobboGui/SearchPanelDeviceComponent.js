@@ -347,6 +347,18 @@ class SearchPanelDeviceComponent extends Component {
         }
     }
 
+    /** Жирная колонка в панели поиска: на Desktop — имя порта (COM/tty); в Web — тип устройства, не сырой webserial:… */
+    getSearchPanelRowTitle() {
+        if (this.props.isQuadcopter) {
+            return this.props.intl.formatMessage(messages.device_quadcopter);
+        }
+        const port = this.props.devicePort || '';
+        if (port.indexOf('webserial:') === 0) {
+            return this.getDeviceName(this.state.deviceId);
+        }
+        return port;
+    }
+
     getStatusDisplay() {
         if (this.props.isQuadcopter && this.props.QCA) {
             const { quadcopterConnected, quadcopterSearching } = this.state;
@@ -1264,9 +1276,7 @@ class SearchPanelDeviceComponent extends Component {
 
 
     render() {
-        const displayPortName = this.props.isQuadcopter
-            ? this.props.intl.formatMessage(messages.device_quadcopter)
-            : this.props.devicePort;
+        const displayPortName = this.getSearchPanelRowTitle();
         const showFlashButton = !this.props.isQuadcopter;
         const { iconSrc, statusText } = this.getStatusDisplay();
 
