@@ -915,10 +915,12 @@ class SearchPanelDeviceComponent extends Component {
     }
 
 
-    searchDevices() {
+    searchDevices(showPanel = true) {
         let search_panel = document.getElementById(`SearchPanelComponent`);
 
-        search_panel.style.display = "block";
+        if (search_panel && showPanel) {
+            search_panel.style.display = "block";
+        }
 
 
 
@@ -1022,7 +1024,13 @@ class SearchPanelDeviceComponent extends Component {
                 flashing_button.style.display = "inline-block";
             }
 
-            this.searchDevices(); //search devices
+            // Обновляем список устройств, но окно поиска должно оставаться скрытым
+            // (как на Desktop после успешной прошивки).
+            try {
+                const search_panel = document.getElementById(`SearchPanelComponent`);
+                if (search_panel) search_panel.style.display = "none";
+            } catch (_) { }
+            this.searchDevices(false); //search devices (hidden)
 
         } else if ((status.indexOf("Error") !== -1)) {
 
@@ -1163,7 +1171,28 @@ class SearchPanelDeviceComponent extends Component {
                     flashing_button.style.display = "inline-block";
                 }
                 this._finishFlashSession('success');
-                this.searchDevices();
+                // Web-отладка: после успешной прошивки в некоторых сценариях
+                // событие state==0/2 в onStatusChange приходит позже, поэтому
+                // окно прошивки/поля статуса не сбрасываются автоматически.
+                // Явно скрываем окно и очищаем DOM-поля, чтобы поведение стало
+                // как на Desktop.
+                try {
+                    this.flashingHideDetails();
+                } catch (_) { }
+                if (status_field) {
+                    status_field.innerHTML = this.props.intl.formatMessage(messages.device_connected);
+                }
+                if (info_field) {
+                    info_field.innerHTML = "";
+                    info_field.style.display = "none";
+                }
+                // Обновляем список устройств, но окно поиска должно оставаться скрытым
+                // (как на Desktop после успешной прошивки).
+                try {
+                    const search_panel = document.getElementById(`SearchPanelComponent`);
+                    if (search_panel) search_panel.style.display = "none";
+                } catch (_) { }
+                this.searchDevices(false);
             } else if ((status.indexOf("Error") !== -1)) {
                 if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
                 if (search_device_button) search_device_button.removeAttribute("disabled");
