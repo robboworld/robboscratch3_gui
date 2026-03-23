@@ -4,6 +4,9 @@ import 'core-js/fn/array/includes';
 import 'core-js/fn/promise/finally';
 import 'intl'; // For Safari 9
 
+import initNwDesktopFileBootstrap from '../lib/nw-desktop-file-bootstrap';
+initNwDesktopFileBootstrap();
+
 import React from 'react';
 import ReactDOM from 'react-dom';
 

@@ -27,6 +27,7 @@ import {
 } from '../reducers/modals';
 
 import FontLoaderHOC from '../lib/font-loader-hoc.jsx';
+import nwCliProjectOpenerHOC from '../lib/nw-cli-project-opener-hoc.jsx';
 import LocalizationHOC from '../lib/localization-hoc.jsx';
 import ProjectFetcherHOC from '../lib/project-fetcher-hoc.jsx';
 import ProjectSaverHOC from '../lib/project-saver-hoc.jsx';
@@ -288,6 +289,7 @@ const WrappedGui = compose(
     ProjectSaverHOC,
     vmListenerHOC,
     vmManagerHOC,
+    nwCliProjectOpenerHOC,
     cloudManagerHOC
 )(ConnectedGUI);
 

@@ -39,6 +39,10 @@ const HashParserHOC = function (WrappedComponent) {
             window.removeEventListener('hashchange', this.handleHashChange);
         }
         handleHashChange () {
+            if (typeof window !== 'undefined' &&
+                (window.__ROBBO_NW_PENDING_PROJECT__ || window.__ROBBO_NW_LOADING_PROJECT__)) {
+                return;
+            }
             const hashMatch = window.location.hash.match(/#(\d+)/);
             const hashProjectId = hashMatch === null ? defaultProjectId : hashMatch[1];
             this.props.setProjectId(hashProjectId.toString());
