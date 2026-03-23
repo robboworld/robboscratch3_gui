@@ -208,7 +208,10 @@ class RobboMenu extends Component {
     // (bitmap-based, not the old SVG). Sensor probes are sampled with fixed offsets
     // in world coordinates, so if the rendered size changes, sensor alignment breaks.
     // 194/576 ~= 0.337 => 50 * 0.337 ~= 16.8
-    const spriteJson = Object.assign({}, item.json, { objName: 'Robbo Robot', size: 17 });
+    // Scratch angle convention: 90 = right, 0 = up.
+    // Force simulation sprite to start "facing right" so stage orientation
+    // matches the costume preview for right-oriented robot images.
+    const spriteJson = Object.assign({}, item.json, { objName: 'Robbo Robot', size: 17, direction: 90 });
     this.is_sim_en = !this.is_sim_en;
     this.props.VM.runtime.sim_ac = !this.props.VM.runtime.sim_ac;
     if (this.props.VM.runtime.sim_ac) {
