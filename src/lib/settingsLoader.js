@@ -18,6 +18,12 @@ export const FIRMWARE_SETTINGS_LIMITS = Object.freeze({
   baud_rate: Object.freeze({ min: 9600, max: 115200 })
 });
 
+export const FULLSCREEN_RENDER_QUALITY_DEFAULT = 3;
+export const FULLSCREEN_RENDER_QUALITY_LIMITS = Object.freeze({
+  min: 1,
+  max: 3
+});
+
 function toRoundedNumber(value) {
   const rounded = Math.round(Number(value));
   return Number.isFinite(rounded) ? rounded : null;
@@ -33,6 +39,14 @@ function pickFirstDefined(...values) {
 }
 
 function normalizeFirmwareSetting(value, limits, fallback) {
+  const normalizedValue = toRoundedNumber(value);
+  if (normalizedValue != null && normalizedValue >= limits.min && normalizedValue <= limits.max) {
+    return normalizedValue;
+  }
+  return fallback;
+}
+
+function normalizeBoundedNumber(value, limits, fallback) {
   const normalizedValue = toRoundedNumber(value);
   if (normalizedValue != null && normalizedValue >= limits.min && normalizedValue <= limits.max) {
     return normalizedValue;
@@ -99,6 +113,20 @@ export function applyFirmwareSettingsToRuntime(vm, settingsData = {}) {
   runtime.firmware_baud_rate = firmwareSettings.baud_rate;
 
   return firmwareSettings;
+}
+
+export function normalizeFullscreenRenderQuality(rawSettings = {}) {
+  return normalizeBoundedNumber(
+    rawSettings.fullscreen_render_quality,
+    FULLSCREEN_RENDER_QUALITY_LIMITS,
+    FULLSCREEN_RENDER_QUALITY_DEFAULT
+  );
+}
+
+export function getFullscreenRenderQualityStorageData(rawSettings = {}) {
+  return {
+    fullscreen_render_quality: normalizeFullscreenRenderQuality(rawSettings)
+  };
 }
 
 /**

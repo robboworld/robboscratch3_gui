@@ -29,8 +29,14 @@ import NewDraggableWindowComponent from './NewDraggableWindowComponent';
 import ProfilerWindowComponent from './ProfilerWindowComponent';
 
 import IotConnectionComponent from './IotConnectionComponent';
-import { getSettingsFromStorage, applySettingsToDCA, applyFirmwareSettingsToRuntime } from '../lib/settingsLoader';
+import {
+  getSettingsFromStorage,
+  applySettingsToDCA,
+  applyFirmwareSettingsToRuntime,
+  normalizeFullscreenRenderQuality
+} from '../lib/settingsLoader';
 import { isDesktopWithBluetooth } from '../lib/platform';
+import { setFullscreenRenderQuality } from './reducers/settings';
 
 import { withAlert } from 'react-alert';
 
@@ -108,11 +114,13 @@ class RobboGui extends Component {
       if (this.props.vm) {
         getSettingsFromStorage().then((r) => {
           let firmwareSettingsApplied = false;
+          let fullscreenRenderQuality = normalizeFullscreenRenderQuality();
           if (r.file_exists && r.file) {
             try {
               const data = JSON.parse(r.file);
               applySettingsToDCA(this.props.vm, data);
               applyFirmwareSettingsToRuntime(this.props.vm, data);
+              fullscreenRenderQuality = normalizeFullscreenRenderQuality(data);
               firmwareSettingsApplied = true;
             } catch (e) {
               // ignore parse errors
@@ -121,6 +129,7 @@ class RobboGui extends Component {
           if (!firmwareSettingsApplied) {
             applyFirmwareSettingsToRuntime(this.props.vm, {});
           }
+          this.props.onSetFullscreenRenderQuality(fullscreenRenderQuality);
         });
       }
 
@@ -421,7 +430,10 @@ const mapDispatchToProps = dispatch => ({
       onTriggerColorCorrectorTable:  (sensor_caller_id) => {
 
           dispatch(ActionTriggerColorCorrectorTable(sensor_caller_id));
-        }
+        },
+      onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
+        dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
+      }
 
         // onTriggerNeedLanguageReload:  () => {
         //

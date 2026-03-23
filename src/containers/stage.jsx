@@ -22,6 +22,30 @@ import {
 const colorPickerRadius = 20;
 const dragThreshold = 3; // Same as the block drag threshold
 
+const getFullscreenRenderSize = (displayWidth, displayHeight, fullscreenRenderQuality) => {
+    const roundedQuality = Math.round(Number(fullscreenRenderQuality));
+    const normalizedQuality = Math.max(1, Math.min(3, Number.isFinite(roundedQuality) ? roundedQuality : 3));
+
+    if (normalizedQuality === 3) {
+        return {
+            width: displayWidth,
+            height: displayHeight
+        };
+    }
+
+    if (normalizedQuality === 2) {
+        return {
+            width: Math.round((layout.standardStageWidth + displayWidth) / 2),
+            height: Math.round((layout.standardStageHeight + displayHeight) / 2)
+        };
+    }
+
+    return {
+        width: layout.standardStageWidth,
+        height: layout.standardStageHeight
+    };
+};
+
 class Stage extends React.Component {
     constructor(props) {
         super(props);
@@ -85,6 +109,7 @@ class Stage extends React.Component {
             this.props.isColorPicking !== nextProps.isColorPicking ||
             this.state.colorInfo !== nextState.colorInfo ||
             this.props.isFullScreen !== nextProps.isFullScreen ||
+            this.props.fullscreenRenderQuality !== nextProps.fullscreenRenderQuality ||
             this.state.question !== nextState.question ||
             this.props.micIndicator !== nextProps.micIndicator ||
             this.props.isStarted !== nextProps.isStarted;
@@ -99,13 +124,19 @@ class Stage extends React.Component {
         this.applyStageSize();
     }
     /**
-     * In fullscreen, render at native 480x360 and scale via CSS to avoid heavy draw buffer.
+     * In fullscreen, adjust the render buffer according to the selected quality level.
      * In normal mode, render at display size as before.
      */
     applyStageSize() {
         if (this.props.isFullScreen) {
-            this.renderer.resize(layout.standardStageWidth, layout.standardStageHeight);
             const dims = getStageDimensions(this.props.stageSize, true);
+            const renderSize = getFullscreenRenderSize(
+                dims.width,
+                dims.height,
+                this.props.fullscreenRenderQuality
+            );
+
+            this.renderer.resize(renderSize.width, renderSize.height);
             this.canvas.style.width = `${dims.width}px`;
             this.canvas.style.height = `${dims.height}px`;
             this.rect = this.canvas.getBoundingClientRect();
@@ -403,6 +434,7 @@ class Stage extends React.Component {
     }
     render() {
         const {
+            fullscreenRenderQuality, // eslint-disable-line no-unused-vars
             vm, // eslint-disable-line no-unused-vars
             onActivateColorPicker, // eslint-disable-line no-unused-vars
             ...props
@@ -422,6 +454,7 @@ class Stage extends React.Component {
 }
 
 Stage.propTypes = {
+    fullscreenRenderQuality: PropTypes.number,
     isColorPicking: PropTypes.bool,
     isFullScreen: PropTypes.bool.isRequired,
     micIndicator: PropTypes.bool,
@@ -439,6 +472,7 @@ Stage.defaultProps = {
 const mapStateToProps = state => ({
     isColorPicking: state.scratchGui.colorPicker.active,
     isFullScreen: state.scratchGui.mode.isFullScreen,
+    fullscreenRenderQuality: state.scratchGui.settings.fullscreen_render_quality,
     isStarted: state.scratchGui.vmStatus.started,
     micIndicator: state.scratchGui.micIndicator,
     // Do not use editor drag style in fullscreen or player mode.

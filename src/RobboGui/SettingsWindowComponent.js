@@ -11,8 +11,12 @@ import { isDesktopWithBluetooth } from '../lib/platform';
 import {
   getSettingsFromStorage,
   applySettingsToDCA,
-  applyFirmwareSettingsToRuntime
+  applyFirmwareSettingsToRuntime,
+  FULLSCREEN_RENDER_QUALITY_DEFAULT,
+  getFullscreenRenderQualityStorageData,
+  normalizeFullscreenRenderQuality
 } from '../lib/settingsLoader';
+import { setFullscreenRenderQuality } from './reducers/settings';
 
 const messages = defineMessages({
   settings_window: {
@@ -29,6 +33,36 @@ const messages = defineMessages({
     id: 'gui.RobboGui.save_settings',
     description: ' ',
     defaultMessage: 'Save settings'
+  },
+  fullscreen_render_quality: {
+    id: 'gui.RobboGui.settings_window.fullscreen_render_quality',
+    description: ' ',
+    defaultMessage: 'Rendering quality'
+  },
+  fullscreen_quality_note: {
+    id: 'gui.RobboGui.settings_window.fullscreen_quality_note',
+    description: ' ',
+    defaultMessage: 'The parameter affects GPU and CPU load'
+  },
+  fullscreen_section_title: {
+    id: 'gui.RobboGui.settings_window.fullscreen_section_title',
+    description: ' ',
+    defaultMessage: 'Fullscreen mode settings'
+  },
+  fullscreen_quality_performance: {
+    id: 'gui.RobboGui.settings_window.fullscreen_quality_performance',
+    description: ' ',
+    defaultMessage: 'Performance'
+  },
+  fullscreen_quality_balanced: {
+    id: 'gui.RobboGui.settings_window.fullscreen_quality_balanced',
+    description: ' ',
+    defaultMessage: 'Balanced'
+  },
+  fullscreen_quality_quality: {
+    id: 'gui.RobboGui.settings_window.fullscreen_quality_quality',
+    description: ' ',
+    defaultMessage: 'Quality'
   },
 });
 
@@ -121,7 +155,13 @@ class SettingsWindowComponent extends Component {
   }
 
   saveSettings() {
-    const settings_data = this.saveDCASettings();
+    const fullscreenRenderQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
+    const settings_data = {
+      ...this.saveDCASettings(),
+      ...getFullscreenRenderQualityStorageData({
+        fullscreen_render_quality: fullscreenRenderQualityInput ? fullscreenRenderQualityInput.value : undefined
+      })
+    };
 
     const btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
     if (btSearchEl && btSearchEl.children[0]) {
@@ -135,6 +175,7 @@ class SettingsWindowComponent extends Component {
 
     applySettingsToDCA(this.VM, settings_data);
     applyFirmwareSettingsToRuntime(this.VM, {});
+    this.props.onSetFullscreenRenderQuality(settings_data.fullscreen_render_quality);
 
     this.deleteSettingsFile(() => {
       this.saveSettingsData(settings_data_serialized);
@@ -212,6 +253,11 @@ class SettingsWindowComponent extends Component {
       btSearchEl.children[0].checked = true;
     }
 
+    const fullscreenQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
+    if (fullscreenQualityInput) {
+      fullscreenQualityInput.value = FULLSCREEN_RENDER_QUALITY_DEFAULT;
+    }
+
   }
 
 
@@ -232,6 +278,7 @@ class SettingsWindowComponent extends Component {
       const c2 = child0("raw-connection-2-settings-window-content-column-2");
       const c3 = child0("raw-connection-3-settings-window-content-column-2");
       const c4 = child0("raw-connection-4-settings-window-content-column-2");
+      const fullscreenQuality = child0("raw-fullscreen-quality-settings-window-content-column-2");
 
       if (result.file_exists) {
         try {
@@ -249,7 +296,11 @@ class SettingsWindowComponent extends Component {
           const btSearchEl = child0("raw-bt-search-settings-window-content-column-2");
           if (btSearchEl) btSearchEl.checked = settings_data.bluetooth_search_enabled !== false;
 
+          const fullscreenRenderQuality = normalizeFullscreenRenderQuality(settings_data);
+          if (fullscreenQuality) fullscreenQuality.value = fullscreenRenderQuality;
+
           applySettingsToDCA(this.VM, settings_data);
+          this.props.onSetFullscreenRenderQuality(fullscreenRenderQuality);
 
           this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked === 1 || settings_data.left_motor_inverted_setting_checked === true;
           this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked === 1 || settings_data.right_motor_inverted_setting_checked === true;
@@ -259,12 +310,14 @@ class SettingsWindowComponent extends Component {
           console.error(error);
           this.deleteSettingsFile();
           this.setDefaultsDCAValues();
+          this.props.onSetFullscreenRenderQuality(FULLSCREEN_RENDER_QUALITY_DEFAULT);
           this.VM.runtime.left_motor_inverted = false;
           this.VM.runtime.right_motor_inverted = false;
           applyFirmwareSettingsToRuntime(this.VM, {});
         }
       } else {
         this.setDefaultsDCAValues();
+        this.props.onSetFullscreenRenderQuality(FULLSCREEN_RENDER_QUALITY_DEFAULT);
         this.VM.runtime.left_motor_inverted = false;
         this.VM.runtime.right_motor_inverted = false;
         applyFirmwareSettingsToRuntime(this.VM, {});
@@ -335,6 +388,23 @@ class SettingsWindowComponent extends Component {
             </div>
           </div>
 
+          <div id="settings-window-content-raw-fullscreen-quality" className={styles.settings_window_content_raw}>
+            <div id="raw-fullscreen-quality-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              <b>{this.props.intl.formatMessage(messages.fullscreen_section_title)}</b>
+              <div>{this.props.intl.formatMessage(messages.fullscreen_render_quality)}</div>
+              <div className={styles.settings_window_hint}>
+                {this.props.intl.formatMessage(messages.fullscreen_quality_note)}
+              </div>
+            </div>
+            <div id="raw-fullscreen-quality-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <select defaultValue={FULLSCREEN_RENDER_QUALITY_DEFAULT}>
+                <option value="1">{this.props.intl.formatMessage(messages.fullscreen_quality_performance)}</option>
+                <option value="2">{this.props.intl.formatMessage(messages.fullscreen_quality_balanced)}</option>
+                <option value="3">{this.props.intl.formatMessage(messages.fullscreen_quality_quality)}</option>
+              </select>
+            </div>
+          </div>
+
           <div id="settings-window-content-raw-3" className={styles.settings_window_content_raw}>
 
             <div id="raw-13-settings-window-content-column-1" className={styles.settings_window_content_column}>
@@ -354,6 +424,9 @@ const mapStateToProps = state => ({});
 const mapDispatchToProps = dispatch => ({
   onSettingsWindowClose: () => {
     dispatch(ActionTriggerDraggableWindow(4));
+  },
+  onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
+    dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
   }
 });
 

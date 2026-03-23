@@ -61,3 +61,17 @@ text-align: center;
    /* min-width: 400px;*/
 
 }
+
+.settings_window_content_column select{
+
+    min-width: 180px;
+
+}
+
+.settings_window_hint{
+
+    color: #666;
+    font-size: 12px;
+    margin-top: 4px;
+
+}
