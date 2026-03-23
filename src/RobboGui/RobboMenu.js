@@ -137,13 +137,42 @@ class RobboMenu extends Component {
     this.is_sim_en = false;
     this.is_extension_pack_enabled = false;
     this.is_lab_ext_enabled = false;
+    this.state = {
+      menuCoords: null
+    };
+    this.boundCloseRobboMenu = this.closeRobboMenu.bind(this);
+    this.boundUpdateMenuCoords = this.updateMenuCoords.bind(this);
 
   }
 
   componentDidMount(){
 
-       document.addEventListener('click', this.closeRobboMenu.bind(this));
+       document.addEventListener('click', this.boundCloseRobboMenu);
+       window.addEventListener('resize', this.boundUpdateMenuCoords);
 
+  }
+
+  componentDidUpdate(prevProps){
+    if (!prevProps.robbo_menu.isShowing && this.props.robbo_menu.isShowing) {
+      this.updateMenuCoords();
+    }
+  }
+
+  componentWillUnmount(){
+    document.removeEventListener('click', this.boundCloseRobboMenu);
+    window.removeEventListener('resize', this.boundUpdateMenuCoords);
+  }
+
+  updateMenuCoords(){
+    const triggerMenu = document.getElementById('trigger-robbo-menu');
+    if (!triggerMenu) return;
+    const rect = triggerMenu.getBoundingClientRect();
+    this.setState({
+      menuCoords: {
+        top: rect.bottom,
+        left: rect.left
+      }
+    });
   }
 
 
@@ -189,6 +218,8 @@ class RobboMenu extends Component {
 
     let trigger_menu = document.getElementById(`trigger-robbo-menu`);
     let menu = document.getElementById(`robbo-menu`);
+
+    if (!trigger_menu || !menu) return;
 
     if ( ( this.props.robbo_menu.isShowing) && (!trigger_menu.contains(e.target)) && (!menu.contains(e.target)) ){
 
@@ -445,7 +476,8 @@ class RobboMenu extends Component {
                     {[styles.robbo_menu_hidden]: !this.props.robbo_menu.isShowing}
 
 
-                    )}>
+                    )}
+           style={this.state.menuCoords || undefined}>
 
           <div id="trigger-sim-en" onClick={this.triggerSimEn.bind(this)} className={classNames(
                         {[styles.robbo_menu_item]: true}

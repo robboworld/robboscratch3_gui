@@ -223,22 +223,17 @@
 }
 
 .trigger_robbo_menu{
-
-      position: absolute;
-      left: 355px;
-
-      font-weight: bold;
-      font-size: 12px;
-
-      cursor: pointer;
-
-      min-height: 50px;
-
+    font-weight: bold;
+    font-size: 12px;
+    cursor: pointer;
     align-items: center;
     min-width: 100px;
+    height: $menu-bar-height;
     padding-left: 11px;
     padding-right: 11px;
     display: flex;
+    position: relative;
+    margin-left: 0.5rem;
 
 }
 
