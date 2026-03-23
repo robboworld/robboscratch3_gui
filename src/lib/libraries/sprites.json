@@ -18799,7 +18799,7 @@
     },
     {
         "name": "RobboPlatform",
-        "md5": "robot_platform_top_down_black.png",
+        "md5": "robot_platform_top_down_black_v2.png",
         "type": "sprite",
         "tags": [
             "robot",
@@ -18817,7 +18817,7 @@
                 {
                     "costumeName": "robbo-platform",
                     "baseLayerID": -1,
-                    "baseLayerMD5": "robot_platform_top_down_black.png",
+                    "baseLayerMD5": "robot_platform_top_down_black_v2.png",
                     "bitmapResolution": 2,
                     "rotationCenterX": 357,
                     "rotationCenterY": 640
