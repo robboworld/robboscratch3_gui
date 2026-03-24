@@ -4,6 +4,7 @@ const SET_FULLSCREEN_RENDER_QUALITY = 'SET_FULLSCREEN_RENDER_QUALITY';
 const SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED = 'SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED';
 
 const initialState = {
+  is_sim_activated: false,
   is_lab_ext_enabled: false,
   robot_is_scratchduino: false,
   fullscreen_render_quality: FULLSCREEN_RENDER_QUALITY_DEFAULT,
@@ -43,7 +44,8 @@ const reducer = function (state, action) {
 
   case SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED:
     settings_state = Object.assign({}, state);
-    settings_state.sim_sensor_debug_overlay_enabled = Boolean(action.enabled);
+    // Strict boolean: Boolean("false") is true in JS; default must stay off unless explicitly true.
+    settings_state.sim_sensor_debug_overlay_enabled = action.enabled === true;
     return settings_state;
 
   default:

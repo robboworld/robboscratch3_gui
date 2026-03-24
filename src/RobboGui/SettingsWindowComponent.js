@@ -166,13 +166,13 @@ class SettingsWindowComponent extends Component {
 
   saveSettings() {
     const fullscreenRenderQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
+    const simSensorDebugOverlayInput = this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
     const settings_data = {
       ...this.saveDCASettings(),
       ...getFullscreenRenderQualityStorageData({
         fullscreen_render_quality: fullscreenRenderQualityInput ? fullscreenRenderQualityInput.value : undefined
       }),
-      sim_sensor_debug_overlay_enabled: Boolean(this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2") ?
-        this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2").checked : false)
+      sim_sensor_debug_overlay_enabled: simSensorDebugOverlayInput ? simSensorDebugOverlayInput.checked === true : false
     };
 
     const btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
@@ -428,13 +428,13 @@ class SettingsWindowComponent extends Component {
             </div>
           </div>
 
-          <div id="settings-window-content-raw-sim-sensor-debug-overlay" className={styles.settings_window_content_raw}>
+          <div id="settings-window-content-raw-sim-sensor-debug-overlay-title" className={styles.settings_window_content_raw}>
             <div id="raw-sim-sensor-debug-overlay-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
               <b>{this.props.intl.formatMessage(messages.experimental_section_title)}</b>
             </div>
           </div>
 
-          <div id="settings-window-content-raw-sim-sensor-debug-overlay" className={styles.settings_window_content_raw}>
+          <div id="settings-window-content-raw-sim-sensor-debug-overlay-row" className={styles.settings_window_content_raw}>
             <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-1" className={styles.settings_window_content_column}>
               {this.props.intl.formatMessage(messages.sim_sensor_debug_overlay)}
             </div>

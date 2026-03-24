@@ -117,6 +117,8 @@ class Stage extends React.Component {
             this.state.colorInfo !== nextState.colorInfo ||
             this.props.isFullScreen !== nextProps.isFullScreen ||
             this.props.fullscreenRenderQuality !== nextProps.fullscreenRenderQuality ||
+            this.props.simSensorDebugOverlayEnabled !== nextProps.simSensorDebugOverlayEnabled ||
+            this.props.isSimActivated !== nextProps.isSimActivated ||
             this.state.question !== nextState.question ||
             this.props.micIndicator !== nextProps.micIndicator ||
             this.props.isStarted !== nextProps.isStarted;
@@ -131,6 +133,7 @@ class Stage extends React.Component {
         this.applyStageSize();
         if (
             prevProps.simSensorDebugOverlayEnabled !== this.props.simSensorDebugOverlayEnabled ||
+            prevProps.isSimActivated !== this.props.isSimActivated ||
             prevProps.vm !== this.props.vm
         ) {
             this.syncSensorDebugOverlayLoop();
@@ -452,10 +455,13 @@ class Stage extends React.Component {
     }
     shouldRunSensorDebugOverlay() {
         const runtime = this.props.vm && this.props.vm.runtime;
+        // Overlay only when user enabled it in Settings AND simulation is on (Redux + runtime).
+        // No RAF / no getSimSensorDebugData unless all are true — keeps idle editor light.
         return Boolean(
             this.sensorDebugCanvas &&
             runtime &&
             runtime.sim_ac &&
+            this.props.isSimActivated &&
             this.props.simSensorDebugOverlayEnabled
         );
     }
@@ -580,6 +586,7 @@ Stage.propTypes = {
     onActivateColorPicker: PropTypes.func,
     onDeactivateColorPicker: PropTypes.func,
     simSensorDebugOverlayEnabled: PropTypes.bool,
+    isSimActivated: PropTypes.bool,
     stageSize: PropTypes.oneOf(Object.keys(STAGE_DISPLAY_SIZES)).isRequired,
     useEditorDragStyle: PropTypes.bool,
     vm: PropTypes.instanceOf(VM).isRequired
@@ -594,6 +601,7 @@ const mapStateToProps = state => ({
     isFullScreen: state.scratchGui.mode.isFullScreen,
     fullscreenRenderQuality: state.scratchGui.settings.fullscreen_render_quality,
     simSensorDebugOverlayEnabled: state.scratchGui.settings.sim_sensor_debug_overlay_enabled,
+    isSimActivated: state.scratchGui.settings.is_sim_activated === true,
     isStarted: state.scratchGui.vmStatus.started,
     micIndicator: state.scratchGui.micIndicator,
     // Do not use editor drag style in fullscreen or player mode.
