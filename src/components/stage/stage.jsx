@@ -18,6 +18,7 @@ const StageComponent = props => {
     const {
         canvas,
         dragRef,
+        sensorDebugRef,
         isColorPicking,
         isFullScreen,
         isStarted,
@@ -124,6 +125,10 @@ const StageComponent = props => {
                     ref={dragRef}
                     width={0}
                 />
+                <canvas
+                    className={styles.sensorDebugOverlay}
+                    ref={sensorDebugRef}
+                />
             </Box>
             {isColorPicking ? (
                 <Box
@@ -138,6 +143,7 @@ StageComponent.propTypes = {
     canvas: PropTypes.instanceOf(Element).isRequired,
     colorInfo: Loupe.propTypes.colorInfo,
     dragRef: PropTypes.func,
+    sensorDebugRef: PropTypes.func,
     isColorPicking: PropTypes.bool,
     isFullScreen: PropTypes.bool.isRequired,
     isStarted: PropTypes.bool,
@@ -150,6 +156,7 @@ StageComponent.propTypes = {
     useEditorDragStyle: PropTypes.bool
 };
 StageComponent.defaultProps = {
-    dragRef: () => {}
+    dragRef: () => {},
+    sensorDebugRef: () => {}
 };
 export default StageComponent;

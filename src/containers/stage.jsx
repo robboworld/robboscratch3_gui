@@ -66,7 +66,9 @@ class Stage extends React.Component {
             'setDragCanvas',
             'clearDragCanvas',
             'drawDragCanvas',
-            'positionDragCanvas'
+            'positionDragCanvas',
+            'setSensorDebugCanvas',
+            'drawSensorDebugOverlay'
         ]);
         this.state = {
             mouseDownTimeoutId: null,
@@ -77,6 +79,7 @@ class Stage extends React.Component {
             colorInfo: null,
             question: null
         };
+        this.sensorDebugOverlayRaf = null;
         if (this.props.vm.renderer) {
             this.renderer = this.props.vm.renderer;
             this.canvas = this.renderer.canvas;
@@ -103,6 +106,7 @@ class Stage extends React.Component {
         this.updateRect();
         this.applyStageSize();
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
+        this.drawSensorDebugOverlay();
     }
     shouldComponentUpdate(nextProps, nextState) {
         return this.props.stageSize !== nextProps.stageSize ||
@@ -150,6 +154,10 @@ class Stage extends React.Component {
         this.detachRectEvents();
         this.stopColorPickingLoop();
         this.props.vm.runtime.removeListener('QUESTION', this.questionListener);
+        if (this.sensorDebugOverlayRaf !== null) {
+            cancelAnimationFrame(this.sensorDebugOverlayRaf);
+            this.sensorDebugOverlayRaf = null;
+        }
     }
     questionListener(question) {
         this.setState({ question: question });
@@ -432,6 +440,79 @@ class Stage extends React.Component {
     setDragCanvas(canvas) {
         this.dragCanvas = canvas;
     }
+    setSensorDebugCanvas(canvas) {
+        this.sensorDebugCanvas = canvas;
+    }
+    drawSensorDebugOverlay() {
+        const loop = () => {
+            try {
+                if (this.sensorDebugCanvas && this.rect) {
+                    const ctx = this.sensorDebugCanvas.getContext('2d');
+                    if (ctx) {
+                        const width = Math.max(1, Math.round(this.rect.width));
+                        const height = Math.max(1, Math.round(this.rect.height));
+                        if (this.sensorDebugCanvas.width !== width || this.sensorDebugCanvas.height !== height) {
+                            this.sensorDebugCanvas.width = width;
+                            this.sensorDebugCanvas.height = height;
+                        }
+                        ctx.clearRect(0, 0, width, height);
+
+                        const runtime = this.props.vm && this.props.vm.runtime;
+                        const primitives = runtime && runtime._primitives ? runtime._primitives : null;
+                        const isSimulation = Boolean(runtime && runtime.sim_ac);
+                        if (isSimulation && primitives && typeof primitives.getSimSensorDebugData === 'function') {
+                            const sensors = primitives.getSimSensorDebugData();
+                            const nativeSize = this.renderer.getNativeSize();
+                            const toCanvas = (sx, sy) => ({
+                                x: (sx / nativeSize[0]) * width + (width / 2),
+                                y: ((-sy) / nativeSize[1]) * height + (height / 2)
+                            });
+                            sensors.forEach((sensor, idx) => {
+                                const start = toCanvas(sensor.startX, sensor.startY);
+                                const end = toCanvas(sensor.endX, sensor.endY);
+                                const color = `hsl(${(idx * 72) % 360}, 85%, 55%)`;
+
+                                ctx.strokeStyle = color;
+                                ctx.lineWidth = 2;
+                                ctx.beginPath();
+                                ctx.moveTo(start.x, start.y);
+                                ctx.lineTo(end.x, end.y);
+                                ctx.stroke();
+
+                                const angle = Math.atan2(end.y - start.y, end.x - start.x);
+                                const arrowSize = 6;
+                                ctx.beginPath();
+                                ctx.moveTo(end.x, end.y);
+                                ctx.lineTo(
+                                    end.x - arrowSize * Math.cos(angle - Math.PI / 6),
+                                    end.y - arrowSize * Math.sin(angle - Math.PI / 6)
+                                );
+                                ctx.lineTo(
+                                    end.x - arrowSize * Math.cos(angle + Math.PI / 6),
+                                    end.y - arrowSize * Math.sin(angle + Math.PI / 6)
+                                );
+                                ctx.closePath();
+                                ctx.fillStyle = color;
+                                ctx.fill();
+
+                                ctx.fillStyle = color;
+                                ctx.beginPath();
+                                ctx.arc(start.x, start.y, 4, 0, Math.PI * 2);
+                                ctx.fill();
+
+                                ctx.fillStyle = '#ffffff';
+                                ctx.font = '10px sans-serif';
+                                ctx.fillText(String(sensor.sensorIndex), start.x + 6, start.y - 6);
+                            });
+                        }
+                    }
+                }
+            } finally {
+                this.sensorDebugOverlayRaf = requestAnimationFrame(loop);
+            }
+        };
+        this.sensorDebugOverlayRaf = requestAnimationFrame(loop);
+    }
     render() {
         const {
             fullscreenRenderQuality, // eslint-disable-line no-unused-vars
@@ -444,6 +525,7 @@ class Stage extends React.Component {
                 canvas={this.canvas}
                 colorInfo={this.state.colorInfo}
                 dragRef={this.setDragCanvas}
+                sensorDebugRef={this.setSensorDebugCanvas}
                 question={this.state.question}
                 onDoubleClick={this.handleDoubleClick}
                 onQuestionAnswered={this.handleQuestionAnswered}

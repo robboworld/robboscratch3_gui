@@ -465,6 +465,9 @@ class RobboMenu extends Component {
   this.DCA =  this.props.VM.getDCA();
   this.RCA =  this.props.VM.getRCA();
   this.LCA =  this.props.VM.getLCA();
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__RS3_VM__ = this.props.VM;
+  }
 
   return (
 
