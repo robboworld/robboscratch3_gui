@@ -68,7 +68,10 @@ class Stage extends React.Component {
             'drawDragCanvas',
             'positionDragCanvas',
             'setSensorDebugCanvas',
-            'drawSensorDebugOverlay'
+            'drawSensorDebugOverlay',
+            'startSensorDebugOverlay',
+            'stopSensorDebugOverlay',
+            'syncSensorDebugOverlayLoop'
         ]);
         this.state = {
             mouseDownTimeoutId: null,
@@ -106,7 +109,7 @@ class Stage extends React.Component {
         this.updateRect();
         this.applyStageSize();
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
-        this.drawSensorDebugOverlay();
+        this.syncSensorDebugOverlayLoop();
     }
     shouldComponentUpdate(nextProps, nextState) {
         return this.props.stageSize !== nextProps.stageSize ||
@@ -126,6 +129,12 @@ class Stage extends React.Component {
         }
         this.updateRect();
         this.applyStageSize();
+        if (
+            prevProps.simSensorDebugOverlayEnabled !== this.props.simSensorDebugOverlayEnabled ||
+            prevProps.vm !== this.props.vm
+        ) {
+            this.syncSensorDebugOverlayLoop();
+        }
     }
     /**
      * In fullscreen, adjust the render buffer according to the selected quality level.
@@ -154,10 +163,7 @@ class Stage extends React.Component {
         this.detachRectEvents();
         this.stopColorPickingLoop();
         this.props.vm.runtime.removeListener('QUESTION', this.questionListener);
-        if (this.sensorDebugOverlayRaf !== null) {
-            cancelAnimationFrame(this.sensorDebugOverlayRaf);
-            this.sensorDebugOverlayRaf = null;
-        }
+        this.stopSensorDebugOverlay();
     }
     questionListener(question) {
         this.setState({ question: question });
@@ -442,76 +448,107 @@ class Stage extends React.Component {
     }
     setSensorDebugCanvas(canvas) {
         this.sensorDebugCanvas = canvas;
+        this.syncSensorDebugOverlayLoop();
+    }
+    shouldRunSensorDebugOverlay() {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        return Boolean(
+            this.sensorDebugCanvas &&
+            runtime &&
+            runtime.sim_ac &&
+            this.props.simSensorDebugOverlayEnabled
+        );
+    }
+    startSensorDebugOverlay() {
+        if (this.sensorDebugOverlayRaf === null) {
+            this.sensorDebugOverlayRaf = requestAnimationFrame(this.drawSensorDebugOverlay);
+        }
+    }
+    stopSensorDebugOverlay() {
+        if (this.sensorDebugOverlayRaf !== null) {
+            cancelAnimationFrame(this.sensorDebugOverlayRaf);
+            this.sensorDebugOverlayRaf = null;
+        }
+        if (this.sensorDebugCanvas) {
+            const ctx = this.sensorDebugCanvas.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, this.sensorDebugCanvas.width, this.sensorDebugCanvas.height);
+            }
+        }
+    }
+    syncSensorDebugOverlayLoop() {
+        if (this.shouldRunSensorDebugOverlay()) {
+            this.startSensorDebugOverlay();
+        } else {
+            this.stopSensorDebugOverlay();
+        }
     }
     drawSensorDebugOverlay() {
-        const loop = () => {
-            try {
-                if (this.sensorDebugCanvas && this.rect) {
-                    const ctx = this.sensorDebugCanvas.getContext('2d');
-                    if (ctx) {
-                        const width = Math.max(1, Math.round(this.rect.width));
-                        const height = Math.max(1, Math.round(this.rect.height));
-                        if (this.sensorDebugCanvas.width !== width || this.sensorDebugCanvas.height !== height) {
-                            this.sensorDebugCanvas.width = width;
-                            this.sensorDebugCanvas.height = height;
-                        }
-                        ctx.clearRect(0, 0, width, height);
-
-                        const runtime = this.props.vm && this.props.vm.runtime;
-                        const primitives = runtime && runtime._primitives ? runtime._primitives : null;
-                        const isSimulation = Boolean(runtime && runtime.sim_ac);
-                        if (isSimulation && primitives && typeof primitives.getSimSensorDebugData === 'function') {
-                            const sensors = primitives.getSimSensorDebugData();
-                            const nativeSize = this.renderer.getNativeSize();
-                            const toCanvas = (sx, sy) => ({
-                                x: (sx / nativeSize[0]) * width + (width / 2),
-                                y: ((-sy) / nativeSize[1]) * height + (height / 2)
-                            });
-                            sensors.forEach((sensor, idx) => {
-                                const start = toCanvas(sensor.startX, sensor.startY);
-                                const end = toCanvas(sensor.endX, sensor.endY);
-                                const color = `hsl(${(idx * 72) % 360}, 85%, 55%)`;
-
-                                ctx.strokeStyle = color;
-                                ctx.lineWidth = 2;
-                                ctx.beginPath();
-                                ctx.moveTo(start.x, start.y);
-                                ctx.lineTo(end.x, end.y);
-                                ctx.stroke();
-
-                                const angle = Math.atan2(end.y - start.y, end.x - start.x);
-                                const arrowSize = 6;
-                                ctx.beginPath();
-                                ctx.moveTo(end.x, end.y);
-                                ctx.lineTo(
-                                    end.x - arrowSize * Math.cos(angle - Math.PI / 6),
-                                    end.y - arrowSize * Math.sin(angle - Math.PI / 6)
-                                );
-                                ctx.lineTo(
-                                    end.x - arrowSize * Math.cos(angle + Math.PI / 6),
-                                    end.y - arrowSize * Math.sin(angle + Math.PI / 6)
-                                );
-                                ctx.closePath();
-                                ctx.fillStyle = color;
-                                ctx.fill();
-
-                                ctx.fillStyle = color;
-                                ctx.beginPath();
-                                ctx.arc(start.x, start.y, 4, 0, Math.PI * 2);
-                                ctx.fill();
-
-                                ctx.fillStyle = '#ffffff';
-                                ctx.font = '10px sans-serif';
-                                ctx.fillText(String(sensor.sensorIndex), start.x + 6, start.y - 6);
-                            });
-                        }
-                    }
+        if (!this.shouldRunSensorDebugOverlay()) {
+            this.stopSensorDebugOverlay();
+            return;
+        }
+        if (this.sensorDebugCanvas && this.rect) {
+            const ctx = this.sensorDebugCanvas.getContext('2d');
+            if (ctx) {
+                const width = Math.max(1, Math.round(this.rect.width));
+                const height = Math.max(1, Math.round(this.rect.height));
+                if (this.sensorDebugCanvas.width !== width || this.sensorDebugCanvas.height !== height) {
+                    this.sensorDebugCanvas.width = width;
+                    this.sensorDebugCanvas.height = height;
                 }
-            } finally {
-                this.sensorDebugOverlayRaf = requestAnimationFrame(loop);
+                ctx.clearRect(0, 0, width, height);
+
+                const runtime = this.props.vm && this.props.vm.runtime;
+                const primitives = runtime && runtime._primitives ? runtime._primitives : null;
+                if (primitives && typeof primitives.getSimSensorDebugData === 'function') {
+                    const sensors = primitives.getSimSensorDebugData();
+                    const nativeSize = this.renderer.getNativeSize();
+                    const toCanvas = (sx, sy) => ({
+                        x: (sx / nativeSize[0]) * width + (width / 2),
+                        y: ((-sy) / nativeSize[1]) * height + (height / 2)
+                    });
+                    sensors.forEach((sensor, idx) => {
+                        const start = toCanvas(sensor.startX, sensor.startY);
+                        const end = toCanvas(sensor.endX, sensor.endY);
+                        const color = `hsl(${(idx * 72) % 360}, 85%, 55%)`;
+
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(start.x, start.y);
+                        ctx.lineTo(end.x, end.y);
+                        ctx.stroke();
+
+                        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+                        const arrowSize = 6;
+                        ctx.beginPath();
+                        ctx.moveTo(end.x, end.y);
+                        ctx.lineTo(
+                            end.x - arrowSize * Math.cos(angle - Math.PI / 6),
+                            end.y - arrowSize * Math.sin(angle - Math.PI / 6)
+                        );
+                        ctx.lineTo(
+                            end.x - arrowSize * Math.cos(angle + Math.PI / 6),
+                            end.y - arrowSize * Math.sin(angle + Math.PI / 6)
+                        );
+                        ctx.closePath();
+                        ctx.fillStyle = color;
+                        ctx.fill();
+
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        ctx.arc(start.x, start.y, 4, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '10px sans-serif';
+                        ctx.fillText(String(sensor.sensorIndex), start.x + 6, start.y - 6);
+                    });
+                }
             }
-        };
-        this.sensorDebugOverlayRaf = requestAnimationFrame(loop);
+        }
+        this.sensorDebugOverlayRaf = requestAnimationFrame(this.drawSensorDebugOverlay);
     }
     render() {
         const {
@@ -542,6 +579,7 @@ Stage.propTypes = {
     micIndicator: PropTypes.bool,
     onActivateColorPicker: PropTypes.func,
     onDeactivateColorPicker: PropTypes.func,
+    simSensorDebugOverlayEnabled: PropTypes.bool,
     stageSize: PropTypes.oneOf(Object.keys(STAGE_DISPLAY_SIZES)).isRequired,
     useEditorDragStyle: PropTypes.bool,
     vm: PropTypes.instanceOf(VM).isRequired
@@ -555,6 +593,7 @@ const mapStateToProps = state => ({
     isColorPicking: state.scratchGui.colorPicker.active,
     isFullScreen: state.scratchGui.mode.isFullScreen,
     fullscreenRenderQuality: state.scratchGui.settings.fullscreen_render_quality,
+    simSensorDebugOverlayEnabled: state.scratchGui.settings.sim_sensor_debug_overlay_enabled,
     isStarted: state.scratchGui.vmStatus.started,
     micIndicator: state.scratchGui.micIndicator,
     // Do not use editor drag style in fullscreen or player mode.

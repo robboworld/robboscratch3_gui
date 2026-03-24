@@ -1,11 +1,13 @@
 import { FULLSCREEN_RENDER_QUALITY_DEFAULT } from '../../lib/settingsLoader';
 
 const SET_FULLSCREEN_RENDER_QUALITY = 'SET_FULLSCREEN_RENDER_QUALITY';
+const SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED = 'SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED';
 
 const initialState = {
   is_lab_ext_enabled: false,
   robot_is_scratchduino: false,
-  fullscreen_render_quality: FULLSCREEN_RENDER_QUALITY_DEFAULT
+  fullscreen_render_quality: FULLSCREEN_RENDER_QUALITY_DEFAULT,
+  sim_sensor_debug_overlay_enabled: false
 };
 
 const reducer = function (state, action) {
@@ -39,6 +41,11 @@ const reducer = function (state, action) {
     settings_state.fullscreen_render_quality = action.fullscreenRenderQuality;
     return settings_state;
 
+  case SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED:
+    settings_state = Object.assign({}, state);
+    settings_state.sim_sensor_debug_overlay_enabled = Boolean(action.enabled);
+    return settings_state;
+
   default:
     return state;
   }
@@ -51,8 +58,16 @@ const setFullscreenRenderQuality = function (fullscreenRenderQuality) {
   };
 };
 
+const setSimSensorDebugOverlayEnabled = function (enabled) {
+  return {
+    type: SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED,
+    enabled: enabled
+  };
+};
+
 export {
   reducer as default,
   initialState as settings_InitialState,
-  setFullscreenRenderQuality
+  setFullscreenRenderQuality,
+  setSimSensorDebugOverlayEnabled
 };

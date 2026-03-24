@@ -16,7 +16,7 @@ import {
   getFullscreenRenderQualityStorageData,
   normalizeFullscreenRenderQuality
 } from '../lib/settingsLoader';
-import { setFullscreenRenderQuality } from './reducers/settings';
+import { setFullscreenRenderQuality, setSimSensorDebugOverlayEnabled } from './reducers/settings';
 
 const messages = defineMessages({
   settings_window: {
@@ -64,6 +64,16 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'Quality'
   },
+  sim_sensor_debug_overlay: {
+    id: 'gui.RobboGui.settings_window.sim_sensor_debug_overlay',
+    description: ' ',
+    defaultMessage: 'Show simulator sensor debug overlay'
+  },
+  experimental_section_title: {
+    id: 'gui.RobboGui.settings_window.experimental_section_title',
+    description: ' ',
+    defaultMessage: 'Experimental settings'
+  }
 });
 
 const messages_for_DCA_intervals = defineMessages({
@@ -160,7 +170,9 @@ class SettingsWindowComponent extends Component {
       ...this.saveDCASettings(),
       ...getFullscreenRenderQualityStorageData({
         fullscreen_render_quality: fullscreenRenderQualityInput ? fullscreenRenderQualityInput.value : undefined
-      })
+      }),
+      sim_sensor_debug_overlay_enabled: Boolean(this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2") ?
+        this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2").checked : false)
     };
 
     const btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
@@ -176,6 +188,7 @@ class SettingsWindowComponent extends Component {
     applySettingsToDCA(this.VM, settings_data);
     applyFirmwareSettingsToRuntime(this.VM, {});
     this.props.onSetFullscreenRenderQuality(settings_data.fullscreen_render_quality);
+    this.props.onSetSimSensorDebugOverlayEnabled(settings_data.sim_sensor_debug_overlay_enabled);
 
     this.deleteSettingsFile(() => {
       this.saveSettingsData(settings_data_serialized);
@@ -257,6 +270,10 @@ class SettingsWindowComponent extends Component {
     if (fullscreenQualityInput) {
       fullscreenQualityInput.value = FULLSCREEN_RENDER_QUALITY_DEFAULT;
     }
+    const simSensorOverlay = this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
+    if (simSensorOverlay) {
+      simSensorOverlay.checked = false;
+    }
 
   }
 
@@ -279,6 +296,7 @@ class SettingsWindowComponent extends Component {
       const c3 = child0("raw-connection-3-settings-window-content-column-2");
       const c4 = child0("raw-connection-4-settings-window-content-column-2");
       const fullscreenQuality = child0("raw-fullscreen-quality-settings-window-content-column-2");
+      const simSensorOverlay = child0("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
 
       if (result.file_exists) {
         try {
@@ -298,9 +316,12 @@ class SettingsWindowComponent extends Component {
 
           const fullscreenRenderQuality = normalizeFullscreenRenderQuality(settings_data);
           if (fullscreenQuality) fullscreenQuality.value = fullscreenRenderQuality;
+          const simSensorDebugOverlayEnabled = settings_data.sim_sensor_debug_overlay_enabled === true;
+          if (simSensorOverlay) simSensorOverlay.checked = simSensorDebugOverlayEnabled;
 
           applySettingsToDCA(this.VM, settings_data);
           this.props.onSetFullscreenRenderQuality(fullscreenRenderQuality);
+          this.props.onSetSimSensorDebugOverlayEnabled(simSensorDebugOverlayEnabled);
 
           this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked === 1 || settings_data.left_motor_inverted_setting_checked === true;
           this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked === 1 || settings_data.right_motor_inverted_setting_checked === true;
@@ -311,6 +332,7 @@ class SettingsWindowComponent extends Component {
           this.deleteSettingsFile();
           this.setDefaultsDCAValues();
           this.props.onSetFullscreenRenderQuality(FULLSCREEN_RENDER_QUALITY_DEFAULT);
+          this.props.onSetSimSensorDebugOverlayEnabled(false);
           this.VM.runtime.left_motor_inverted = false;
           this.VM.runtime.right_motor_inverted = false;
           applyFirmwareSettingsToRuntime(this.VM, {});
@@ -318,6 +340,7 @@ class SettingsWindowComponent extends Component {
       } else {
         this.setDefaultsDCAValues();
         this.props.onSetFullscreenRenderQuality(FULLSCREEN_RENDER_QUALITY_DEFAULT);
+        this.props.onSetSimSensorDebugOverlayEnabled(false);
         this.VM.runtime.left_motor_inverted = false;
         this.VM.runtime.right_motor_inverted = false;
         applyFirmwareSettingsToRuntime(this.VM, {});
@@ -405,6 +428,21 @@ class SettingsWindowComponent extends Component {
             </div>
           </div>
 
+          <div id="settings-window-content-raw-sim-sensor-debug-overlay" className={styles.settings_window_content_raw}>
+            <div id="raw-sim-sensor-debug-overlay-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              <b>{this.props.intl.formatMessage(messages.experimental_section_title)}</b>
+            </div>
+          </div>
+
+          <div id="settings-window-content-raw-sim-sensor-debug-overlay" className={styles.settings_window_content_raw}>
+            <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              {this.props.intl.formatMessage(messages.sim_sensor_debug_overlay)}
+            </div>
+            <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="checkbox" defaultChecked={false} />
+            </div>
+          </div>
+
           <div id="settings-window-content-raw-3" className={styles.settings_window_content_raw}>
 
             <div id="raw-13-settings-window-content-column-1" className={styles.settings_window_content_column}>
@@ -427,6 +465,9 @@ const mapDispatchToProps = dispatch => ({
   },
   onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
     dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
+  },
+  onSetSimSensorDebugOverlayEnabled: (enabled) => {
+    dispatch(setSimSensorDebugOverlayEnabled(enabled));
   }
 });
 
