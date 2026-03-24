@@ -320,7 +320,7 @@ class RobboGui extends Component {
           <div className={styles.version}> </div>
 
          {
-              (!this.props.sensorsPalette.sensors_pallete_collapsed)?  <SensorPallete RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />: <SensorPaletteCollapsed />
+              (!this.props.sensorsPalette.sensors_pallete_collapsed)?  <SensorPallete RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} VM={this.props.vm} />: <SensorPaletteCollapsed />
 
 
          }

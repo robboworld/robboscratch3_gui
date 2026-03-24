@@ -118,7 +118,7 @@ const showQuadcopterUi = isDesktopWithBluetooth();
 
         <DraggableWindowComponent draggableWindowId={1} initialCoords={initial_coords_robot}>
 
-              <RobotPalleteComponent RCA={this.props.RCA} robotIndex={0}/>
+              <RobotPalleteComponent RCA={this.props.RCA} robotIndex={0} VM={this.props.VM}/>
 
         </DraggableWindowComponent>
 
