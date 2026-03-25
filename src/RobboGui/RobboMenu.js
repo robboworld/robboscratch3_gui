@@ -243,14 +243,14 @@ class RobboMenu extends Component {
   triggerSimEn() {
     const item = spriteLibraryContent.find(s => s.name === 'RobboPlatform') || spriteLibraryContent.find(s => s.name === 'Robot') || spriteLibraryContent[0];
     if (!item || !item.json) return;
-    // The simulation robot size is tuned for the current RobboPlatform costume dimensions
-    // (bitmap-based, not the old SVG). Sensor probes are sampled with fixed offsets
-    // in world coordinates, so if the rendered size changes, sensor alignment breaks.
-    // 194/576 ~= 0.337 => 50 * 0.337 ~= 16.8
-    // Scratch angle convention: 90 = right, 0 = up.
-    // Force simulation sprite to start "facing right" so stage orientation
-    // matches the costume preview for right-oriented robot images.
-    const spriteJson = Object.assign({}, item.json, { objName: 'Robbo Robot', size: 17, direction: 90 });
+    // SB2 sprite deserialization uses `scale` (1 = 100%), not `size`. Start scale matches
+    // the library entry (e.g. RobboPlatform scale 0.25) so the sim robot matches the sprite library.
+    // Scratch angle convention: 90 = right, 0 = up — align with right-facing platform art.
+    const baseJson = Object.assign({}, item.json);
+    if (typeof baseJson.scale !== 'number' || !Number.isFinite(baseJson.scale)) {
+      baseJson.scale = 0.25;
+    }
+    const spriteJson = Object.assign({}, baseJson, { objName: 'Robbo Robot', direction: 90 });
     this.is_sim_en = !this.is_sim_en;
     this.props.VM.runtime.sim_ac = !this.props.VM.runtime.sim_ac;
     if (this.props.VM.runtime.sim_ac) {
