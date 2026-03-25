@@ -16,6 +16,14 @@ import {createDiv,createDivShort} from './lib/lib.js';
 
 //import Blockly_Arduino from 'blocks-compiler';
 
+const SIMULATION_ROBOT_SPRITE_NAMES = ['Robbo Robot', 'RobboPlatform', 'Robot'];
+
+const hasSimulationRobotSprite = function (vm) {
+    if (!vm || !vm.runtime || !vm.runtime.targets) return false;
+    return vm.runtime.targets.some(t =>
+        t.isOriginal && !t.isStage && SIMULATION_ROBOT_SPRITE_NAMES.includes(t.sprite.name)
+    );
+};
 
 const messages = defineMessages({
     sim_enable: {
@@ -246,9 +254,13 @@ class RobboMenu extends Component {
     this.is_sim_en = !this.is_sim_en;
     this.props.VM.runtime.sim_ac = !this.props.VM.runtime.sim_ac;
     if (this.props.VM.runtime.sim_ac) {
-      this.props.VM.addSprite(spriteJson).then((result) => {
+      if (hasSimulationRobotSprite(this.props.VM)) {
         if (this.props.VM.setUTIL) this.props.VM.setUTIL();
-      }).catch(() => {});
+      } else {
+        this.props.VM.addSprite(spriteJson).then(() => {
+          if (this.props.VM.setUTIL) this.props.VM.setUTIL();
+        }).catch(() => {});
+      }
     }
     this.props.onTriggerSimEn();
   }
