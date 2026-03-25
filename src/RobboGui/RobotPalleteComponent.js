@@ -206,8 +206,14 @@ componentDidUpdate(){
                         sensor_data = this.props.RCA.getSensorData(index);
                       }
 
+                      const valueCell = sensors_values_field_list[3+index];
+                      valueCell.style.removeProperty('border');
+                      valueCell.style.removeProperty('background-color');
+                      valueCell.style.removeProperty('min-width');
+                      valueCell.style.removeProperty('min-height');
+
                       if (typeof(sensor_data) !== 'undefined' && !isNaN(sensor_data)){
-                        sensors_values_field_list[3+index].innerHTML = sensor_data;
+                        valueCell.innerHTML = sensor_data;
                       }
 
                 }
