@@ -26,6 +26,16 @@ function isDesktopWithBluetooth() {
   return p === 'win32' || p === 'linux' || p === 'darwin';
 }
 
+/**
+ * Mobile browser without Web Serial — RobboLink bridge (ws://127.0.0.1) is the intended transport.
+ * Aligns with platforms/web/robbolink-transport.js (also ?robbolink=1 / __ROBBOLINK_FORCE__ there).
+ */
+function isRobboLinkMobileWebContext() {
+  if (typeof navigator === 'undefined') return false;
+  const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+  return mobile && !navigator.serial;
+}
+
 const EMPTY_SYSTEM_INFO = {
   source: 'unknown',
   platform: '',
@@ -296,4 +306,4 @@ function getSystemInfoAsync() {
   return Promise.resolve(EMPTY_SYSTEM_INFO);
 }
 
-export { node_process, node_os, isDesktopWithBluetooth, getSystemInfoAsync, formatArchitectureDisplay };
+export { node_process, node_os, isDesktopWithBluetooth, isRobboLinkMobileWebContext, getSystemInfoAsync, formatArchitectureDisplay };
