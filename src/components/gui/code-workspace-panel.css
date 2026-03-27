@@ -1,0 +1,86 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+.codeWorkspaceRoot {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+    position: relative;
+    width: 100%;
+}
+
+.codeModeBar {
+    display: flex;
+    flex-shrink: 0;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    background-color: $ui-tertiary;
+    border-bottom: 1px solid $ui-black-transparent;
+    align-items: center;
+}
+
+.modeButton,
+.modeButtonActive {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.35rem;
+    border: 1px solid $ui-black-transparent;
+    cursor: pointer;
+    background-color: $ui-primary;
+    color: $text-primary;
+}
+
+.modeButtonActive {
+    background-color: $motion-primary;
+    color: $ui-white;
+    border-color: $motion-primary;
+}
+
+.pythonPanel {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+    width: 100%;
+    background-color: $ui-primary;
+}
+
+.pythonToolbar {
+    flex-shrink: 0;
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid $ui-black-transparent;
+}
+
+.copyButton {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 0.35rem;
+    border: 1px solid $ui-black-transparent;
+    cursor: pointer;
+    background-color: $ui-tertiary;
+}
+
+.pythonTextarea {
+    flex-grow: 1;
+    width: 100%;
+    min-height: 200px;
+    margin: 0;
+    padding: 0.5rem;
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    border: none;
+    resize: none;
+    background-color: $ui-primary;
+    color: $text-primary;
+    white-space: pre;
+    overflow: auto;
+}
+
+.pythonTextarea:focus {
+    outline: none;
+}
