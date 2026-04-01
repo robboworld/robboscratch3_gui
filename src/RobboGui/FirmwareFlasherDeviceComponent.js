@@ -126,12 +126,12 @@ class FirmwareFlasherDeviceComponent extends Component {
 
     var dots_counter = 1;
     var startFlash = () => {
-      if (!this.DCA || !this.DCA.flashFirmware) {
-        console.error("FirmwareFlasher: DCA.flashFirmware not available");
+      if (!this.DCA || (!this.DCA.flashFirmware && !this.DCA.flashFirmwareWithDisconnect)) {
+        console.error("FirmwareFlasher: DCA flash API not available");
         if (search_device_button) search_device_button.removeAttribute("disabled");
         return;
       }
-      this.DCA.flashFirmware(this.props.devicePort, config, (status) => {
+      var statusCallback = (status) => {
 
         styles = {
 
@@ -193,7 +193,12 @@ class FirmwareFlasherDeviceComponent extends Component {
 
 
 
-      });
+      };
+      if (this.DCA.flashFirmwareWithDisconnect) {
+        this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, config, statusCallback);
+      } else {
+        this.DCA.flashFirmware(this.props.devicePort, config, statusCallback);
+      }
     };
     try {
       setTimeout(startFlash, 500);
