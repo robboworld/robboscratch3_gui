@@ -19,11 +19,15 @@ import {
     activateTab,
     BLOCKS_TAB_INDEX
 } from '../reducers/editor-tab';
+import {setProjectTitle} from '../reducers/project-title';
 
-import log from './log';
+import {
+    restoreValidSnapshot
+} from './project-session-store';
 import storage from './storage';
-
-const validate = require('scratch-parser');
+import validate from 'scratch-parser';
+const isDefaultProjectId = projectId => projectId === null || typeof projectId === 'undefined' ||
+    projectId.toString() === '0';
 
 /* Higher Order Component to provide behavior for loading projects by id. If
  * there's no id, the default project is loaded.
@@ -35,8 +39,10 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         constructor (props) {
             super(props);
             bindAll(this, [
-                'fetchProject'
+                'fetchProject',
+                'loadProjectFromStorage'
             ]);
+            this.shouldAttemptSessionRestore = true;
             storage.setProjectHost(props.projectHost);
             storage.setAssetHost(props.assetHost);
             storage.setTranslatorFunction(props.intl.formatMessage);
@@ -71,194 +77,72 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         }
 
 
-        validateProject(input){
+        validateProject (input) {
+            if (typeof input === 'object' && !(input instanceof ArrayBuffer) &&
+                !ArrayBuffer.isView(input)) {
+                // If the input is an object and not any ArrayBuffer
+                // or an ArrayBuffer view (this includes all typed arrays and DataViews)
+                // turn the object into a JSON string, because we suspect
+                // this is a project.json as an object
+                // validate expects a string or buffer as input
+                input = JSON.stringify(input);
+            }
 
-        if (typeof input === 'object' && !(input instanceof ArrayBuffer) &&
-          !ArrayBuffer.isView(input)) {
-            // If the input is an object and not any ArrayBuffer
-            // or an ArrayBuffer view (this includes all typed arrays and DataViews)
-            // turn the object into a JSON string, because we suspect
-            // this is a project.json as an object
-            // validate expects a string or buffer as input
-            // TODO not sure if we need to check that it also isn't a data view
-            input = JSON.stringify(input);
+            const validationPromise = new Promise((resolve, reject) => {
+                // The second argument of false below indicates to the validator that the
+                // input should be parsed/validated as an entire project (and not a single sprite)
+                validate(input, false, (error, res) => {
+                    if (error) return reject(error);
+                    resolve(res);
+                });
+            });
+
+            return validationPromise
+                .then(() => Promise.resolve(input))
+                .catch(error => {
+                    // Intentionally rejecting here because the caller decides the fallback path.
+                    if (error.hasOwnProperty('validationError')) {
+                        return Promise.reject(JSON.stringify(error));
+                    }
+                    return Promise.reject(error);
+                });
         }
 
-        const validationPromise = new Promise((resolve, reject) => {
-            // The second argument of false below indicates to the validator that the
-            // input should be parsed/validated as an entire project (and not a single sprite)
-            validate(input, false, (error, res) => {
-                if (error) return reject(error);
-                resolve(res);
-            });
-        });
-
-        return validationPromise
-            .then(result => {return Promise.resolve(input)})
-            .catch(error => {
-                // Intentionally rejecting here (want errors to be handled by caller)
-                if (error.hasOwnProperty('validationError')) {
-                    return Promise.reject(JSON.stringify(error));
-                }
-                return Promise.reject(error);
-            });
-
-      }
-
-
-      checkLocallySavedProject(){
-
-            return new Promise((resolve,reject)=>{
-
-              function errorHandler(e){
-                console.error("File error during checkLocallySavedProject: " + e);
-
-                 let res = {};
-
-                res.file_exists = false;
-                res.file = null;
-                res.err = e;
-
-                resolve(res);
-
-              };
-
-              function onInitFs(fs) {
-                 console.log('Opened file system: ' + fs.name);
-
-
-                 fs.root.getFile("auto-saved" + "." + "sb3", {create: false}, function(fileEntry) {
-
-                   fileEntry.file(function(file) {
-                        var reader = new FileReader();
-
-                        reader.onloadend = function(e) {
-
-                          if ((typeof (this) !== 'undefined') && (typeof(this.result) !== 'undefined')  && (this.result !== null)){
-
-
-                            console.log("Read completed for " + "auto-saved" + "." + "sb3" + ". length=" + this.result.length);
-
-                            let res = {};
-                            res.file_exists = true;
-                            res.file = this.result;
-                            res.err = null;
-
-                            resolve(res);
-
-
-                          }else{
-
-                            let res = {};
-
-                            res.file_exists = false;
-                            res.file = null;
-                            res.err = e;
-
-                            resolve(res);
-
-
-                          }
-
-
-                        };
-
-                        reader.readAsArrayBuffer(file);
-                     });
-
-
-                 }, function(e){
-
-                   let res = {};
-
-                   res.file_exists = false;
-                   res.file = null;
-                   res.err = e;
-
-                   resolve(res);
-
-                 });
-              };
-
-
-              //window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
-              //window.requestFileSystem(window.TEMPORARY, 5*1024*1024 /*5MB*/, onInitFs, errorHandler);
-              navigator.webkitPersistentStorage.requestQuota(500*1024*1024,
-                 function(grantedBytes){
-                    console.log("checkLocallySavedProject byte granted=" + grantedBytes);
-                    window.webkitRequestFileSystem(PERSISTENT, grantedBytes, onInitFs, errorHandler);
-                 }, errorHandler
-              );
-
-            //   window.webkitRequestFileSystem(window.PERSISTENT, 50*1024*1024, onInitFs, errorHandler);
-
-            });
-
-    }
-
+        loadProjectFromStorage (projectId, loadingState) {
+            return storage
+                .load(storage.AssetType.Project, projectId, storage.DataFormat.JSON)
+                .then(projectAsset => {
+                    if (projectAsset) {
+                        this.props.onFetchedProjectData(projectAsset.data, loadingState);
+                    }
+                })
+                .catch(err => this.props.onError(err));
+        }
 
         fetchProject (projectId, loadingState) {
-            // return storage
-            //     .load(storage.AssetType.Project, projectId, storage.DataFormat.JSON)
-            //     .then(projectAsset => {
-            //         if (projectAsset) {
-            //             this.props.onFetchedProjectData(projectAsset.data, loadingState);
-            //         } else {
-            //             // Treat failure to load as an error
-            //             // Throw to be caught by catch later on
-            //             throw new Error('Could not find project');
-            //         }
-            //     })
-            //     .catch(err => {
-            //         this.props.onError(err);
-            //         log.error(err);
-            //     });
+            const shouldRestoreSession = this.shouldAttemptSessionRestore &&
+                isDefaultProjectId(projectId) &&
+                !(typeof window !== 'undefined' &&
+                    (window.__ROBBO_NW_PENDING_PROJECT__ || window.__ROBBO_NW_LOADING_PROJECT__));
 
+            this.shouldAttemptSessionRestore = false;
 
-          this.checkLocallySavedProject().then((result) => {
+            if (!shouldRestoreSession) {
+                return this.loadProjectFromStorage(projectId, loadingState);
+            }
 
-
-          if (result.file_exists){
-
-           this.validateProject(result.file)
-
-           .then((file) => {
-
-             this.props.onFetchedProjectData(file, loadingState);
-
-           })
-
-           .catch(error => {
-
-             storage
-                 .load(storage.AssetType.Project, projectId, storage.DataFormat.JSON)
-                 .then(projectAsset => {
-                     if (projectAsset) {
-                         this.props.onFetchedProjectData(projectAsset.data, loadingState);
-                     } 
-                 })
-
-               //  .catch(err => log.error(err));
-               .catch(err => console.error("Project load error: " + err));
-
-           });
-
-         }else {
-           storage
-               .load(storage.AssetType.Project, projectId, storage.DataFormat.JSON)
-               .then(projectAsset => {
-                   if (projectAsset) {
-                       this.props.onFetchedProjectData(projectAsset.data, loadingState);
-                   }
-               })
-
-             //  .catch(err => log.error(err));
-             .catch(err => console.error("Project load error: " + err));
-         }
-
-
-              });
-
+            return restoreValidSnapshot(input => this.validateProject(input))
+                .then(restoredSnapshot => {
+                    if (restoredSnapshot) {
+                        if (restoredSnapshot.metadata && restoredSnapshot.metadata.title) {
+                            this.props.onRestoreProjectTitle(restoredSnapshot.metadata.title);
+                        }
+                        this.props.onFetchedProjectData(restoredSnapshot.projectData, loadingState);
+                        return;
+                    }
+                    return this.loadProjectFromStorage(projectId, loadingState);
+                })
+                .catch(() => this.loadProjectFromStorage(projectId, loadingState));
         }
         render () {
             const {
@@ -271,6 +155,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
                 onError: onErrorProp,
                 onFetchedProjectData: onFetchedProjectDataProp,
                 onProjectUnchanged,
+                onRestoreProjectTitle: onRestoreProjectTitleProp,
                 projectHost,
                 projectId,
                 reduxProjectId,
@@ -298,6 +183,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         onError: PropTypes.func,
         onFetchedProjectData: PropTypes.func,
         onProjectUnchanged: PropTypes.func,
+        onRestoreProjectTitle: PropTypes.func,
         projectHost: PropTypes.string,
         projectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         reduxProjectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
@@ -321,6 +207,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         onError: error => dispatch(projectError(error)),
         onFetchedProjectData: (projectData, loadingState) =>
             dispatch(onFetchedProjectData(projectData, loadingState)),
+        onRestoreProjectTitle: title => dispatch(setProjectTitle(title)),
         setProjectId: projectId => dispatch(setProjectId(projectId)),
         onProjectUnchanged: () => dispatch(setProjectUnchanged())
     });

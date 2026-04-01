@@ -5,6 +5,7 @@ import {connect} from 'react-redux';
 import ReactModal from 'react-modal';
 import VM from 'scratch-vm';
 import {defineMessages, injectIntl, intlShape} from 'react-intl';
+import bindAll from 'lodash.bindall';
 
 import ErrorBoundaryHOC from '../lib/error-boundary-hoc.jsx';
 import {
@@ -32,6 +33,10 @@ import LocalizationHOC from '../lib/localization-hoc.jsx';
 import ProjectFetcherHOC from '../lib/project-fetcher-hoc.jsx';
 import ProjectSaverHOC from '../lib/project-saver-hoc.jsx';
 import QueryParserHOC from '../lib/query-parser-hoc.jsx';
+import {
+    removeSnapshot as removeSessionSnapshot,
+    saveSnapshot as saveSessionSnapshot
+} from '../lib/project-session-store';
 import storage from '../lib/storage';
 import vmListenerHOC from '../lib/vm-listener-hoc.jsx';
 import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
@@ -40,10 +45,10 @@ import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
 import GUIComponent from '../components/gui/gui.jsx';
 import {setIsScratchDesktop} from '../lib/isScratchDesktop.js';
 
-import { DragDropContext } from 'react-dnd';
+import {DragDropContext} from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
 
-import { withAlert } from 'react-alert';
+import {withAlert} from 'react-alert';
 
 const messages = defineMessages({
     defaultProjectTitle: {
@@ -54,69 +59,37 @@ const messages = defineMessages({
 });
 
 
-
 class GUI extends React.Component {
-
-
-  deleteAutoSave(name){
-
-    var  errorHandler = function(e){
-       console.error("File error during removing bad autosave: " + e);
-    };
-
-    var _onInitFs = function(fs){
-
-         fs.root.getFile(name, {create: false}, function(fileEntry) {
-
-           fileEntry.remove(() => {
-
-                console.log('File auto-saved.sb3 was removed.');
-
-              }, errorHandler);
-
-      }, errorHandler);
-
+    constructor (props) {
+        super(props);
+        bindAll(this, [
+            'autoSaveProject',
+            'handlePageHide',
+            'handleVmProjectChanged',
+            'startProjectAutosaving'
+        ]);
+        this.autoSaveInterval = null;
+        this.isAutoSaving = false;
+        this.projectChangeToken = 0;
+        this.lastAutoSavedChangeToken = 0;
+        this.didClearBrokenSnapshot = false;
     }
-
-
-    navigator.webkitPersistentStorage.requestQuota(50*1024*1024,
-       function(grantedBytes){
-    //      console.log("byte granted=" + grantedBytes);
-          window.webkitRequestFileSystem(PERSISTENT, grantedBytes, _onInitFs, errorHandler);
-       }, errorHandler);
-
-
-  }
-
-  autoSaveProject () {
-    this.props.vm.saveProjectSb3_auto()
-      .catch(() => {}); // empty/invalid project or serialization error — ignore
-  }
-
-  startProjectAutosaving(){
-
-    this.autoSaveInterval =   setInterval(() => { // TODO: not to save when error
-
-          this.autoSaveProject();
-
-      }, 10 * 1000)
-
-  }
 
     componentDidMount () {
         setIsScratchDesktop(this.props.isScratchDesktop);
         this.setReduxTitle(this.props.projectTitle);
         this.props.onStorageInit(storage);
+        this.props.vm.on('PROJECT_CHANGED', this.handleVmProjectChanged);
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', this.handlePageHide);
+        }
+        if (typeof window !== 'undefined') {
+            window.addEventListener('pagehide', this.handlePageHide);
+        }
 
-        console.warn(`this.props.isError: ${this.props.isError}`);
-
-       if (!this.props.isError) {
-           
-             this.startProjectAutosaving(); //added_by_Yaroslav not original
-       }
-       
-
-
+        if (!this.props.isError) {
+            this.startProjectAutosaving();
+        }
     }
     componentDidUpdate (prevProps) {
         if (this.props.projectId !== prevProps.projectId && this.props.projectId !== null) {
@@ -129,7 +102,73 @@ class GUI extends React.Component {
             // this only notifies container when a project changes from not yet loaded to loaded
             // At this time the project view in www doesn't need to know when a project is unloaded
             this.props.onProjectLoaded();
+            this.lastAutoSavedChangeToken = this.projectChangeToken;
         }
+    }
+    componentWillUnmount () {
+        if (this.autoSaveInterval) {
+            clearInterval(this.autoSaveInterval);
+        }
+        this.props.vm.removeListener('PROJECT_CHANGED', this.handleVmProjectChanged);
+        if (typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', this.handlePageHide);
+        }
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('pagehide', this.handlePageHide);
+        }
+    }
+    handleVmProjectChanged () {
+        if (this.props.isShowingProject) {
+            this.projectChangeToken += 1;
+        }
+    }
+    handlePageHide (event) {
+        if (typeof document !== 'undefined' &&
+            document.visibilityState &&
+            document.visibilityState !== 'hidden' &&
+            event &&
+            event.type === 'visibilitychange') {
+            return;
+        }
+        this.autoSaveProject();
+    }
+    autoSaveProject () {
+        const nextChangeToken = this.projectChangeToken;
+
+        if (this.isAutoSaving ||
+            !this.props.isShowingProject ||
+            !this.props.projectChanged ||
+            nextChangeToken <= this.lastAutoSavedChangeToken) {
+            return Promise.resolve(false);
+        }
+
+        this.isAutoSaving = true;
+
+        return this.props.vm.saveProjectSb3_auto()
+            .then(blob => saveSessionSnapshot({
+                blob,
+                metadata: {
+                    title: this.props.projectTitle
+                }
+            }))
+            .then(() => {
+                this.lastAutoSavedChangeToken = nextChangeToken;
+                return true;
+            })
+            .catch(() => false)
+            .then(result => {
+                this.isAutoSaving = false;
+                return result;
+            });
+    }
+    startProjectAutosaving () {
+        this.autoSaveInterval = setInterval(() => {
+            this.autoSaveProject();
+        }, 10 * 1000);
+    }
+    clearBrokenSnapshot () {
+        removeSessionSnapshot()
+            .catch(() => {});
     }
     setReduxTitle (newTitle) {
         if (newTitle === null || typeof newTitle === 'undefined') {
@@ -143,16 +182,15 @@ class GUI extends React.Component {
     render () {
 
 
-
         if (this.props.isError) {
-
-      // if (true){
-
             clearInterval(this.autoSaveInterval);
+            this.autoSaveInterval = null;
 
-            this.props.alert.error(<div>{`Error in Scratch GUI:  ${this.props.error}`}</div>,{timeout:0});
-
-            this.deleteAutoSave("auto-saved.sb3");
+            this.props.alert.error(<div>{`Error in Scratch GUI:  ${this.props.error}`}</div>, {timeout: 0});
+            if (!this.didClearBrokenSnapshot) {
+                this.didClearBrokenSnapshot = true;
+                this.clearBrokenSnapshot();
+            }
 
             throw new Error(
                 `Error in Scratch GUI [location=${window.location}]: ${this.props.error}`);
@@ -210,6 +248,7 @@ GUI.propTypes = {
     onUpdateProjectTitle: PropTypes.func,
     onUpdateReduxProjectTitle: PropTypes.func,
     previewInfoVisible: PropTypes.bool,
+    projectChanged: PropTypes.bool,
     projectHost: PropTypes.string,
     projectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     projectTitle: PropTypes.string,
@@ -241,6 +280,7 @@ const mapStateToProps = state => {
         isFullScreen: state.scratchGui.mode.isFullScreen,
         isPlayerOnly: state.scratchGui.mode.isPlayerOnly,
         isRtl: state.locales.isRtl,
+        projectChanged: state.scratchGui.projectChanged,
         isShowingProject: getIsShowingProject(loadingState),
         loadingStateVisible: state.scratchGui.modals.loadingProject,
         previewInfoVisible: state.scratchGui.modals.previewInfo,
@@ -275,7 +315,7 @@ const mapDispatchToProps = dispatch => ({
 const ConnectedGUI = injectIntl(connect(
     mapStateToProps,
     mapDispatchToProps
-)(DragDropContext(HTML5Backend)(withAlert()(GUI)))); //modified_by_Yaroslav
+)(DragDropContext(HTML5Backend)(withAlert()(GUI)))); // modified_by_Yaroslav
 
 // note that redux's 'compose' function is just being used as a general utility to make
 // the hierarchy of HOC constructor calls clearer here; it has nothing to do with redux's

@@ -3,7 +3,11 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import {connect} from 'react-redux';
 import {projectTitleInitialState} from '../reducers/project-title';
-import downloadBlob from '../lib/download-blob';
+import log from '../lib/log';
+import {
+    prepareProjectSaveTarget,
+    savePreparedProject
+} from '../lib/project-file-save-gateway';
 /**
  * Project saver component passes a downloadProject function to its child.
  * It expects this child to be a function with the signature
@@ -26,12 +30,27 @@ class SB3Downloader extends React.Component {
         ]);
     }
     downloadProject () {
-        this.props.saveProjectSb3().then(content => {
-            if (this.props.onSaveFinished) {
-                this.props.onSaveFinished();
-            }
-            downloadBlob(this.props.projectFilename, content);
-        });
+        const filename = this.props.projectFilename;
+        prepareProjectSaveTarget(filename)
+            .then(preparedTarget => {
+                if (!preparedTarget || preparedTarget.mode === 'aborted') {
+                    return null;
+                }
+                return this.props.saveProjectSb3()
+                    .then(content => savePreparedProject(preparedTarget, {
+                        filename,
+                        blob: content
+                    }))
+                    .then(result => {
+                        if (result && result.method !== 'aborted' && this.props.onSaveFinished) {
+                            this.props.onSaveFinished();
+                        }
+                        return result;
+                    });
+            })
+            .catch(error => {
+                log.error(error);
+            });
     }
     render () {
         const {
