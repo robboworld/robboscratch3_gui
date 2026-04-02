@@ -14,7 +14,11 @@ import {
   applyFirmwareSettingsToRuntime,
   FULLSCREEN_RENDER_QUALITY_DEFAULT,
   getFullscreenRenderQualityStorageData,
-  normalizeFullscreenRenderQuality
+  normalizeFullscreenRenderQuality,
+  SIMULATION_STEP_MS_DEFAULT,
+  getSimulationStepMsStorageData,
+  normalizeSimulationStepMs,
+  applySimulationStepMsToRuntime
 } from '../lib/settingsLoader';
 import { setFullscreenRenderQuality, setSimSensorDebugOverlayEnabled } from './reducers/settings';
 
@@ -44,10 +48,10 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'The parameter affects GPU and CPU load'
   },
-  fullscreen_section_title: {
-    id: 'gui.RobboGui.settings_window.fullscreen_section_title',
+  vm_section_title: {
+    id: 'gui.RobboGui.settings_window.vm_section_title',
     description: ' ',
-    defaultMessage: 'Fullscreen mode settings'
+    defaultMessage: 'VM'
   },
   fullscreen_quality_performance: {
     id: 'gui.RobboGui.settings_window.fullscreen_quality_performance',
@@ -68,6 +72,16 @@ const messages = defineMessages({
     id: 'gui.RobboGui.settings_window.sim_sensor_debug_overlay',
     description: ' ',
     defaultMessage: 'Show simulator sensor debug overlay'
+  },
+  simulation_step_ms: {
+    id: 'gui.RobboGui.settings_window.simulation_step_ms',
+    description: ' ',
+    defaultMessage: 'Simulation step (ms)'
+  },
+  simulation_step_ms_hint: {
+    id: 'gui.RobboGui.settings_window.simulation_step_ms_hint',
+    description: ' ',
+    defaultMessage: 'Lower values run faster but increase CPU load.'
   },
   experimental_section_title: {
     id: 'gui.RobboGui.settings_window.experimental_section_title',
@@ -166,11 +180,15 @@ class SettingsWindowComponent extends Component {
 
   saveSettings() {
     const fullscreenRenderQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
+    const simulationStepMsInput = this.getInput("raw-simulation-step-ms-settings-window-content-column-2");
     const simSensorDebugOverlayInput = this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
     const settings_data = {
       ...this.saveDCASettings(),
       ...getFullscreenRenderQualityStorageData({
         fullscreen_render_quality: fullscreenRenderQualityInput ? fullscreenRenderQualityInput.value : undefined
+      }),
+      ...getSimulationStepMsStorageData({
+        simulation_step_ms: simulationStepMsInput ? simulationStepMsInput.value : undefined
       }),
       sim_sensor_debug_overlay_enabled: simSensorDebugOverlayInput ? simSensorDebugOverlayInput.checked === true : false
     };
@@ -187,6 +205,7 @@ class SettingsWindowComponent extends Component {
 
     applySettingsToDCA(this.VM, settings_data);
     applyFirmwareSettingsToRuntime(this.VM, {});
+    applySimulationStepMsToRuntime(this.VM, settings_data);
     this.props.onSetFullscreenRenderQuality(settings_data.fullscreen_render_quality);
     this.props.onSetSimSensorDebugOverlayEnabled(settings_data.sim_sensor_debug_overlay_enabled);
 
@@ -274,6 +293,10 @@ class SettingsWindowComponent extends Component {
     if (simSensorOverlay) {
       simSensorOverlay.checked = false;
     }
+    const simulationStepMsInput = this.getInput("raw-simulation-step-ms-settings-window-content-column-2");
+    if (simulationStepMsInput) {
+      simulationStepMsInput.value = SIMULATION_STEP_MS_DEFAULT;
+    }
 
   }
 
@@ -296,6 +319,7 @@ class SettingsWindowComponent extends Component {
       const c3 = child0("raw-connection-3-settings-window-content-column-2");
       const c4 = child0("raw-connection-4-settings-window-content-column-2");
       const fullscreenQuality = child0("raw-fullscreen-quality-settings-window-content-column-2");
+      const simulationStepMs = child0("raw-simulation-step-ms-settings-window-content-column-2");
       const simSensorOverlay = child0("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
 
       if (result.file_exists) {
@@ -316,6 +340,8 @@ class SettingsWindowComponent extends Component {
 
           const fullscreenRenderQuality = normalizeFullscreenRenderQuality(settings_data);
           if (fullscreenQuality) fullscreenQuality.value = fullscreenRenderQuality;
+          const simulationStepMsValue = normalizeSimulationStepMs(settings_data);
+          if (simulationStepMs) simulationStepMs.value = simulationStepMsValue;
           const simSensorDebugOverlayEnabled = settings_data.sim_sensor_debug_overlay_enabled === true;
           if (simSensorOverlay) simSensorOverlay.checked = simSensorDebugOverlayEnabled;
 
@@ -327,6 +353,7 @@ class SettingsWindowComponent extends Component {
           this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked === 1 || settings_data.right_motor_inverted_setting_checked === true;
 
           applyFirmwareSettingsToRuntime(this.VM, settings_data);
+          applySimulationStepMsToRuntime(this.VM, settings_data);
         } catch (error) {
           console.error(error);
           this.deleteSettingsFile();
@@ -336,6 +363,7 @@ class SettingsWindowComponent extends Component {
           this.VM.runtime.left_motor_inverted = false;
           this.VM.runtime.right_motor_inverted = false;
           applyFirmwareSettingsToRuntime(this.VM, {});
+          applySimulationStepMsToRuntime(this.VM, {});
         }
       } else {
         this.setDefaultsDCAValues();
@@ -344,6 +372,7 @@ class SettingsWindowComponent extends Component {
         this.VM.runtime.left_motor_inverted = false;
         this.VM.runtime.right_motor_inverted = false;
         applyFirmwareSettingsToRuntime(this.VM, {});
+        applySimulationStepMsToRuntime(this.VM, {});
       }
     });
   }
@@ -411,9 +440,14 @@ class SettingsWindowComponent extends Component {
             </div>
           </div>
 
+          <div id="settings-window-content-raw-vm-section-title" className={styles.settings_window_content_raw}>
+            <div id="raw-vm-section-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              <b>{this.props.intl.formatMessage(messages.vm_section_title)}</b>
+            </div>
+          </div>
+
           <div id="settings-window-content-raw-fullscreen-quality" className={styles.settings_window_content_raw}>
             <div id="raw-fullscreen-quality-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <b>{this.props.intl.formatMessage(messages.fullscreen_section_title)}</b>
               <div>{this.props.intl.formatMessage(messages.fullscreen_render_quality)}</div>
               <div className={styles.settings_window_hint}>
                 {this.props.intl.formatMessage(messages.fullscreen_quality_note)}
@@ -425,6 +459,18 @@ class SettingsWindowComponent extends Component {
                 <option value="2">{this.props.intl.formatMessage(messages.fullscreen_quality_balanced)}</option>
                 <option value="3">{this.props.intl.formatMessage(messages.fullscreen_quality_quality)}</option>
               </select>
+            </div>
+          </div>
+
+          <div id="settings-window-content-raw-simulation-step-ms" className={styles.settings_window_content_raw}>
+            <div id="raw-simulation-step-ms-settings-window-content-column-1" className={styles.settings_window_content_column}>
+              <div>{this.props.intl.formatMessage(messages.simulation_step_ms)}</div>
+              <div className={styles.settings_window_hint}>
+                {this.props.intl.formatMessage(messages.simulation_step_ms_hint)}
+              </div>
+            </div>
+            <div id="raw-simulation-step-ms-settings-window-content-column-2" className={styles.settings_window_content_column}>
+              <input type="number" min="1" max="10" defaultValue={SIMULATION_STEP_MS_DEFAULT} />
             </div>
           </div>
 
