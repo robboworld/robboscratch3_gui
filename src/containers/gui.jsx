@@ -6,6 +6,7 @@ import ReactModal from 'react-modal';
 import VM from 'scratch-vm';
 import {defineMessages, injectIntl, intlShape} from 'react-intl';
 import bindAll from 'lodash.bindall';
+import debounce from 'lodash.debounce';
 
 import ErrorBoundaryHOC from '../lib/error-boundary-hoc.jsx';
 import {
@@ -58,6 +59,10 @@ const messages = defineMessages({
     }
 });
 
+/** Delay after last PROJECT_CHANGED before session snapshot (ms). */
+const AUTOSAVE_DEBOUNCE_MS = 1000;
+/** While changes are continuous, flush at least this often (ms). */
+const AUTOSAVE_MAX_WAIT_MS = 10000;
 
 class GUI extends React.Component {
     constructor (props) {
@@ -68,11 +73,15 @@ class GUI extends React.Component {
             'handleVmProjectChanged',
             'startProjectAutosaving'
         ]);
-        this.autoSaveInterval = null;
         this.isAutoSaving = false;
         this.projectChangeToken = 0;
         this.lastAutoSavedChangeToken = 0;
         this.didClearBrokenSnapshot = false;
+        this.scheduleDebouncedAutoSave = debounce(
+            () => this.autoSaveProject(),
+            AUTOSAVE_DEBOUNCE_MS,
+            {maxWait: AUTOSAVE_MAX_WAIT_MS}
+        );
     }
 
     componentDidMount () {
@@ -102,12 +111,13 @@ class GUI extends React.Component {
             // this only notifies container when a project changes from not yet loaded to loaded
             // At this time the project view in www doesn't need to know when a project is unloaded
             this.props.onProjectLoaded();
-            this.lastAutoSavedChangeToken = this.projectChangeToken;
+            this.autoSaveProject({force: true});
         }
     }
     componentWillUnmount () {
-        if (this.autoSaveInterval) {
-            clearInterval(this.autoSaveInterval);
+        if (this.scheduleDebouncedAutoSave) {
+            this.scheduleDebouncedAutoSave.flush();
+            this.scheduleDebouncedAutoSave.cancel();
         }
         this.props.vm.removeListener('PROJECT_CHANGED', this.handleVmProjectChanged);
         if (typeof document !== 'undefined') {
@@ -120,6 +130,7 @@ class GUI extends React.Component {
     handleVmProjectChanged () {
         if (this.props.isShowingProject) {
             this.projectChangeToken += 1;
+            this.scheduleDebouncedAutoSave();
         }
     }
     handlePageHide (event) {
@@ -130,19 +141,26 @@ class GUI extends React.Component {
             event.type === 'visibilitychange') {
             return;
         }
+        if (this.scheduleDebouncedAutoSave) {
+            this.scheduleDebouncedAutoSave.flush();
+        }
         this.autoSaveProject();
     }
-    autoSaveProject () {
+    autoSaveProject (options) {
+        const force = options && options.force === true;
         const nextChangeToken = this.projectChangeToken;
 
-        if (this.isAutoSaving ||
-            !this.props.isShowingProject ||
-            !this.props.projectChanged ||
-            nextChangeToken <= this.lastAutoSavedChangeToken) {
+        if (this.isAutoSaving || !this.props.isShowingProject) {
+            return Promise.resolve(false);
+        }
+
+        const hasPendingVmChanges = nextChangeToken > this.lastAutoSavedChangeToken;
+        if (!force && !hasPendingVmChanges) {
             return Promise.resolve(false);
         }
 
         this.isAutoSaving = true;
+        const savedUpToToken = nextChangeToken;
 
         return this.props.vm.saveProjectSb3_auto()
             .then(blob => saveSessionSnapshot({
@@ -152,19 +170,22 @@ class GUI extends React.Component {
                 }
             }))
             .then(() => {
-                this.lastAutoSavedChangeToken = nextChangeToken;
+                this.lastAutoSavedChangeToken = savedUpToToken;
                 return true;
             })
             .catch(() => false)
             .then(result => {
                 this.isAutoSaving = false;
+                if (result &&
+                    this.props.isShowingProject &&
+                    this.projectChangeToken > this.lastAutoSavedChangeToken) {
+                    return this.autoSaveProject();
+                }
                 return result;
             });
     }
     startProjectAutosaving () {
-        this.autoSaveInterval = setInterval(() => {
-            this.autoSaveProject();
-        }, 10 * 1000);
+        // Session snapshot is driven by PROJECT_CHANGED + debounce (see handleVmProjectChanged).
     }
     clearBrokenSnapshot () {
         removeSessionSnapshot()
@@ -183,8 +204,9 @@ class GUI extends React.Component {
 
 
         if (this.props.isError) {
-            clearInterval(this.autoSaveInterval);
-            this.autoSaveInterval = null;
+            if (this.scheduleDebouncedAutoSave) {
+                this.scheduleDebouncedAutoSave.cancel();
+            }
 
             this.props.alert.error(<div>{`Error in Scratch GUI:  ${this.props.error}`}</div>, {timeout: 0});
             if (!this.didClearBrokenSnapshot) {
