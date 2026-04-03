@@ -18803,7 +18803,8 @@
         "type": "sprite",
         "tags": [
             "robot",
-            "simulation"
+            "simulation",
+            "robbo"
         ],
         "info": [
             0,
@@ -18824,9 +18825,17 @@
             ],
             "costumes": [
                 {
-                    "costumeName": "robbo-platform",
+                    "costumeName": "robbo-platform-black",
                     "baseLayerID": -1,
                     "baseLayerMD5": "robot_platform_top_down_black_v2.png",
+                    "bitmapResolution": 2,
+                    "rotationCenterX": 357,
+                    "rotationCenterY": 640
+                },
+                {
+                    "costumeName": "robbo-platform-green",
+                    "baseLayerID": -1,
+                    "baseLayerMD5": "robot_platform_top_down_green.png",
                     "bitmapResolution": 2,
                     "rotationCenterX": 357,
                     "rotationCenterY": 640
