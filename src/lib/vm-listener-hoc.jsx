@@ -12,6 +12,7 @@ import {setProjectChanged, setProjectUnchanged} from '../reducers/project-change
 import {setRunningState, setTurboState, setStartedState} from '../reducers/vm-status';
 import {showExtensionAlert} from '../reducers/alerts';
 import {updateMicIndicator} from '../reducers/mic-indicator';
+import {ROBBO_SIMULATOR_PROJECT_META_APPLIED} from '../RobboGui/reducers/settings';
 
 /*
  * Higher Order Component to manage events emitted by the VM
@@ -26,7 +27,8 @@ const vmListenerHOC = function (WrappedComponent) {
                 'handleKeyDown',
                 'handleKeyUp',
                 'handleProjectChanged',
-                'handleTargetsUpdate'
+                'handleTargetsUpdate',
+                'handleRobboSimulatorProjectMeta'
             ]);
             // We have to start listening to the vm here rather than in
             // componentDidMount because the HOC mounts the wrapped component,
@@ -46,6 +48,10 @@ const vmListenerHOC = function (WrappedComponent) {
             this.props.vm.on('PROJECT_START', this.props.onGreenFlag);
             this.props.vm.on('PERIPHERAL_CONNECTION_LOST_ERROR', this.props.onShowExtensionAlert);
             this.props.vm.on('MIC_LISTENING', this.props.onMicListeningUpdate);
+            this.props.vm.on(
+                VM.ROBBO_SIMULATOR_PROJECT_META_APPLIED || ROBBO_SIMULATOR_PROJECT_META_APPLIED,
+                this.handleRobboSimulatorProjectMeta
+            );
 
         }
         componentDidMount () {
@@ -68,6 +74,10 @@ const vmListenerHOC = function (WrappedComponent) {
         }
         componentWillUnmount () {
             this.props.vm.removeListener('PERIPHERAL_CONNECTION_LOST_ERROR', this.props.onShowExtensionAlert);
+            this.props.vm.removeListener(
+                VM.ROBBO_SIMULATOR_PROJECT_META_APPLIED || ROBBO_SIMULATOR_PROJECT_META_APPLIED,
+                this.handleRobboSimulatorProjectMeta
+            );
             if (this.props.attachKeyboardEvents) {
                 document.removeEventListener('keydown', this.handleKeyDown);
                 document.removeEventListener('keyup', this.handleKeyUp);
@@ -82,6 +92,9 @@ const vmListenerHOC = function (WrappedComponent) {
             if (this.props.shouldEmitUpdates) {
                 this.props.onTargetsUpdate(data);
             }
+        }
+        handleRobboSimulatorProjectMeta (payload) {
+            this.props.onRobboSimulatorProjectMetaApplied(payload);
         }
         handleKeyDown (e) {
             // Don't capture keys intended for Blockly inputs.
@@ -133,6 +146,7 @@ const vmListenerHOC = function (WrappedComponent) {
                 onTurboModeOff,
                 onTurboModeOn,
                 onShowExtensionAlert,
+                onRobboSimulatorProjectMetaApplied,
                 /* eslint-enable no-unused-vars */
                 ...props
             } = this.props;
@@ -151,6 +165,7 @@ const vmListenerHOC = function (WrappedComponent) {
         onProjectRunStop: PropTypes.func.isRequired,
         onRuntimeStarted: PropTypes.func.isRequired,
         onShowExtensionAlert: PropTypes.func.isRequired,
+        onRobboSimulatorProjectMetaApplied: PropTypes.func.isRequired,
         onTargetsUpdate: PropTypes.func.isRequired,
         onTurboModeOff: PropTypes.func.isRequired,
         onTurboModeOn: PropTypes.func.isRequired,
@@ -193,6 +208,9 @@ const vmListenerHOC = function (WrappedComponent) {
         },
         onMicListeningUpdate: listening => {
             dispatch(updateMicIndicator(listening));
+        },
+        onRobboSimulatorProjectMetaApplied: payload => {
+            dispatch({type: ROBBO_SIMULATOR_PROJECT_META_APPLIED, payload});
         }
     });
     return connect(

@@ -44,6 +44,7 @@ import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
 import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
 
 import GUIComponent from '../components/gui/gui.jsx';
+import RobboSimulatorVmSync from './robbo-simulator-vm-sync.jsx';
 import {setIsScratchDesktop} from '../lib/isScratchDesktop.js';
 
 import {DragDropContext} from 'react-dnd';
@@ -232,6 +233,7 @@ class GUI extends React.Component {
             projectHost,
             projectId,
             projectTitle,
+            projectChanged,
             /* eslint-enable no-unused-vars */
             children,
             fetchingProject,
@@ -240,12 +242,15 @@ class GUI extends React.Component {
             ...componentProps
         } = this.props;
         return (
-            <GUIComponent
-                loading={fetchingProject || isLoading || loadingStateVisible}
-                {...componentProps}
-            >
-                {children}
-            </GUIComponent>
+            <React.Fragment>
+                <GUIComponent
+                    loading={fetchingProject || isLoading || loadingStateVisible}
+                    {...componentProps}
+                >
+                    {children}
+                </GUIComponent>
+                <RobboSimulatorVmSync />
+            </React.Fragment>
         );
     }
 }

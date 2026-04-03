@@ -1,6 +1,9 @@
 
 import SensorsAPI from '../sensors_api'
 
+/** Must match scratch-vm VirtualMachine.ROBBO_SIMULATOR_PROJECT_META_APPLIED */
+const ROBBO_SIMULATOR_PROJECT_META_APPLIED = 'ROBBO_SIMULATOR_PROJECT_META_APPLIED';
+
 function init_state(){
 
   let sensors = [];
@@ -176,6 +179,27 @@ switch (action.type) {
 
 
         break;
+
+  case ROBBO_SIMULATOR_PROJECT_META_APPLIED:
+
+      if (!action.payload || !Array.isArray(action.payload.sensors)) {
+          return state;
+      }
+
+      sensors = immutable_copy(state);
+
+      for (let si = 0; si < 5; si++) {
+          const saved = action.payload.sensors[si];
+          if (!saved) continue;
+          sensors[si] = Object.assign({}, sensors[si], {
+              sensor_name: saved.sensor_name,
+              sensor_active: !!saved.sensor_active,
+              is_sensor_version_new: !!saved.is_sensor_version_new
+          });
+          sensors[si].sensor_data = [];
+      }
+
+      return sensors;
 
   default:
 

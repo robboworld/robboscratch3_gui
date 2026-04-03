@@ -1,3 +1,6 @@
+/** Must match scratch-vm VirtualMachine.ROBBO_SIMULATOR_PROJECT_META_APPLIED */
+const ROBBO_SIMULATOR_PROJECT_META_APPLIED = 'ROBBO_SIMULATOR_PROJECT_META_APPLIED';
+
 const initialState = {
 
   is_extension_pack_activated:false,
@@ -30,6 +33,12 @@ switch (action.type) {
 
 
     break;
+
+  case ROBBO_SIMULATOR_PROJECT_META_APPLIED:
+    if (!action.payload) return state;
+    sensors_pallete_state = Object.assign({}, state);
+    sensors_pallete_state.is_extension_pack_activated = action.payload.extensionPackActivated === true;
+    return sensors_pallete_state;
 
 
 
