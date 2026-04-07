@@ -4,6 +4,7 @@ import React from 'react';
 import {injectIntl} from 'react-intl';
 
 import LibraryItemComponent from '../components/library-item/library-item.jsx';
+import {getBundledSimulatorUrlFromLibraryMd5} from '../lib/robbo-bundled-simulator-asset-url';
 
 class LibraryItem extends React.PureComponent {
     constructor (props) {
@@ -87,9 +88,11 @@ class LibraryItem extends React.PureComponent {
     }
     render () {
         const iconMd5 = this.curIconMd5();
-        const iconURL = ((iconMd5) && (iconMd5 !== "undefined")) ?
-            `./static/assets/${iconMd5}` :
-            this.props.iconRawURL;
+        let iconURL = this.props.iconRawURL;
+        if (iconMd5 && iconMd5 !== 'undefined') {
+            const bundled = getBundledSimulatorUrlFromLibraryMd5(iconMd5);
+            iconURL = bundled || `./static/assets/${iconMd5}`;
+        }
         return (
             <LibraryItemComponent
                 bluetoothRequired={this.props.bluetoothRequired}

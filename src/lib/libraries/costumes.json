@@ -11813,5 +11813,35 @@
             23,
             1
         ]
+    },
+    {
+        "name": "Robbo platform black",
+        "md5": "robot_platform_top_down_black_v2.png",
+        "type": "costume",
+        "tags": [
+            "robbo",
+            "robot",
+            "simulation"
+        ],
+        "info": [
+            714,
+            1280,
+            2
+        ]
+    },
+    {
+        "name": "Robbo platform green",
+        "md5": "robot_platform_top_down_green.png",
+        "type": "costume",
+        "tags": [
+            "robbo",
+            "robot",
+            "simulation"
+        ],
+        "info": [
+            714,
+            1280,
+            2
+        ]
     }
 ]

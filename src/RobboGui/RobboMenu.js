@@ -4,7 +4,7 @@ import styles from './RobboMenu.css';
 import classNames from 'classnames';
 import {ActionTriggerSim, ActionTriggerExtensionPack} from './actions/sensor_actions';
 import {ActionTriggerLabExtSensors} from  './actions/sensor_actions';
-import spriteLibraryContent from '../lib/libraries/sprites.json';
+import {getDefaultSimulationRobotSpriteJson, hasSimulationRobotSprite} from '../lib/robbo-simulation-sprite';
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
@@ -15,15 +15,6 @@ import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-int
 import {createDiv,createDivShort} from './lib/lib.js';
 
 //import Blockly_Arduino from 'blocks-compiler';
-
-const SIMULATION_ROBOT_SPRITE_NAMES = ['Robbo Robot', 'RobboPlatform', 'Robot'];
-
-const hasSimulationRobotSprite = function (vm) {
-    if (!vm || !vm.runtime || !vm.runtime.targets) return false;
-    return vm.runtime.targets.some(t =>
-        t.isOriginal && !t.isStage && SIMULATION_ROBOT_SPRITE_NAMES.includes(t.sprite.name)
-    );
-};
 
 const messages = defineMessages({
     sim_enable: {
@@ -142,8 +133,6 @@ class RobboMenu extends Component {
   constructor(){
     super();
 
-    this.is_sim_en = false;
-    this.is_extension_pack_enabled = false;
     this.is_lab_ext_enabled = false;
     this.state = {
       menuCoords: null
@@ -241,17 +230,8 @@ class RobboMenu extends Component {
   }
 
   triggerSimEn() {
-    const item = spriteLibraryContent.find(s => s.name === 'RobboPlatform') || spriteLibraryContent.find(s => s.name === 'Robot') || spriteLibraryContent[0];
-    if (!item || !item.json) return;
-    // SB2 sprite deserialization uses `scale` (1 = 100%), not `size`. Start scale matches
-    // the library entry (e.g. RobboPlatform scale 0.25) so the sim robot matches the sprite library.
-    // Scratch angle convention: 90 = right, 0 = up — align with right-facing platform art.
-    const baseJson = Object.assign({}, item.json);
-    if (typeof baseJson.scale !== 'number' || !Number.isFinite(baseJson.scale)) {
-      baseJson.scale = 0.25;
-    }
-    const spriteJson = Object.assign({}, baseJson, { objName: 'Robbo Robot', direction: 90 });
-    this.is_sim_en = !this.is_sim_en;
+    const spriteJson = getDefaultSimulationRobotSpriteJson();
+    if (!spriteJson) return;
     this.props.VM.runtime.sim_ac = !this.props.VM.runtime.sim_ac;
     if (this.props.VM.runtime.sim_ac) {
       if (hasSimulationRobotSprite(this.props.VM)) {
@@ -269,9 +249,6 @@ class RobboMenu extends Component {
 
     console.log("triggerExtensionPack");
     this.props.onTriggerExtensionPack();
-
-    this.is_extension_pack_enabled = !this.is_extension_pack_enabled
-
 
   }
 
@@ -496,13 +473,13 @@ class RobboMenu extends Component {
 
           <div id="trigger-sim-en" onClick={this.triggerSimEn.bind(this)} className={classNames(
                         {[styles.robbo_menu_item]: true}
-                      )}>{(this.is_sim_en) ? this.props.intl.formatMessage(messages.sim_disable) : this.props.intl.formatMessage(messages.sim_enable)}</div>
+                      )}>{(this.props.settings.is_sim_activated) ? this.props.intl.formatMessage(messages.sim_disable) : this.props.intl.formatMessage(messages.sim_enable)}</div>
 
           <div id="trigger-extension-pack" onClick={this.triggerExtensionPack.bind(this)} className={classNames(
 
                         {[styles.robbo_menu_item]: true}
 
-                      )}>{ (this.is_extension_pack_enabled)?this.props.intl.formatMessage(messages.extension_pack_disable):this.props.intl.formatMessage(messages.extension_pack_enable)  }</div>
+                      )}>{ (this.props.extension_pack.is_extension_pack_activated)?this.props.intl.formatMessage(messages.extension_pack_disable):this.props.intl.formatMessage(messages.extension_pack_enable)  }</div>
 
                         <div id="trigger-lab-ext-sensors" onClick={this.triggerLabExtSensors.bind(this)} className={classNames(
 
@@ -616,7 +593,8 @@ const mapStateToProps =  state => ({
 
     robbo_menu:state.scratchGui.robbo_menu,
     robot_sensors:state.scratchGui.robot_sensors,
-    settings:state.scratchGui.settings
+    settings:state.scratchGui.settings,
+    extension_pack:state.scratchGui.extension_pack
 
 
   });

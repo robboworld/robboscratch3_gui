@@ -24,6 +24,12 @@ export const FULLSCREEN_RENDER_QUALITY_LIMITS = Object.freeze({
   max: 3
 });
 
+export const SIMULATION_STEP_MS_DEFAULT = 4;
+export const SIMULATION_STEP_MS_LIMITS = Object.freeze({
+  min: 1,
+  max: 10
+});
+
 function toRoundedNumber(value) {
   const rounded = Math.round(Number(value));
   return Number.isFinite(rounded) ? rounded : null;
@@ -127,6 +133,35 @@ export function getFullscreenRenderQualityStorageData(rawSettings = {}) {
   return {
     fullscreen_render_quality: normalizeFullscreenRenderQuality(rawSettings)
   };
+}
+
+export function normalizeSimulationStepMs(rawSettings = {}) {
+  return normalizeBoundedNumber(
+    rawSettings.simulation_step_ms,
+    SIMULATION_STEP_MS_LIMITS,
+    SIMULATION_STEP_MS_DEFAULT
+  );
+}
+
+export function getSimulationStepMsStorageData(rawSettings = {}) {
+  return {
+    simulation_step_ms: normalizeSimulationStepMs(rawSettings)
+  };
+}
+
+/**
+ * Applies simulation step interval to the VM runtime (1–10 ms).
+ * @param {object} vm
+ * @param {object} settingsData - May contain simulation_step_ms
+ * @returns {number} normalized ms applied
+ */
+export function applySimulationStepMsToRuntime(vm, settingsData = {}) {
+  const ms = normalizeSimulationStepMs(settingsData);
+  if (!vm || !vm.runtime || typeof vm.runtime.setThreadStepIntervalMs !== 'function') {
+    return ms;
+  }
+  vm.runtime.setThreadStepIntervalMs(ms);
+  return ms;
 }
 
 /**

@@ -33,7 +33,8 @@ import {
   getSettingsFromStorage,
   applySettingsToDCA,
   applyFirmwareSettingsToRuntime,
-  normalizeFullscreenRenderQuality
+  normalizeFullscreenRenderQuality,
+  applySimulationStepMsToRuntime
 } from '../lib/settingsLoader';
 import { isDesktopWithBluetooth } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
@@ -120,6 +121,7 @@ class RobboGui extends Component {
               const data = JSON.parse(r.file);
               applySettingsToDCA(this.props.vm, data);
               applyFirmwareSettingsToRuntime(this.props.vm, data);
+              applySimulationStepMsToRuntime(this.props.vm, data);
               fullscreenRenderQuality = normalizeFullscreenRenderQuality(data);
               firmwareSettingsApplied = true;
             } catch (e) {
@@ -128,6 +130,7 @@ class RobboGui extends Component {
           }
           if (!firmwareSettingsApplied) {
             applyFirmwareSettingsToRuntime(this.props.vm, {});
+            applySimulationStepMsToRuntime(this.props.vm, {});
           }
           this.props.onSetFullscreenRenderQuality(fullscreenRenderQuality);
         });

@@ -125,5 +125,10 @@ export default defineMessages({
         defaultMessage: 'Letters',
         description: 'Tag for filtering a library for letters',
         id: 'gui.libraryTags.letters'
+    },
+    robbo: {
+        defaultMessage: 'Robbo',
+        description: 'Tag for filtering a library for Robbo simulator assets',
+        id: 'gui.libraryTags.robbo'
     }
 });
