@@ -36,7 +36,7 @@ import {
   normalizeFullscreenRenderQuality,
   applySimulationStepMsToRuntime
 } from '../lib/settingsLoader';
-import { isDesktopWithBluetooth } from '../lib/platform';
+import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
 
 import { withAlert } from 'react-alert';
@@ -49,6 +49,11 @@ const messages = defineMessages({
         id: 'gui.RobboGui.search_devices',
         description: ' ',
         defaultMessage: 'Search devices'
+    },
+    connect_robot: {
+        id: 'gui.RobboGui.connect_robot',
+        description: ' ',
+        defaultMessage: 'Connect robot'
     },
     update_firm_msg: {
 
@@ -301,6 +306,11 @@ class RobboGui extends Component {
   this.ACA =  this.props.vm.getACA();
 
   this.IOT = this.props.vm.getIOT();
+  const isMobileBridgeContext = isRobboLinkMobileWebContext();
+  const isEmbeddedAndroidApp = isRobboAndroidAppContext();
+  const searchButtonLabel = isEmbeddedAndroidApp
+    ? this.props.intl.formatMessage(messages.connect_robot)
+    : this.props.intl.formatMessage(messages.search_devices);
 
   var initial_coords_profiler = [300,300];
 
@@ -328,11 +338,13 @@ class RobboGui extends Component {
 
          }
 
-         <DraggableWindowComponent draggableWindowId={3}>
+         {!isMobileBridgeContext ? (
+           <DraggableWindowComponent draggableWindowId={3}>
 
-            <FirmwareFlasherComponent DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
+              <FirmwareFlasherComponent DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
-          </DraggableWindowComponent>
+            </DraggableWindowComponent>
+         ) : null}
 
         <DraggableWindowComponent draggableWindowId={4}>
 
@@ -379,7 +391,7 @@ class RobboGui extends Component {
 
        {/* <button id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{this.props.intl.formatMessage(messages.search_devices)} </button>*/}
 
-          <div id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{this.props.intl.formatMessage(messages.search_devices)} </div>
+          <div id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{searchButtonLabel}</div>
 
     </div>
   );

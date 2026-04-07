@@ -9,6 +9,7 @@ import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
 import { createDiv } from './lib/lib.js';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
+import { isRobboLinkMobileWebContext } from '../lib/platform';
 
 
 
@@ -39,6 +40,11 @@ const messages = defineMessages({
     id: 'gui.FirmwareFlasherDeviceComponent.flash_device',
     description: ' ',
     defaultMessage: 'Flash device'
+  },
+  firmware_not_available_mobile: {
+    id: 'gui.FirmwareFlasherDeviceComponent.firmware_not_available_mobile',
+    description: ' ',
+    defaultMessage: 'Firmware update is unavailable in the Android app. Use the desktop version of Robbo Scratch for flashing.'
   }
 
 });
@@ -61,6 +67,10 @@ class FirmwareFlasherDeviceComponent extends Component {
   }
 
   flashDevice() {
+    if (isRobboLinkMobileWebContext()) {
+      console.warn(this.props.intl.formatMessage(messages.firmware_not_available_mobile));
+      return;
+    }
 
     var search_device_button = document.getElementById(`robbo_search_devices`);
     if (search_device_button) search_device_button.setAttribute("disabled", "disabled");
@@ -212,6 +222,7 @@ class FirmwareFlasherDeviceComponent extends Component {
 
 
   render() {
+    const showFlashButton = !isRobboLinkMobileWebContext();
 
     var device_name = "";
 
@@ -293,11 +304,13 @@ class FirmwareFlasherDeviceComponent extends Component {
 
         </div>
 
-        <div id="firmware-flasher-device-flash-button" className={styles.firmware_flasher_device_element}>
+        {showFlashButton ? (
+          <div id="firmware-flasher-device-flash-button" className={styles.firmware_flasher_device_element}>
 
-          <button className={styles.device_flash_button} onClick={this.flashDevice.bind(this)}>{this.props.intl.formatMessage(messages.flash_device)} </button>
+            <button className={styles.device_flash_button} onClick={this.flashDevice.bind(this)}>{this.props.intl.formatMessage(messages.flash_device)} </button>
 
-        </div>
+          </div>
+        ) : null}
 
 
       </div>

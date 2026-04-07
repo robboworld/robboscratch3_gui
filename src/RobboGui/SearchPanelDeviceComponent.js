@@ -68,6 +68,11 @@ const messages = defineMessages({
         description: ' ',
         defaultMessage: 'Flash device'
     },
+    firmware_not_available_mobile: {
+        id: 'gui.SearchPanel.firmware_not_available_mobile',
+        description: ' ',
+        defaultMessage: 'Firmware update is unavailable in the Android app. Use the desktop version of Robbo Scratch for flashing.'
+    },
     flashing_device: {
         id: 'gui.FirmwareFlasherDeviceComponent.flashing_device',
         description: ' ',
@@ -1078,6 +1083,18 @@ class SearchPanelDeviceComponent extends Component {
     }
 
     flashDevice(ottoFlashMode) {
+        if (this.props.disableFirmwareUi) {
+            let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
+            let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
+            if (status_field) {
+                status_field.innerHTML = this.props.intl.formatMessage(messages.device_connected);
+            }
+            if (info_field) {
+                info_field.style.display = "block";
+                info_field.innerHTML = this.props.intl.formatMessage(messages.firmware_not_available_mobile);
+            }
+            return;
+        }
 
         const flashMode = ottoFlashMode || 'default';
         if (this.flashSessionActive) {
@@ -1308,7 +1325,7 @@ class SearchPanelDeviceComponent extends Component {
 
     render() {
         const displayPortName = this.getSearchPanelRowTitle();
-        const showFlashButton = !this.props.isQuadcopter;
+        const showFlashButton = !this.props.isQuadcopter && !this.props.disableFirmwareUi;
         const { iconSrc, statusText } = this.getStatusDisplay();
 
         return (

@@ -27,11 +27,28 @@ function isDesktopWithBluetooth() {
 }
 
 /**
+ * Embedded Android shell marks itself explicitly to keep GUI behavior aligned
+ * with platforms/web/robbolink-transport.js from first paint.
+ */
+function isRobboAndroidAppContext() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  if (window.__ROBBO_ANDROID_APP__) return true;
+  try {
+    const q = window.location && window.location.search;
+    if (q && q.indexOf('robbo_android_app=1') !== -1) return true;
+  } catch (e) {
+    // ignore
+  }
+  return /RobboScratchAndroidApp/i.test(navigator.userAgent || '');
+}
+
+/**
  * Mobile browser without Web Serial — RobboLink bridge (ws://127.0.0.1) is the intended transport.
  * Aligns with platforms/web/robbolink-transport.js (also ?robbolink=1 / __ROBBOLINK_FORCE__ there).
  */
 function isRobboLinkMobileWebContext() {
   if (typeof navigator === 'undefined') return false;
+  if (isRobboAndroidAppContext()) return true;
   const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
   return mobile && !navigator.serial;
 }
@@ -306,4 +323,12 @@ function getSystemInfoAsync() {
   return Promise.resolve(EMPTY_SYSTEM_INFO);
 }
 
-export { node_process, node_os, isDesktopWithBluetooth, isRobboLinkMobileWebContext, getSystemInfoAsync, formatArchitectureDisplay };
+export {
+  node_process,
+  node_os,
+  isDesktopWithBluetooth,
+  isRobboAndroidAppContext,
+  isRobboLinkMobileWebContext,
+  getSystemInfoAsync,
+  formatArchitectureDisplay
+};

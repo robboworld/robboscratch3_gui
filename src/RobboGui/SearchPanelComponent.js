@@ -14,7 +14,7 @@ import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
-import { isDesktopWithBluetooth } from '../lib/platform';
+import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext } from '../lib/platform';
 
 const messages = defineMessages({
 
@@ -35,6 +35,21 @@ const messages = defineMessages({
     id: 'gui.RobboGui.bluetooth_searching',
     description: ' ',
     defaultMessage: 'Searching for Bluetooth devices'
+  },
+  robbo_android_searching: {
+    id: 'gui.RobboGui.robbo_android_searching',
+    description: ' ',
+    defaultMessage: 'Searching paired Robbo devices through Android Bluetooth...'
+  },
+  robbo_android_devices_not_found: {
+    id: 'gui.RobboGui.robbo_android_devices_not_found',
+    description: ' ',
+    defaultMessage: 'No paired Robbo devices found. Pair the robot in Android Bluetooth settings, grant Bluetooth permissions to Robbo Scratch, and search again.'
+  },
+  robbolink_mobile_devices_not_found: {
+    id: 'gui.RobboGui.robbolink_mobile_devices_not_found',
+    description: ' ',
+    defaultMessage: 'No paired Robbo devices found. Open Robbo Scratch on this phone, pair the robot in Android Bluetooth settings, and search again.'
   },
   try_to_install_drivers: {
 
@@ -177,6 +192,13 @@ class SearchPanelComponent extends Component {
   }
 
   render() {
+    const isMobileBridgeContext = isRobboLinkMobileWebContext();
+    const isEmbeddedAndroidApp = isRobboAndroidAppContext();
+    const showFirmwareUi = !isMobileBridgeContext;
+    const showDesktopBluetoothSearching = this.bluetooth_devices_state == "searching" && isDesktopWithBluetooth();
+    const showDesktopBluetoothNotFound = this.bluetooth_devices_state == "not_found" && isDesktopWithBluetooth();
+    const showMobileBridgeSearching = this.bluetooth_devices_state == "searching" && isMobileBridgeContext;
+    const showMobileBridgeNotFound = this.bluetooth_devices_state == "not_found" && isMobileBridgeContext;
 
     return (
 
@@ -207,7 +229,7 @@ class SearchPanelComponent extends Component {
 
 
 
-                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} VM={this.VM} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
+                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} disableFirmwareUi={!showFirmwareUi} VM={this.VM} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
 
 
@@ -218,30 +240,17 @@ class SearchPanelComponent extends Component {
             }
 
 
-            {
+            {showFirmwareUi && this.state.devices.map((device, index) => {
+              return <DraggableWindowComponent key={index + "devices-list-draggable"} draggableWindowId={7 + index}>
 
-              this.state.devices.map((device, index) => {
+                <FirmwareFlasherFlashingStatusComponent key={index + "devices-list-status"} componentId={index} draggableWindowId={7 + index} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
-
-
-
-
-                return <DraggableWindowComponent key={index + "devices-list-draggable"} draggableWindowId={7 + index}>
-
-                  <FirmwareFlasherFlashingStatusComponent key={index + "devices-list-status"} componentId={index} draggableWindowId={7 + index} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
-
-                </DraggableWindowComponent>
+              </DraggableWindowComponent>
 
 
 
 
-              }
-
-              )
-
-
-
-            }
+            })}
 
             {
 
@@ -251,12 +260,29 @@ class SearchPanelComponent extends Component {
 
             {
 
-              ((this.bluetooth_devices_state == "searching") && isDesktopWithBluetooth()) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
+              showDesktopBluetoothSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
 
             }
 
             {
-              ((this.bluetooth_devices_state == "not_found") && isDesktopWithBluetooth()) ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div> : ""
+              showDesktopBluetoothNotFound ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div> : ""
+
+            }
+
+            {
+
+              showMobileBridgeSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.robbo_android_searching)}</div> : ""
+
+            }
+
+            {
+              showMobileBridgeNotFound ? (
+                <div className={styles.bluetooth_devices_not_found}>
+                  {this.props.intl.formatMessage(
+                    isEmbeddedAndroidApp ? messages.robbo_android_devices_not_found : messages.robbolink_mobile_devices_not_found
+                  )}
+                </div>
+              ) : ""
 
             }
 
