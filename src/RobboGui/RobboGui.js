@@ -36,7 +36,7 @@ import {
   normalizeFullscreenRenderQuality,
   applySimulationStepMsToRuntime
 } from '../lib/settingsLoader';
-import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext } from '../lib/platform';
+import { isDesktopWithBluetooth, isRobboLinkMobileWebContext } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
 
 import { withAlert } from 'react-alert';
@@ -49,11 +49,6 @@ const messages = defineMessages({
         id: 'gui.RobboGui.search_devices',
         description: ' ',
         defaultMessage: 'Search devices'
-    },
-    connect_robot: {
-        id: 'gui.RobboGui.connect_robot',
-        description: ' ',
-        defaultMessage: 'Connect robot'
     },
     update_firm_msg: {
 
@@ -307,10 +302,7 @@ class RobboGui extends Component {
 
   this.IOT = this.props.vm.getIOT();
   const isMobileBridgeContext = isRobboLinkMobileWebContext();
-  const isEmbeddedAndroidApp = isRobboAndroidAppContext();
-  const searchButtonLabel = isEmbeddedAndroidApp
-    ? this.props.intl.formatMessage(messages.connect_robot)
-    : this.props.intl.formatMessage(messages.search_devices);
+  const searchButtonLabel = this.props.intl.formatMessage(messages.search_devices);
 
   var initial_coords_profiler = [300,300];
 
