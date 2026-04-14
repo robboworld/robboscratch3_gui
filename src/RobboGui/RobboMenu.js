@@ -2,9 +2,10 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import styles from './RobboMenu.css';
 import classNames from 'classnames';
-import {ActionTriggerSim, ActionTriggerExtensionPack} from './actions/sensor_actions';
+import {ActionTriggerSim, ActionTriggerCopterSim, ActionTriggerExtensionPack} from './actions/sensor_actions';
 import {ActionTriggerLabExtSensors} from  './actions/sensor_actions';
 import {getDefaultSimulationRobotSpriteJson, hasSimulationRobotSprite} from '../lib/robbo-simulation-sprite';
+import {getDefaultSimulationCopterSpriteJson, hasSimulationCopterSprite} from '../lib/robbo-simulation-copter-sprite';
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
@@ -26,6 +27,16 @@ const messages = defineMessages({
         id: 'gui.RobboMenu.sim_disable',
         description: ' ',
         defaultMessage: 'Disable robot simulation'
+    },
+    copter_sim_enable: {
+        id: 'gui.RobboMenu.copter_sim_enable',
+        description: ' ',
+        defaultMessage: 'Enable copter simulation'
+    },
+    copter_sim_disable: {
+        id: 'gui.RobboMenu.copter_sim_disable',
+        description: ' ',
+        defaultMessage: 'Disable copter simulation'
     },
     extension_pack: {
         id: 'gui.RobboMenu.extension_pack',
@@ -243,6 +254,18 @@ class RobboMenu extends Component {
       }
     }
     this.props.onTriggerSimEn();
+  }
+
+  triggerCopterSimEn() {
+    const spriteJson = getDefaultSimulationCopterSpriteJson();
+    if (!spriteJson) return;
+    this.props.VM.runtime.sim_copter_ac = !this.props.VM.runtime.sim_copter_ac;
+    if (this.props.VM.runtime.sim_copter_ac) {
+      if (!hasSimulationCopterSprite(this.props.VM)) {
+        this.props.VM.addSprite(JSON.stringify(spriteJson)).catch(() => {});
+      }
+    }
+    this.props.onTriggerCopterSimEn();
   }
 
   triggerExtensionPack(){
@@ -475,6 +498,10 @@ class RobboMenu extends Component {
                         {[styles.robbo_menu_item]: true}
                       )}>{(this.props.settings.is_sim_activated) ? this.props.intl.formatMessage(messages.sim_disable) : this.props.intl.formatMessage(messages.sim_enable)}</div>
 
+          <div id="trigger-copter-sim-en" onClick={this.triggerCopterSimEn.bind(this)} className={classNames(
+                        {[styles.robbo_menu_item]: true}
+                      )}>{(this.props.settings.is_copter_sim_activated) ? this.props.intl.formatMessage(messages.copter_sim_disable) : this.props.intl.formatMessage(messages.copter_sim_enable)}</div>
+
           <div id="trigger-extension-pack" onClick={this.triggerExtensionPack.bind(this)} className={classNames(
 
                         {[styles.robbo_menu_item]: true}
@@ -603,6 +630,9 @@ const mapDispatchToProps = dispatch => ({
 
     onTriggerSimEn: () => {
       dispatch(ActionTriggerSim());
+    },
+    onTriggerCopterSimEn: () => {
+      dispatch(ActionTriggerCopterSim());
     },
     onTriggerExtensionPack: () => {
 

@@ -133,7 +133,8 @@ class Blocks extends React.Component {
             this.props.extension_pack.is_extension_pack_activated !== nextProps.extension_pack.is_extension_pack_activated || //not original
             this.props.robbo_settings.is_lab_ext_enabled !==  nextProps.robbo_settings.is_lab_ext_enabled ||  //not original
             this.props.robbo_settings.robot_is_scratchduino !==  nextProps.robbo_settings.robot_is_scratchduino || //not original
-            this.props.robbo_settings.is_sim_activated !== nextProps.robbo_settings.is_sim_activated
+            this.props.robbo_settings.is_sim_activated !== nextProps.robbo_settings.is_sim_activated ||
+            this.props.robbo_settings.is_copter_sim_activated !== nextProps.robbo_settings.is_copter_sim_activated
         );
     }
     componentDidUpdate (prevProps) {
@@ -152,7 +153,8 @@ class Blocks extends React.Component {
         //modified_by_Yaroslav
         if ((this.props.extension_pack.is_extension_pack_activated !== prevProps.extension_pack.is_extension_pack_activated) || (this.props.robbo_settings.is_lab_ext_enabled !== prevProps.robbo_settings.is_lab_ext_enabled)
           || (this.props.robbo_settings.robot_is_scratchduino !== prevProps.robbo_settings.robot_is_scratchduino)
-          || (this.props.robbo_settings.is_sim_activated !== prevProps.robbo_settings.is_sim_activated)   ){
+          || (this.props.robbo_settings.is_sim_activated !== prevProps.robbo_settings.is_sim_activated)
+          || (this.props.robbo_settings.is_copter_sim_activated !== prevProps.robbo_settings.is_copter_sim_activated)   ){
 
           const dynamicBlocksXML = this.props.vm.runtime.getBlocksXML();
           const target = this.props.vm.editingTarget;
@@ -162,6 +164,7 @@ class Blocks extends React.Component {
           config.isExtensionPackActivated   = this.props.extension_pack.is_extension_pack_activated;
           config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
           config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
+          config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
           config.locale = this.props.locale;
           config.messages = this.props.messages;
           const toolboxXML = makeToolboxXML(target.isStage, target.id, config, dynamicBlocksXML);
@@ -357,6 +360,7 @@ class Blocks extends React.Component {
             config.isExtensionPackActivated   = this.props.extension_pack.is_extension_pack_activated;
             config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
             config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
+            config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
             config.locale = this.props.locale;
             config.messages = this.props.messages;
 

@@ -81,7 +81,7 @@ class SensorPallete extends Component {
 
   render() {
 //  console.log(this.props.tracks);
-const showQuadcopterUi = isDesktopWithBluetooth();
+const showQuadcopterUi = isDesktopWithBluetooth() || this.props.is_copter_sim_activated;
 
  var initial_coords_robot = [200,200];
  var initial_coords_lab = [400,200];
@@ -110,7 +110,7 @@ const showQuadcopterUi = isDesktopWithBluetooth();
        {showQuadcopterUi && (
          <DraggableWindowComponent draggableWindowId={0} initialCoords={initial_coords_quadcopter}>
 
-                <QuadcopterPalleteComponent QCA={this.props.QCA} quadcopterIndex={0}/>
+                <QuadcopterPalleteComponent QCA={this.props.QCA} quadcopterIndex={0} VM={this.props.VM}/>
 
           </DraggableWindowComponent>
        )}
@@ -161,6 +161,7 @@ const mapStateToProps =  state => ({
       // robots:state.scratchGui.robots,
       // laboratories:state.scratchGui.laboratories,
       // settings:state.scratchGui.settings
+      is_copter_sim_activated: state.scratchGui.settings.is_copter_sim_activated === true
   });
 
 const mapDispatchToProps = dispatch => ({

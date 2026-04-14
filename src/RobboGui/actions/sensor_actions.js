@@ -15,6 +15,13 @@ const ActionTriggerSim = function () {
   };
 };
 
+const ActionTriggerCopterSim = function () {
+  return {
+    type: 'TRIGGER_COPTER_SIM_EN',
+    payload: {}
+  };
+};
+
 const ActionTriggerExtensionPack = function(){
 
 
@@ -881,6 +888,7 @@ const ActionGenerateIotBlocks = function (generate) {
 export {
 
     ActionTriggerSim,
+    ActionTriggerCopterSim,
     ActionTriggerExtensionPack,
     ActionTriggerSensorChooseWindow,
     ActionDropSensorChooseWindow,
