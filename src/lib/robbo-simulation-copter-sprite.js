@@ -51,7 +51,7 @@ export const getDefaultSimulationCopterSpriteJson = function () {
         scale: 0.15,
         direction: 90,
         rotationStyle: 'normal',
-        isDraggable: false,
+        isDraggable: true,
         visible: true,
         spriteInfo: {}
     };

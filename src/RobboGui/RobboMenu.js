@@ -261,8 +261,22 @@ class RobboMenu extends Component {
     if (!spriteJson) return;
     this.props.VM.runtime.sim_copter_ac = !this.props.VM.runtime.sim_copter_ac;
     if (this.props.VM.runtime.sim_copter_ac) {
+      const ensureCopterDraggable = () => {
+        const targets = this.props.VM && this.props.VM.runtime && this.props.VM.runtime.targets;
+        if (!Array.isArray(targets)) return;
+        const target = targets.find(t => t && t.isOriginal && !t.isStage && t.sprite && t.sprite.name === 'Robbo Quadcopter');
+        if (target && !target.draggable && typeof target.setDraggable === 'function') {
+          target.setDraggable(true);
+        }
+      };
       if (!hasSimulationCopterSprite(this.props.VM)) {
-        this.props.VM.addSprite(JSON.stringify(spriteJson)).catch(() => {});
+        this.props.VM.addSprite(JSON.stringify(spriteJson))
+          .then(() => {
+            ensureCopterDraggable();
+          })
+          .catch(() => {});
+      } else {
+        ensureCopterDraggable();
       }
     }
     this.props.onTriggerCopterSimEn();
