@@ -1128,7 +1128,7 @@ class SearchPanelDeviceComponent extends Component {
         let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
         let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
         if (status_field) status_field.innerHTML = this.props.intl.formatMessage(messages.flashing_in_progress);
-        if (info_field) info_field.innerHTML = this.props.intl.formatMessage(messages.flashing_in_progress_details);
+        if (info_field) info_field.innerHTML = "";
 
         // Иконку не трогаем через innerHTML — она управляется React по deviceState (state 10 приходит из disco() в VM)
         var cId = this.props.flashingStatusComponentId;

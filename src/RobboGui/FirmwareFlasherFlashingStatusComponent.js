@@ -67,7 +67,7 @@ class FirmwareFlasherFlashingStatusComponent extends Component {
 
           <div id={`firmware-flasher-flashing-status-component-${this.props.componentId}-tittle`} className={styles.firmware_flasher_flashing_status_component_tittle}>
 
-              {this.props.intl.formatMessage(messages.flashing_status) + " " + this.props.componentId }
+              {this.props.intl.formatMessage(messages.flashing_status)}
 
               <div className={styles.close_icon} onClick={this.closeWindow.bind(this)}>
 
