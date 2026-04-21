@@ -5,6 +5,7 @@ import {connect} from 'react-redux';
 import VM from 'scratch-vm';
 
 import {getDefaultSimulationRobotSpriteJson} from '../lib/robbo-simulation-sprite';
+import {getDefaultSimulationCopterSpriteJson} from '../lib/robbo-simulation-copter-sprite';
 
 /**
  * Registers Robbo SB3 save context, simulation sprite provider, and WebGL/load policy on the VM.
@@ -27,6 +28,11 @@ const RobboSimulatorVmSync = props => {
     useEffect(() => {
         vm.setRobboSimulationSpriteJsonProvider(getDefaultSimulationRobotSpriteJson);
         return () => vm.setRobboSimulationSpriteJsonProvider(null);
+    }, [vm]);
+
+    useEffect(() => {
+        vm.setCopterSimulationSpriteJsonProvider(getDefaultSimulationCopterSpriteJson);
+        return () => vm.setCopterSimulationSpriteJsonProvider(null);
     }, [vm]);
 
     useEffect(() => {
