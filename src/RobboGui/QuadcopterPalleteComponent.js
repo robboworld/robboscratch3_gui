@@ -135,8 +135,8 @@ class QuadcopterPalleteComponent extends Component {
           const simBlocks = runtime && runtime._copterSimBlocks;
 
           if (runtime && runtime.sim_copter_ac && simBlocks) {
-            if (typeof simBlocks.syncFromSpritePosition === 'function') {
-              simBlocks.syncFromSpritePosition();
+            if (typeof simBlocks._syncFromSpritePositionIfNeeded === 'function') {
+              simBlocks._syncFromSpritePositionIfNeeded();
             }
             battery_sensor_value_field.innerHTML = simBlocks.sim_battery.toFixed(0) + " % ";
             x_coord_sensor_value_field.innerHTML = simBlocks.sim_x.toFixed(3) + " " + this.props.intl.formatMessage(messages.meters);

@@ -259,8 +259,10 @@ class RobboMenu extends Component {
   triggerCopterSimEn() {
     const spriteJson = getDefaultSimulationCopterSpriteJson();
     if (!spriteJson) return;
-    this.props.VM.runtime.sim_copter_ac = !this.props.VM.runtime.sim_copter_ac;
-    if (this.props.VM.runtime.sim_copter_ac) {
+    const runtime = this.props.VM && this.props.VM.runtime;
+    if (!runtime) return;
+    runtime.sim_copter_ac = !runtime.sim_copter_ac;
+    if (runtime.sim_copter_ac) {
       const ensureCopterDraggable = () => {
         const targets = this.props.VM && this.props.VM.runtime && this.props.VM.runtime.targets;
         if (!Array.isArray(targets)) return;
