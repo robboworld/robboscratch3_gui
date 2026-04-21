@@ -1,11 +1,12 @@
 /**
- * Bundled 2D simulator robot skins under static/robbo_assets/simulator/.
+ * Bundled 2D simulator skins under static/robbo_assets/simulator/.
  * assetId from SB2/VM is the filename stem (e.g. robot_platform_top_down_black_v2).
  */
 
 export const ROBBO_SIMULATOR_SUBPATH = './static/robbo_assets/simulator';
 
 export const BUNDLED_PREFIX = 'robot_platform_top_down';
+export const BUNDLED_COPTER_PREFIX = 'robbo_quadcopter_topdown';
 
 /**
  * @param {string} [stem] - asset id without extension
@@ -14,7 +15,7 @@ export const BUNDLED_PREFIX = 'robot_platform_top_down';
 export const isBundledSimulatorAssetStem = function (stem) {
     if (stem === null || stem === void 0) return false;
     const s = String(stem);
-    return s.startsWith(BUNDLED_PREFIX);
+    return s.startsWith(BUNDLED_PREFIX) || s.startsWith(BUNDLED_COPTER_PREFIX);
 };
 
 /**
@@ -26,7 +27,7 @@ export const isBundledSimulatorLibraryMd5 = function (md5OrName) {
     if (md5OrName === null || md5OrName === void 0) return false;
     const s = String(md5OrName);
     const base = s.includes('/') ? s.split('/').pop() : s;
-    return base.startsWith(BUNDLED_PREFIX);
+    return base.startsWith(BUNDLED_PREFIX) || base.startsWith(BUNDLED_COPTER_PREFIX);
 };
 
 /**

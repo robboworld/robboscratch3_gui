@@ -1739,7 +1739,11 @@ const xmlClose = '</xml>';
 const makeToolboxXML = function (isStage, targetId,config, categoriesXML,
     costumeName = '', backdropName = '', soundName = '') {
     const gap = [categorySeparator];
-    const showQuadcopterInUi = isDesktopWithBluetooth();
+    var is_copter_sim_activated = false;
+    if (typeof(config) != 'undefined' && config.is_copter_sim_activated) {
+        is_copter_sim_activated = true;
+    }
+    const showQuadcopterInUi = isDesktopWithBluetooth() || is_copter_sim_activated;
 
     costumeName = xmlEscape(costumeName);
     backdropName = xmlEscape(backdropName);
