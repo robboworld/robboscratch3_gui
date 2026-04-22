@@ -33,7 +33,7 @@
 
   max-height: 300px;
 
-  overflow-y: scroll;
+  overflow-y: auto;
 
   /*z-index: 1000 !important;*/
 }

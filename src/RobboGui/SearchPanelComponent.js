@@ -73,7 +73,9 @@ class SearchPanelComponent extends Component {
 
     this.device_list = [];
 
-    this.bluetooth_devices_state = "searching";
+    this.bluetooth_devices_state = "idle";
+    this.usb_search_finished = true;
+    this.bluetooth_search_finished = true;
 
   }
 
@@ -101,6 +103,7 @@ class SearchPanelComponent extends Component {
     this.DCA.registerBluetoothDevicesFoundCallback(() => {
 
       this.bluetooth_devices_state = "found";
+      this.bluetooth_search_finished = true;
 
     });
 
@@ -108,10 +111,13 @@ class SearchPanelComponent extends Component {
 
 
       this.bluetooth_devices_state = "searching";
+      this.usb_search_finished = false;
+      this.bluetooth_search_finished = !(typeof this.DCA.isBluetoothSearchEnabled === 'function' && this.DCA.isBluetoothSearchEnabled());
 
     });
 
     this.DCA.registerDevicesNotFoundCallback(() => {
+      this.usb_search_finished = true;
       let search_device_button = document.getElementById(`robbo_search_devices`);
       if (search_device_button) {
         search_device_button.style.pointerEvents = "auto";
@@ -121,6 +127,7 @@ class SearchPanelComponent extends Component {
 
     this.DCA.registerBluetoothDevicesNotFoundCallback(() => {
       this.bluetooth_devices_state = "not_found";
+      this.bluetooth_search_finished = true;
       this._refreshDeviceList();
     });
 
@@ -128,6 +135,7 @@ class SearchPanelComponent extends Component {
 
     this.DCA.registerDeviceFoundCallback(() => {
       this.is_bluetooth_devices_not_found = false;
+      this.usb_search_finished = true;
       let search_device_button = document.getElementById(`robbo_search_devices`);
       if (search_device_button) {
         search_device_button.style.pointerEvents = "auto";
@@ -195,10 +203,12 @@ class SearchPanelComponent extends Component {
     const isMobileBridgeContext = isRobboLinkMobileWebContext();
     const isEmbeddedAndroidApp = isRobboAndroidAppContext();
     const showFirmwareUi = !isMobileBridgeContext;
-    const showDesktopBluetoothSearching = this.bluetooth_devices_state == "searching" && isDesktopWithBluetooth();
-    const showDesktopBluetoothNotFound = this.bluetooth_devices_state == "not_found" && isDesktopWithBluetooth();
-    const showMobileBridgeSearching = this.bluetooth_devices_state == "searching" && isMobileBridgeContext;
-    const showMobileBridgeNotFound = this.bluetooth_devices_state == "not_found" && isMobileBridgeContext;
+    const bluetoothSearchEnabled = this.DCA && typeof this.DCA.isBluetoothSearchEnabled === 'function' ? this.DCA.isBluetoothSearchEnabled() : true;
+    const supportsBluetoothSearchUi = isDesktopWithBluetooth() || isMobileBridgeContext;
+    const showBluetoothSearching = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "searching";
+    const showBluetoothNotFound = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "not_found";
+    const shouldDelayNoDevicesMessage = bluetoothSearchEnabled && !this.bluetooth_search_finished;
+    const showDevicesNotFound = this.state.devices.length === 0 && this.usb_search_finished && !shouldDelayNoDevicesMessage;
 
     return (
 
@@ -254,29 +264,23 @@ class SearchPanelComponent extends Component {
 
             {
 
-              (this.state.devices.length == 0) ? <div className={styles.devices_not_found}>{this.props.intl.formatMessage(messages.devices_not_found)}</div> : ""
+              showDevicesNotFound ? <div className={styles.devices_not_found}>{this.props.intl.formatMessage(messages.devices_not_found)}</div> : ""
 
             }
 
             {
 
-              showDesktopBluetoothSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
+              showBluetoothSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
 
             }
 
             {
-              showDesktopBluetoothNotFound ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div> : ""
+              showBluetoothNotFound ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div> : ""
 
             }
 
             {
-
-              showMobileBridgeSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.robbo_android_searching)}</div> : ""
-
-            }
-
-            {
-              showMobileBridgeNotFound ? (
+              showBluetoothNotFound && isMobileBridgeContext ? (
                 <div className={styles.bluetooth_devices_not_found}>
                   {this.props.intl.formatMessage(
                     isEmbeddedAndroidApp ? messages.robbo_android_devices_not_found : messages.robbolink_mobile_devices_not_found
