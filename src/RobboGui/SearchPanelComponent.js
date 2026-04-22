@@ -24,12 +24,6 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'No devices available for connection.'
   },
-  bluetooth_devices_not_found: {
-
-    id: 'gui.RobboGui.bluetooth_devices_not_found',
-    description: ' ',
-    defaultMessage: 'No Bluetooth devices available for connection. See user manual (FAQ).'
-  },
   bluetooth_searching: {
 
     id: 'gui.RobboGui.bluetooth_searching',
@@ -274,10 +268,7 @@ class SearchPanelComponent extends Component {
 
             }
 
-            {
-              showBluetoothNotFound ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_devices_not_found)}</div> : ""
 
-            }
 
             {
               showBluetoothNotFound && isMobileBridgeContext ? (
