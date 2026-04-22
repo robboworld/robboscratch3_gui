@@ -140,13 +140,16 @@ class SearchPanelComponent extends Component {
 
     if (this.QCA) {
       this._wasDongleAvailable = false;
-      this.QCA.registerQuadcopterStatusChangeCallback(() => {
-        let now = typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable();
+      this._quadcopterStatusCallback = (state, searching, snapshot) => {
+        let now = snapshot && typeof snapshot.dongleAvailable === 'boolean' ?
+          snapshot.dongleAvailable :
+          (typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable());
         if (now !== this._wasDongleAvailable) {
           this._wasDongleAvailable = now;
           this._refreshDeviceList();
         }
-      });
+      };
+      this.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
     }
 
 
@@ -187,6 +190,9 @@ class SearchPanelComponent extends Component {
 
   componentWillUnmount() {
     this._isMounted = false;
+    if (this.QCA && this._quadcopterStatusCallback && typeof this.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
+      this.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
+    }
   }
 
   onThisWindowClose() {
@@ -267,8 +273,6 @@ class SearchPanelComponent extends Component {
               showBluetoothSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
 
             }
-
-
 
             {
               showBluetoothNotFound && isMobileBridgeContext ? (

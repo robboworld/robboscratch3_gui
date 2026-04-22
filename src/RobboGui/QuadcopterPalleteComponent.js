@@ -60,6 +60,18 @@ const messages = defineMessages({
 
 
 class QuadcopterPalleteComponent extends Component {
+  constructor (props) {
+    super(props);
+
+    this.state = {
+      batteryLevelText: '---',
+      batteryWarningClassName: '',
+      xCoordText: '0',
+      yCoordText: '0',
+      zCoordText: '0',
+      yawText: '0'
+    };
+  }
 
   onThisWindowClose(){
 
@@ -68,106 +80,59 @@ class QuadcopterPalleteComponent extends Component {
 
   }
 
-  startBatteryWarningLoop(){
+  syncPaletteData () {
+    const runtime = this.props.VM && this.props.VM.runtime;
+    const simBlocks = runtime && runtime._copterSimBlocks;
 
-    let bat_level = 0;
+    if (runtime && runtime.sim_copter_ac && simBlocks) {
+      if (typeof simBlocks._syncFromSpritePositionIfNeeded === 'function') {
+        simBlocks._syncFromSpritePositionIfNeeded();
+      }
 
-    var battery_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-battery-level_type-analog`);
-    if (!battery_sensor_component || !battery_sensor_component.children[0] || !battery_sensor_component.children[0].children[1]) return;
-    var battery_sensor_value_field = battery_sensor_component.children[0].children[1].children[0];
-    if (!battery_sensor_value_field) return;
+      this.setState({
+        batteryLevelText: `${simBlocks.sim_battery.toFixed(0)} %`,
+        batteryWarningClassName: '',
+        xCoordText: `${simBlocks.sim_x.toFixed(3)} ${this.props.intl.formatMessage(messages.meters)}`,
+        yCoordText: `${simBlocks.sim_y.toFixed(3)} ${this.props.intl.formatMessage(messages.meters)}`,
+        zCoordText: `${simBlocks.sim_z.toFixed(3)} ${this.props.intl.formatMessage(messages.meters)}`,
+        yawText: `${simBlocks.sim_yaw.toFixed(1)} ${this.props.intl.formatMessage(messages.degrees)}`
+      });
+      return;
+    }
 
-        this.batteryWarningLoop = setInterval(() => {
+    if (!this.props.QCA || typeof this.props.QCA.getTelemetrySnapshot !== 'function') return;
 
-                if (!this.props.QCA) return;
-                bat_level =  this.props.QCA.get_battery_level();
+    const telemetry = this.props.QCA.getTelemetrySnapshot();
+    const isConnected = this.props.QCA.isQuadcopterConnected();
+    let batteryWarningClassName = '';
 
-                if (this.props.QCA.isQuadcopterConnected()){
+    if (isConnected) {
+      if (telemetry.batteryPercent < 5) {
+        batteryWarningClassName = styles.battery_low_red_warning;
+      } else if (telemetry.batteryPercent < 15) {
+        batteryWarningClassName = styles.battery_low_yelolow_warning;
+      }
+    }
 
-                    if (bat_level < 5){
-
-                            battery_sensor_value_field.classList.toggle(styles.battery_low_red_warning);
-
-                    }else if (bat_level < 15){
-
-                            battery_sensor_value_field.classList.toggle(styles.battery_low_yelolow_warning); 
-
-                    }else{
-
-                            battery_sensor_value_field.classList.remove(styles.battery_low_yelolow_warning);
-                            battery_sensor_value_field.classList.remove(styles.battery_low_red_warning);
-
-                    }
-
-                }
-
-                
-
-        },1000);
-
-  }
-
-  startGetDataLoop(){
-
-    var battery_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-battery-level_type-analog`);
-    if (!battery_sensor_component || !battery_sensor_component.children[0] || !battery_sensor_component.children[0].children[1] || !battery_sensor_component.children[0].children[1].children[0]) return;
-    var battery_sensor_value_field = battery_sensor_component.children[0].children[1].children[0];
-
-    var x_coord_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-coord-x_type-analog`);
-    if (!x_coord_sensor_component || !x_coord_sensor_component.children[0] || !x_coord_sensor_component.children[0].children[1] || !x_coord_sensor_component.children[0].children[1].children[0]) return;
-    var x_coord_sensor_value_field = x_coord_sensor_component.children[0].children[1].children[0];
-
-    var y_coord_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-coord-y_type-analog`);
-    if (!y_coord_sensor_component || !y_coord_sensor_component.children[0] || !y_coord_sensor_component.children[0].children[1] || !y_coord_sensor_component.children[0].children[1].children[0]) return;
-    var y_coord_sensor_value_field = y_coord_sensor_component.children[0].children[1].children[0];
-
-    var z_coord_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-coord-z_type-analog`);
-    if (!z_coord_sensor_component || !z_coord_sensor_component.children[0] || !z_coord_sensor_component.children[0].children[1] || !z_coord_sensor_component.children[0].children[1].children[0]) return;
-    var z_coord_sensor_value_field  = z_coord_sensor_component.children[0].children[1].children[0];
-
-    var yaw_sensor_component = document.getElementById(`quadcopter_sensor-data-block-copter-${this.props.quadcopterIndex}-yaw_type-analog`);
-    if (!yaw_sensor_component || !yaw_sensor_component.children[0] || !yaw_sensor_component.children[0].children[1] || !yaw_sensor_component.children[0].children[1].children[0]) return;
-    var yaw_sensor_value_field  = yaw_sensor_component.children[0].children[1].children[0];
-
-    this.getDataLoopInterval = setInterval(() => {
-
-          const runtime = this.props.VM && this.props.VM.runtime;
-          const simBlocks = runtime && runtime._copterSimBlocks;
-
-          if (runtime && runtime.sim_copter_ac && simBlocks) {
-            if (typeof simBlocks._syncFromSpritePositionIfNeeded === 'function') {
-              simBlocks._syncFromSpritePositionIfNeeded();
-            }
-            battery_sensor_value_field.innerHTML = simBlocks.sim_battery.toFixed(0) + " % ";
-            x_coord_sensor_value_field.innerHTML = simBlocks.sim_x.toFixed(3) + " " + this.props.intl.formatMessage(messages.meters);
-            y_coord_sensor_value_field.innerHTML = simBlocks.sim_y.toFixed(3) + " " + this.props.intl.formatMessage(messages.meters);
-            z_coord_sensor_value_field.innerHTML = simBlocks.sim_z.toFixed(3) + " " + this.props.intl.formatMessage(messages.meters);
-            yaw_sensor_value_field.innerHTML     = simBlocks.sim_yaw.toFixed(1) + " " + this.props.intl.formatMessage(messages.degrees);
-          } else {
-            if (!this.props.QCA) return;
-            battery_sensor_value_field.innerHTML = this.props.QCA.get_battery_level() + " % ";
-            x_coord_sensor_value_field.innerHTML =  this.props.QCA.telemetry_palette_get_coord("X") + " " + this.props.intl.formatMessage(messages.meters);
-            y_coord_sensor_value_field.innerHTML =  this.props.QCA.telemetry_palette_get_coord("Y") + " " + this.props.intl.formatMessage(messages.meters);
-            z_coord_sensor_value_field.innerHTML = this.props.QCA.telemetry_palette_get_coord("Z") + " " + this.props.intl.formatMessage(messages.meters);
-            yaw_sensor_value_field.innerHTML     = this.props.QCA.telemetry_palette_get_coord("W") + " " + this.props.intl.formatMessage(messages.degrees);
-          }
-
-    },50);
-
+    this.setState({
+      batteryLevelText: `${telemetry.batteryPercent} %`,
+      batteryWarningClassName: batteryWarningClassName,
+      xCoordText: `${Number(telemetry.x || 0).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
+      yCoordText: `${Number((telemetry.y || 0) * -1).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
+      zCoordText: `${Number(telemetry.z || 0).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
+      yawText: `${Number(telemetry.yaw || 0).toFixed(1)} ${this.props.intl.formatMessage(messages.degrees)}`
+    });
   }
 
   componentDidMount(){
-
-      this.startGetDataLoop();
-      this.startBatteryWarningLoop();
+      this.syncPaletteData();
+      this.getDataLoopInterval = setInterval(() => {
+        this.syncPaletteData();
+      }, 100);
 
   }
 
   componentWillUnmount() {
-    if (this.batteryWarningLoop) {
-      clearInterval(this.batteryWarningLoop);
-      this.batteryWarningLoop = null;
-    }
     if (this.getDataLoopInterval) {
       clearInterval(this.getDataLoopInterval);
       this.getDataLoopInterval = null;
@@ -198,31 +163,32 @@ class QuadcopterPalleteComponent extends Component {
                                    deviceName={`quadcopter`} sensorType={`analog`}
                                    sensorFieldText={this.props.intl.formatMessage(messages.battery_level)}
                                    sensorName={`battery-level`}
-                                   sensorData={`---`} />
+                                   sensorValueClassName={this.state.batteryWarningClassName}
+                                   sensorData={this.state.batteryLevelText} />
 
                <SensorDataBlockComponent key={`copter-${this.props.quadcopterIndex}-coord-x`} sensorId={`copter-${this.props.quadcopterIndex}-coord-x`}
                                                       deviceName={`quadcopter`} sensorType={`analog`}
                                                       sensorFieldText={this.props.intl.formatMessage(messages.x_coord)}
                                                       sensorName={`coord-x`}
-                                                      sensorData={`0`} />
+                                                      sensorData={this.state.xCoordText} />
 
               <SensorDataBlockComponent key={`copter-${this.props.quadcopterIndex}-coord-y`} sensorId={`copter-${this.props.quadcopterIndex}-coord-y`}
                                                                                              deviceName={`quadcopter`} sensorType={`analog`}
                                                                                              sensorFieldText={this.props.intl.formatMessage(messages.y_coord)}
                                                                                              sensorName={`coord-y`}
-                                                                                             sensorData={`0`} />
+                                                                                             sensorData={this.state.yCoordText} />
 
             <SensorDataBlockComponent key={`copter-${this.props.quadcopterIndex}-coord-z`} sensorId={`copter-${this.props.quadcopterIndex}-coord-z`}
                                                                                             deviceName={`quadcopter`} sensorType={`analog`}
                                                                                             sensorFieldText={this.props.intl.formatMessage(messages.z_coord)}
                                                                                             sensorName={`coord-z`}
-                                                                                            sensorData={`0`} />
+                                                                                            sensorData={this.state.zCoordText} />
 
             <SensorDataBlockComponent key={`copter-${this.props.quadcopterIndex}-yaw`} sensorId={`copter-${this.props.quadcopterIndex}-yaw`}
               deviceName={`quadcopter`} sensorType={`analog`}
               sensorFieldText={this.props.intl.formatMessage(messages.yaw)}
               sensorName={`yaw`}
-              sensorData={`0`} />
+              sensorData={this.state.yawText} />
 
 
           </div>
