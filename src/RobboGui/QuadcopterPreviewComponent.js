@@ -36,7 +36,6 @@ class QuadcopterPreviewComponent extends Component {
   }
   render() {
     const isConnected = this.isConnectedLikeState();
-    const isSearching = this.state.quadcopterSearching;
     return (
       <div id={`quadcopter-preview-${this.props.quadcopterIndex}`}
         className={classNames(
@@ -46,12 +45,6 @@ class QuadcopterPreviewComponent extends Component {
         )}
         onClick={this.props.onTriggerQuadcopterPallete}>
         <div id={`quadcopter-${this.props.quadcopterIndex}-preview-pic`} className={styles.quadcopterPreviewPic} >
-        </div>
-        <div id={`quadcopter-${this.props.quadcopterIndex}-searching-icon`} className={classNames(
-          { [styles.quadcopter_loading_icon]: true },
-          { [styles.quadcopter_loading_icon_hidden]: !isSearching },
-          { [styles.quadcopter_loading_icon_showing]: isSearching }
-        )}>
         </div>
         <div id={`quadcopter-${this.props.quadcopterIndex}-connection-status`} className={classNames(
           { [styles.quadcopter_connection_status]: true },
