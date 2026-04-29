@@ -34,6 +34,16 @@ const reducer = function (state, action) {
     settings_state.is_copter_sim_activated = !settings_state.is_copter_sim_activated;
     return settings_state;
 
+  case 'SET_SIM_STATE':
+    settings_state = Object.assign({}, state);
+    settings_state.is_sim_activated = !!(action.payload && action.payload.simEnabled);
+    return settings_state;
+
+  case 'SET_COPTER_SIM_STATE':
+    settings_state = Object.assign({}, state);
+    settings_state.is_copter_sim_activated = !!(action.payload && action.payload.copterSimEnabled);
+    return settings_state;
+
   case 'TRIGGER_LAB_EXT_SENSORS':
     settings_state = Object.assign({}, state);
     settings_state.is_lab_ext_enabled = !settings_state.is_lab_ext_enabled;
