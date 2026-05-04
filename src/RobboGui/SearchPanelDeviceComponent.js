@@ -45,33 +45,33 @@ const messages = defineMessages({
     },
     quadcopter_searching: {
         id: 'gui.SearchPanel.quadcopter_searching',
-        description: ' ',
-        defaultMessage: 'Searching for quadcopter...'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Searching…'
     },
     quadcopter_connected: {
         id: 'gui.SearchPanel.quadcopter_connected',
-        description: ' ',
-        defaultMessage: 'Quadcopter connected'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Connected'
     },
     quadcopter_disconnected: {
         id: 'gui.SearchPanel.quadcopter_disconnected',
-        description: ' ',
-        defaultMessage: 'Quadcopter not connected'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Not connected'
     },
     quadcopter_landing: {
         id: 'gui.SearchPanel.quadcopter_landing',
-        description: ' ',
-        defaultMessage: 'Quadcopter landing'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Landing'
     },
     quadcopter_lost: {
         id: 'gui.SearchPanel.quadcopter_lost',
-        description: ' ',
-        defaultMessage: 'Quadcopter link lost'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Link lost'
     },
     quadcopter_emergency: {
         id: 'gui.SearchPanel.quadcopter_emergency',
-        description: ' ',
-        defaultMessage: 'Quadcopter emergency stop'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Emergency stop'
     },
     device_unknown: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_unknown',
