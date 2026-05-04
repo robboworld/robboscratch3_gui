@@ -386,14 +386,14 @@ class SearchPanelDeviceComponent extends Component {
     getStatusDisplay() {
         if (this.props.isQuadcopter && this.props.QCA) {
             const { quadcopterConnected, quadcopterSearching, quadcopterState } = this.state;
+            if (quadcopterSearching) {
+                return { iconSrc: './static/robbo_assets/yellow.png', statusText: this.props.intl.formatMessage(messages.quadcopter_searching) };
+            }
             if (quadcopterConnected) {
                 if (quadcopterState === 'landing') {
                     return { iconSrc: './static/robbo_assets/yellow.png', statusText: this.props.intl.formatMessage(messages.quadcopter_landing) };
                 }
                 return { iconSrc: './static/robbo_assets/green.png', statusText: this.props.intl.formatMessage(messages.quadcopter_connected) };
-            }
-            if (quadcopterSearching) {
-                return { iconSrc: './static/robbo_assets/yellow.png', statusText: this.props.intl.formatMessage(messages.quadcopter_searching) };
             }
             if (quadcopterState === 'lost') {
                 return { iconSrc: './static/robbo_assets/red.png', statusText: this.props.intl.formatMessage(messages.quadcopter_lost) };
@@ -433,6 +433,28 @@ class SearchPanelDeviceComponent extends Component {
             console.warn('[FLASH_ICON] getStatusDisplay: deviceState=10 FLASHING -> yellow icon, port=' + (this.props.devicePort || ''));
         }
         return { iconSrc, statusText };
+    }
+
+    // Hide search panel when all DCA devices are ready; if dongle row is shown, require copter connected (not searching).
+    _tryHideSearchPanelWhenAllDevicesReady() {
+        if (!this.props.DCA) return;
+        const allDevices = this.props.DCA.getDevices();
+        for (let i = 0; i < allDevices.length; i++) {
+            const dev = allDevices[i];
+            if (!(dev.getState() === 6 && !dev.isFirmwareVersionDiffers())) {
+                return;
+            }
+        }
+        if (this.props.QCA && typeof this.props.QCA.isDongleAvailable === 'function' && this.props.QCA.isDongleAvailable()) {
+            if (typeof this.props.QCA.isQuadcopterConnected !== 'function' || !this.props.QCA.isQuadcopterConnected()) {
+                return;
+            }
+            if (typeof this.props.QCA.isQuadcopterSearching === 'function' && this.props.QCA.isQuadcopterSearching()) {
+                return;
+            }
+        }
+        const searchPanel = document.getElementById('SearchPanelComponent');
+        if (searchPanel) searchPanel.style.display = 'none';
     }
 
     syncStateFromDevice() {
@@ -479,8 +501,9 @@ class SearchPanelDeviceComponent extends Component {
             this._lastQuadcopterState = null;
             this._quadcopterStatusCallback = (state, searching, snapshot) => {
                 const nextSnapshot = snapshot || {};
-                const connected = nextSnapshot.connected === true || state === 'connected' || state === 'landing';
                 const isSearching = nextSnapshot.searching === true || searching === true;
+                const connected = !isSearching &&
+                    (nextSnapshot.connected === true || state === 'connected' || state === 'landing');
                 const quadcopterState = nextSnapshot.state || state || 'disconnected';
                 if (this._lastQuadcopterConnected !== connected || this._lastQuadcopterSearching !== isSearching || this._lastQuadcopterState !== quadcopterState) {
                     this._lastQuadcopterConnected = connected;
@@ -491,6 +514,9 @@ class SearchPanelDeviceComponent extends Component {
                         quadcopterSearching: isSearching,
                         quadcopterState: quadcopterState
                     });
+                }
+                if (connected && !isSearching) {
+                    this._tryHideSearchPanelWhenAllDevicesReady();
                 }
             };
             this.props.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
@@ -770,22 +796,7 @@ class SearchPanelDeviceComponent extends Component {
 
             } else if (!this.firmware_version_differs) { //We don't need to close panel if firmware versions differ.
 
-                let all_devices = this.props.DCA.getDevices();
-
-                let all_devices_found = false;
-
-                for (let device_index = 0; device_index < all_devices.length; device_index++) {
-
-                    all_devices_found = ((all_devices[device_index].getState() == 6) && (!all_devices[device_index].isFirmwareVersionDiffers()));
-
-                    if (!all_devices_found) break;
-                }
-
-                if (all_devices_found) {
-
-                    let search_panel = document.getElementById(`SearchPanelComponent`);
-                    if (search_panel) search_panel.style.display = "none";
-                }
+                this._tryHideSearchPanelWhenAllDevicesReady();
 
             }
 

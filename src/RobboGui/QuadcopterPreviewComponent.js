@@ -9,20 +9,26 @@ class QuadcopterPreviewComponent extends Component {
     super(props);
     this.state = {
       quadcopterState: 'disconnected',
-      quadcopterSearching: false
+      quadcopterSearching: false,
+      quadcopterUiConnected: false
     };
   }
 
   onQuadcopterStatusChange(quadcopter_state, quadcopter_is_searching, statusSnapshot) {
     const snapshot = statusSnapshot || {};
+    const st = snapshot.state || quadcopter_state || 'disconnected';
+    const isSearching = snapshot.searching === true || quadcopter_is_searching === true;
+    const uiConnected = !isSearching &&
+      (snapshot.connected === true || st === 'connected' || st === 'landing');
     this.setState({
-      quadcopterState: snapshot.state || quadcopter_state || 'disconnected',
-      quadcopterSearching: snapshot.searching === true || quadcopter_is_searching === true
+      quadcopterState: st,
+      quadcopterSearching: isSearching,
+      quadcopterUiConnected: uiConnected
     });
   }
 
   isConnectedLikeState () {
-    return ['connected', 'landing'].indexOf(this.state.quadcopterState) !== -1;
+    return this.state.quadcopterUiConnected === true;
   }
   componentDidMount() {
     this._quadcopterStatusCallback = this.onQuadcopterStatusChange.bind(this);
