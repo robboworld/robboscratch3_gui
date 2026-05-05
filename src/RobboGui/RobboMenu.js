@@ -2,7 +2,11 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import styles from './RobboMenu.css';
 import classNames from 'classnames';
-import {ActionTriggerSim, ActionTriggerCopterSim, ActionTriggerExtensionPack} from './actions/sensor_actions';
+import {
+  ActionSetCopterSimState,
+  ActionSetSimState,
+  ActionTriggerExtensionPack
+} from './actions/sensor_actions';
 import {ActionTriggerLabExtSensors} from  './actions/sensor_actions';
 import {getDefaultSimulationRobotSpriteJson, hasSimulationRobotSprite} from '../lib/robbo-simulation-sprite';
 import {getDefaultSimulationCopterSpriteJson, hasSimulationCopterSprite} from '../lib/robbo-simulation-copter-sprite';
@@ -243,8 +247,11 @@ class RobboMenu extends Component {
   triggerSimEn() {
     const spriteJson = getDefaultSimulationRobotSpriteJson();
     if (!spriteJson) return;
-    this.props.VM.runtime.sim_ac = !this.props.VM.runtime.sim_ac;
-    if (this.props.VM.runtime.sim_ac) {
+    const runtime = this.props.VM && this.props.VM.runtime;
+    if (!runtime) return;
+    const nextState = !runtime.sim_ac;
+    runtime.sim_ac = nextState;
+    if (nextState) {
       if (hasSimulationRobotSprite(this.props.VM)) {
         if (this.props.VM.setUTIL) this.props.VM.setUTIL();
       } else {
@@ -253,7 +260,7 @@ class RobboMenu extends Component {
         }).catch(() => {});
       }
     }
-    this.props.onTriggerSimEn();
+    this.props.onSetSimState(runtime.sim_ac === true);
   }
 
   triggerCopterSimEn() {
@@ -261,8 +268,9 @@ class RobboMenu extends Component {
     if (!spriteJson) return;
     const runtime = this.props.VM && this.props.VM.runtime;
     if (!runtime) return;
-    runtime.sim_copter_ac = !runtime.sim_copter_ac;
-    if (runtime.sim_copter_ac) {
+    const nextState = !runtime.sim_copter_ac;
+    runtime.sim_copter_ac = nextState;
+    if (nextState) {
       const ensureCopterDraggable = () => {
         const targets = this.props.VM && this.props.VM.runtime && this.props.VM.runtime.targets;
         if (!Array.isArray(targets)) return;
@@ -281,7 +289,7 @@ class RobboMenu extends Component {
         ensureCopterDraggable();
       }
     }
-    this.props.onTriggerCopterSimEn();
+    this.props.onSetCopterSimState(runtime.sim_copter_ac === true);
   }
 
   triggerExtensionPack(){
@@ -497,6 +505,9 @@ class RobboMenu extends Component {
     globalThis.__RS3_VM__ = this.props.VM;
   }
 
+  const runtime = this.props.VM && this.props.VM.runtime;
+  const isRobotSimActive = runtime ? runtime.sim_ac === true : this.props.settings.is_sim_activated;
+  const isCopterSimActive = runtime ? runtime.sim_copter_ac === true : this.props.settings.is_copter_sim_activated;
   return (
 
 
@@ -512,11 +523,11 @@ class RobboMenu extends Component {
 
           <div id="trigger-sim-en" onClick={this.triggerSimEn.bind(this)} className={classNames(
                         {[styles.robbo_menu_item]: true}
-                      )}>{(this.props.settings.is_sim_activated) ? this.props.intl.formatMessage(messages.sim_disable) : this.props.intl.formatMessage(messages.sim_enable)}</div>
+                      )}>{isRobotSimActive ? this.props.intl.formatMessage(messages.sim_disable) : this.props.intl.formatMessage(messages.sim_enable)}</div>
 
           <div id="trigger-copter-sim-en" onClick={this.triggerCopterSimEn.bind(this)} className={classNames(
                         {[styles.robbo_menu_item]: true}
-                      )}>{(this.props.settings.is_copter_sim_activated) ? this.props.intl.formatMessage(messages.copter_sim_disable) : this.props.intl.formatMessage(messages.copter_sim_enable)}</div>
+                      )}>{isCopterSimActive ? this.props.intl.formatMessage(messages.copter_sim_disable) : this.props.intl.formatMessage(messages.copter_sim_enable)}</div>
 
           <div id="trigger-extension-pack" onClick={this.triggerExtensionPack.bind(this)} className={classNames(
 
@@ -644,11 +655,11 @@ const mapStateToProps =  state => ({
 
 const mapDispatchToProps = dispatch => ({
 
-    onTriggerSimEn: () => {
-      dispatch(ActionTriggerSim());
+    onSetSimState: isEnabled => {
+      dispatch(ActionSetSimState(isEnabled));
     },
-    onTriggerCopterSimEn: () => {
-      dispatch(ActionTriggerCopterSim());
+    onSetCopterSimState: isEnabled => {
+      dispatch(ActionSetCopterSimState(isEnabled));
     },
     onTriggerExtensionPack: () => {
 

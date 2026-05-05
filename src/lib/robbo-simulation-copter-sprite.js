@@ -3,6 +3,7 @@
  *   - idle (propellers stopped)
  *   - flying (propellers spinning)
  */
+import spriteLibraryContent from './libraries/sprites.json';
 
 export const SIMULATION_COPTER_SPRITE_NAMES = ['Robbo Quadcopter'];
 
@@ -24,6 +25,9 @@ export const hasSimulationCopterSprite = function (vm) {
  * @returns {object} Sprite JSON suitable for vm.addSprite.
  */
 export const getDefaultSimulationCopterSpriteJson = function () {
+    const item = spriteLibraryContent.find(s => s.name === 'Robbo Quadcopter');
+    if (item && item.json) return Object.assign({}, item.json);
+
     return {
         objName: 'Robbo Quadcopter',
         sounds: [],

@@ -22,6 +22,24 @@ const ActionTriggerCopterSim = function () {
   };
 };
 
+const ActionSetSimState = function (simEnabled) {
+  return {
+    type: 'SET_SIM_STATE',
+    payload: {
+      simEnabled: simEnabled === true
+    }
+  };
+};
+
+const ActionSetCopterSimState = function (copterSimEnabled) {
+  return {
+    type: 'SET_COPTER_SIM_STATE',
+    payload: {
+      copterSimEnabled: copterSimEnabled === true
+    }
+  };
+};
+
 const ActionTriggerExtensionPack = function(){
 
 
@@ -889,6 +907,8 @@ export {
 
     ActionTriggerSim,
     ActionTriggerCopterSim,
+    ActionSetSimState,
+    ActionSetCopterSimState,
     ActionTriggerExtensionPack,
     ActionTriggerSensorChooseWindow,
     ActionDropSensorChooseWindow,
