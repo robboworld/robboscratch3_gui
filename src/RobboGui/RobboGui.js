@@ -24,6 +24,7 @@ import styles from './RobboGui.css';
 
 import SearchPanelComponent from './SearchPanelComponent';
 import AboutWindowComponent from './AboutWindowComponent';
+import LicenseWindowComponent from './LicenseWindowComponent';
 
 import NewDraggableWindowComponent from './NewDraggableWindowComponent';
 import ProfilerWindowComponent from './ProfilerWindowComponent';
@@ -40,6 +41,7 @@ import { isDesktopWithBluetooth, isRobboLinkMobileWebContext } from '../lib/plat
 import { setFullscreenRenderQuality } from './reducers/settings';
 
 import { withAlert } from 'react-alert';
+import {hydrateLicenseDemoThunk} from './actions/licenseDemoActions';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 
@@ -243,6 +245,8 @@ class RobboGui extends Component {
      this.QCA.searchQuadcopterDevices();
    }
 
+   this.props.onHydrateDemoLicense();
+
   }
 
   stopSearchProcess(){
@@ -308,6 +312,8 @@ class RobboGui extends Component {
 
   var initial_coords_about = [350,350];
 
+  var initial_coords_license = [380, 320];
+
   var initial_coords_iot = [500,500];
 
   return (
@@ -370,6 +376,12 @@ class RobboGui extends Component {
          <NewDraggableWindowComponent draggableWindowId={"about-window"} initialCoords={initial_coords_about}>
 
             <AboutWindowComponent VM={this.props.vm} RCA={this.RCA} DCA={this.DCA}/>
+
+         </NewDraggableWindowComponent>
+
+         <NewDraggableWindowComponent draggableWindowId={'license-window'} initialCoords={initial_coords_license}>
+
+            <LicenseWindowComponent />
 
          </NewDraggableWindowComponent>
 
@@ -440,6 +452,10 @@ const mapDispatchToProps = dispatch => ({
         },
       onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
         dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
+      },
+
+    onHydrateDemoLicense: () => {
+        dispatch(hydrateLicenseDemoThunk());
       }
 
         // onTriggerNeedLanguageReload:  () => {

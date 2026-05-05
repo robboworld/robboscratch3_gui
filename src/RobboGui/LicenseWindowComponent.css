@@ -1,0 +1,91 @@
+.license_window_tittle {
+    height: 30px;
+    text-align: center;
+    background-color: #00af41;
+    color: white;
+    font-family: 'Proxima Nova Regular', Helvetica, Arial, sans-serif;
+    padding-top: 3px;
+}
+
+.close_icon {
+    float: right;
+    background-image: url('../../static/robbo_assets/icon_close_window.png');
+    width: 27px;
+    height: 27px;
+    cursor: pointer;
+}
+
+.license_window {
+    display: inline-block;
+    margin-left: 5%;
+    border: 1px solid #00af41;
+    min-width: 560px;
+    max-width: 640px;
+    vertical-align: top;
+    background-color: white;
+}
+
+.license_window_content {
+    padding: 12px 14px 16px 14px;
+    font-family: 'Proxima Nova Regular', Helvetica, Arial, sans-serif;
+    font-size: 14px;
+}
+
+.license_row {
+    margin-bottom: 12px;
+}
+
+.license_label {
+    display: block;
+    margin-bottom: 4px;
+    color: #222;
+}
+
+.license_input {
+    width: 96%;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    font-size: 13px;
+}
+
+.license_actions {
+    margin-top: 14px;
+}
+
+.license_btn {
+    display: inline-block;
+    margin-right: 10px;
+    padding: 6px 12px;
+    background-color: #00af41;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.license_btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.license_btn_secondary {
+    background-color: #888;
+}
+
+.license_status {
+    margin-top: 12px;
+    padding: 8px;
+    background-color: #f4f4f4;
+    border-radius: 2px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 13px;
+    min-height: 2em;
+}
+
+.license_hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #555;
+}

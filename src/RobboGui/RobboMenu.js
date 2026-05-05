@@ -13,7 +13,9 @@ import {getDefaultSimulationCopterSpriteJson, hasSimulationCopterSprite} from '.
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
-import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions'
+import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
+import {premiumAutoUpdateDemoCheckThunk} from './actions/licenseDemoActions';
+import {CAPABILITY_PREMIUM_AUTO_UPDATE} from './reducers/license_demo';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 
@@ -99,6 +101,21 @@ const messages = defineMessages({
       description: ' ',
       defaultMessage: 'About'
 
+    },
+    trigger_license_window: {
+        id: 'gui.RobboMenu.trigger_license_window',
+        description: ' ',
+        defaultMessage: 'License (demo)'
+    },
+    premium_auto_update_demo: {
+        id: 'gui.RobboMenu.premium_auto_update_demo',
+        description: ' ',
+        defaultMessage: 'Premium auto-update (demo)'
+    },
+    premium_waiting_addon_tooltip: {
+        id: 'gui.RobboMenu.premium_waiting_addon_tooltip',
+        description: ' ',
+        defaultMessage: 'Paid addon is still loading from the activation server…'
     },
     color_sensor_correction1:{
 
@@ -340,6 +357,16 @@ class RobboMenu extends Component {
   triggerAboutWindow(){
 
       this.props.onTriggerAboutWindow("about-window");
+  }
+
+  triggerLicenseWindow () {
+      this.props.onTriggerLicenseWindow('license-window');
+  }
+
+  premiumAutoUpdateDemoMenuClick () {
+      if (this.props.licenseDemo && this.props.licenseDemo.addonReady) {
+          this.props.onPremiumAutoUpdateDemoCheck();
+      }
   }
 
   triggerIotConnectionWindow() {
@@ -622,12 +649,39 @@ class RobboMenu extends Component {
 
                       )}>{this.props.intl.formatMessage(messages.trigger_settings_window)} </div>           
 
+              <div id="trigger-license-window" onClick={this.triggerLicenseWindow.bind(this)} className={classNames(
+
+                        {[styles.robbo_menu_item]: true}
+
+                      )}>{this.props.intl.formatMessage(messages.trigger_license_window)} </div>
+
 
               <div id="trigger-about-window" onClick={this.triggerAboutWindow.bind(this)} className={classNames(
 
                         {[styles.robbo_menu_item]: true}
 
-                      )}>{this.props.intl.formatMessage(messages.trigger_about_window)} </div>                   
+                      )}>{this.props.intl.formatMessage(messages.trigger_about_window)} </div>
+
+              {(this.props.licenseDemo &&
+                      this.props.licenseDemo.status === 'valid_offline' &&
+                      Array.isArray(this.props.licenseDemo.capabilities) &&
+                      this.props.licenseDemo.capabilities.indexOf(CAPABILITY_PREMIUM_AUTO_UPDATE) >= 0) ? (
+                  <div
+                      id="trigger-premium-auto-update-demo"
+                      onClick={this.premiumAutoUpdateDemoMenuClick.bind(this)}
+                      className={classNames({[styles.robbo_menu_item]: true})}
+                      style={{
+                          opacity: this.props.licenseDemo.addonReady ? 1 : 0.55
+                      }}
+                      title={
+                          this.props.licenseDemo.addonReady
+                              ? ''
+                              : this.props.intl.formatMessage(messages.premium_waiting_addon_tooltip)
+                      }
+                      role="presentation"
+                  >{this.props.intl.formatMessage(messages.premium_auto_update_demo)}{' '}
+                  </div>
+                   ) : null}
 
 
       </div>
@@ -639,8 +693,9 @@ class RobboMenu extends Component {
 
 
 }
-
 }
+
+
 
 const mapStateToProps =  state => ({
 
@@ -648,7 +703,8 @@ const mapStateToProps =  state => ({
     robbo_menu:state.scratchGui.robbo_menu,
     robot_sensors:state.scratchGui.robot_sensors,
     settings:state.scratchGui.settings,
-    extension_pack:state.scratchGui.extension_pack
+    extension_pack:state.scratchGui.extension_pack,
+    licenseDemo:state.scratchGui.license_demo
 
 
   });
@@ -696,6 +752,14 @@ const mapDispatchToProps = dispatch => ({
 
               dispatch(ActionTriggerNewDraggableWindow(window_id));
             },
+    onTriggerLicenseWindow: windowId => {
+
+        dispatch(ActionTriggerNewDraggableWindow(windowId));
+      },
+    onPremiumAutoUpdateDemoCheck: () => {
+
+        dispatch(premiumAutoUpdateDemoCheckThunk());
+      },
     onTriggerRobboMenu: () => {
 
       dispatch(ActionTriggerRobboMenu());
