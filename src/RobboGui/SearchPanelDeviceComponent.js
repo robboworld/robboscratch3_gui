@@ -506,11 +506,9 @@ class SearchPanelDeviceComponent extends Component {
                 const connected = !isSearching &&
                     (nextSnapshot.connected === true || state === 'connected' || state === 'landing');
                 const quadcopterState = nextSnapshot.state || state || 'disconnected';
-                const nextQuadHint = connected
-                    ? null
-                    : Object.prototype.hasOwnProperty.call(nextSnapshot, 'lastError')
-                        ? nextSnapshot.lastError
-                        : this.state.quadcopterLastError;
+                const nextQuadHint = Object.prototype.hasOwnProperty.call(nextSnapshot, 'lastError')
+                    ? nextSnapshot.lastError
+                    : (connected ? null : this.state.quadcopterLastError);
                 const prevHint = this.state.quadcopterLastError || null;
                 const hintSig = nextQuadHint
                     ? `${nextQuadHint.code || ''}:${String(nextQuadHint.message || '')}`
