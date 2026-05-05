@@ -1396,10 +1396,17 @@ class SearchPanelDeviceComponent extends Component {
         const displayPortName = this.getSearchPanelRowTitle();
         const showFlashButton = !this.props.isQuadcopter && !this.props.disableFirmwareUi;
         const { iconSrc, statusText } = this.getStatusDisplay();
+        const quadcopterHintText = this.props.isQuadcopter && this.state.quadcopterLastError && this.state.quadcopterLastError.message;
 
         return (
 
-            <div id={`search-panel-device-component`} className={styles.firmware_flasher_device_component}>
+            <div id={`search-panel-device-component`} className={classNames(
+                styles.firmware_flasher_device_component,
+                this.props.isQuadcopter && styles.quadcopter_device_root
+            )}>
+
+
+                <div className={styles.search_panel_device_primary_row}>
 
 
                 <div id="search-panel-device-port" className={styles.search_panel_device_element}>
@@ -1416,11 +1423,13 @@ class SearchPanelDeviceComponent extends Component {
                     {statusText}
                 </div>
 
-                <div id={`search-panel-device-info-${this.props.Id}`} className={styles.search_panel_device_element}>
-                    {this.props.isQuadcopter && this.state.quadcopterLastError && this.state.quadcopterLastError.message ? (
-                        <div className={styles.quadcopter_panel_hint}>{this.state.quadcopterLastError.message}</div>
-                    ) : null}
-                </div>
+                {!this.props.isQuadcopter ? (
+                    <div id={`search-panel-device-info-${this.props.Id}`} className={styles.search_panel_device_element}>
+
+
+
+                    </div>
+                ) : null}
 
                 {showFlashButton && (
                     <div id={`search-panel-device-flash-button-element-${this.props.Id}`} className={styles.search_panel_device_element}>
@@ -1443,6 +1452,21 @@ class SearchPanelDeviceComponent extends Component {
 
                     </div>
                 )}
+
+
+                </div>
+
+
+                {this.props.isQuadcopter ? (
+                    <div
+                        id={`search-panel-device-info-${this.props.Id}`}
+                        className={styles.quadcopter_info_row}
+                    >
+                        {quadcopterHintText ? (
+                            <div className={styles.quadcopter_panel_hint}>{quadcopterHintText}</div>
+                        ) : null}
+                    </div>
+                ) : null}
 
 
             </div>

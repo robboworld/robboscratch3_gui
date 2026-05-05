@@ -5,15 +5,46 @@
 
 }
 
-/* Quadcopter: persistent search / link error hint (multi-line Russian text). */
+/* Quadcopter: статус в первой строке; подсказка — отдельным блоком на всю ширину */
+
+.quadcopter_device_root {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 6px;
+}
+
+.search_panel_device_primary_row {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: 2px 6px;
+}
+
+.quadcopter_info_row {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .quadcopter_panel_hint {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
   white-space: normal;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  max-width: min(560px, 42vw);
-  font-size: 12px;
-  line-height: 1.35;
-  color: #b00020;
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: normal;
+  color: #a40018;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 0 0;
+  margin: 0;
 }
 
 

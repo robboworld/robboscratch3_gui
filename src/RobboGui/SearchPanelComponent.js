@@ -16,6 +16,11 @@ import DraggableWindowComponent from './DraggableWindowComponent';
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext, node_process } from '../lib/platform';
 
+/** Same gate as RobboGui.searchDevices → searchQuadcopterDevices() */
+function shouldProbeQuadcopterOnDeviceSearch(QCA) {
+  return isDesktopWithBluetooth() && !!QCA;
+}
+
 const messages = defineMessages({
 
   devices_not_found: {
@@ -72,6 +77,9 @@ class SearchPanelComponent extends Component {
     this.bluetooth_devices_state = "idle";
     this.usb_search_finished = true;
     this.bluetooth_search_finished = true;
+    /** True until Crazyflie session emits searching — avoids «no devices» flash before dongle probe starts */
+    this._quadcopterAwaitingFirstSearchingEmit = false;
+    this._lastQuadcopterSearchPanelSig = null;
 
   }
 
@@ -104,6 +112,7 @@ class SearchPanelComponent extends Component {
     });
 
     this.DCA.registerDevicesStartSearchingCallback(() => {
+      this._quadcopterAwaitingFirstSearchingEmit = shouldProbeQuadcopterOnDeviceSearch(this.QCA);
       this.usb_search_finished = false;
       // Same condition as DeviceControlAPI.searchAllDevices — Chrome Bluetooth scan only on Win/Linux desktop
       const useChromeBluetooth = typeof node_process !== 'undefined' &&
@@ -158,14 +167,23 @@ class SearchPanelComponent extends Component {
     });
 
     if (this.QCA) {
-      this._wasDongleAvailable = false;
       this._quadcopterStatusCallback = (state, searching, snapshot) => {
-        let now = snapshot && typeof snapshot.dongleAvailable === 'boolean' ?
-          snapshot.dongleAvailable :
-          (typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable());
-        if (now !== this._wasDongleAvailable) {
-          this._wasDongleAvailable = now;
-          this._refreshDeviceList();
+        const snap = snapshot || {};
+        const dongleNow = typeof snap.dongleAvailable === 'boolean'
+          ? snap.dongleAvailable
+          : (typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable());
+        const searchingNow = snap.searching === true;
+        const panelSig = `${dongleNow}|${searchingNow}`;
+        if (panelSig === this._lastQuadcopterSearchPanelSig) {
+          return;
+        }
+        this._lastQuadcopterSearchPanelSig = panelSig;
+        if (searchingNow) {
+          this._quadcopterAwaitingFirstSearchingEmit = false;
+        }
+        this._refreshDeviceList();
+        if (this._isMounted) {
+          this.setState({ uiRev: Date.now() });
         }
       };
       this.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
@@ -228,8 +246,16 @@ class SearchPanelComponent extends Component {
       this.bluetooth_devices_state === 'searching' && this.usb_search_finished;
     const showBluetoothNotFound = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "not_found";
     const shouldDelayNoDevicesMessage = bluetoothSearchEnabled && !this.bluetooth_search_finished;
+    const quadcopterSearchActive = this.QCA &&
+      typeof this.QCA.isQuadcopterSearching === 'function' &&
+      this.QCA.isQuadcopterSearching();
+    const quadcopterUsbRaceGrace = shouldProbeQuadcopterOnDeviceSearch(this.QCA) &&
+      this._quadcopterAwaitingFirstSearchingEmit &&
+      this.usb_search_finished &&
+      this.state.devices.length === 0;
     const showDevicesSearching = this.state.devices.length === 0 &&
-      (!this.usb_search_finished || showBluetoothPhaseSearching);
+      (!this.usb_search_finished || showBluetoothPhaseSearching ||
+        quadcopterSearchActive || quadcopterUsbRaceGrace);
     const showDevicesNotFound = this.state.devices.length === 0 && this.usb_search_finished &&
       !showDevicesSearching && !shouldDelayNoDevicesMessage;
 
