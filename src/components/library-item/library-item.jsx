@@ -12,6 +12,47 @@ import internetConnectionIconURL from './internet-connection.svg';
 /* eslint-disable react/prefer-stateless-function */
 class LibraryItemComponent extends React.PureComponent {
     render () {
+        if (this.props.scenarioCard) {
+            const ariaProps = typeof this.props.name === 'string' ?
+                {'aria-label': this.props.name} :
+                {};
+            return (
+                <Box
+                    {...ariaProps}
+                    className={classNames(
+                        styles.libraryItem,
+                        styles.scenarioCard,
+                        {
+                            [styles.disabled]: this.props.disabled,
+                            [styles.hidden]: this.props.hidden
+                        }
+                    )}
+                    role="button"
+                    tabIndex="0"
+                    onBlur={this.props.onBlur}
+                    onClick={this.props.onClick}
+                    onFocus={this.props.onFocus}
+                    onKeyPress={this.props.onKeyPress}
+                    onMouseEnter={this.props.onMouseEnter}
+                    onMouseLeave={this.props.onMouseLeave}
+                >
+                    <div className={styles.scenarioCardImageWrap}>
+                        <img
+                            alt=""
+                            className={styles.scenarioCardImage}
+                            draggable={false}
+                            src={this.props.iconURL}
+                        />
+                    </div>
+                    <div className={styles.scenarioCardBody}>
+                        <div className={styles.scenarioCardTitle}>{this.props.name}</div>
+                        {this.props.description ? (
+                            <p className={styles.scenarioCardDescription}>{this.props.description}</p>
+                        ) : null}
+                    </div>
+                </Box>
+            );
+        }
         return this.props.featured ? (
             <div
                 className={classNames(
@@ -158,11 +199,13 @@ LibraryItemComponent.propTypes = {
     onFocus: PropTypes.func.isRequired,
     onKeyPress: PropTypes.func.isRequired,
     onMouseEnter: PropTypes.func.isRequired,
-    onMouseLeave: PropTypes.func.isRequired
+    onMouseLeave: PropTypes.func.isRequired,
+    scenarioCard: PropTypes.bool
 };
 
 LibraryItemComponent.defaultProps = {
-    disabled: false
+    disabled: false,
+    scenarioCard: false
 };
 
 export default LibraryItemComponent;
