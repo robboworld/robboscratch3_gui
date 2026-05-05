@@ -18798,7 +18798,7 @@
         }
     },
     {
-        "name": "RobboPlatform",
+        "name": "Robbo Platform",
         "md5": "robot_platform_top_down_black_v2.png",
         "type": "sprite",
         "tags": [
@@ -18812,7 +18812,7 @@
             1
         ],
         "json": {
-            "objName": "RobboPlatform",
+            "objName": "Robbo Platform",
             "sounds": [
                 {
                     "soundName": "computer beep",
@@ -18848,6 +18848,53 @@
             "direction": 0,
             "rotationStyle": "normal",
             "isDraggable": false,
+            "visible": true,
+            "spriteInfo": {}
+        }
+    },
+    {
+        "name": "Robbo Quadcopter",
+        "md5": "robbo_quadcopter_topdown.png",
+        "type": "sprite",
+        "tags": [
+            "quadcopter",
+            "drone",
+            "simulation",
+            "robbo"
+        ],
+        "info": [
+            0,
+            1,
+            1
+        ],
+        "json": {
+            "objName": "Robbo Quadcopter",
+            "sounds": [],
+            "costumes": [
+                {
+                    "costumeName": "idle",
+                    "baseLayerID": -1,
+                    "baseLayerMD5": "robbo_quadcopter_topdown.png",
+                    "bitmapResolution": 2,
+                    "rotationCenterX": 688,
+                    "rotationCenterY": 384
+                },
+                {
+                    "costumeName": "flying",
+                    "baseLayerID": -1,
+                    "baseLayerMD5": "robbo_quadcopter_topdown_spinning.png",
+                    "bitmapResolution": 2,
+                    "rotationCenterX": 688,
+                    "rotationCenterY": 384
+                }
+            ],
+            "currentCostumeIndex": 0,
+            "scratchX": 0,
+            "scratchY": 0,
+            "scale": 0.15,
+            "direction": 90,
+            "rotationStyle": "normal",
+            "isDraggable": true,
             "visible": true,
             "spriteInfo": {}
         }

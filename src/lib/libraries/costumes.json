@@ -11843,5 +11843,35 @@
             1280,
             2
         ]
+    },
+    {
+        "name": "Robbo quadcopter idle",
+        "md5": "robbo_quadcopter_topdown.png",
+        "type": "costume",
+        "tags": [
+            "robbo",
+            "quadcopter",
+            "simulation"
+        ],
+        "info": [
+            1376,
+            768,
+            2
+        ]
+    },
+    {
+        "name": "Robbo quadcopter flying",
+        "md5": "robbo_quadcopter_topdown_spinning.png",
+        "type": "costume",
+        "tags": [
+            "robbo",
+            "quadcopter",
+            "simulation"
+        ],
+        "info": [
+            1376,
+            768,
+            2
+        ]
     }
 ]
