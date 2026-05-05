@@ -304,7 +304,8 @@ class SearchPanelDeviceComponent extends Component {
             deviceError: null,
             quadcopterConnected: false,
             quadcopterSearching: false,
-            quadcopterState: 'disconnected'
+            quadcopterState: 'disconnected',
+            quadcopterLastError: null
         };
 
         this.deviceId = -1;
@@ -505,14 +506,33 @@ class SearchPanelDeviceComponent extends Component {
                 const connected = !isSearching &&
                     (nextSnapshot.connected === true || state === 'connected' || state === 'landing');
                 const quadcopterState = nextSnapshot.state || state || 'disconnected';
-                if (this._lastQuadcopterConnected !== connected || this._lastQuadcopterSearching !== isSearching || this._lastQuadcopterState !== quadcopterState) {
+                const nextQuadHint = connected
+                    ? null
+                    : Object.prototype.hasOwnProperty.call(nextSnapshot, 'lastError')
+                        ? nextSnapshot.lastError
+                        : this.state.quadcopterLastError;
+                const prevHint = this.state.quadcopterLastError || null;
+                const hintSig = nextQuadHint
+                    ? `${nextQuadHint.code || ''}:${String(nextQuadHint.message || '')}`
+                    : '';
+                const prevHintSig = prevHint
+                    ? `${prevHint.code || ''}:${String(prevHint.message || '')}`
+                    : '';
+                const hintChanged = hintSig !== prevHintSig;
+                if (
+                    this._lastQuadcopterConnected !== connected ||
+                    this._lastQuadcopterSearching !== isSearching ||
+                    this._lastQuadcopterState !== quadcopterState ||
+                    hintChanged
+                ) {
                     this._lastQuadcopterConnected = connected;
                     this._lastQuadcopterSearching = isSearching;
                     this._lastQuadcopterState = quadcopterState;
                     this.setState({
                         quadcopterConnected: connected,
                         quadcopterSearching: isSearching,
-                        quadcopterState: quadcopterState
+                        quadcopterState: quadcopterState,
+                        quadcopterLastError: nextQuadHint
                     });
                 }
                 if (connected && !isSearching) {
@@ -1397,9 +1417,9 @@ class SearchPanelDeviceComponent extends Component {
                 </div>
 
                 <div id={`search-panel-device-info-${this.props.Id}`} className={styles.search_panel_device_element}>
-
-
-
+                    {this.props.isQuadcopter && this.state.quadcopterLastError && this.state.quadcopterLastError.message ? (
+                        <div className={styles.quadcopter_panel_hint}>{this.state.quadcopterLastError.message}</div>
+                    ) : null}
                 </div>
 
                 {showFlashButton && (

@@ -5,6 +5,18 @@
 
 }
 
+/* Quadcopter: persistent search / link error hint (multi-line Russian text). */
+.quadcopter_panel_hint {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: min(560px, 42vw);
+  font-size: 12px;
+  line-height: 1.35;
+  color: #b00020;
+}
+
+
 .device_flash_button{
 
   min-height: 30px;
