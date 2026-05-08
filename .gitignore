@@ -11,7 +11,7 @@ npm-*
 /coverage
 
 # Build
-/build
+/build*
 /dist
 /.opt-in
 

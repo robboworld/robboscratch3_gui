@@ -27,6 +27,7 @@ import PreviewModal from '../../containers/preview-modal.jsx';
 import ImportModal from '../../containers/import-modal.jsx';
 import WebGlModal from '../../containers/webgl-modal.jsx';
 import TipsLibrary from '../../containers/tips-library.jsx';
+import ScenariosLibrary from '../../containers/scenarios-library.jsx';
 import Cards from '../../containers/cards.jsx';
 import Alerts from '../../containers/alerts.jsx';
 import DragLayer from '../../containers/drag-layer.jsx';
@@ -179,6 +180,7 @@ const GUIComponent = props => {
         onExtensionButtonClick,
         onRequestCloseBackdropLibrary,
         onRequestCloseCostumeLibrary,
+        onRequestCloseScenariosLibrary,
         onRequestCloseTelemetryModal,
         onSeeCommunity,
         onShare,
@@ -269,6 +271,12 @@ const GUIComponent = props => {
                 {tipsLibraryVisible ? (
                     <TipsLibrary />
                 ) : null}
+                <ScenariosLibrary
+                    basePath={basePath}
+                    canSave={canSave}
+                    onRequestClose={onRequestCloseScenariosLibrary}
+                    onUpdateProjectTitle={onUpdateProjectTitle}
+                />
                 {cardsVisible ? (
                     <Cards />
                 ) : null}
@@ -486,6 +494,7 @@ GUIComponent.propTypes = {
     onOpenRegistration: PropTypes.func,
     onRequestCloseBackdropLibrary: PropTypes.func,
     onRequestCloseCostumeLibrary: PropTypes.func,
+    onRequestCloseScenariosLibrary: PropTypes.func,
     onRequestCloseTelemetryModal: PropTypes.func,
     onSeeCommunity: PropTypes.func,
     onShare: PropTypes.func,

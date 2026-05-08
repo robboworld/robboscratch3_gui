@@ -40,6 +40,7 @@ class LibraryComponent extends React.Component {
             'handleMouseLeave',
             'handleSelect',
             'handleTagClick',
+            'itemSearchBlob',
             'setFilteredDataRef'
         ]);
         this.state = {
@@ -83,21 +84,26 @@ class LibraryComponent extends React.Component {
     handleFilterClear () {
         this.setState({filterQuery: ''});
     }
+    itemSearchBlob (dataItem) {
+        const nameText = dataItem.name ?
+            (typeof dataItem.name === 'string' ?
+                dataItem.name :
+                this.props.intl.formatMessage(dataItem.name.props)) :
+            '';
+        const descText = dataItem.description && typeof dataItem.description === 'string' ?
+            dataItem.description :
+            '';
+        return (dataItem.tags || [])
+            .map(String.prototype.toLowerCase.call, String.prototype.toLowerCase)
+            .concat(nameText.toLowerCase(), descText.toLowerCase())
+            .join('\n');
+    }
     getFilteredData () {
         if (this.state.selectedTag === 'all') {
             if (!this.state.filterQuery) return this.props.data;
+            const q = this.state.filterQuery.toLowerCase();
             return this.props.data.filter(dataItem => (
-                (dataItem.tags || [])
-                    // Second argument to map sets `this`
-                    .map(String.prototype.toLowerCase.call, String.prototype.toLowerCase)
-                    .concat(dataItem.name ?
-                        (typeof dataItem.name === 'string' ?
-                        // Use the name if it is a string, else use formatMessage to get the translated name
-                            dataItem.name : this.props.intl.formatMessage(dataItem.name.props)
-                        ).toLowerCase() :
-                        null)
-                    .join('\n') // unlikely to partially match newlines
-                    .indexOf(this.state.filterQuery.toLowerCase()) !== -1
+                this.itemSearchBlob(dataItem).indexOf(q) !== -1
             ));
         }
         return this.props.data.filter(dataItem => (
@@ -159,9 +165,13 @@ class LibraryComponent extends React.Component {
                     </div>
                 )}
                 <div
-                    className={classNames(styles.libraryScrollGrid, {
-                        [styles.withFilterBar]: this.props.filterable || this.props.tags
-                    })}
+                    className={classNames(
+                        styles.libraryScrollGrid,
+                        {
+                            [styles.withFilterBar]: this.props.filterable || this.props.tags,
+                            [styles.libraryScrollGridScenarios]: this.props.scrollGridVariant === 'scenarios'
+                        }
+                    )}
                     ref={this.setFilteredDataRef}
                 >
                     {this.getFilteredData().map((dataItem, index) => (
@@ -181,6 +191,7 @@ class LibraryComponent extends React.Component {
                             internetConnectionRequired={dataItem.internetConnectionRequired}
                             key={`item_${index}`}
                             name={dataItem.name}
+                            scenarioCard={dataItem.scenarioCard}
                             onMouseEnter={this.handleMouseEnter}
                             onMouseLeave={this.handleMouseLeave}
                             onSelect={this.handleSelect}
@@ -214,6 +225,7 @@ LibraryComponent.propTypes = {
     onItemMouseLeave: PropTypes.func,
     onItemSelected: PropTypes.func,
     onRequestClose: PropTypes.func,
+    scrollGridVariant: PropTypes.oneOf(['scenarios']),
     tags: PropTypes.arrayOf(PropTypes.shape(TagButton.propTypes)),
     title: PropTypes.string.isRequired
 };
