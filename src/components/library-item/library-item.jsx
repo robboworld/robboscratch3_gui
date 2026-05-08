@@ -36,16 +36,16 @@ class LibraryItemComponent extends React.PureComponent {
                     onMouseEnter={this.props.onMouseEnter}
                     onMouseLeave={this.props.onMouseLeave}
                 >
-                    <div className={styles.scenarioCardImageWrap}>
-                        <img
-                            alt=""
-                            className={styles.scenarioCardImage}
-                            draggable={false}
-                            src={this.props.iconURL}
-                        />
-                    </div>
                     <div className={styles.scenarioCardBody}>
                         <div className={styles.scenarioCardTitle}>{this.props.name}</div>
+                        <div className={styles.scenarioCardImageWrap}>
+                            <img
+                                alt=""
+                                className={styles.scenarioCardImage}
+                                draggable={false}
+                                src={this.props.iconURL}
+                            />
+                        </div>
                         {this.props.description ? (
                             <p className={styles.scenarioCardDescription}>{this.props.description}</p>
                         ) : null}
