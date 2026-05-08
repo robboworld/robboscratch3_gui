@@ -1,0 +1,22 @@
+[
+    {
+        "id": "lab-platform-control",
+        "sb3": "LabPlatformControl.sb3",
+        "preview": "sample-preview.svg",
+        "title": "Lab platform control",
+        "titleRu": "Управление платформой через лабораторию",
+        "description": "Launch a mini research mission: control the lab platform, run movement experiments, and see sensor data respond in real time.",
+        "descriptionRu": "Запустите мини-исследование: управляйте лабораторной платформой, проводите эксперименты с движением и наблюдайте отклик датчиков в реальном времени.",
+        "tags": ["robbo"]
+    },
+    {
+        "id": "otto-self-test",
+        "sb3": "otto_selftest .sb3",
+        "preview": "Otto.jpeg",
+        "title": "Otto self test",
+        "titleRu": "Самотест Отто",
+        "description": "Give Otto a full check-up: test motors, movements, and reactions step by step before your next creative challenge.",
+        "descriptionRu": "Проведите полный чек-ап Отто: пошагово проверьте моторы, движения и реакции робота перед новым творческим заданием.",
+        "tags": ["robbo"]
+    }
+]
