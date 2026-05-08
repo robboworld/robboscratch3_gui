@@ -393,16 +393,6 @@ class MenuBar extends React.Component {
                                     >
                                         {newProjectMessage}
                                     </MenuItem>
-                                    <MenuItem
-                                        isRtl={this.props.isRtl}
-                                        onClick={this.handleCloseFileMenuAndThen(this.props.onOpenScenariosLibrary)}
-                                    >
-                                        <FormattedMessage
-                                            defaultMessage="Scenarios"
-                                            description="Menu bar item to open bundled project scenarios library"
-                                            id="gui.menuBar.scenarios"
-                                        />
-                                    </MenuItem>
                                 </MenuSection>
                                 {(this.props.canSave || this.props.canCreateCopy || this.props.canRemix) && (
                                     <MenuSection>
