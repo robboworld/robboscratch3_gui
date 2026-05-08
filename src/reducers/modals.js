@@ -14,6 +14,7 @@ const MODAL_SPRITE_LIBRARY = 'spriteLibrary';
 const MODAL_SOUND_RECORDER = 'soundRecorder';
 const MODAL_CONNECTION = 'connectionModal';
 const MODAL_TIPS_LIBRARY = 'tipsLibrary';
+const MODAL_SCENARIOS_LIBRARY = 'scenariosLibrary';
 
 const initialState = {
     [MODAL_BACKDROP_LIBRARY]: false,
@@ -28,7 +29,8 @@ const initialState = {
     [MODAL_SPRITE_LIBRARY]: false,
     [MODAL_SOUND_RECORDER]: false,
     [MODAL_CONNECTION]: false,
-    [MODAL_TIPS_LIBRARY]: false
+    [MODAL_TIPS_LIBRARY]: false,
+    [MODAL_SCENARIOS_LIBRARY]: false
 };
 
 const reducer = function (state, action) {
@@ -97,6 +99,9 @@ const openConnectionModal = function () {
 const openTipsLibrary = function () {
     return openModal(MODAL_TIPS_LIBRARY);
 };
+const openScenariosLibrary = function () {
+    return openModal(MODAL_SCENARIOS_LIBRARY);
+};
 const closeBackdropLibrary = function () {
     return closeModal(MODAL_BACKDROP_LIBRARY);
 };
@@ -133,6 +138,9 @@ const closeSoundRecorder = function () {
 const closeTipsLibrary = function () {
     return closeModal(MODAL_TIPS_LIBRARY);
 };
+const closeScenariosLibrary = function () {
+    return closeModal(MODAL_SCENARIOS_LIBRARY);
+};
 const closeConnectionModal = function () {
     return closeModal(MODAL_CONNECTION);
 };
@@ -151,6 +159,7 @@ export {
     openSoundRecorder,
     openTelemetryModal,
     openTipsLibrary,
+    openScenariosLibrary,
     openConnectionModal,
     closeBackdropLibrary,
     closeCameraCapture,
@@ -164,5 +173,6 @@ export {
     closeSoundRecorder,
     closeTelemetryModal,
     closeTipsLibrary,
+    closeScenariosLibrary,
     closeConnectionModal
 };
