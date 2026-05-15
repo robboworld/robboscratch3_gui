@@ -5,7 +5,8 @@ import { withAlert } from 'react-alert';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 
-import styles from  './ProfilerWindowComponent.css';
+import sharedStyles from './DevicePaletteShared.css';
+import styles from './ProfilerWindowComponent.css';
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
 
 
@@ -47,21 +48,22 @@ class ProfilerWindowComponent extends Component {
 
   return (
 
-    <div id="profiler-window" className={styles.profiler_window}>
+    <div id="profiler-window" className={classNames(sharedStyles.palette, styles.profiler_window)}>
 
 
-          <div id="settings-window-tittle" className={styles.profiler_window_tittle}>
-
-            {this.props.intl.formatMessage(messages.profiler_window)}
-
-            <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-
-            </div>
-
+          <div id="profiler-window-tittle" className={sharedStyles.header}>
+            <span className={sharedStyles.headerTitle}>
+              {this.props.intl.formatMessage(messages.profiler_window)}
+            </span>
+            <button
+              type="button"
+              className={sharedStyles.closeButton}
+              aria-label="Close"
+              onClick={this.onThisWindowClose.bind(this)}
+            />
           </div>
 
-           <div id="profiler-window-content" className={styles.profiler_window_content}>
+           <div id="profiler-window-content" className={classNames(sharedStyles.body, styles.profiler_window_content)}>
 
                 <div id="profiler-window-content-hat" className={styles.profiler_window_content_hat}>
 

@@ -1,6 +1,8 @@
+import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import styles from  './ArduinoPalleteComponent.css';
+import sharedStyles from './DevicePaletteShared.css';
+import styles from './ArduinoPalleteComponent.css';
 import SensorDataBlockComponent  from './SensorDataBlockComponent'
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions'
@@ -211,12 +213,19 @@ class ArduinoPalleteComponent extends Component {
 
   render() {
     return (
-          <div id="arduino-1" className={styles.arduino_palette}>
-                <div id="arduino-tittle" className={styles.arduino_panel_tittle}>
-                    {this.props.intl.formatMessage(messages.arduino)}
-                      <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-                      </div>
+          <div id="arduino-1" className={classNames(sharedStyles.palette, styles.arduino_palette)}>
+                <div id="arduino-tittle" className={sharedStyles.header}>
+                    <span className={sharedStyles.headerTitle}>
+                        {this.props.intl.formatMessage(messages.arduino)}
+                    </span>
+                    <button
+                        type="button"
+                        className={sharedStyles.closeButton}
+                        aria-label="Close"
+                        onClick={this.onThisWindowClose.bind(this)}
+                    />
                 </div>
+                <div className={sharedStyles.body}>
                       <div className={styles.column}> 
 
 
@@ -359,6 +368,7 @@ class ArduinoPalleteComponent extends Component {
                                    sensorData={`0`} /> */}
 
                             </div>
+                </div>
           </div>
     );
   }

@@ -5,6 +5,7 @@ import { withAlert } from 'react-alert';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 
+import sharedStyles from './DevicePaletteShared.css';
 import styles from './SettingsWindowComponent.css';
 import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
 import { isDesktopWithBluetooth } from '../lib/platform';
@@ -379,16 +380,21 @@ class SettingsWindowComponent extends Component {
 
   render() {
     return (
-      <div id="settings-window" className={styles.settings_window}>
+      <div id="settings-window" className={classNames(sharedStyles.palette, styles.settings_window)}>
 
-        <div id="settings-window-tittle" className={styles.settings_window_tittle}>
-
-          {this.props.intl.formatMessage(messages.settings_window)}
-          <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}></div>
-
+        <div id="settings-window-tittle" className={sharedStyles.header}>
+          <span className={sharedStyles.headerTitle}>
+            {this.props.intl.formatMessage(messages.settings_window)}
+          </span>
+          <button
+            type="button"
+            className={sharedStyles.closeButton}
+            aria-label="Close"
+            onClick={this.onThisWindowClose.bind(this)}
+          />
         </div>
 
-        <div id="settings-window-content" className={styles.settings_window_content}>
+        <div id="settings-window-content" className={classNames(sharedStyles.body, styles.settings_window_content)}>
 
           <div id="settings-window-content-raw-connection-title" className={styles.settings_window_content_raw}>
             <div id="raw-connection-title-settings-window-content-column-1" className={styles.settings_window_content_column}>

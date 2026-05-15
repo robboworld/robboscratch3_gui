@@ -1,6 +1,8 @@
+import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import styles from  './RobotPalleteComponent.css';
+import sharedStyles from './DevicePaletteShared.css';
+import styles from './RobotPalleteComponent.css';
 import SensorDataBlockComponent  from './SensorDataBlockComponent';
 import SensorComponent from './SensorComponent';
 
@@ -292,20 +294,21 @@ componentDidUpdate(){
 
 
 
-      <div id="robot-1" className={styles.robot_palette}>
+      <div id="robot-1" className={classNames(sharedStyles.palette, styles.robot_palette)}>
 
 
-            <div id="robot-tittle" className={styles.robot_panel_tittle}>
-
-              {this.props.intl.formatMessage(messages.robot)}
-
-              <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-
-              </div>
-
+            <div id="robot-tittle" className={sharedStyles.header}>
+                <span className={sharedStyles.headerTitle}>
+                    {this.props.intl.formatMessage(messages.robot)}
+                </span>
+                <button
+                    type="button"
+                    className={sharedStyles.closeButton}
+                    aria-label="Close"
+                    onClick={this.onThisWindowClose.bind(this)}
+                />
             </div>
-
+            <div className={sharedStyles.body}>
             <SensorDataBlockComponent key={this.props.robot_special_sensors[0].sensor_id} sensorId={this.props.robot_special_sensors[0].sensor_id}
                                deviceName={this.props.robot_special_sensors[0].sensor_device_name} sensorType={this.props.robot_special_sensors[0].sensor_type}
                                sensorFieldText={this.props.intl.formatMessage(messages.path_left)}
@@ -352,7 +355,7 @@ componentDidUpdate(){
                            sensorFieldText={this.props.intl.formatMessage(messages.start_button_pushed)}
                            sensorName={this.props.robot_special_sensors[2].sensor_name}
                            sensorData={sensor_data} />
-
+            </div>
       </div>
 
 

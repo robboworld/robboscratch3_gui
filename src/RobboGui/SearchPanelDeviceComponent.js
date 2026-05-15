@@ -1330,7 +1330,7 @@ class SearchPanelDeviceComponent extends Component {
 
         return (
 
-            <div id={`search-panel-device-component`} className={styles.firmware_flasher_device_component}>
+            <div id={`search-panel-device-component`} className={styles.search_panel_device_component}>
 
 
                 <div id="search-panel-device-port" className={styles.search_panel_device_element}>

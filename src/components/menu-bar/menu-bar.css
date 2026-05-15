@@ -222,23 +222,46 @@
   background-image: url("/images/mystuff.png");
 }
 
-.trigger_robbo_menu{
-    font-weight: bold;
-    font-size: 12px;
-    cursor: pointer;
-    align-items: center;
-    min-width: 100px;
-    height: $menu-bar-height;
-    padding-left: 11px;
-    padding-right: 11px;
+.robboMenuGroup {
     display: flex;
-    position: relative;
-    margin-left: 0.5rem;
-
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    flex-shrink: 0;
+    height: calc($menu-bar-height - 0.375rem);
+    margin-left: 0.375rem;
+    padding: 0 0.25rem;
+    border-radius: calc($form-radius + 2px);
+    background-color: rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
-.trigger_robbo_menu:hover{
+.trigger_robbo_menu {
+    font-weight: bold;
+    font-size: $menu-bar-standard-font-size;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    min-width: 6.25rem;
+    height: 100%;
+    padding: 0 0.75rem;
+    display: flex;
+    position: relative;
+    margin: 0;
+    white-space: nowrap;
+    user-select: none;
+    border: none;
+    border-radius: $form-radius;
+    color: white;
+    background: transparent;
+    transition: background-color 0.2s ease;
+}
 
+.trigger_robbo_menu:hover {
     background-color: $ui-black-transparent;
+}
 
+.trigger_robbo_menu:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
 }

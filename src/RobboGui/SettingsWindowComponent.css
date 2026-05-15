@@ -1,77 +1,25 @@
-.settings_window_tittle{
-
-   background-color: #00af41;
-    color: white;
-    font-family: "Proxima Nova Regular",Helvetica,Arial, sans-serif;
-   
-    padding-top: 3px;
-
-
-height: 30px;
-
-text-align: center;
-
+.settings_window {
+    min-width: 520px;
 }
 
-.close_icon{
-
-     float:right;
-    background-image: url('../../static/robbo_assets/icon_close_window.png');
-    width: 27px;
-    height: 27px;
-
-    cursor: pointer;
-
+.settings_window_content_raw {
+    margin: 0.5rem 0;
 }
 
-.settings_window{
-
+.settings_window_content_column {
     display: inline-block;
-    margin-left: 5%;
-
-    border: 1px solid #00af41;
-
-   height:100%;
-
-   min-width: 520px;
-
-   vertical-align: top;
-
-   background-color: white;
-
+    margin-left: 0.625rem;
+    margin-right: 0.625rem;
+    vertical-align: top;
+    color: #000;
 }
 
-.settings_window_content{
-
-
-
+.settings_window_content_column select {
+    min-width: 11.25rem;
 }
 
-.settings_window_content_raw{
-
-    margin: 10px 10px;
-
-}
-
-.settings_window_content_column{
-
-    display: inline-block;
-    margin-left: 10px;
-    margin-right: 10px;
-   /* min-width: 400px;*/
-
-}
-
-.settings_window_content_column select{
-
-    min-width: 180px;
-
-}
-
-.settings_window_hint{
-
+.settings_window_hint {
     color: #666;
-    font-size: 12px;
-    margin-top: 4px;
-
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
 }

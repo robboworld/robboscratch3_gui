@@ -6,6 +6,8 @@ import {
   injectIntl
 } from 'react-intl';
 
+import classNames from 'classnames';
+import sharedStyles from './DevicePaletteShared.css';
 import styles from './AboutWindowComponent.css';
 import {
   ActionTriggerNewDraggableWindow,
@@ -18,7 +20,7 @@ import {
   formatArchitectureDisplay
 } from '../lib/platform';
 
-const VERSION = 'Robbo Scratch v.3.115.1';
+const VERSION = 'Robbo Scratch v.3.115.2';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   process &&
   process.env &&
@@ -374,21 +376,25 @@ class AboutWindowComponent extends Component {
     const infoRows = isWebSystemInfo ? webRows : desktopRows;
     const systemInfoText = this.buildSystemInfoText(infoRows);
     return (
-      <div id="about-window" className={styles.about_window}>
+      <div id="about-window" className={classNames(sharedStyles.palette, styles.about_window)}>
         <div
           id="about-window-tittle"
-          className={styles.about_window_tittle}
+          className={sharedStyles.header}
         >
-          {this.props.intl.formatMessage(messages.about_window)}
-          <div
-            className={styles.close_icon}
+          <span className={sharedStyles.headerTitle}>
+            {this.props.intl.formatMessage(messages.about_window)}
+          </span>
+          <button
+            type="button"
+            className={sharedStyles.closeButton}
+            aria-label="Close"
             onClick={this.onThisWindowClose.bind(this)}
-          ></div>
+          />
         </div>
 
         <div
           id="about-window-content"
-          className={styles.about_window_content}
+          className={classNames(sharedStyles.body, styles.about_window_content)}
         >
           <div
             id="about-window-content-raw-1"

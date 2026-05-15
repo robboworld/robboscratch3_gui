@@ -1,6 +1,8 @@
+import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import styles from  './LaboratoryPalleteComponent.css';
+import sharedStyles from './DevicePaletteShared.css';
+import styles from './LaboratoryPalleteComponent.css';
 import SensorDataBlockComponent  from './SensorDataBlockComponent';
 import SensorComponent from './SensorComponent';
 
@@ -244,19 +246,21 @@ class LaboratoryPalleteComponent extends Component {
 
 
 
-      <div id="lab-1" className={styles.lab_palette}>
+      <div id="lab-1" className={classNames(sharedStyles.palette, styles.lab_palette)}>
 
 
-            <div id="lab-tittle" className={styles.lab_panel_tittle}>
-
-                {this.props.intl.formatMessage(messages.laboratory)}
-
-                  <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-                  </div>
-
+            <div id="lab-tittle" className={sharedStyles.header}>
+                <span className={sharedStyles.headerTitle}>
+                    {this.props.intl.formatMessage(messages.laboratory)}
+                </span>
+                <button
+                    type="button"
+                    className={sharedStyles.closeButton}
+                    aria-label="Close"
+                    onClick={this.onThisWindowClose.bind(this)}
+                />
             </div>
-
+            <div className={sharedStyles.body}>
             {
 
 
@@ -395,7 +399,7 @@ class LaboratoryPalleteComponent extends Component {
 
 
             }
-
+            </div>
           </div>
 
     );

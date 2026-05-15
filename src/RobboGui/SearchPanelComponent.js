@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom';
 import { connect } from 'react-redux';
 
 
+import sharedStyles from './DevicePaletteShared.css';
 import styles from './SearchPanelComponent.css';
 import { ActionAddNewFoundDevice } from './actions/sensor_actions';
 
@@ -18,6 +19,11 @@ import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebC
 
 const messages = defineMessages({
 
+  search_panel_title: {
+    id: 'gui.RobboGui.search_devices',
+    description: 'Search panel title',
+    defaultMessage: 'Search devices'
+  },
   devices_not_found: {
 
     id: 'gui.RobboGui.devices_not_found',
@@ -207,20 +213,19 @@ class SearchPanelComponent extends Component {
     return (
 
 
-      <div id="SearchPanelComponent" className={styles.search_panel}>
-
-
-        <div id="SearchPanelComponent-tittle" className={styles.search_panel_tittle}>
-
-
-          <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-
-          </div>
-
+      <div id="SearchPanelComponent" className={classNames(sharedStyles.palette, styles.search_panel)}>
+        <div id="SearchPanelComponent-tittle" className={sharedStyles.header}>
+            <span className={sharedStyles.headerTitle}>
+                {this.props.intl.formatMessage(messages.search_panel_title)}
+            </span>
+            <button
+                type="button"
+                className={sharedStyles.closeButton}
+                aria-label="Close"
+                onClick={this.onThisWindowClose.bind(this)}
+            />
         </div>
-
-        <div id="SearchPanelComponent-body" className={styles.search_panel_body}>
+        <div id="SearchPanelComponent-body" className={classNames(sharedStyles.body, styles.search_panel_body)}>
 
           <div id="SearchPanelComponent-devices-list">
 

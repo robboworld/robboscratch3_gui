@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
+import sharedStyles from './DevicePaletteShared.css';
 import styles from './FirmwareFlasherComponent.css';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
@@ -17,6 +18,11 @@ import DraggableWindowComponent from './DraggableWindowComponent';
 
   const messages = defineMessages({
 
+    firmware_flasher_title: {
+        id: 'gui.RobboMenu.trigger_firmware_flasher',
+        description: 'Firmware flasher window title',
+        defaultMessage: 'Flash device'
+    },
     get_devices_info: {
         id: 'gui.FirmwareFlasherComponent.get_devices_info',
         description: ' ',
@@ -93,27 +99,23 @@ class FirmwareFlasherComponent extends Component {
   return (
 
 
-    <div id="FirmwareFlasherComponent" className={styles.firmware_flasher_component}>
-
-
-          <div id="FirmwareFlasherComponent-tittle" className={styles.firmware_flasher_component_tittle}>
-
-              FirmwareFlasher
-
-              <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-
-              </div>
-
+    <div id="FirmwareFlasherComponent" className={classNames(sharedStyles.palette, styles.firmware_flasher_component)}>
+          <div id="FirmwareFlasherComponent-tittle" className={sharedStyles.header}>
+              <span className={sharedStyles.headerTitle}>
+                  {this.props.intl.formatMessage(messages.firmware_flasher_title)}
+              </span>
+              <button
+                  type="button"
+                  className={sharedStyles.closeButton}
+                  aria-label="Close"
+                  onClick={this.onThisWindowClose.bind(this)}
+              />
           </div>
-
-          <div>
-
-            <button className={styles.get_devices_info} onClick={this.getDevicesInfo.bind(this)}>{this.props.intl.formatMessage(messages.get_devices_info)} </button>
-
-          </div>
-
-          <div id = "devices-header" className={styles.devices_header}>
+          <div className={sharedStyles.body}>
+            <button type="button" className={styles.get_devices_info} onClick={this.getDevicesInfo.bind(this)}>
+                {this.props.intl.formatMessage(messages.get_devices_info)}
+            </button>
+          <div id="devices-header" className={styles.devices_header}>
 
                 <div id="devices-header-device-name" className={styles.devices_header_element}>
 
@@ -200,8 +202,7 @@ class FirmwareFlasherComponent extends Component {
 
           </div>
 
-
-
+          </div>
     </div>
 
 

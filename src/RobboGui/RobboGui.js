@@ -1,9 +1,7 @@
-import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import SensorPallete from './SensorPallete';
 import ColorCorrectorTableComponent from './ColorCorrectorTableComponent';
-import SensorPaletteCollapsed from './SensorPaletteCollapsed';
 import { ItemTypes } from './drag_constants';
 import { DropTarget } from 'react-dnd';
 import SensorChooseWindowComponent from './SensorChooseWindowComponent';
@@ -36,7 +34,7 @@ import {
   normalizeFullscreenRenderQuality,
   applySimulationStepMsToRuntime
 } from '../lib/settingsLoader';
-import { isDesktopWithBluetooth, isRobboLinkMobileWebContext } from '../lib/platform';
+import { isRobboLinkMobileWebContext } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
 
 import { withAlert } from 'react-alert';
@@ -44,12 +42,6 @@ import { withAlert } from 'react-alert';
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 
 const messages = defineMessages({
-    search_devices: {
-
-        id: 'gui.RobboGui.search_devices',
-        description: ' ',
-        defaultMessage: 'Search devices'
-    },
     update_firm_msg: {
 
         id: 'gui.RobboGui.update_firm_msg',
@@ -216,35 +208,6 @@ class RobboGui extends Component {
 
 
 
-  searchDevices(){
-
-    console.log("searchDevices");
-
-    let search_panel = document.getElementById(`SearchPanelComponent`);
-
-    search_panel.style.display = "block";
-
-    let search_device_button =  document.getElementById(`robbo_search_devices`);
-    search_device_button.style.pointerEvents = "none";
-
-    
-
-   this.props.vm.getDCA().searchAllDevices();
-
-   //  this.props.searchRobotDevices(this.props.vm.getRCA());
-   // this.props.searchLaboratoryDevices(this.props.vm.getLCA());
-
-   this.props.vm.getRCA().searchRobotDevices();
-   this.props.vm.getLCA().searchLaboratoryDevices();
-   this.OCA.searchOttoDevices();
-   this.ACA.searchArduinoDevices();
-
-   if (isDesktopWithBluetooth()) {
-     this.QCA.searchQuadcopterDevices();
-   }
-
-  }
-
   stopSearchProcess(){
 
     console.log("stopSearchProcess");
@@ -302,7 +265,6 @@ class RobboGui extends Component {
 
   this.IOT = this.props.vm.getIOT();
   const isMobileBridgeContext = isRobboLinkMobileWebContext();
-  const searchButtonLabel = this.props.intl.formatMessage(messages.search_devices);
 
   var initial_coords_profiler = [300,300];
 
@@ -312,23 +274,12 @@ class RobboGui extends Component {
 
   return (
 
-    <div className={classNames(
-
-                  {[styles.robbo_gui]: true},
-                  {[styles.content_collapsed]: this.props.sensorsPalette.sensors_pallete_collapsed},
-                  {[styles.content_expand]:    !this.props.sensorsPalette.sensors_pallete_collapsed}
-
-
-                  )}>
+    <div className={styles.robbo_gui}>
 
 
           <div className={styles.version}> </div>
 
-         {
-              (!this.props.sensorsPalette.sensors_pallete_collapsed)?  <SensorPallete RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} VM={this.props.vm} />: <SensorPaletteCollapsed />
-
-
-         }
+         <SensorPallete RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} VM={this.props.vm} />
 
          {!isMobileBridgeContext ? (
            <DraggableWindowComponent draggableWindowId={3}>
@@ -381,10 +332,6 @@ class RobboGui extends Component {
           </NewDraggableWindowComponent>  */}
         
 
-       {/* <button id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{this.props.intl.formatMessage(messages.search_devices)} </button>*/}
-
-          <div id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{searchButtonLabel}</div>
-
     </div>
   );
 //  );
@@ -397,9 +344,7 @@ class RobboGui extends Component {
 const mapStateToProps =  state => ({
 
 
-  sensorsChooseWindow:state.scratchGui.sensors_choose_window,
-  sensorsPalette:state.scratchGui.sensors_palette
-
+  sensorsChooseWindow:state.scratchGui.sensors_choose_window
 
   });
 

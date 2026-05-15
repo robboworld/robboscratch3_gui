@@ -1,11 +1,7 @@
 .sensor_block_field{
-
      display: inline-block;
      margin: 2px 1px;
-
-
-
-
+     color: #000;
 }
 
 .sensor_choose_icon:hover{

@@ -1,8 +1,6 @@
 
 .search_panel_device_component{
-
-
-
+    color: #000;
 }
 
 .device_flash_button{
@@ -60,6 +58,7 @@
       margin-bottom: 7px;
       margin-top: 7px;
       min-width: 90px;
+      color: #000;
 
   }
 
@@ -87,6 +86,7 @@
       margin-bottom: 7px;
       margin-top: 7px;
       min-width: 90px;
+      color: #000;
 
   }
 

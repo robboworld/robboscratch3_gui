@@ -68,6 +68,7 @@ import languageIcon from '../language-selector/language-icon.svg';
 import scratchLogo from './scratch-logo.svg';
 
 import {ActionTriggerRobboMenu} from '../../RobboGui/actions/sensor_actions.js'; //Robbo //modified_by_Yaroslav
+import MenuBarDeviceControls from '../../RobboGui/MenuBarDeviceControls';
 import storage from '../../lib/storage';
 
 const messages = defineMessages({
@@ -497,6 +498,21 @@ class MenuBar extends React.Component {
                     </div>
                     <Divider className={classNames(styles.divider)} />
 
+                    <div className={styles.robboMenuGroup}>
+                        <div
+                            id="trigger-robbo-menu"
+                            className={styles.trigger_robbo_menu}
+                            onClick={this.props.onTriggerRobboMenu}
+                        >
+                            <FormattedMessage
+                                defaultMessage="Robbo menu"
+                                description=""
+                                id="gui.menuBar.robbo_menu"
+                            />
+                        </div>
+                        <MenuBarDeviceControls vm={this.props.vm} />
+                    </div>
+
                     {/*this.props.canEditTitle ? (
                         <div className={classNames(styles.menuBarItem, styles.growable)}>
                             <MenuBarItemTooltip
@@ -518,16 +534,6 @@ class MenuBar extends React.Component {
                             username={this.props.authorUsername}
                         />
                     ) : null)*/}
-
-                    <div id={`trigger-robbo-menu`} className={styles.trigger_robbo_menu} onClick={this.props.onTriggerRobboMenu}>
-
-                      <FormattedMessage
-                          defaultMessage="Robbo menu"
-                          description=""
-                          id="gui.menuBar.robbo_menu"
-                      />
-                    </div>
-
 
                 </div>
 
@@ -589,7 +595,8 @@ MenuBar.propTypes = {
     renderLogin: PropTypes.func,
     sessionExists: PropTypes.bool,
     showComingSoon: PropTypes.bool,
-    username: PropTypes.string
+    username: PropTypes.string,
+    vm: PropTypes.object
 };
 
 MenuBar.defaultProps = {

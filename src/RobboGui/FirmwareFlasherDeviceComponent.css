@@ -1,9 +1,7 @@
 
 
 .firmware_flasher_device_component{
-
-
-
+    color: #000;
 }
 
 @media (max-height:900px) {
@@ -16,6 +14,7 @@
       margin-bottom: 7px;
       margin-top: 7px;
       min-width: 160px;
+      color: #000;
 
   }
 
@@ -31,6 +30,7 @@
       margin-bottom: 7px;
       margin-top: 7px;
       min-width: 160px;
+      color: #000;
 
   }
 }

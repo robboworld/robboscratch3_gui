@@ -1,6 +1,8 @@
+import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import styles from  './QuadcopterPalleteComponent.css';
+import sharedStyles from './DevicePaletteShared.css';
+import styles from './QuadcopterPalleteComponent.css';
 import SensorDataBlockComponent  from './SensorDataBlockComponent'
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions'
@@ -181,19 +183,19 @@ class QuadcopterPalleteComponent extends Component {
 
     return (
 
-          <div id="quadcopter-1" className={styles.quadcopter_palette}>
-
-
-                <div id="quadcopter-tittle" className={styles.quadcopter_panel_tittle}>
-
-                    {this.props.intl.formatMessage(messages.quadcopter)}
-
-                      <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-                      </div>
-
+          <div id="quadcopter-1" className={classNames(sharedStyles.palette, styles.quadcopter_palette)}>
+                <div id="quadcopter-tittle" className={sharedStyles.header}>
+                    <span className={sharedStyles.headerTitle}>
+                        {this.props.intl.formatMessage(messages.quadcopter)}
+                    </span>
+                    <button
+                        type="button"
+                        className={sharedStyles.closeButton}
+                        aria-label="Close"
+                        onClick={this.onThisWindowClose.bind(this)}
+                    />
                 </div>
-
+                <div className={sharedStyles.body}>
                 <SensorDataBlockComponent key={`copter-${this.props.quadcopterIndex}-battery-level`} sensorId={`copter-${this.props.quadcopterIndex}-battery-level`}
                                    deviceName={`quadcopter`} sensorType={`analog`}
                                    sensorFieldText={this.props.intl.formatMessage(messages.battery_level)}
@@ -223,8 +225,7 @@ class QuadcopterPalleteComponent extends Component {
               sensorFieldText={this.props.intl.formatMessage(messages.yaw)}
               sensorName={`yaw`}
               sensorData={`0`} />
-
-
+                </div>
           </div>
 
 
