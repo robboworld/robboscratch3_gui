@@ -30,6 +30,13 @@ import {
     SOUNDS_TAB_INDEX
 } from '../reducers/editor-tab';
 
+/** Category column width; flyout is separate (see toolbox.js / flyout_vertical.js). */
+const CATEGORY_MENU_WIDTH = 60;
+const PALETTE_ANIMATION_MS = 280;
+const DEFAULT_FLYOUT_WIDTH = 250;
+
+const easeInOutQuad = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
 const addFunctionListener = (object, property, callback) => {
     const oldFn = object[property];
     object[property] = function () {
@@ -71,15 +78,30 @@ class Blocks extends React.Component {
             'onWorkspaceUpdate',
             'onWorkspaceMetricsChange',
             'setBlocks',
-            'setLocale'
+            'setLocale',
+            'updatePaletteVisibility',
+            'setFlyoutDomVisible',
+            'handleTogglePalette',
+            'getInjectionRoot',
+            'clearPaletteAnimation',
+            'getToolboxFlyout',
+            'runPaletteAnimation',
+            'expandPaletteThen',
+            'installToolboxPaletteInterceptor',
+            'cancelFlyoutSlideAnimation',
+            'parseFlyoutTranslate',
+            'setFlyoutSlideTransform',
+            'animateFlyoutSlide'
         ]);
+        this._paletteCollapsed = false;
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
         this.ScratchBlocks.recordSoundCallback = this.handleOpenSoundRecorder;
 
         this.state = {
             workspaceMetrics: {},
-            prompt: null
+            prompt: null,
+            paletteAnimating: false
         };
         this.onTargetsUpdate = debounce(this.onTargetsUpdate, 100);
         this.toolboxUpdateQueue = [];
@@ -95,6 +117,7 @@ class Blocks extends React.Component {
             {rtl: this.props.isRtl, toolbox: this.props.toolboxXML}
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
+        this.installToolboxPaletteInterceptor();
 
         // Store the xml of the toolbox that is actually rendered.
         // This is used in componentDidUpdate instead of prevProps, because
@@ -134,7 +157,9 @@ class Blocks extends React.Component {
             this.props.robbo_settings.is_lab_ext_enabled !==  nextProps.robbo_settings.is_lab_ext_enabled ||  //not original
             this.props.robbo_settings.robot_is_scratchduino !==  nextProps.robbo_settings.robot_is_scratchduino || //not original
             this.props.robbo_settings.is_sim_activated !== nextProps.robbo_settings.is_sim_activated ||
-            this.props.robbo_settings.is_copter_sim_activated !== nextProps.robbo_settings.is_copter_sim_activated
+            this.props.robbo_settings.is_copter_sim_activated !== nextProps.robbo_settings.is_copter_sim_activated ||
+            this.props.paletteCollapsed !== nextProps.paletteCollapsed ||
+            this.state.paletteAnimating !== nextState.paletteAnimating
         );
     }
     componentDidUpdate (prevProps) {
@@ -201,6 +226,12 @@ class Blocks extends React.Component {
         this.detachVM();
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
+        clearTimeout(this._paletteAnimationTimer);
+        this.cancelFlyoutSlideAnimation();
+        const root = this.getInjectionRoot();
+        if (root) {
+            root.classList.remove('flyout-animating-out', 'flyout-animating-in');
+        }
     }
     requestToolboxUpdate () {
         clearTimeout(this.toolboxUpdateTimeout);
@@ -435,17 +466,328 @@ class Blocks extends React.Component {
         this.handleExtensionAdded(blocksInfo);
     }
     handleCategorySelected (categoryId) {
-        const extension = extensionData.find(ext => ext.extensionId === categoryId);
-        if (extension && extension.launchPeripheralConnectionFlow) {
-            this.handleConnectionModalStart(categoryId);
+        const selectCategory = () => {
+            const extension = extensionData.find(ext => ext.extensionId === categoryId);
+            if (extension && extension.launchPeripheralConnectionFlow) {
+                this.handleConnectionModalStart(categoryId);
+            }
+
+            this.withToolboxUpdates(() => {
+                this.workspace.toolbox_.setSelectedCategoryById(categoryId);
+            });
+        };
+
+        if (this._paletteCollapsed) {
+            this.expandPaletteThen(selectCategory);
+            return;
+        }
+        selectCategory();
+    }
+    installToolboxPaletteInterceptor () {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        if (!toolbox || toolbox._paletteExpandInterceptorInstalled) {
+            return;
         }
 
-        this.withToolboxUpdates(() => {
-            this.workspace.toolbox_.setSelectedCategoryById(categoryId);
+        const blocks = this;
+        const originalSetSelectedItem = toolbox.setSelectedItem.bind(toolbox);
+        toolbox.setSelectedItem = (item, opt_shouldScroll) => {
+            if (item && blocks._paletteCollapsed) {
+                blocks.expandPaletteThen(() => {
+                    originalSetSelectedItem(item, opt_shouldScroll);
+                });
+                return;
+            }
+            originalSetSelectedItem(item, opt_shouldScroll);
+        };
+
+        const originalSetSelectedCategoryById = toolbox.setSelectedCategoryById.bind(toolbox);
+        toolbox.setSelectedCategoryById = id => {
+            if (blocks._paletteCollapsed) {
+                blocks.expandPaletteThen(() => {
+                    originalSetSelectedCategoryById(id);
+                });
+                return;
+            }
+            originalSetSelectedCategoryById(id);
+        };
+
+        toolbox._paletteExpandInterceptorInstalled = true;
+    }
+    expandPaletteThen (then) {
+        if (!this._paletteCollapsed) {
+            if (then) {
+                then();
+            }
+            return;
+        }
+        if (this.state.paletteAnimating) {
+            this._pendingPaletteExpand = then;
+            return;
+        }
+
+        if (this.props.onTogglePalette && this.props.paletteCollapsed) {
+            this.props.onTogglePalette(false);
+        }
+
+        this.setPaletteAnimating(true);
+        this.runPaletteAnimation(false, () => {
+            if (then) {
+                then();
+            }
+            const pending = this._pendingPaletteExpand;
+            this._pendingPaletteExpand = null;
+            if (pending) {
+                pending();
+            }
         });
     }
     setBlocks (blocks) {
         this.blocks = blocks;
+    }
+    getInjectionRoot () {
+        if (!this.blocks) {
+            return null;
+        }
+        return this.blocks.querySelector('.injectionDiv') || this.blocks;
+    }
+    getToolboxFlyout () {
+        if (!this.workspace) {
+            return null;
+        }
+        if (this.workspace.toolbox_ && this.workspace.toolbox_.flyout_) {
+            return this.workspace.toolbox_.flyout_;
+        }
+        return this.workspace.flyout_ || null;
+    }
+    clearPaletteAnimation () {
+        clearTimeout(this._paletteAnimationTimer);
+        this._paletteAnimationTimer = null;
+        this.cancelFlyoutSlideAnimation();
+        const root = this.getInjectionRoot();
+        if (root) {
+            root.classList.remove('flyout-animating-out', 'flyout-animating-in');
+        }
+        this.setState({paletteAnimating: false});
+    }
+    cancelFlyoutSlideAnimation () {
+        if (this._flyoutAnimationFrame) {
+            cancelAnimationFrame(this._flyoutAnimationFrame);
+            this._flyoutAnimationFrame = null;
+        }
+    }
+    parseFlyoutTranslate (flyout) {
+        if (!flyout || !flyout.svgGroup_) {
+            return {x: CATEGORY_MENU_WIDTH, y: 0};
+        }
+        const transform = flyout.svgGroup_.style.transform || '';
+        const match = transform.match(/translate\(\s*([-\d.]+)px,\s*([-\d.]+)px\)/);
+        if (match) {
+            return {x: parseFloat(match[1]), y: parseFloat(match[2])};
+        }
+        return {x: CATEGORY_MENU_WIDTH, y: 0};
+    }
+    setFlyoutSlideTransform (flyout, x, y, opacity) {
+        if (!flyout || !flyout.svgGroup_) {
+            return;
+        }
+        const group = flyout.svgGroup_;
+        group.style.transform = `translate(${x}px, ${y}px)`;
+        group.style.webkitTransform = group.style.transform;
+        if (opacity !== undefined) {
+            group.style.opacity = String(opacity);
+        }
+    }
+    animateFlyoutSlide (flyout, fromX, toX, onComplete) {
+        if (!flyout || !flyout.svgGroup_) {
+            if (onComplete) {
+                onComplete();
+            }
+            return;
+        }
+
+        this.cancelFlyoutSlideAnimation();
+
+        flyout.setContainerVisible(true);
+        flyout.svgGroup_.style.display = 'block';
+        if (flyout.svgBackground_) {
+            flyout.svgBackground_.style.display = 'block';
+        }
+
+        const {y} = this.parseFlyoutTranslate(flyout);
+        const startTime = performance.now();
+
+        const step = now => {
+            const t = Math.min(1, (now - startTime) / PALETTE_ANIMATION_MS);
+            const eased = easeInOutQuad(t);
+            const x = fromX + ((toX - fromX) * eased);
+            const opacity = 1 - (eased * 0.4);
+            this.setFlyoutSlideTransform(flyout, x, y, opacity);
+
+            if (t < 1) {
+                this._flyoutAnimationFrame = requestAnimationFrame(step);
+            } else {
+                this._flyoutAnimationFrame = null;
+                if (onComplete) {
+                    onComplete();
+                }
+            }
+        };
+
+        this.setFlyoutSlideTransform(flyout, fromX, y, 1);
+        this._flyoutAnimationFrame = requestAnimationFrame(step);
+    }
+    clearFlyoutSlideStyles (flyout) {
+        if (!flyout || !flyout.svgGroup_) {
+            return;
+        }
+        flyout.svgGroup_.style.transition = '';
+        flyout.svgGroup_.style.opacity = '';
+    }
+    setPaletteAnimating (animating) {
+        this.setState({paletteAnimating: animating});
+    }
+    setFlyoutDomVisible (visible) {
+        const flyout = this.getToolboxFlyout();
+        const root = this.getInjectionRoot();
+        if (flyout && flyout.svgGroup_) {
+            const display = visible ? '' : 'none';
+            flyout.svgGroup_.style.display = display;
+            if (flyout.svgBackground_) {
+                flyout.svgBackground_.style.display = display;
+            }
+            if (flyout.scrollbar_ && flyout.scrollbar_.outerSvg_) {
+                flyout.scrollbar_.outerSvg_.style.display = display;
+            }
+        }
+        if (!root) {
+            return;
+        }
+        if (visible) {
+            root.classList.remove('flyout-palette-collapsed');
+        } else {
+            root.classList.add('flyout-palette-collapsed');
+        }
+    }
+    updatePaletteVisibility (collapsed) {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        if (!this.workspace || !toolbox || !flyout) {
+            return;
+        }
+        if (collapsed === this._paletteCollapsed) {
+            return;
+        }
+        this._paletteCollapsed = collapsed;
+
+        if (this._savedToolboxWidth === undefined) {
+            this._savedToolboxWidth = toolbox.width;
+            this._savedFlyoutWidth = flyout.getWidth();
+        }
+
+        if (collapsed) {
+            toolbox.width = CATEGORY_MENU_WIDTH;
+            flyout.DEFAULT_WIDTH = 0;
+            flyout.width_ = 0;
+            flyout.hide();
+            flyout.setContainerVisible(false);
+
+            if (!this._flyoutPositionPatched) {
+                this._originalFlyoutPosition = flyout.position.bind(flyout);
+                flyout.position = () => {};
+                this._flyoutPositionPatched = true;
+            }
+
+            this.setFlyoutDomVisible(false);
+        } else {
+            toolbox.width = this._savedToolboxWidth;
+            flyout.DEFAULT_WIDTH = this._savedFlyoutWidth;
+
+            if (this._flyoutPositionPatched) {
+                flyout.position = this._originalFlyoutPosition;
+                this._flyoutPositionPatched = false;
+            }
+
+            flyout.setContainerVisible(true);
+
+            const categoryId = toolbox.getSelectedCategoryId();
+            if (categoryId) {
+                toolbox.setSelectedCategoryById(categoryId);
+            } else {
+                flyout.setVisible(true);
+            }
+
+            this.setFlyoutDomVisible(true);
+        }
+
+        toolbox.position();
+        this.ScratchBlocks.svgResize(this.workspace);
+
+        if (collapsed) {
+            flyout.hide();
+            flyout.setContainerVisible(false);
+            this.setFlyoutDomVisible(false);
+        }
+
+        window.dispatchEvent(new Event('resize'));
+    }
+    runPaletteAnimation (collapsed, onComplete) {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        const finish = () => {
+            this.setPaletteAnimating(false);
+            if (onComplete) {
+                onComplete();
+            }
+        };
+
+        if (!toolbox || !flyout) {
+            this.updatePaletteVisibility(collapsed);
+            finish();
+            return;
+        }
+
+        toolbox.position();
+        const {x: startX} = this.parseFlyoutTranslate(flyout);
+        const flyoutWidth = this._savedFlyoutWidth || flyout.getWidth() || DEFAULT_FLYOUT_WIDTH;
+        const isRtl = this.props.isRtl;
+        const slideOffset = isRtl ? flyoutWidth : -flyoutWidth;
+
+        if (collapsed) {
+            this.animateFlyoutSlide(flyout, startX, startX + slideOffset, () => {
+                this.clearFlyoutSlideStyles(flyout);
+                this.updatePaletteVisibility(true);
+                finish();
+            });
+            return;
+        }
+
+        this.updatePaletteVisibility(false);
+        toolbox.position();
+        const {x: targetX, y: targetY} = this.parseFlyoutTranslate(flyout);
+        const fromX = targetX + slideOffset;
+
+        this.setFlyoutSlideTransform(flyout, fromX, targetY, 0.6);
+        requestAnimationFrame(() => {
+            this.animateFlyoutSlide(flyout, fromX, targetX, () => {
+                this.clearFlyoutSlideStyles(flyout);
+                flyout.position();
+                finish();
+            });
+        });
+    }
+    handleTogglePalette () {
+        if (this.state.paletteAnimating) {
+            return;
+        }
+        const nextCollapsed = !this.props.paletteCollapsed;
+
+        if (this.props.onTogglePalette) {
+            this.props.onTogglePalette(nextCollapsed);
+        }
+
+        this.setPaletteAnimating(true);
+        this.runPaletteAnimation(nextCollapsed);
     }
     handlePromptStart (message, defaultValue, callback, optTitle, optVarType) {
         const p = {prompt: {callback, message, defaultValue}};
@@ -512,6 +854,9 @@ class Blocks extends React.Component {
             vm,
             isRtl,
             isVisible,
+            paletteCollapsed,
+            paletteToggleTitle,
+            onTogglePalette,
             onActivateColorPicker,
             onOpenConnectionModal,
             onOpenSoundRecorder,
@@ -528,6 +873,10 @@ class Blocks extends React.Component {
                 <DroppableBlocks
                     componentRef={this.setBlocks}
                     onDrop={this.handleDrop}
+                    paletteCollapsed={paletteCollapsed}
+                    paletteAnimating={this.state.paletteAnimating}
+                    paletteToggleTitle={paletteToggleTitle}
+                    onTogglePalette={this.handleTogglePalette}
                     {...props}
                 />
                 {this.state.prompt ? (
@@ -570,6 +919,9 @@ Blocks.propTypes = {
     extensionLibraryVisible: PropTypes.bool,
     isRtl: PropTypes.bool,
     isVisible: PropTypes.bool,
+    paletteCollapsed: PropTypes.bool,
+    paletteToggleTitle: PropTypes.string,
+    onTogglePalette: PropTypes.func, // (collapsed: boolean) => void
     locale: PropTypes.string.isRequired,
     messages: PropTypes.objectOf(PropTypes.string),
     onActivateColorPicker: PropTypes.func,
@@ -636,6 +988,7 @@ Blocks.defaultOptions = {
 
 Blocks.defaultProps = {
     isVisible: true,
+    paletteCollapsed: false,
     options: Blocks.defaultOptions
 };
 

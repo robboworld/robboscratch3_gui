@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import omit from 'lodash.omit';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, {useState} from 'react';
 import {defineMessages, FormattedMessage, injectIntl, intlShape} from 'react-intl';
 import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
@@ -125,6 +125,16 @@ const messages = defineMessages({
         id: 'gui.gui.addExtension',
         description: 'Button to add an extension in the target pane',
         defaultMessage: 'Add Extension'
+    },
+    collapseBlocksPanel: {
+        id: 'gui.gui.collapseBlocksPanel',
+        description: 'Button to hide the blocks palette',
+        defaultMessage: 'Hide blocks'
+    },
+    expandBlocksPanel: {
+        id: 'gui.gui.expandBlocksPanel',
+        description: 'Button to show the blocks palette',
+        defaultMessage: 'Show blocks'
     }
 });
 
@@ -205,6 +215,8 @@ const GUIComponent = props => {
         'onDraggableWindowDrop',
         'onNewDraggableWindowDrop'
     ]);
+    const [blocksPaletteCollapsed, setBlocksPaletteCollapsed] = useState(false);
+
     if (children) {
         return <Box {...componentProps}>{children}</Box>;
     }
@@ -392,6 +404,13 @@ const GUIComponent = props => {
                                             canUseCloud={canUseCloud}
                                             grow={1}
                                             isVisible={blocksTabVisible}
+                                            paletteCollapsed={blocksPaletteCollapsed}
+                                            paletteToggleTitle={intl.formatMessage(
+                                                blocksPaletteCollapsed ?
+                                                    messages.expandBlocksPanel :
+                                                    messages.collapseBlocksPanel
+                                            )}
+                                            onTogglePalette={setBlocksPaletteCollapsed}
                                             options={{
                                                 media: `${basePath}static/blocks-media/`
                                             }}

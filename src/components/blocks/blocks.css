@@ -3,7 +3,19 @@
 @import "../../css/z-index.css";
 
 .blocks {
+    /*
+        scratch-blocks: category menu 60px + flyout 250px;
+        toolbox.width (310) = category + flyout for Blockly layout.
+    */
+    --blocks-category-width: 60px;
+    --blocks-flyout-width: 250px;
+
     height: 100%;
+    position: relative;
+}
+
+.palette-collapsed {
+    --blocks-flyout-width: 0px;
 }
 
 .drag-over:after {
@@ -96,4 +108,127 @@
 .blocks :global(.blocklyMinimalBody) {
     min-width: auto;
     min-height: auto;
+}
+
+.blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyout),
+.blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyoutBackground),
+.blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyout),
+.blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyoutBackground) {
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+}
+
+[dir="ltr"] .blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyout),
+[dir="ltr"] .blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyoutBackground) {
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+[dir="rtl"] .blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyout),
+[dir="rtl"] .blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyoutBackground) {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+[dir="ltr"] .blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyout),
+[dir="ltr"] .blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyoutBackground) {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+
+[dir="rtl"] .blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyout),
+[dir="rtl"] .blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyoutBackground) {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+.blocks :global(.flyout-palette-collapsed) :global(.blocklyFlyout),
+.blocks :global(.flyout-palette-collapsed) :global(.blocklyFlyoutBackground),
+.blocks :global(.flyout-palette-collapsed) :global(.blocklyFlyoutScrollbar) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.palette-toggle {
+    position: absolute;
+    top: 50%;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 3rem;
+    margin: 0;
+    padding: 0;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0 $form-radius $form-radius 0;
+    background: $ui-white;
+    color: $motion-primary;
+    box-shadow: 0 1px 4px $ui-black-transparent;
+    cursor: pointer;
+    transition:
+        left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+        right 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+        background-color 0.2s ease;
+}
+
+[dir="ltr"] .palette-toggle {
+    left: calc(var(--blocks-category-width) + var(--blocks-flyout-width));
+    right: auto;
+    transform: translate(0, -50%);
+}
+
+[dir="rtl"] .palette-toggle {
+    right: calc(var(--blocks-category-width) + var(--blocks-flyout-width));
+    left: auto;
+    border-radius: $form-radius 0 0 $form-radius;
+    transform: translate(100%, -50%);
+}
+
+.palette-toggle:hover {
+    background-color: $ui-primary;
+}
+
+.palette-toggle:disabled {
+    cursor: wait;
+    opacity: 0.85;
+}
+
+.palette-toggle:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+.palette-toggle-icon {
+    display: block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-top: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    transition: transform 0.25s ease;
+}
+
+[dir="ltr"] .palette-toggle-icon {
+    transform: rotate(-135deg);
+    margin-left: 0.125rem;
+}
+
+[dir="rtl"] .palette-toggle-icon {
+    transform: rotate(45deg);
+    margin-right: 0.125rem;
+}
+
+[dir="ltr"] .palette-toggle-collapsed .palette-toggle-icon {
+    transform: rotate(45deg);
+    margin-left: 0;
+    margin-right: 0.125rem;
+}
+
+[dir="rtl"] .palette-toggle-collapsed .palette-toggle-icon {
+    transform: rotate(-135deg);
+    margin-right: 0;
+    margin-left: 0.125rem;
 }

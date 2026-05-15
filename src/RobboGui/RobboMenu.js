@@ -508,6 +508,7 @@ class RobboMenu extends Component {
   const runtime = this.props.VM && this.props.VM.runtime;
   const isRobotSimActive = runtime ? runtime.sim_ac === true : this.props.settings.is_sim_activated;
   const isCopterSimActive = runtime ? runtime.sim_copter_ac === true : this.props.settings.is_copter_sim_activated;
+  const isExtensionPackActivated = this.props.extension_pack.is_extension_pack_activated === true;
   return (
 
 
@@ -528,6 +529,8 @@ class RobboMenu extends Component {
           <div id="trigger-copter-sim-en" onClick={this.triggerCopterSimEn.bind(this)} className={classNames(
                         {[styles.robbo_menu_item]: true}
                       )}>{isCopterSimActive ? this.props.intl.formatMessage(messages.copter_sim_disable) : this.props.intl.formatMessage(messages.copter_sim_enable)}</div>
+
+          <hr className={styles.hrDevider}/>
 
           <div id="trigger-extension-pack" onClick={this.triggerExtensionPack.bind(this)} className={classNames(
 
@@ -556,6 +559,8 @@ class RobboMenu extends Component {
 
 
 
+          {isExtensionPackActivated ? (
+            <React.Fragment>
                   <hr className={styles.hrDevider}/>
 
           <div id="trigger-color-corrector-table-0" onClick={this.triggerColorCorrectorTable.bind(this,0)} className={classNames(
@@ -587,6 +592,8 @@ class RobboMenu extends Component {
                         {[styles.robbo_menu_item]: true}
 
                       )}>{this.props.intl.formatMessage(messages.color_sensor_correction5)} </div>
+            </React.Fragment>
+          ) : null}
 
           <hr className={styles.hrDevider}/>    
 
