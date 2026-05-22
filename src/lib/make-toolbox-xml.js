@@ -570,10 +570,6 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
 
       </block>
 
-      <block type="copter_status">
-
-      </block>
-
       <block type="copter_fly_distance">
           <value name="METERS">
               <shadow type="math_number">
