@@ -18,7 +18,7 @@ import {
   formatArchitectureDisplay
 } from '../lib/platform';
 
-const VERSION = 'Robbo Scratch v.3.115.1';
+const VERSION = 'Robbo Scratch v.3.115.2';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   process &&
   process.env &&
