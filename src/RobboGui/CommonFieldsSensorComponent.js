@@ -84,7 +84,7 @@ class CommonFieldsSensorComponent extends Component {
                             }else{
 
 
-                              return (   <div>
+                              return (   <div className={this.props.sensorValueClassName || ''}>
 
                                                {sensors_data}
 

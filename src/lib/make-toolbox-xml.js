@@ -570,11 +570,10 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
 
       </block>
 
-      <block type="copter_status">
-
-      </block>
-
       <block type="copter_fly_distance">
+          <value name="DIRECTION">
+              <shadow type="copter_directions"/>
+          </value>
           <value name="METERS">
               <shadow type="math_number">
                   <field name="NUM">0.4</field>
@@ -583,6 +582,9 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
       </block>
 
       <block type="copter_fly_time">
+          <value name="DIRECTION">
+              <shadow type="copter_directions"/>
+          </value>
           <value name="SECONDS">
               <shadow type="math_number">
                   <field name="NUM">1</field>
@@ -590,11 +592,10 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
           </value>
       </block>
 
-
-
-
-
-      <block type="copter_change_x_by">
+      <block type="copter_change_axis_by">
+          <value name="AXIS">
+              <shadow type="copter_axes"/>
+          </value>
           <value name="DISTANCE_DELTA">
               <shadow type="math_number">
                   <field name="NUM">0.1</field>
@@ -602,18 +603,10 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
           </value>
       </block>
 
-      <block type="copter_change_y_by">
-          <value name="DISTANCE_DELTA">
+      <block type="copter_set_speed">
+          <value name="SPEED">
               <shadow type="math_number">
-                  <field name="NUM">0.1</field>
-              </shadow>
-          </value>
-      </block>
-
-      <block type="copter_change_z_by">
-          <value name="DISTANCE_DELTA">
-              <shadow type="math_number">
-                  <field name="NUM">0.1</field>
+                  <field name="NUM">0.5</field>
               </shadow>
           </value>
       </block>
@@ -634,7 +627,13 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
 
       </block>
 
+      <block type="copter_battery">
 
+      </block>
+
+      <block type="copter_is_flying">
+
+      </block>
 
       <block type="copter_fly_to_coords">
         <value name="X_COORD">
@@ -660,17 +659,6 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
                   <field name="NUM">45</field>
               </shadow>
           </value>
-
-      </block>
-
-      <block type="copter_set_direction">
-      <value name="DIRECTION">
-          <shadow type="copter_directions"/>
-      </value>
-
-      </block>
-
-      <block type="copter_direction">
 
       </block>
 

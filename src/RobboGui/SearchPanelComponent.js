@@ -15,7 +15,12 @@ import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
-import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext } from '../lib/platform';
+import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext, node_process } from '../lib/platform';
+
+/** Same gate as RobboGui.searchDevices → searchQuadcopterDevices() */
+function shouldProbeQuadcopterOnDeviceSearch(QCA) {
+  return isDesktopWithBluetooth() && !!QCA;
+}
 
 const messages = defineMessages({
 
@@ -30,11 +35,11 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'No devices available for connection.'
   },
-  bluetooth_searching: {
+  devices_searching: {
 
-    id: 'gui.RobboGui.bluetooth_searching',
-    description: ' ',
-    defaultMessage: 'Searching for Bluetooth devices'
+    id: 'gui.RobboGui.devices_searching',
+    description: 'Shown while USB and/or Bluetooth device scan is in progress',
+    defaultMessage: 'Searching…'
   },
   robbo_android_searching: {
     id: 'gui.RobboGui.robbo_android_searching',
@@ -68,7 +73,9 @@ class SearchPanelComponent extends Component {
 
     super();
     this.state = {
-      devices: []
+      devices: [],
+      /** Bumps when instance fields used in render change without device list updates */
+      uiRev: 0
     };
 
     this.device_list = [];
@@ -76,6 +83,9 @@ class SearchPanelComponent extends Component {
     this.bluetooth_devices_state = "idle";
     this.usb_search_finished = true;
     this.bluetooth_search_finished = true;
+    /** True until Crazyflie session emits searching — avoids «no devices» flash before dongle probe starts */
+    this._quadcopterAwaitingFirstSearchingEmit = false;
+    this._lastQuadcopterSearchPanelSig = null;
 
   }
 
@@ -108,12 +118,24 @@ class SearchPanelComponent extends Component {
     });
 
     this.DCA.registerDevicesStartSearchingCallback(() => {
-
-
-      this.bluetooth_devices_state = "searching";
+      this._quadcopterAwaitingFirstSearchingEmit = shouldProbeQuadcopterOnDeviceSearch(this.QCA);
       this.usb_search_finished = false;
-      this.bluetooth_search_finished = !(typeof this.DCA.isBluetoothSearchEnabled === 'function' && this.DCA.isBluetoothSearchEnabled());
-
+      // Same condition as DeviceControlAPI.searchAllDevices — Chrome Bluetooth scan only on Win/Linux desktop
+      const useChromeBluetooth = typeof node_process !== 'undefined' &&
+        (node_process.platform === 'win32' || node_process.platform === 'linux');
+      const willRunBtScan = useChromeBluetooth &&
+        typeof this.DCA.isBluetoothSearchEnabled === 'function' &&
+        this.DCA.isBluetoothSearchEnabled();
+      if (willRunBtScan) {
+        this.bluetooth_devices_state = 'searching';
+        this.bluetooth_search_finished = false;
+      } else {
+        this.bluetooth_devices_state = 'idle';
+        this.bluetooth_search_finished = true;
+      }
+      if (this._isMounted) {
+        this.setState({ uiRev: Date.now() });
+      }
     });
 
     this.DCA.registerDevicesNotFoundCallback(() => {
@@ -123,12 +145,18 @@ class SearchPanelComponent extends Component {
         search_device_button.style.pointerEvents = "auto";
       }
       this._refreshDeviceList();
+      if (this._isMounted) {
+        this.setState({ uiRev: Date.now() });
+      }
     });
 
     this.DCA.registerBluetoothDevicesNotFoundCallback(() => {
       this.bluetooth_devices_state = "not_found";
       this.bluetooth_search_finished = true;
       this._refreshDeviceList();
+      if (this._isMounted) {
+        this.setState({ uiRev: Date.now() });
+      }
     });
 
 
@@ -145,14 +173,26 @@ class SearchPanelComponent extends Component {
     });
 
     if (this.QCA) {
-      this._wasDongleAvailable = false;
-      this.QCA.registerQuadcopterStatusChangeCallback(() => {
-        let now = typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable();
-        if (now !== this._wasDongleAvailable) {
-          this._wasDongleAvailable = now;
-          this._refreshDeviceList();
+      this._quadcopterStatusCallback = (state, searching, snapshot) => {
+        const snap = snapshot || {};
+        const dongleNow = typeof snap.dongleAvailable === 'boolean'
+          ? snap.dongleAvailable
+          : (typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable());
+        const searchingNow = snap.searching === true;
+        const panelSig = `${dongleNow}|${searchingNow}`;
+        if (panelSig === this._lastQuadcopterSearchPanelSig) {
+          return;
         }
-      });
+        this._lastQuadcopterSearchPanelSig = panelSig;
+        if (searchingNow) {
+          this._quadcopterAwaitingFirstSearchingEmit = false;
+        }
+        this._refreshDeviceList();
+        if (this._isMounted) {
+          this.setState({ uiRev: Date.now() });
+        }
+      };
+      this.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
     }
 
 
@@ -193,6 +233,9 @@ class SearchPanelComponent extends Component {
 
   componentWillUnmount() {
     this._isMounted = false;
+    if (this.QCA && this._quadcopterStatusCallback && typeof this.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
+      this.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
+    }
   }
 
   onThisWindowClose() {
@@ -205,10 +248,24 @@ class SearchPanelComponent extends Component {
     const showFirmwareUi = !isMobileBridgeContext;
     const bluetoothSearchEnabled = this.DCA && typeof this.DCA.isBluetoothSearchEnabled === 'function' ? this.DCA.isBluetoothSearchEnabled() : true;
     const supportsBluetoothSearchUi = isDesktopWithBluetooth() || isMobileBridgeContext;
-    const showBluetoothSearching = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "searching";
+    const showBluetoothPhaseSearching = supportsBluetoothSearchUi && bluetoothSearchEnabled &&
+      this.bluetooth_devices_state === 'searching' && this.usb_search_finished;
     const showBluetoothNotFound = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "not_found";
     const shouldDelayNoDevicesMessage = bluetoothSearchEnabled && !this.bluetooth_search_finished;
-    const showDevicesNotFound = this.state.devices.length === 0 && this.usb_search_finished && !shouldDelayNoDevicesMessage;
+    const quadcopterSearchActive = this.QCA &&
+      typeof this.QCA.isQuadcopterSearching === 'function' &&
+      this.QCA.isQuadcopterSearching();
+    const quadcopterUsbRaceGrace = shouldProbeQuadcopterOnDeviceSearch(this.QCA) &&
+      this._quadcopterAwaitingFirstSearchingEmit &&
+      this.usb_search_finished &&
+      this.state.devices.length === 0;
+    const showDevicesSearching = this.state.devices.length === 0 &&
+      (!this.usb_search_finished || showBluetoothPhaseSearching ||
+        quadcopterSearchActive || quadcopterUsbRaceGrace);
+    const showDevicesNotFound = this.state.devices.length === 0 && this.usb_search_finished &&
+      !showDevicesSearching && !shouldDelayNoDevicesMessage;
+
+    void this.state.uiRev;
 
     return (
 
@@ -263,17 +320,15 @@ class SearchPanelComponent extends Component {
 
             {
 
-              showDevicesNotFound ? <div className={styles.devices_not_found}>{this.props.intl.formatMessage(messages.devices_not_found)}</div> : ""
+              showDevicesSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.devices_searching)}</div> : ""
 
             }
 
             {
 
-              showBluetoothSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
+              showDevicesNotFound ? <div className={styles.devices_not_found}>{this.props.intl.formatMessage(messages.devices_not_found)}</div> : ""
 
             }
-
-
 
             {
               showBluetoothNotFound && isMobileBridgeContext ? (

@@ -239,9 +239,20 @@ class Blocks extends React.Component {
             this.updateToolbox();
         }, 0);
     }
+    /**
+     * VM formatMessage uses scratch-l10n; Robbo block/reporter strings live in ScratchMsgs.
+     * @returns {object}
+     */
+    getVmLocaleMessages () {
+        const scratchMsgs = this.ScratchBlocks.ScratchMsgs.locales[this.props.locale];
+        if (!scratchMsgs) {
+            return this.props.messages;
+        }
+        return Object.assign({}, this.props.messages, scratchMsgs);
+    }
     setLocale () {
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
-        this.props.vm.setLocale(this.props.locale, this.props.messages)
+        this.props.vm.setLocale(this.props.locale, this.getVmLocaleMessages())
             .then(() => {
                 const flyout = this.workspace.getFlyout();
                 if (flyout) flyout.setRecyclingEnabled(false);

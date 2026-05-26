@@ -45,18 +45,33 @@ const messages = defineMessages({
     },
     quadcopter_searching: {
         id: 'gui.SearchPanel.quadcopter_searching',
-        description: ' ',
-        defaultMessage: 'Searching for quadcopter...'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Searching…'
     },
     quadcopter_connected: {
         id: 'gui.SearchPanel.quadcopter_connected',
-        description: ' ',
-        defaultMessage: 'Quadcopter connected'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Connected'
     },
     quadcopter_disconnected: {
         id: 'gui.SearchPanel.quadcopter_disconnected',
-        description: ' ',
-        defaultMessage: 'Quadcopter not connected'
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Not connected'
+    },
+    quadcopter_landing: {
+        id: 'gui.SearchPanel.quadcopter_landing',
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Landing'
+    },
+    quadcopter_lost: {
+        id: 'gui.SearchPanel.quadcopter_lost',
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Link lost'
+    },
+    quadcopter_emergency: {
+        id: 'gui.SearchPanel.quadcopter_emergency',
+        description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
+        defaultMessage: 'Emergency stop'
     },
     device_unknown: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_unknown',
@@ -288,7 +303,9 @@ class SearchPanelDeviceComponent extends Component {
             deviceId: -1,
             deviceError: null,
             quadcopterConnected: false,
-            quadcopterSearching: false
+            quadcopterSearching: false,
+            quadcopterState: 'disconnected',
+            quadcopterLastError: null
         };
 
         this.deviceId = -1;
@@ -369,12 +386,21 @@ class SearchPanelDeviceComponent extends Component {
 
     getStatusDisplay() {
         if (this.props.isQuadcopter && this.props.QCA) {
-            const { quadcopterConnected, quadcopterSearching } = this.state;
-            if (quadcopterConnected) {
-                return { iconSrc: './static/robbo_assets/green.png', statusText: this.props.intl.formatMessage(messages.quadcopter_connected) };
-            }
+            const { quadcopterConnected, quadcopterSearching, quadcopterState } = this.state;
             if (quadcopterSearching) {
                 return { iconSrc: './static/robbo_assets/yellow.png', statusText: this.props.intl.formatMessage(messages.quadcopter_searching) };
+            }
+            if (quadcopterConnected) {
+                if (quadcopterState === 'landing') {
+                    return { iconSrc: './static/robbo_assets/yellow.png', statusText: this.props.intl.formatMessage(messages.quadcopter_landing) };
+                }
+                return { iconSrc: './static/robbo_assets/green.png', statusText: this.props.intl.formatMessage(messages.quadcopter_connected) };
+            }
+            if (quadcopterState === 'lost') {
+                return { iconSrc: './static/robbo_assets/red.png', statusText: this.props.intl.formatMessage(messages.quadcopter_lost) };
+            }
+            if (quadcopterState === 'emergency') {
+                return { iconSrc: './static/robbo_assets/red.png', statusText: this.props.intl.formatMessage(messages.quadcopter_emergency) };
             }
             return { iconSrc: './static/robbo_assets/red.png', statusText: this.props.intl.formatMessage(messages.quadcopter_disconnected) };
         }
@@ -410,6 +436,28 @@ class SearchPanelDeviceComponent extends Component {
         return { iconSrc, statusText };
     }
 
+    // Hide search panel when all DCA devices are ready; if dongle row is shown, require copter connected (not searching).
+    _tryHideSearchPanelWhenAllDevicesReady() {
+        if (!this.props.DCA) return;
+        const allDevices = this.props.DCA.getDevices();
+        for (let i = 0; i < allDevices.length; i++) {
+            const dev = allDevices[i];
+            if (!(dev.getState() === 6 && !dev.isFirmwareVersionDiffers())) {
+                return;
+            }
+        }
+        if (this.props.QCA && typeof this.props.QCA.isDongleAvailable === 'function' && this.props.QCA.isDongleAvailable()) {
+            if (typeof this.props.QCA.isQuadcopterConnected !== 'function' || !this.props.QCA.isQuadcopterConnected()) {
+                return;
+            }
+            if (typeof this.props.QCA.isQuadcopterSearching === 'function' && this.props.QCA.isQuadcopterSearching()) {
+                return;
+            }
+        }
+        const searchPanel = document.getElementById('SearchPanelComponent');
+        if (searchPanel) searchPanel.style.display = 'none';
+    }
+
     syncStateFromDevice() {
         if (this.props.isQuadcopter) return;
         const allDevices = this.props.DCA.getDevices();
@@ -428,6 +476,10 @@ class SearchPanelDeviceComponent extends Component {
     }
 
     componentWillUnmount() {
+        if (this.props.isQuadcopter && this.props.QCA && this._quadcopterStatusCallback &&
+            typeof this.props.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
+            this.props.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
+        }
         if (!this.props.isQuadcopter && this.props.DCA) {
             this.props.DCA.unregisterDeviceStatusChangeCallback(this.props.devicePort);
             this.props.DCA.unregisterFirmwareVersionDiffersCallback(this.props.devicePort);
@@ -447,15 +499,45 @@ class SearchPanelDeviceComponent extends Component {
         if (this.props.isQuadcopter && this.props.QCA) {
             this._lastQuadcopterConnected = null;
             this._lastQuadcopterSearching = null;
-            this.props.QCA.registerQuadcopterStatusChangeCallback(() => {
-                const connected = this.props.QCA.isQuadcopterConnected();
-                const searching = this.props.QCA.isQuadcopterSearching();
-                if (this._lastQuadcopterConnected !== connected || this._lastQuadcopterSearching !== searching) {
+            this._lastQuadcopterState = null;
+            this._quadcopterStatusCallback = (state, searching, snapshot) => {
+                const nextSnapshot = snapshot || {};
+                const isSearching = nextSnapshot.searching === true || searching === true;
+                const connected = !isSearching &&
+                    (nextSnapshot.connected === true || state === 'connected' || state === 'landing');
+                const quadcopterState = nextSnapshot.state || state || 'disconnected';
+                const nextQuadHint = Object.prototype.hasOwnProperty.call(nextSnapshot, 'lastError')
+                    ? nextSnapshot.lastError
+                    : (connected ? null : this.state.quadcopterLastError);
+                const prevHint = this.state.quadcopterLastError || null;
+                const hintSig = nextQuadHint
+                    ? `${nextQuadHint.code || ''}:${String(nextQuadHint.message || '')}`
+                    : '';
+                const prevHintSig = prevHint
+                    ? `${prevHint.code || ''}:${String(prevHint.message || '')}`
+                    : '';
+                const hintChanged = hintSig !== prevHintSig;
+                if (
+                    this._lastQuadcopterConnected !== connected ||
+                    this._lastQuadcopterSearching !== isSearching ||
+                    this._lastQuadcopterState !== quadcopterState ||
+                    hintChanged
+                ) {
                     this._lastQuadcopterConnected = connected;
-                    this._lastQuadcopterSearching = searching;
-                    this.setState({ quadcopterConnected: connected, quadcopterSearching: searching });
+                    this._lastQuadcopterSearching = isSearching;
+                    this._lastQuadcopterState = quadcopterState;
+                    this.setState({
+                        quadcopterConnected: connected,
+                        quadcopterSearching: isSearching,
+                        quadcopterState: quadcopterState,
+                        quadcopterLastError: nextQuadHint
+                    });
                 }
-            });
+                if (connected && !isSearching) {
+                    this._tryHideSearchPanelWhenAllDevicesReady();
+                }
+            };
+            this.props.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
         }
 
         if (!this.props.isQuadcopter && this.props.DCA) {
@@ -732,22 +814,7 @@ class SearchPanelDeviceComponent extends Component {
 
             } else if (!this.firmware_version_differs) { //We don't need to close panel if firmware versions differ.
 
-                let all_devices = this.props.DCA.getDevices();
-
-                let all_devices_found = false;
-
-                for (let device_index = 0; device_index < all_devices.length; device_index++) {
-
-                    all_devices_found = ((all_devices[device_index].getState() == 6) && (!all_devices[device_index].isFirmwareVersionDiffers()));
-
-                    if (!all_devices_found) break;
-                }
-
-                if (all_devices_found) {
-
-                    let search_panel = document.getElementById(`SearchPanelComponent`);
-                    if (search_panel) search_panel.style.display = "none";
-                }
+                this._tryHideSearchPanelWhenAllDevicesReady();
 
             }
 
@@ -1327,10 +1394,17 @@ class SearchPanelDeviceComponent extends Component {
         const displayPortName = this.getSearchPanelRowTitle();
         const showFlashButton = !this.props.isQuadcopter && !this.props.disableFirmwareUi;
         const { iconSrc, statusText } = this.getStatusDisplay();
+        const quadcopterHintText = this.props.isQuadcopter && this.state.quadcopterLastError && this.state.quadcopterLastError.message;
 
         return (
 
-            <div id={`search-panel-device-component`} className={styles.search_panel_device_component}>
+            <div id={`search-panel-device-component`} className={classNames(
+                styles.firmware_flasher_device_component,
+                this.props.isQuadcopter && styles.quadcopter_device_root
+            )}>
+
+
+                <div className={styles.search_panel_device_primary_row}>
 
 
                 <div id="search-panel-device-port" className={styles.search_panel_device_element}>
@@ -1347,11 +1421,13 @@ class SearchPanelDeviceComponent extends Component {
                     {statusText}
                 </div>
 
-                <div id={`search-panel-device-info-${this.props.Id}`} className={styles.search_panel_device_element}>
+                {!this.props.isQuadcopter ? (
+                    <div id={`search-panel-device-info-${this.props.Id}`} className={styles.search_panel_device_element}>
 
 
 
-                </div>
+                    </div>
+                ) : null}
 
                 {showFlashButton && (
                     <div id={`search-panel-device-flash-button-element-${this.props.Id}`} className={styles.search_panel_device_element}>
@@ -1374,6 +1450,21 @@ class SearchPanelDeviceComponent extends Component {
 
                     </div>
                 )}
+
+
+                </div>
+
+
+                {this.props.isQuadcopter ? (
+                    <div
+                        id={`search-panel-device-info-${this.props.Id}`}
+                        className={styles.quadcopter_info_row}
+                    >
+                        {quadcopterHintText ? (
+                            <div className={styles.quadcopter_panel_hint}>{quadcopterHintText}</div>
+                        ) : null}
+                    </div>
+                ) : null}
 
 
             </div>
