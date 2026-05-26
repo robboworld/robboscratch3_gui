@@ -53,14 +53,14 @@ class MenuBarDevicePreview extends Component {
     }
 
     render () {
-        const {label, idPrefix, index, title} = this.props;
+        const {deviceType, idPrefix, index, title} = this.props;
         const {connected, searching} = this.state;
 
         return (
             <button
                 type="button"
                 id={`${idPrefix}-preview-${index}`}
-                className={classNames(styles.previewButton, {
+                className={classNames(styles.previewButton, styles[`device_${deviceType}`], {
                     [styles.connected]: connected,
                     [styles.disconnected]: !connected,
                     [styles.searching]: searching
@@ -69,7 +69,7 @@ class MenuBarDevicePreview extends Component {
                 aria-label={title}
                 onClick={this.props.onOpenPalette}
             >
-                <span className={styles.previewLabel}>{label}</span>
+                <span className={styles.previewIcon} aria-hidden="true" />
             </button>
         );
     }
@@ -80,7 +80,6 @@ MenuBarDevicePreview.propTypes = {
     draggableWindowId: PropTypes.number.isRequired,
     idPrefix: PropTypes.string.isRequired,
     index: PropTypes.number.isRequired,
-    label: PropTypes.string.isRequired,
     title: PropTypes.string.isRequired,
     statusApi: PropTypes.object,
     onOpenPalette: PropTypes.func.isRequired

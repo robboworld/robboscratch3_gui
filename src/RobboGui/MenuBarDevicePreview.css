@@ -1,6 +1,13 @@
 @import "../css/colors.css";
 @import "../css/units.css";
 
+/* Connected: более заметный зелёный */
+$device-connected-bg: #16c04f;
+$device-connected-border: #3dd96a;
+$device-connected-glow: rgba(22, 192, 79, 0.55);
+$device-disconnected-border: rgba(185, 192, 202, 0.9);
+$device-disconnected-border-hover: rgba(198, 205, 214, 1);
+
 .previewButton {
     position: relative;
     display: inline-flex;
@@ -12,24 +19,15 @@
     height: 2.25rem;
     min-width: 2.25rem;
     padding: 0;
-    border: 2px solid rgba(255, 255, 255, 0.45);
+    border: 2px solid $device-disconnected-border;
     border-radius: $form-radius;
     cursor: pointer;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-weight: bold;
-    font-size: $menu-bar-standard-font-size;
-    line-height: 1;
     color: white;
-    background-color: rgba(255, 255, 255, 0.14);
+    background-color: transparent;
     transition:
         background-color 0.25s ease,
         border-color 0.25s ease,
         box-shadow 0.25s ease;
-}
-
-.previewButton:hover {
-    background-color: $ui-black-transparent;
-    border-color: rgba(255, 255, 255, 0.75);
 }
 
 .previewButton:focus-visible {
@@ -37,52 +35,104 @@
     outline-offset: 2px;
 }
 
-/* Отключено: светлая рамка; подключено — белая «вкладка», свечение только у буквы */
+/* Не подключено: как фон .robboMenuGroup (прозрачно — виден фон панели) */
 .previewButton.disconnected {
-    border-color: rgba(255, 255, 255, 0.38);
-    background-color: rgba(255, 255, 255, 0.12);
+    border: 2px solid $device-disconnected-border;
+    background-color: transparent;
     box-shadow: none;
 }
 
 .previewButton.disconnected:hover {
-    border-color: rgba(255, 255, 255, 0.62);
+    border-color: $device-disconnected-border-hover;
+    background-color: $ui-black-transparent;
+    box-shadow: inset 0 0 0 1px rgba(198, 205, 214, 0.22);
+}
+
+.previewButton.disconnected .previewIcon {
+    opacity: 0.78;
+    filter: brightness(0) invert(1);
+}
+
+/* Подключено: ярко-зелёная заливка + белая иконка + лёгкий glow */
+.previewButton.connected {
+    border-color: $device-connected-border;
+    background-color: $device-connected-bg;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.2),
+        0 0 10px $device-connected-glow;
+}
+
+.previewButton.connected:hover {
+    border-color: #5ee687;
+    background-color: #1ad458;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.28),
+        0 0 12px $device-connected-glow;
+}
+
+.previewButton.connected .previewIcon {
+    opacity: 1;
+    filter: brightness(0) invert(1) drop-shadow(0 0 3px rgba(255, 255, 255, 0.65));
+}
+
+/* Поиск: нейтральный pulse, без зелёного (не путать с connected) */
+.previewButton.searching {
+    border-color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(255, 255, 255, 0.18);
+    box-shadow: none;
+    animation: menu-bar-device-pulse 1.2s ease-in-out infinite;
+}
+
+.previewButton.searching:hover {
+    background-color: rgba(255, 255, 255, 0.24);
+}
+
+/* Поиск важнее connected, если оба класса активны */
+.previewButton.searching.connected {
+    border-color: rgba(255, 255, 255, 0.85);
     background-color: rgba(255, 255, 255, 0.18);
     box-shadow: none;
 }
 
-.previewButton.disconnected .previewLabel {
-    opacity: 0.72;
-    transition: opacity 0.25s ease;
+.previewButton.searching .previewIcon {
+    opacity: 0.92;
+    filter: brightness(0) invert(1);
 }
 
-.previewButton.connected {
-    border-color: rgba(255, 255, 255, 0.88);
-    background-color: rgba(255, 255, 255, 0.16);
-    box-shadow: none;
-}
-
-.previewButton.connected:hover {
-    border-color: rgba(255, 255, 255, 0.95);
-    background-color: rgba(255, 255, 255, 0.2);
-    box-shadow: none;
-}
-
-.previewButton.connected .previewLabel {
-    opacity: 1;
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
-}
-
-.previewButton.searching {
-    border-color: rgba(255, 255, 255, 0.85);
-    animation: menu-bar-device-pulse 1.2s ease-in-out infinite;
-}
-
-.previewLabel {
+.previewIcon {
+    display: block;
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    filter: brightness(0) invert(1);
     pointer-events: none;
     user-select: none;
     transition:
         opacity 0.25s ease,
-        text-shadow 0.25s ease;
+        filter 0.25s ease;
+}
+
+.device_robot .previewIcon {
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_robot.svg);
+}
+
+.device_lab .previewIcon {
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_lab.svg);
+}
+
+.device_quadcopter .previewIcon {
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_quadcopter.svg);
+}
+
+.device_otto .previewIcon {
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_otto.svg);
+}
+
+.device_arduino .previewIcon {
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_arduino.svg);
 }
 
 @keyframes menu-bar-device-pulse {

@@ -42,14 +42,33 @@
     flex-grow: 1;
 }
 
-.scratch-logo {
-    height: 1.75rem;
-    width: auto;
+/* LMS header wordmark: themes/robbo-theme/lms/static/sass/extra/_header.scss */
+.robbo-logo {
+    display: inline-flex;
+    align-items: center;
+    color: #fff;
+    user-select: none;
     vertical-align: middle;
 }
 
-.scratch-logo.clickable {
-    /*cursor: pointer;*/
+.robbo-logo.clickable {
+    cursor: pointer;
+}
+
+.robbo-logo-wordmark {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.robbo-logo-reg {
+    font-size: 0.45em;
+    font-weight: 700;
+    margin-left: 0.06em;
+    vertical-align: super;
 }
 
 .language-icon {

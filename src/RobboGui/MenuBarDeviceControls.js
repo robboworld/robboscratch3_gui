@@ -70,7 +70,10 @@ class MenuBarDeviceControls extends Component {
         if (!searchButton || this.searchButtonObserver) return;
 
         this.searchButtonObserver = new MutationObserver(() => {
-            if (searchButton.style.pointerEvents !== 'none' && !searchButton.disabled) {
+            // Legacy unlock (SearchPanel*) only sets style.pointerEvents = "auto".
+            // Do not require !disabled: React used to keep disabled=true via searchBusy.
+            if (searchButton.style.pointerEvents !== 'none' && this.state.searchBusy) {
+                searchButton.style.pointerEvents = '';
                 this.setState({searchBusy: false});
             }
         });
@@ -125,7 +128,6 @@ class MenuBarDeviceControls extends Component {
                     draggableWindowId={1}
                     idPrefix="robot"
                     index={0}
-                    label="R"
                     statusApi={vm.getRCA()}
                     title={intl.formatMessage(messages.robot)}
                 />
@@ -134,7 +136,6 @@ class MenuBarDeviceControls extends Component {
                     draggableWindowId={2}
                     idPrefix="lab"
                     index={0}
-                    label="L"
                     statusApi={vm.getLCA()}
                     title={intl.formatMessage(messages.laboratory)}
                 />
@@ -144,7 +145,6 @@ class MenuBarDeviceControls extends Component {
                         draggableWindowId={0}
                         idPrefix="quadcopter"
                         index={0}
-                        label="Q"
                         statusApi={vm.getQCA()}
                         title={intl.formatMessage(messages.quadcopter)}
                     />
@@ -154,7 +154,6 @@ class MenuBarDeviceControls extends Component {
                     draggableWindowId={5}
                     idPrefix="otto"
                     index={0}
-                    label="O"
                     statusApi={vm.getOCA()}
                     title={intl.formatMessage(messages.otto)}
                 />
@@ -163,7 +162,6 @@ class MenuBarDeviceControls extends Component {
                     draggableWindowId={6}
                     idPrefix="arduino"
                     index={0}
-                    label="A"
                     statusApi={vm.getACA()}
                     title={intl.formatMessage(messages.arduino)}
                 />
@@ -200,7 +198,6 @@ class MenuBarDeviceControls extends Component {
                     className={classNames(styles.searchDevices, {
                         [styles.searchBusy]: this.state.searchBusy
                     })}
-                    disabled={this.state.searchBusy}
                     title={searchButtonLabel}
                     aria-label={searchButtonLabel}
                     onClick={this.searchDevices}

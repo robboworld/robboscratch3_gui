@@ -49,6 +49,7 @@
 .searchDevices.searchBusy {
     opacity: 0.55;
     cursor: wait;
+    pointer-events: none;
 }
 
 .searchIcon {

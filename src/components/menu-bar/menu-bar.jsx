@@ -65,8 +65,6 @@ import remixIcon from './icon--remix.svg';
 import dropdownCaret from './dropdown-caret.svg';
 import languageIcon from '../language-selector/language-icon.svg';
 
-import robboLogoRu from './robbo-logo-ru.png';
-
 import {ActionTriggerRobboMenu} from '../../RobboGui/actions/sensor_actions.js'; //Robbo //modified_by_Yaroslav
 import MenuBarDeviceControls from '../../RobboGui/MenuBarDeviceControls';
 import storage from '../../lib/storage';
@@ -345,15 +343,18 @@ class MenuBar extends React.Component {
                 <div className={styles.mainMenu}>
                     <div className={styles.fileGroup}>
                         <div className={classNames(styles.menuBarItem)}>
-                            <img
-                                alt="Роббо"
-                                className={classNames(styles.scratchLogo, {
+                            <span
+                                aria-label="РОББО"
+                                className={classNames(styles.robboLogo, {
                                     [styles.clickable]: typeof this.props.onClickLogo !== 'undefined'
                                 })}
-                                draggable={false}
-                                src={robboLogoRu}
                                 onClick={this.props.onClickLogo}
-                            />
+                            >
+                                <span className={styles.robboLogoWordmark} aria-hidden="true">
+                                    РОББО
+                                    <sup className={styles.robboLogoReg}>®</sup>
+                                </span>
+                            </span>
                         </div>
                         <div
                             className={classNames(styles.menuBarItem, styles.hoverable, styles.languageMenu)}

@@ -29,11 +29,7 @@ const babelLoaderOptions = {
         }]
     ],
     presets: [
-        ['@babel/preset-env', {
-            targets: {browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']},
-            useBuiltIns: 'entry',
-            corejs: 2
-        }],
+        ['@babel/preset-env', {useBuiltIns: 'entry'}],
         '@babel/preset-react'
     ]
 };
