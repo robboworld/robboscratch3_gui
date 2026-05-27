@@ -1,6 +1,7 @@
-.sensor_choose_window{
+@import "../css/z-index.css";
 
-  z-index: 1000000 !important;
+.sensor_choose_window {
+  z-index: $z-index-robbo-popup;
 /*background-color: #AAAAAA;*/
 /*position: absolute;
 top:40%;
@@ -22,11 +23,9 @@ border: 1px solid #00af41;
 
 }
 
-.window_show{
-
-
+.window_show {
     display: block;
-
+    pointer-events: auto;
 }
 
 .window_drag{

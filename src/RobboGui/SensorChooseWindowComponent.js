@@ -8,6 +8,10 @@ import  styles from './SensorChooseWindowComponent.css';
 import PropTypes from 'prop-types';
 import { ItemTypes } from './drag_constants';
 import { DragSource } from 'react-dnd';
+import {
+    ROBBO_POPUP_Z_INDEX_BASE,
+    raiseRobboPopupZIndex
+} from '../lib/robbo-popup-z-index';
 
 const SensorChooseWindowSource = {
   beginDrag(props) {
@@ -30,9 +34,23 @@ function collect(connect, monitor) {
 
 class SensorChooseWindowComponent extends Component {
 
+  constructor (props) {
+    super(props);
+    this.state = {
+      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE
+    };
+    this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
+  }
 
+  componentDidUpdate (prevProps) {
+    if (!prevProps.isShowing && this.props.isShowing) {
+      this.setState({popupZIndex: raiseRobboPopupZIndex()});
+    }
+  }
 
-
+  handlePopupMouseDown () {
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
+  }
 
   render() {
 
@@ -60,7 +78,9 @@ class SensorChooseWindowComponent extends Component {
                               position: 'absolute',
                               top: `${top}px`,
                               left: `${left}px`,
-                              }}>
+                              zIndex: isShowing ? this.state.popupZIndex : undefined
+                              }}
+                        onMouseDown={isShowing ? this.handlePopupMouseDown : undefined}>
 
 
                   <div className={styles.sensor_choose_window_tittle}>

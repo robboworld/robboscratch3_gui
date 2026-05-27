@@ -223,7 +223,6 @@
 .stage-controls-overlay {
     position: absolute;
     top: 0;
-    z-index: $z-index-stage-header;
     pointer-events: none;
 }
 
@@ -237,6 +236,21 @@
 
 .stage-controls-overlay > * {
     pointer-events: auto;
+}
+
+/*
+    Robbo device palettes and search stay above the blocks workspace when the
+    right panel is hidden; pointer-events pass through empty overlay areas.
+*/
+.robbo-gui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: $z-index-robbo-overlay;
+    overflow: visible;
 }
 
 /*

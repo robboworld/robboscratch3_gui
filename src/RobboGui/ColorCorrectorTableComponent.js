@@ -10,6 +10,10 @@ import ColorCorrectorTableRowElement from './ColorCorrectorTableRowElement';
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import {
+    ROBBO_POPUP_Z_INDEX_BASE,
+    raiseRobboPopupZIndex
+} from '../lib/robbo-popup-z-index';
 
 
 var mouse_coords = {x:0,y:0};
@@ -109,6 +113,16 @@ const messages = defineMessages({
 
 class ColorCorrectorTableComponent extends Component {
 
+  constructor (props) {
+    super(props);
+    this.popupZIndex = ROBBO_POPUP_Z_INDEX_BASE;
+    this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
+  }
+
+  handlePopupMouseDown () {
+    this.popupZIndex = raiseRobboPopupZIndex();
+    this.forceUpdate();
+  }
 
   componentDidMount () {
 
@@ -144,8 +158,12 @@ class ColorCorrectorTableComponent extends Component {
 
   }
 
-  componentDidUpdate () {
+  componentDidUpdate (prevProps) {
 
+    if (prevProps && !prevProps.color_corrector_table.isShowing &&
+        this.props.color_corrector_table.isShowing) {
+      this.popupZIndex = raiseRobboPopupZIndex();
+    }
 
     //update colors filter table
     var color_corrector_table_object = this.props.RCA.getColorFilterTable(this.props.color_corrector_table.sensor_caller_id);
@@ -706,7 +724,11 @@ class ColorCorrectorTableComponent extends Component {
 								position: 'fixed',
 								top: `${top}px`,
 								left: `${left}px`,
-						}}>
+								zIndex: this.props.color_corrector_table.isShowing ?
+									this.popupZIndex : undefined
+						}}
+						onMouseDown={this.props.color_corrector_table.isShowing ?
+							this.handlePopupMouseDown : undefined}>
 						<div className={classNames({[styles.color_corrector_table_tittle]: true})}
 									id="color-corrector-table-tittle">
 								Color corrector {this.props.color_corrector_table.sensor_caller_id+1}

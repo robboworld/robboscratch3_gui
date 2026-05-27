@@ -10,6 +10,10 @@ import { DragSource } from 'react-dnd';
 
 import {ActionDropNewDraggableWindow }  from './actions/sensor_actions';
 import {ActionCreateNewDraggableWindow }  from './actions/sensor_actions';
+import {
+    ROBBO_POPUP_Z_INDEX_BASE,
+    raiseRobboPopupZIndex
+} from '../lib/robbo-popup-z-index';
 
 const DraggableWindowSource = {
   beginDrag(props) {
@@ -30,6 +34,26 @@ function collect(connect, monitor) {
 
 class NewDraggableWindowComponent extends Component {
 
+  constructor (props) {
+    super(props);
+    this.state = {
+      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE
+    };
+    this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
+  }
+
+  componentDidUpdate (prevProps) {
+    const windowId = this.props.draggableWindowId;
+    const prevWindow = prevProps.draggable_window[windowId];
+    const nextWindow = this.props.draggable_window[windowId];
+    if (nextWindow && prevWindow && !prevWindow.isShowing && nextWindow.isShowing) {
+      this.setState({popupZIndex: raiseRobboPopupZIndex()});
+    }
+  }
+
+  handlePopupMouseDown () {
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
+  }
 
   componentDidMount () {
 
@@ -93,7 +117,9 @@ class NewDraggableWindowComponent extends Component {
                                 position: 'fixed',
                                 top: `${top}px`,
                                 left: `${left}px`,
+                                zIndex: isShowing ? this.state.popupZIndex : undefined
                                 }}
+                          onMouseDown={isShowing ? this.handlePopupMouseDown : undefined}
 
                           id={`draggable_window_id-${this.props.draggableWindowId}`}>
 

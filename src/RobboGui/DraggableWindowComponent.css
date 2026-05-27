@@ -1,7 +1,9 @@
 @import "../css/units.css";
+@import "../css/z-index.css";
 
 .draggable_window {
-    z-index: 100000 !important;
+    z-index: $z-index-robbo-popup;
+    pointer-events: auto;
     border-radius: calc($form-radius + 4px);
     overflow: hidden;
 }

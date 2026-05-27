@@ -467,7 +467,6 @@ const GUIComponent = props => {
                                     stageSize={stageSize}
                                     vm={vm}
                                 />
-                                <RobboGui vm={vm}/>
                                 <Box className={styles.targetWrapper}>
                                     <TargetPane
                                         stageSize={stageSize}
@@ -476,7 +475,7 @@ const GUIComponent = props => {
                                 </Box>
                             </Box>
                         ) : null}
-                        {isRightPanelHidden ? (
+                        {isRightPanelHidden && !loading && !isCreating ? (
                             <Box className={styles.stageControlsOverlay}>
                                 <StageHeader vm={vm} />
                             </Box>
@@ -493,6 +492,9 @@ const GUIComponent = props => {
                                 />
                             </Box>
                         ) : null}
+                        <Box className={styles.robboGuiOverlay}>
+                            <RobboGui vm={vm} />
+                        </Box>
                     </Box>
                 </Box>
                 <DragLayer />

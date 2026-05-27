@@ -1,4 +1,4 @@
-
+@import "../css/z-index.css";
 
 .color_corrector_table{
 
@@ -11,16 +11,15 @@
     
         
     
-        z-index: 100;
+        z-index: $z-index-robbo-popup;
     
         background-color: white;
     
     }
     
-    .color_corrector_table_show{
-    
-        display:block;
-    
+    .color_corrector_table_show {
+        display: block;
+        pointer-events: auto;
     }
     
     .color_corrector_table_hide{

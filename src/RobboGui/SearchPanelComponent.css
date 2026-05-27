@@ -1,17 +1,25 @@
 @import "../css/colors.css";
 @import "../css/units.css";
+@import "../css/z-index.css";
 
 .search_panel {
     display: none;
     position: absolute;
     top: 48px;
     left: 455px;
+    z-index: $z-index-robbo-popup;
+    pointer-events: auto;
     min-width: 220px;
     min-height: 70px;
     max-height: min(70vh, 420px);
     overflow: hidden;
     font-weight: bold;
     font-size: 0.625rem;
+}
+
+.search_panel_right_anchor {
+    left: auto;
+    right: $space;
 }
 
 .search_panel_body {

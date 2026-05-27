@@ -16,6 +16,10 @@ import {ActionTriggerRobboMenu} from './actions/sensor_actions.js';
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions'
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import {
+    ROBBO_POPUP_Z_INDEX_BASE,
+    raiseRobboPopupZIndex
+} from '../lib/robbo-popup-z-index';
 
 import {createDiv,createDivShort} from './lib/lib.js';
 
@@ -150,10 +154,12 @@ class RobboMenu extends Component {
 
     this.is_lab_ext_enabled = false;
     this.state = {
-      menuCoords: null
+      menuCoords: null,
+      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE
     };
     this.boundCloseRobboMenu = this.closeRobboMenu.bind(this);
     this.boundUpdateMenuCoords = this.updateMenuCoords.bind(this);
+    this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
 
   }
 
@@ -167,7 +173,12 @@ class RobboMenu extends Component {
   componentDidUpdate(prevProps){
     if (!prevProps.robbo_menu.isShowing && this.props.robbo_menu.isShowing) {
       this.updateMenuCoords();
+      this.setState({popupZIndex: raiseRobboPopupZIndex()});
     }
+  }
+
+  handlePopupMouseDown () {
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
   }
 
   componentWillUnmount(){
@@ -520,7 +531,11 @@ class RobboMenu extends Component {
 
 
                     )}
-           style={this.state.menuCoords || undefined}>
+           style={{
+             ...(this.state.menuCoords || {}),
+             zIndex: this.props.robbo_menu.isShowing ? this.state.popupZIndex : undefined
+           }}
+           onMouseDown={this.props.robbo_menu.isShowing ? this.handlePopupMouseDown : undefined}>
 
           <div id="trigger-sim-en" onClick={this.triggerSimEn.bind(this)} className={classNames(
                         {[styles.robbo_menu_item]: true}

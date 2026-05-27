@@ -16,6 +16,10 @@ import DraggableWindowComponent from './DraggableWindowComponent';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext, node_process } from '../lib/platform';
+import {
+    ROBBO_POPUP_Z_INDEX_BASE,
+    raiseRobboPopupZIndex
+} from '../lib/robbo-popup-z-index';
 
 /** Same gate as RobboGui.searchDevices → searchQuadcopterDevices() */
 function shouldProbeQuadcopterOnDeviceSearch(QCA) {
@@ -75,7 +79,8 @@ class SearchPanelComponent extends Component {
     this.state = {
       devices: [],
       /** Bumps when instance fields used in render change without device list updates */
-      uiRev: 0
+      uiRev: 0,
+      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE
     };
 
     this.device_list = [];
@@ -87,11 +92,30 @@ class SearchPanelComponent extends Component {
     this._quadcopterAwaitingFirstSearchingEmit = false;
     this._lastQuadcopterSearchPanelSig = null;
 
+    this.handleSearchPanelMouseDown = this.handleSearchPanelMouseDown.bind(this);
+
   }
 
 
+  handleSearchPanelMouseDown () {
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
+  }
+
   componentDidMount() {
     this._isMounted = true;
+
+    const searchPanelEl = document.getElementById('SearchPanelComponent');
+    if (searchPanelEl) {
+      this._searchPanelVisibilityObserver = new MutationObserver(() => {
+        if (searchPanelEl.style.display === 'block') {
+          this.setState({popupZIndex: raiseRobboPopupZIndex()});
+        }
+      });
+      this._searchPanelVisibilityObserver.observe(searchPanelEl, {
+        attributes: true,
+        attributeFilter: ['style']
+      });
+    }
 
     // this.DCA =  this.props.deviceControlInterfaces.DCA;
     // this.RCA =  this.props.deviceControlInterfaces.RCA;
@@ -234,6 +258,9 @@ class SearchPanelComponent extends Component {
 
   componentWillUnmount() {
     this._isMounted = false;
+    if (this._searchPanelVisibilityObserver) {
+      this._searchPanelVisibilityObserver.disconnect();
+    }
     if (this.QCA && this._quadcopterStatusCallback && typeof this.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
       this.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
     }
@@ -271,7 +298,14 @@ class SearchPanelComponent extends Component {
     return (
 
 
-      <div id="SearchPanelComponent" className={classNames(sharedStyles.palette, styles.search_panel)}>
+      <div
+          id="SearchPanelComponent"
+          className={classNames(sharedStyles.palette, styles.search_panel, {
+              [styles.search_panel_right_anchor]: this.props.isRightPanelHidden
+          })}
+          style={{zIndex: this.state.popupZIndex}}
+          onMouseDown={this.handleSearchPanelMouseDown}
+      >
         <div id="SearchPanelComponent-tittle" className={sharedStyles.header}>
             <span className={sharedStyles.headerTitle}>
                 {this.props.intl.formatMessage(messages.search_panel_title)}
@@ -391,4 +425,10 @@ class SearchPanelComponent extends Component {
 //   mapDispatchToProps
 // )(SearchPanelComponent));
 
-export default injectIntl(SearchPanelComponent);
+const mapStateToProps = state => ({
+    isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden
+});
+
+export default injectIntl(connect(
+    mapStateToProps
+)(SearchPanelComponent));

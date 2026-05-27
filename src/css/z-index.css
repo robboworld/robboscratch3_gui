@@ -27,5 +27,9 @@ $z-index-stage-with-color-picker: 2010;
 $z-index-stage-header: 5000;
 $z-index-stage-wrapper-overlay: 5000;
 
+/* Robbo floating palettes, search, settings — above stage header, below context menu */
+$z-index-robbo-overlay: 5500;
+$z-index-robbo-popup: 5500;
+
 /* in most interfaces, the context menu is always on top */
 $z-index-context-menu: 10000;
