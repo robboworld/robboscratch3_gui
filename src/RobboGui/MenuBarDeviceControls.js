@@ -70,10 +70,9 @@ class MenuBarDeviceControls extends Component {
         if (!searchButton || this.searchButtonObserver) return;
 
         this.searchButtonObserver = new MutationObserver(() => {
-            // Legacy unlock (SearchPanel*) only sets style.pointerEvents = "auto".
-            // Do not require !disabled: React used to keep disabled=true via searchBusy.
+            // Legacy unlock (SearchPanel*) sets style.pointerEvents = "auto".
+            // Only clear React state — never write style here (causes observer re-entry freeze on desktop).
             if (searchButton.style.pointerEvents !== 'none' && this.state.searchBusy) {
-                searchButton.style.pointerEvents = '';
                 this.setState({searchBusy: false});
             }
         });
@@ -89,11 +88,6 @@ class MenuBarDeviceControls extends Component {
         const searchPanel = document.getElementById('SearchPanelComponent');
         if (searchPanel) {
             searchPanel.style.display = 'block';
-        }
-
-        const searchDeviceButton = document.getElementById('robbo_search_devices');
-        if (searchDeviceButton) {
-            searchDeviceButton.style.pointerEvents = 'none';
         }
 
         this.setState({searchBusy: true});

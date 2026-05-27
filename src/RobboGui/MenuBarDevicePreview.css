@@ -23,6 +23,7 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
     border-radius: $form-radius;
     cursor: pointer;
     color: white;
+    outline: none;
     background-color: transparent;
     transition:
         background-color 0.25s ease,
@@ -33,6 +34,11 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
 .previewButton:focus-visible {
     outline: 2px solid white;
     outline-offset: 2px;
+}
+
+/* NW.js / старый Chromium: flex gap может не работать — отступ через margin */
+.previewButton + .previewButton {
+    margin-left: 0.375rem;
 }
 
 /* Не подключено: как фон .robboMenuGroup (прозрачно — виден фон панели) */

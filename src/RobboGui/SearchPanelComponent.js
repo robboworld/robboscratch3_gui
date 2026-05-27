@@ -106,8 +106,14 @@ class SearchPanelComponent extends Component {
 
     const searchPanelEl = document.getElementById('SearchPanelComponent');
     if (searchPanelEl) {
+      this._searchPanelLastDisplay = searchPanelEl.style.display || '';
       this._searchPanelVisibilityObserver = new MutationObserver(() => {
-        if (searchPanelEl.style.display === 'block') {
+        const display = searchPanelEl.style.display || '';
+        if (display === this._searchPanelLastDisplay) {
+          return;
+        }
+        this._searchPanelLastDisplay = display;
+        if (display === 'block') {
           this.setState({popupZIndex: raiseRobboPopupZIndex()});
         }
       });
@@ -166,8 +172,10 @@ class SearchPanelComponent extends Component {
       this.usb_search_finished = true;
       let search_device_button = document.getElementById(`robbo_search_devices`);
       if (search_device_button) {
-        search_device_button.style.pointerEvents = "auto";
-        search_device_button.removeAttribute("disabled");
+        // Toggle inline style so MenuBarDeviceControls MutationObserver always fires (repeat search).
+        search_device_button.style.pointerEvents = 'none';
+        search_device_button.style.pointerEvents = 'auto';
+        search_device_button.removeAttribute('disabled');
       }
       this._refreshDeviceList();
       if (this._isMounted) {
@@ -191,8 +199,9 @@ class SearchPanelComponent extends Component {
       this.usb_search_finished = true;
       let search_device_button = document.getElementById(`robbo_search_devices`);
       if (search_device_button) {
-        search_device_button.style.pointerEvents = "auto";
-        search_device_button.removeAttribute("disabled");
+        search_device_button.style.pointerEvents = 'none';
+        search_device_button.style.pointerEvents = 'auto';
+        search_device_button.removeAttribute('disabled');
       }
       this._refreshDeviceList();
     });

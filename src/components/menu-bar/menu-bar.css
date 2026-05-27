@@ -74,6 +74,7 @@
 .language-icon {
     height:  1.5rem;
     vertical-align: middle;
+    margin-right: 0.125rem;
 }
 
 .language-caret {
@@ -123,6 +124,11 @@
     display: flex;
     flex-direction: row;
     align-items: center;
+}
+
+/* NW.js: flex gap не поддерживается — отступы между пунктами через margin */
+.file-group > .menu-bar-item + .menu-bar-item {
+    margin-left: 0.125rem;
 }
 
 .file-group .menu-bar-item {
@@ -256,6 +262,10 @@
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
+.robboMenuGroup > * + * {
+    margin-left: 0.25rem;
+}
+
 .trigger_robbo_menu {
     font-weight: bold;
     font-size: $menu-bar-standard-font-size;
@@ -270,6 +280,7 @@
     margin: 0;
     white-space: nowrap;
     user-select: none;
+    outline: none;
     border: none;
     border-radius: $form-radius;
     color: white;

@@ -657,11 +657,19 @@ class SearchPanelDeviceComponent extends Component {
         let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
         let search_device_button = document.getElementById(`robbo_search_devices`);
 
-        if (!status_field || !info_field || !flashing_button || !device_status_icon || !flashing_show_details_icon || !search_device_button) return;
+        if (!status_field || !device_status_icon) return;
+        if (!this.props.isQuadcopter && !info_field) return;
 
-
-
-
+        const unlockMenuBarSearch = () => {
+            if (search_device_button) {
+                search_device_button.style.pointerEvents = 'none';
+                search_device_button.style.pointerEvents = 'auto';
+                search_device_button.removeAttribute('disabled');
+            }
+        };
+        const hasFirmwareUi = Boolean(
+            flashing_button && flashing_show_details_icon && info_field && !this.props.isQuadcopter
+        );
 
         let device_name = "";
 
@@ -732,18 +740,19 @@ class SearchPanelDeviceComponent extends Component {
             }
             this.firmware_version_differs = false;
             this.isFlashing = false;
-            info_field.innerHTML = "";
+            if (info_field) {
+                info_field.innerHTML = '';
+                info_field.style.display = 'none';
+            }
 
-            info_field.style.display = "none";
-
-            flashing_button.style.backgroundColor = "";
-            flashing_button.style.backgroundImage = "-webkit-linear-gradient(top,#00af41,#008a00)";
-            flashing_button.innerText = this.props.intl.formatMessage(messages.flash_device);
-
-            flashing_show_details_icon.style.display = "none";
-            flashing_button.style.display = "none";
-
-            this.flashingHideDetails();
+            if (hasFirmwareUi) {
+                flashing_button.style.backgroundColor = '';
+                flashing_button.style.backgroundImage = '-webkit-linear-gradient(top,#00af41,#008a00)';
+                flashing_button.innerText = this.props.intl.formatMessage(messages.flash_device);
+                flashing_show_details_icon.style.display = 'none';
+                flashing_button.style.display = 'none';
+                this.flashingHideDetails();
+            }
 
 
         } else if (state == 2) {
@@ -753,18 +762,19 @@ class SearchPanelDeviceComponent extends Component {
             }
             this.firmware_version_differs = false;
             this.isFlashing = false;
-            info_field.innerHTML = "";
+            if (info_field) {
+                info_field.innerHTML = '';
+                info_field.style.display = 'none';
+            }
 
-            info_field.style.display = "none";
-
-            flashing_button.style.backgroundColor = "";
-            flashing_button.style.backgroundImage = "-webkit-linear-gradient(top,#00af41,#008a00)";
-            flashing_button.innerText = this.props.intl.formatMessage(messages.flash_device);
-
-            flashing_show_details_icon.style.display = "none";
-            flashing_button.style.display = "none";
-
-            this.flashingHideDetails();
+            if (hasFirmwareUi) {
+                flashing_button.style.backgroundColor = '';
+                flashing_button.style.backgroundImage = '-webkit-linear-gradient(top,#00af41,#008a00)';
+                flashing_button.innerText = this.props.intl.formatMessage(messages.flash_device);
+                flashing_show_details_icon.style.display = 'none';
+                flashing_button.style.display = 'none';
+                this.flashingHideDetails();
+            }
 
 
         } else if (state == 3) {
@@ -775,31 +785,26 @@ class SearchPanelDeviceComponent extends Component {
                 this._logFlashFlow('onStatusChange', 'state6_ignored_due_to_active_session', { state }, true);
                 return;
             }
-            search_device_button.style.pointerEvents = "auto";
+            unlockMenuBarSearch();
             let result = this.firmware_version_differs_cb_result;
-            if (!this.firmware_version_differs) {
-
-                info_field.innerHTML = "";
+            if (!this.firmware_version_differs && info_field) {
+                info_field.innerHTML = '';
             }
 
-
-
-            let firm_differs_msg = this.props.intl.formatMessage(messages.differ_firm_msg) + this.props.intl.formatMessage(messages.cr_firm_msg, { current_firmware: result.current_device_firmware, required_firmware: result.need_firmware })
-                + this.props.intl.formatMessage(messages.flash_device) + "?";
-
-            //let firm_differs_msg = "Flash?";
-
             let need_flash_device = false;
-            //Mac OS    
-            if ((this.firmware_version_differs) && (this.props.devicePort.indexOf("rfcomm") == -1) && (!this.props.isMacBluetooth) && (!this.props.isBluetooth) && (!this.isRasberry)) {
+            if (hasFirmwareUi && this.firmware_version_differs &&
+                this.props.devicePort.indexOf('rfcomm') === -1 &&
+                !this.props.isMacBluetooth && !this.props.isBluetooth && !this.isRasberry) {
+                const firm_differs_msg = this.props.intl.formatMessage(messages.differ_firm_msg) +
+                    this.props.intl.formatMessage(messages.cr_firm_msg, {
+                        current_firmware: result.current_device_firmware,
+                        required_firmware: result.need_firmware
+                    }) +
+                    this.props.intl.formatMessage(messages.flash_device) + '?';
 
-                // if (true){
-
-                flashing_show_details_icon.style.display = "inline-block";
-                flashing_button.style.display = "inline-block";
-
+                flashing_show_details_icon.style.display = 'inline-block';
+                flashing_button.style.display = 'inline-block';
                 need_flash_device = confirm(firm_differs_msg);
-
             }
 
 
@@ -821,15 +826,17 @@ class SearchPanelDeviceComponent extends Component {
 
         } else if (state == 9) { //Reconnecting (state - RECONNECTING)
 
-            search_device_button.style.pointerEvents = "auto";
+            unlockMenuBarSearch();
 
             let info_field_local = document.getElementById(`search-panel-device-info-${this.props.Id}`);
             let search_panel = document.getElementById(`SearchPanelComponent`);
 
             if (search_panel) search_panel.style.display = "block";
 
-            flashing_show_details_icon.style.display = "none";
-            flashing_button.style.display = "none";
+            if (hasFirmwareUi) {
+                flashing_show_details_icon.style.display = 'none';
+                flashing_button.style.display = 'none';
+            }
 
             if (info_field_local) {
                 info_field_local.style.display = "none";
@@ -842,7 +849,7 @@ class SearchPanelDeviceComponent extends Component {
                 return;
             }
 
-            search_device_button.style.pointerEvents = "auto";
+            unlockMenuBarSearch();
 
             let info_field_local = document.getElementById(`search-panel-device-info-${this.props.Id}`);
 
@@ -853,10 +860,14 @@ class SearchPanelDeviceComponent extends Component {
                 let search_panel = document.getElementById(`SearchPanelComponent`);
                 if (search_panel) search_panel.style.display = "block";
 
-                info_field.innerHTML = "";
-                info_field.style.display = "none";
-                flashing_show_details_icon.style.display = "none";
-                flashing_button.style.display = "none";
+                if (info_field) {
+                    info_field.innerHTML = '';
+                    info_field.style.display = 'none';
+                }
+                if (hasFirmwareUi) {
+                    flashing_show_details_icon.style.display = 'none';
+                    flashing_button.style.display = 'none';
+                }
 
             } else if (error && error.code == -1) { //We cann't get any usefull info from the device
 
@@ -868,31 +879,27 @@ class SearchPanelDeviceComponent extends Component {
                 //  info_field.innerHTML = this.props.intl.formatMessage(messages.device_no_response_details) + " " + DEVICE_HANDLE_TIMEOUT
                 //         + " " + this.props.intl.formatMessage(messages.milliseconds);
 
-                if (this.props.isBluetooth) {
-
-                    info_field.innerHTML = this.props.intl.formatMessage(messages.device_cannot_open_old_bluetooth_com);
-
-                } else {
-
-                    info_field.innerHTML = this.props.intl.formatMessage(messages.device_no_response_details);
-
+                if (info_field) {
+                    if (this.props.isBluetooth) {
+                        info_field.innerHTML = this.props.intl.formatMessage(messages.device_cannot_open_old_bluetooth_com);
+                    } else {
+                        info_field.innerHTML = this.props.intl.formatMessage(messages.device_no_response_details);
+                    }
                 }
-
-
-
-                let need_to_flash_msg = this.props.intl.formatMessage(messages.device_no_response_alert_details, { device_port: this.props.devicePort });
 
                 let need_flash_device = false;
 
-                // if (true){
-                //macos
-                if ((this.props.devicePort.indexOf("rfcomm") == -1) && (!this.props.isMacBluetooth) && (!this.props.isBluetooth) && (!this.isRasberry)) {
+                if (hasFirmwareUi &&
+                    this.props.devicePort.indexOf('rfcomm') === -1 &&
+                    !this.props.isMacBluetooth && !this.props.isBluetooth && !this.isRasberry) {
+                    const need_to_flash_msg = this.props.intl.formatMessage(
+                        messages.device_no_response_alert_details,
+                        {device_port: this.props.devicePort}
+                    );
 
-                    flashing_show_details_icon.style.display = "inline-block";
-                    flashing_button.style.display = "inline-block";
-
+                    flashing_show_details_icon.style.display = 'inline-block';
+                    flashing_button.style.display = 'inline-block';
                     need_flash_device = confirm(need_to_flash_msg);
-
                 }
 
 
@@ -912,11 +919,11 @@ class SearchPanelDeviceComponent extends Component {
 
         } else if (state == 7) {
 
-            search_device_button.style.pointerEvents = "auto";
+            unlockMenuBarSearch();
 
             let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
 
-            info_field.style.display = "inline-block";
+            if (info_field) info_field.style.display = "inline-block";
 
             //  if (this.props.devicePort.indexOf("rfcom") != -1){
 
@@ -929,10 +936,12 @@ class SearchPanelDeviceComponent extends Component {
 
 
 
-            flashing_show_details_icon.style.display = "none";
-            flashing_button.style.display = "none";
+            if (hasFirmwareUi) {
+                flashing_show_details_icon.style.display = 'none';
+                flashing_button.style.display = 'none';
+            }
 
-            if (error && (this.props.devicePort.indexOf("rfcom") != -1) && (error.msg && error.msg.indexOf("cannot open /dev/rfcom") != -1)) {
+            if (error && info_field && (this.props.devicePort.indexOf("rfcom") != -1) && (error.msg && error.msg.indexOf("cannot open /dev/rfcom") != -1)) {
 
                 info_field.innerHTML = error.msg + "<br/>" + this.props.intl.formatMessage(messages.bluetooth_linux_hint);
 
