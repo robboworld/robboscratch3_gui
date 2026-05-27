@@ -25,6 +25,7 @@ import timeoutReducer, {timeoutInitialState} from './timeout';
 import toolboxReducer, {toolboxInitialState} from './toolbox';
 import vmReducer, {vmInitialState} from './vm';
 import vmStatusReducer, {vmStatusInitialState} from './vm-status';
+import layoutVisibilityReducer, {layoutVisibilityInitialState} from './layout-visibility';
 import throttle from 'redux-throttle';
 
 import decks from '../lib/libraries/decks/index.jsx';
@@ -79,6 +80,7 @@ const guiInitialState = {
     toolbox: toolboxInitialState,
     vm: vmInitialState,
     vmStatus: vmStatusInitialState,
+    layoutVisibility: layoutVisibilityInitialState,
 
     robot_sensors:robot_sensors_InitialState,
   lab_external_sensors:lab_external_sensors_InitialState,
@@ -205,6 +207,7 @@ const guiReducer = combineReducers({
     toolbox: toolboxReducer,
     vm: vmReducer,
     vmStatus: vmStatusReducer,
+    layoutVisibility: layoutVisibilityReducer,
 
     robot_sensors:robot_sensors,
   lab_external_sensors:lab_external_sensors,

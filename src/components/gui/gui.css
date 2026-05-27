@@ -17,6 +17,7 @@
 
 .flex-wrapper {
     display: flex;
+    position: relative;
 
     /*
         Make 2 columns:
@@ -213,6 +214,46 @@
 .stage-and-target-wrapper.small {
     /* Fix the max width to max small stage size (defined in layout_constants.js) + gutter size */
     max-width: calc(240px + calc($space * 2));
+}
+
+.stage-header-dock {
+    flex-shrink: 0;
+}
+
+.stage-controls-overlay {
+    position: absolute;
+    top: 0;
+    z-index: $z-index-stage-header;
+    pointer-events: none;
+}
+
+[dir="ltr"] .stage-controls-overlay {
+    right: $space;
+}
+
+[dir="rtl"] .stage-controls-overlay {
+    left: $space;
+}
+
+.stage-controls-overlay > * {
+    pointer-events: auto;
+}
+
+/*
+    Stage for fullscreen when the right panel is collapsed.
+    position:fixed on the stage overlay is viewport-relative; this wrapper must not take flex width.
+*/
+.stage-fullscreen-mount {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: visible;
+    flex: 0 0 0;
+    pointer-events: none;
+}
+
+.stage-fullscreen-mount > * {
+    pointer-events: auto;
 }
 
 .target-wrapper {

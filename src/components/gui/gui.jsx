@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import omit from 'lodash.omit';
 import PropTypes from 'prop-types';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {defineMessages, FormattedMessage, injectIntl, intlShape} from 'react-intl';
 import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
@@ -15,12 +15,14 @@ import CostumeTab from '../../containers/costume-tab.jsx';
 import TargetPane from '../../containers/target-pane.jsx';
 import SoundTab from '../../containers/sound-tab.jsx';
 import StageWrapper from '../../containers/stage-wrapper.jsx';
+import StageHeader from '../../containers/stage-header.jsx';
 import Loader from '../loader/loader.jsx';
 import Box from '../box/box.jsx';
 import MenuBar from '../menu-bar/menu-bar.jsx';
 import CostumeLibrary from '../../containers/costume-library.jsx';
 import BackdropLibrary from '../../containers/backdrop-library.jsx';
 import Watermark from '../../containers/watermark.jsx';
+import {setRightPanelHidden} from '../../reducers/layout-visibility';
 
 import Backpack from '../../containers/backpack.jsx';
 import PreviewModal from '../../containers/preview-modal.jsx';
@@ -42,7 +44,6 @@ import addExtensionIcon from './icon--extensions.svg';
 import codeIcon from './icon--code.svg';
 import costumesIcon from './icon--costumes.svg';
 import soundsIcon from './icon--sounds.svg';
-
 import RobboGui from '../../RobboGui/RobboGui';
 
 import { ItemTypes } from '../../RobboGui/drag_constants';
@@ -176,6 +177,7 @@ const GUIComponent = props => {
         isRtl,
         isShared,
         loading,
+        isRightPanelHidden,
         renderLogin,
         onClickAccountNav,
         onCloseAccountNav,
@@ -216,6 +218,13 @@ const GUIComponent = props => {
         'onNewDraggableWindowDrop'
     ]);
     const [blocksPaletteCollapsed, setBlocksPaletteCollapsed] = useState(false);
+
+    useEffect(() => {
+        const frameId = requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('resize'));
+        });
+        return () => cancelAnimationFrame(frameId);
+    }, [isRightPanelHidden]);
 
     if (children) {
         return <Box {...componentProps}>{children}</Box>;
@@ -445,23 +454,45 @@ const GUIComponent = props => {
                             
                         </Box>
 
-                        <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}>
-                            <StageWrapper
-                                isRendererSupported={isRendererSupported}
-                                isRtl={isRtl}
-                                stageSize={stageSize}
-                                vm={vm}
-                            />
-
-                             <RobboGui vm={vm}/>
-
-                            <Box className={styles.targetWrapper}>
-                                <TargetPane
+                        {!isRightPanelHidden ? (
+                            <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}>
+                                <Box className={styles.stageHeaderDock}>
+                                    <StageHeader vm={vm} />
+                                </Box>
+                                <StageWrapper
+                                    isFullScreen={isFullScreen}
+                                    isRendererSupported={isRendererSupported}
+                                    isRtl={isRtl}
+                                    loading={loading}
+                                    stageSize={stageSize}
+                                    vm={vm}
+                                />
+                                <RobboGui vm={vm}/>
+                                <Box className={styles.targetWrapper}>
+                                    <TargetPane
+                                        stageSize={stageSize}
+                                        vm={vm}
+                                    />
+                                </Box>
+                            </Box>
+                        ) : null}
+                        {isRightPanelHidden ? (
+                            <Box className={styles.stageControlsOverlay}>
+                                <StageHeader vm={vm} />
+                            </Box>
+                        ) : null}
+                        {isRightPanelHidden && isFullScreen ? (
+                            <Box className={styles.stageFullscreenMount}>
+                                <StageWrapper
+                                    isFullScreen={isFullScreen}
+                                    isRendererSupported={isRendererSupported}
+                                    isRtl={isRtl}
+                                    loading={loading}
                                     stageSize={stageSize}
                                     vm={vm}
                                 />
                             </Box>
-                        </Box>
+                        ) : null}
                     </Box>
                 </Box>
                 <DragLayer />
@@ -499,6 +530,7 @@ GUIComponent.propTypes = {
     isCreating: PropTypes.bool,
     isFullScreen: PropTypes.bool,
     isPlayerOnly: PropTypes.bool,
+    isRightPanelHidden: PropTypes.bool,
     isRtl: PropTypes.bool,
     isShared: PropTypes.bool,
     loading: PropTypes.bool,
@@ -574,11 +606,17 @@ const mapDispatchToProps = dispatch => ({
 
         dispatch(ActionDropNewDraggableWindow(top,left, draggable_window_id));
       }
+  ,
+  onSetRightPanelHidden: isHidden => {
+    dispatch(setRightPanelHidden(isHidden));
+    window.dispatchEvent(new Event('resize'));
+  }
 });
 
 const mapStateToProps = state => ({
     // This is the button's mode, as opposed to the actual current state
-    stageSizeMode: state.scratchGui.stageSize.stageSize
+    stageSizeMode: state.scratchGui.stageSize.stageSize,
+    isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden
 });
 
 // export default injectIntl(connect(

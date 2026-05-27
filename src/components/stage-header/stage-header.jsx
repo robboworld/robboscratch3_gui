@@ -10,11 +10,11 @@ import Button from '../button/button.jsx';
 import Controls from '../../containers/controls.jsx';
 import {getStageDimensions} from '../../lib/screen-utils';
 import {STAGE_SIZE_MODES} from '../../lib/layout-constants';
-
 import fullScreenIcon from './icon--fullscreen.svg';
 import largeStageIcon from './icon--large-stage.svg';
 import smallStageIcon from './icon--small-stage.svg';
 import unFullScreenIcon from './icon--unfullscreen.svg';
+import rightPaneCompactIcon from './icon--compact-pane.svg';
 
 import scratchLogo from '../menu-bar/scratch-logo.svg';
 import styles from './stage-header.css';
@@ -44,6 +44,16 @@ const messages = defineMessages({
         defaultMessage: 'Full Screen Control',
         description: 'Button to enter/exit full screen mode',
         id: 'gui.stageHeader.fullscreenControl'
+    },
+    hideRightPanelMessage: {
+        defaultMessage: 'Hide right panel',
+        description: 'Button to hide stage and right panel',
+        id: 'gui.stageHeader.hideRightPanel'
+    },
+    showRightPanelMessage: {
+        defaultMessage: 'Show right panel',
+        description: 'Button to show stage and right panel',
+        id: 'gui.stageHeader.showRightPanel'
     }
 });
 
@@ -51,11 +61,13 @@ const StageHeaderComponent = function (props) {
     const {
         isFullScreen,
         isPlayerOnly,
+        isRightPanelHidden,
         onKeyPress,
         onSetStageLarge,
         onSetStageSmall,
         onSetStageFull,
         onSetStageUnFull,
+        onSetRightPanelHidden,
         showBranding,
         stageSizeMode,
         vm
@@ -117,7 +129,30 @@ const StageHeaderComponent = function (props) {
                             className={classNames(
                                 styles.stageButton,
                                 styles.stageButtonFirst,
-                                (stageSizeMode === STAGE_SIZE_MODES.small) ? null : styles.stageButtonToggledOff
+                                isRightPanelHidden ? null : styles.stageButtonToggledOff
+                            )}
+                            onClick={() => onSetRightPanelHidden(!isRightPanelHidden)}
+                        >
+                            <img
+                                alt={props.intl.formatMessage(
+                                    isRightPanelHidden ? messages.showRightPanelMessage : messages.hideRightPanelMessage
+                                )}
+                                className={styles.stageButtonIcon}
+                                draggable={false}
+                                src={rightPaneCompactIcon}
+                                title={props.intl.formatMessage(
+                                    isRightPanelHidden ? messages.showRightPanelMessage : messages.hideRightPanelMessage
+                                )}
+                            />
+                        </Button>
+                    </div>
+                    <div>
+                        <Button
+                            className={classNames(
+                                styles.stageButton,
+                                styles.stageButtonMiddle,
+                                (stageSizeMode === STAGE_SIZE_MODES.small && !isRightPanelHidden) ?
+                                    null : styles.stageButtonToggledOff
                             )}
                             onClick={onSetStageSmall}
                         >
@@ -134,7 +169,8 @@ const StageHeaderComponent = function (props) {
                             className={classNames(
                                 styles.stageButton,
                                 styles.stageButtonLast,
-                                (stageSizeMode === STAGE_SIZE_MODES.large) ? null : styles.stageButtonToggledOff
+                                (stageSizeMode === STAGE_SIZE_MODES.large && !isRightPanelHidden) ?
+                                    null : styles.stageButtonToggledOff
                             )}
                             onClick={onSetStageLarge}
                         >
@@ -154,7 +190,7 @@ const StageHeaderComponent = function (props) {
                     <Controls vm={vm} />
                     <div className={styles.stageSizeRow}>
                         {stageControls}
-                        <div>
+                        <div className={styles.stageToolbarTrailingItem}>
                             <Button
                                 className={styles.stageButton}
                                 onClick={() => {
@@ -188,7 +224,9 @@ StageHeaderComponent.propTypes = {
     intl: intlShape,
     isFullScreen: PropTypes.bool.isRequired,
     isPlayerOnly: PropTypes.bool.isRequired,
+    isRightPanelHidden: PropTypes.bool,
     onKeyPress: PropTypes.func.isRequired,
+    onSetRightPanelHidden: PropTypes.func,
     onSetStageFull: PropTypes.func.isRequired,
     onSetStageLarge: PropTypes.func.isRequired,
     onSetStageSmall: PropTypes.func.isRequired,

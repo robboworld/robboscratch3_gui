@@ -40,11 +40,31 @@
     display: flex;
 }
 
+.stage-layout-toggle-group {
+    display: flex;
+}
+
+[dir="ltr"] .stage-toolbar-trailing-item {
+    margin-left: .2rem;
+}
+
+[dir="rtl"] .stage-toolbar-trailing-item {
+    margin-right: .2rem;
+}
+
 [dir="ltr"] .stage-size-toggle-group {
     margin-right: .2rem;
 }
 
 [dir="rtl"] .stage-size-toggle-group {
+    margin-left: .2rem;
+}
+
+[dir="ltr"] .stage-layout-toggle-group {
+    margin-right: .2rem;
+}
+
+[dir="rtl"] .stage-layout-toggle-group {
     margin-left: .2rem;
 }
 
@@ -74,6 +94,11 @@
     border-bottom-right-radius: 0;
 }
 
+[dir="ltr"] .stage-button-middle {
+    border-left: none;
+    border-radius: 0;
+}
+
 [dir="ltr"] .stage-button-last {
     border-left: none;
     border-top-left-radius: 0;
@@ -83,6 +108,11 @@
 [dir="rtl"] .stage-button-first {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+
+[dir="rtl"] .stage-button-middle {
+    border-right: none;
+    border-radius: 0;
 }
 
 [dir="rtl"] .stage-button-last {

@@ -199,8 +199,9 @@ class Blocks extends React.Component {
         }
 
         if (this.props.isVisible === prevProps.isVisible) {
-            if (this.props.stageSize !== prevProps.stageSize) {
-                // force workspace to redraw for the new stage size
+            if (this.props.stageSize !== prevProps.stageSize ||
+                this.props.isRightPanelHidden !== prevProps.isRightPanelHidden) {
+                // force workspace to redraw for the new stage size / right panel width
                 window.dispatchEvent(new Event('resize'));
             }
             return;
@@ -1004,6 +1005,7 @@ Blocks.defaultProps = {
 };
 
 const mapStateToProps = state => ({
+    isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
     anyModalVisible: (
         Object.keys(state.scratchGui.modals).some(key => state.scratchGui.modals[key]) ||
         state.scratchGui.mode.isFullScreen
