@@ -17,11 +17,6 @@
     font-size: 0.625rem;
 }
 
-.search_panel_right_anchor {
-    left: auto;
-    right: $space;
-}
-
 .search_panel_body {
     max-height: min(60vh, 360px);
 }

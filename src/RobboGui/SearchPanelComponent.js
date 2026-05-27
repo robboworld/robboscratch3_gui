@@ -2,8 +2,6 @@
 import classNames from 'classnames';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-import { connect } from 'react-redux';
-
 
 import sharedStyles from './DevicePaletteShared.css';
 import styles from './SearchPanelComponent.css';
@@ -309,9 +307,7 @@ class SearchPanelComponent extends Component {
 
       <div
           id="SearchPanelComponent"
-          className={classNames(sharedStyles.palette, styles.search_panel, {
-              [styles.search_panel_right_anchor]: this.props.isRightPanelHidden
-          })}
+          className={classNames(sharedStyles.palette, styles.search_panel)}
           style={{zIndex: this.state.popupZIndex}}
           onMouseDown={this.handleSearchPanelMouseDown}
       >
@@ -434,10 +430,4 @@ class SearchPanelComponent extends Component {
 //   mapDispatchToProps
 // )(SearchPanelComponent));
 
-const mapStateToProps = state => ({
-    isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden
-});
-
-export default injectIntl(connect(
-    mapStateToProps
-)(SearchPanelComponent));
+export default injectIntl(SearchPanelComponent);
