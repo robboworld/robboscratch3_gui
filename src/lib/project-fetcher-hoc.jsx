@@ -20,6 +20,7 @@ import {
     BLOCKS_TAB_INDEX
 } from '../reducers/editor-tab';
 import {setProjectTitle} from '../reducers/project-title';
+import {hydrateLayoutVisibility} from '../reducers/layout-visibility';
 
 import {
     restoreValidSnapshot
@@ -137,6 +138,9 @@ const ProjectFetcherHOC = function (WrappedComponent) {
                         if (restoredSnapshot.metadata && restoredSnapshot.metadata.title) {
                             this.props.onRestoreProjectTitle(restoredSnapshot.metadata.title);
                         }
+                        if (restoredSnapshot.metadata && restoredSnapshot.metadata.layout) {
+                            this.props.onRestoreLayoutVisibility(restoredSnapshot.metadata.layout);
+                        }
                         this.props.onFetchedProjectData(restoredSnapshot.projectData, loadingState);
                         return;
                     }
@@ -156,6 +160,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
                 onFetchedProjectData: onFetchedProjectDataProp,
                 onProjectUnchanged,
                 onRestoreProjectTitle: onRestoreProjectTitleProp,
+                onRestoreLayoutVisibility: onRestoreLayoutVisibilityProp,
                 projectHost,
                 projectId,
                 reduxProjectId,
@@ -184,6 +189,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         onFetchedProjectData: PropTypes.func,
         onProjectUnchanged: PropTypes.func,
         onRestoreProjectTitle: PropTypes.func,
+        onRestoreLayoutVisibility: PropTypes.func,
         projectHost: PropTypes.string,
         projectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         reduxProjectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
@@ -208,6 +214,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         onFetchedProjectData: (projectData, loadingState) =>
             dispatch(onFetchedProjectData(projectData, loadingState)),
         onRestoreProjectTitle: title => dispatch(setProjectTitle(title)),
+        onRestoreLayoutVisibility: layout => dispatch(hydrateLayoutVisibility(layout)),
         setProjectId: projectId => dispatch(setProjectId(projectId)),
         onProjectUnchanged: () => dispatch(setProjectUnchanged())
     });

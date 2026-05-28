@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import omit from 'lodash.omit';
 import PropTypes from 'prop-types';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect} from 'react';
 import {defineMessages, FormattedMessage, injectIntl, intlShape} from 'react-intl';
 import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
@@ -22,7 +22,10 @@ import MenuBar from '../menu-bar/menu-bar.jsx';
 import CostumeLibrary from '../../containers/costume-library.jsx';
 import BackdropLibrary from '../../containers/backdrop-library.jsx';
 import Watermark from '../../containers/watermark.jsx';
-import {setRightPanelHidden} from '../../reducers/layout-visibility';
+import {
+    setBlocksPaletteCollapsed,
+    setRightPanelHidden
+} from '../../reducers/layout-visibility';
 
 import Backpack from '../../containers/backpack.jsx';
 import PreviewModal from '../../containers/preview-modal.jsx';
@@ -209,6 +212,8 @@ const GUIComponent = props => {
         vm,
         connectDropTarget, //modified_by_Yaroslav
         isOver,
+        isBlocksPaletteCollapsed,
+        onSetBlocksPaletteCollapsed,
         ...componentProps
     } = omit(props, [
         'dispatch',
@@ -217,14 +222,13 @@ const GUIComponent = props => {
         'onDraggableWindowDrop',
         'onNewDraggableWindowDrop'
     ]);
-    const [blocksPaletteCollapsed, setBlocksPaletteCollapsed] = useState(false);
 
     useEffect(() => {
         const frameId = requestAnimationFrame(() => {
             window.dispatchEvent(new Event('resize'));
         });
         return () => cancelAnimationFrame(frameId);
-    }, [isRightPanelHidden]);
+    }, [isRightPanelHidden, isBlocksPaletteCollapsed]);
 
     if (children) {
         return <Box {...componentProps}>{children}</Box>;
@@ -413,13 +417,13 @@ const GUIComponent = props => {
                                             canUseCloud={canUseCloud}
                                             grow={1}
                                             isVisible={blocksTabVisible}
-                                            paletteCollapsed={blocksPaletteCollapsed}
+                                            paletteCollapsed={isBlocksPaletteCollapsed}
                                             paletteToggleTitle={intl.formatMessage(
-                                                blocksPaletteCollapsed ?
+                                                isBlocksPaletteCollapsed ?
                                                     messages.expandBlocksPanel :
                                                     messages.collapseBlocksPanel
                                             )}
-                                            onTogglePalette={setBlocksPaletteCollapsed}
+                                            onTogglePalette={onSetBlocksPaletteCollapsed}
                                             options={{
                                                 media: `${basePath}static/blocks-media/`
                                             }}
@@ -533,6 +537,8 @@ GUIComponent.propTypes = {
     isFullScreen: PropTypes.bool,
     isPlayerOnly: PropTypes.bool,
     isRightPanelHidden: PropTypes.bool,
+    isBlocksPaletteCollapsed: PropTypes.bool,
+    onSetBlocksPaletteCollapsed: PropTypes.func,
     isRtl: PropTypes.bool,
     isShared: PropTypes.bool,
     loading: PropTypes.bool,
@@ -582,6 +588,8 @@ GUIComponent.defaultProps = {
     isCreating: false,
     isShared: false,
     loading: false,
+    isBlocksPaletteCollapsed: false,
+    onSetBlocksPaletteCollapsed: () => {},
     onUpdateProjectTitle: () => {},
     showComingSoon: false,
     stageSizeMode: STAGE_SIZE_MODES.large
@@ -612,13 +620,17 @@ const mapDispatchToProps = dispatch => ({
   onSetRightPanelHidden: isHidden => {
     dispatch(setRightPanelHidden(isHidden));
     window.dispatchEvent(new Event('resize'));
+  },
+  onSetBlocksPaletteCollapsed: isCollapsed => {
+    dispatch(setBlocksPaletteCollapsed(isCollapsed));
   }
 });
 
 const mapStateToProps = state => ({
     // This is the button's mode, as opposed to the actual current state
     stageSizeMode: state.scratchGui.stageSize.stageSize,
-    isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden
+    isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
+    isBlocksPaletteCollapsed: state.scratchGui.layoutVisibility.isBlocksPaletteCollapsed
 });
 
 // export default injectIntl(connect(

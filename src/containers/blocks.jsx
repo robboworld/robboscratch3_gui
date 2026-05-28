@@ -142,6 +142,9 @@ class Blocks extends React.Component {
         if (this.props.isVisible) {
             this.setLocale();
         }
+        if (this.props.paletteCollapsed) {
+            this.updatePaletteVisibility(true);
+        }
     }
     shouldComponentUpdate (nextProps, nextState) {
         return (
@@ -196,6 +199,11 @@ class Blocks extends React.Component {
 
           this.props.updateToolboxState(toolboxXML);
 
+        }
+
+        if (this.props.paletteCollapsed !== prevProps.paletteCollapsed &&
+            !this.state.paletteAnimating) {
+            this.updatePaletteVisibility(this.props.paletteCollapsed);
         }
 
         if (this.props.isVisible === prevProps.isVisible) {
