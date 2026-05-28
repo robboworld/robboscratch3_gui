@@ -29,7 +29,7 @@ const messages = defineMessages({
   device_otto: {
     id: 'gui.FirmwareFlasherDeviceComponent.device_otto',
     description: ' ',
-    defaultMessage: 'Otto'
+    defaultMessage: 'Dancing robot'
   },
   device_unknown: {
     id: 'gui.FirmwareFlasherDeviceComponent.device_unknown',

@@ -25,6 +25,7 @@ import {hydrateLayoutVisibility} from '../reducers/layout-visibility';
 import {
     restoreValidSnapshot
 } from './project-session-store';
+import {readPersistedLayoutVisibility} from './layout-visibility-persistence';
 import storage from './storage';
 import validate from 'scratch-parser';
 const isDefaultProjectId = projectId => projectId === null || typeof projectId === 'undefined' ||
@@ -139,7 +140,13 @@ const ProjectFetcherHOC = function (WrappedComponent) {
                             this.props.onRestoreProjectTitle(restoredSnapshot.metadata.title);
                         }
                         if (restoredSnapshot.metadata && restoredSnapshot.metadata.layout) {
-                            this.props.onRestoreLayoutVisibility(restoredSnapshot.metadata.layout);
+                            const persisted = readPersistedLayoutVisibility();
+                            const layout = Object.assign({}, restoredSnapshot.metadata.layout);
+                            if (persisted) {
+                                layout.isBlocksPaletteCollapsed = persisted.isBlocksPaletteCollapsed;
+                                layout.blocksPaletteFlyoutWidth = persisted.blocksPaletteFlyoutWidth;
+                            }
+                            this.props.onRestoreLayoutVisibility(layout);
                         }
                         this.props.onFetchedProjectData(restoredSnapshot.projectData, loadingState);
                         return;

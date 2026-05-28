@@ -29,13 +29,21 @@ import {
     activateTab,
     SOUNDS_TAB_INDEX
 } from '../reducers/editor-tab';
+import {getIsShowingProject} from '../reducers/project-state';
+import {
+    BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
+    clampFlyoutWidth
+} from '../reducers/layout-visibility';
+import {getEventXY} from '../lib/touch-utils';
 
 /** Category column width; flyout is separate (see toolbox.js / flyout_vertical.js). */
 const CATEGORY_MENU_WIDTH = 60;
-const PALETTE_ANIMATION_MS = 280;
-const DEFAULT_FLYOUT_WIDTH = 250;
+const PALETTE_ANIMATION_MS = 400;
+const DEFAULT_FLYOUT_WIDTH = BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT;
 
-const easeInOutQuad = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+const easeInOutCubic = t => (t < 0.5 ?
+    4 * t * t * t :
+    1 - Math.pow(-2 * t + 2, 3) / 2);
 
 const addFunctionListener = (object, property, callback) => {
     const oldFn = object[property];
@@ -91,7 +99,14 @@ class Blocks extends React.Component {
             'cancelFlyoutSlideAnimation',
             'parseFlyoutTranslate',
             'setFlyoutSlideTransform',
-            'animateFlyoutSlide'
+            'animateFlyoutSlide',
+            'applyPaletteFlyoutWidth',
+            'handlePaletteResizePointerDown',
+            'setFlyoutScrollbarVisible',
+            'syncPaletteChromeFlyoutWidth',
+            'ensureFlyoutBlocksLayoutAtFullWidth',
+            'ensureFlyoutBlocksLayoutThenCollapse',
+            'repairFlyoutBlockLayout'
         ]);
         this._paletteCollapsed = false;
         this.ScratchBlocks.prompt = this.handlePromptStart;
@@ -101,7 +116,9 @@ class Blocks extends React.Component {
         this.state = {
             workspaceMetrics: {},
             prompt: null,
-            paletteAnimating: false
+            paletteAnimating: false,
+            paletteResizing: false,
+            paletteDragFlyoutWidth: null
         };
         this.onTargetsUpdate = debounce(this.onTargetsUpdate, 100);
         this.toolboxUpdateQueue = [];
@@ -143,7 +160,9 @@ class Blocks extends React.Component {
             this.setLocale();
         }
         if (this.props.paletteCollapsed) {
-            this.updatePaletteVisibility(true);
+            this.ensureFlyoutBlocksLayoutThenCollapse();
+        } else {
+            this.applyPaletteFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
         }
     }
     shouldComponentUpdate (nextProps, nextState) {
@@ -162,7 +181,10 @@ class Blocks extends React.Component {
             this.props.robbo_settings.is_sim_activated !== nextProps.robbo_settings.is_sim_activated ||
             this.props.robbo_settings.is_copter_sim_activated !== nextProps.robbo_settings.is_copter_sim_activated ||
             this.props.paletteCollapsed !== nextProps.paletteCollapsed ||
-            this.state.paletteAnimating !== nextState.paletteAnimating
+            this.props.blocksPaletteFlyoutWidth !== nextProps.blocksPaletteFlyoutWidth ||
+            this.state.paletteAnimating !== nextState.paletteAnimating ||
+            this.state.paletteResizing !== nextState.paletteResizing ||
+            this.state.paletteDragFlyoutWidth !== nextState.paletteDragFlyoutWidth
         );
     }
     componentDidUpdate (prevProps) {
@@ -201,9 +223,28 @@ class Blocks extends React.Component {
 
         }
 
+        if (this.props.isShowingProject && !prevProps.isShowingProject &&
+            this.props.paletteCollapsed) {
+            this.ensureFlyoutBlocksLayoutThenCollapse();
+        }
+
         if (this.props.paletteCollapsed !== prevProps.paletteCollapsed &&
             !this.state.paletteAnimating) {
-            this.updatePaletteVisibility(this.props.paletteCollapsed);
+            if (this.props.paletteCollapsed && !prevProps.paletteCollapsed) {
+                // After animated collapse _paletteCollapsed is already true; running
+                // ensureFlyoutBlocksLayoutThenCollapse would open the flyout and skip hide.
+                if (!this._paletteCollapsed) {
+                    this.ensureFlyoutBlocksLayoutThenCollapse();
+                }
+            } else {
+                this.updatePaletteVisibility(this.props.paletteCollapsed);
+            }
+        }
+
+        if (this.props.blocksPaletteFlyoutWidth !== prevProps.blocksPaletteFlyoutWidth &&
+            !this.state.paletteAnimating &&
+            !this._paletteResizing) {
+            this.applyPaletteFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
         }
 
         if (this.props.isVisible === prevProps.isVisible) {
@@ -237,6 +278,7 @@ class Blocks extends React.Component {
         clearTimeout(this.toolboxUpdateTimeout);
         clearTimeout(this._paletteAnimationTimer);
         this.cancelFlyoutSlideAnimation();
+        this._paletteResizing = false;
         const root = this.getInjectionRoot();
         if (root) {
             root.classList.remove('flyout-animating-out', 'flyout-animating-in');
@@ -295,6 +337,10 @@ class Blocks extends React.Component {
             this.workspace.toolbox_.setFlyoutScrollPos(currentCategoryPos + offset);
         } else {
             this.workspace.toolbox_.setFlyoutScrollPos(currentCategoryPos);
+        }
+
+        if (this.props.paletteCollapsed) {
+            this.repairFlyoutBlockLayout(true);
         }
 
         const queue = this.toolboxUpdateQueue;
@@ -513,9 +559,15 @@ class Blocks extends React.Component {
         const originalSetSelectedItem = toolbox.setSelectedItem.bind(toolbox);
         toolbox.setSelectedItem = (item, opt_shouldScroll) => {
             if (item && blocks._paletteCollapsed) {
-                blocks.expandPaletteThen(() => {
-                    originalSetSelectedItem(item, opt_shouldScroll);
-                });
+                // populate_ / updateToolbox call setSelectedItem(..., false) — not a user click
+                const shouldExpandPalette = opt_shouldScroll !== false;
+                if (shouldExpandPalette) {
+                    blocks.expandPaletteThen(() => {
+                        originalSetSelectedItem(item, opt_shouldScroll);
+                    });
+                    return;
+                }
+                originalSetSelectedItem(item, opt_shouldScroll);
                 return;
             }
             originalSetSelectedItem(item, opt_shouldScroll);
@@ -523,6 +575,11 @@ class Blocks extends React.Component {
 
         const originalSetSelectedCategoryById = toolbox.setSelectedCategoryById.bind(toolbox);
         toolbox.setSelectedCategoryById = id => {
+            if (blocks._paletteCollapsed && blocks.props.paletteCollapsed &&
+                !blocks.state.paletteAnimating) {
+                originalSetSelectedCategoryById(id);
+                return;
+            }
             if (blocks._paletteCollapsed) {
                 blocks.expandPaletteThen(() => {
                     originalSetSelectedCategoryById(id);
@@ -546,12 +603,11 @@ class Blocks extends React.Component {
             return;
         }
 
-        if (this.props.onTogglePalette && this.props.paletteCollapsed) {
-            this.props.onTogglePalette(false);
-        }
-
         this.setPaletteAnimating(true);
         this.runPaletteAnimation(false, () => {
+            if (this.props.onTogglePalette && this.props.paletteCollapsed) {
+                this.props.onTogglePalette(false);
+            }
             if (then) {
                 then();
             }
@@ -589,6 +645,7 @@ class Blocks extends React.Component {
             root.classList.remove('flyout-animating-out', 'flyout-animating-in');
         }
         this.setState({paletteAnimating: false});
+        this.setFlyoutScrollbarVisible(!this._paletteCollapsed);
     }
     cancelFlyoutSlideAnimation () {
         if (this._flyoutAnimationFrame) {
@@ -607,16 +664,31 @@ class Blocks extends React.Component {
         }
         return {x: CATEGORY_MENU_WIDTH, y: 0};
     }
-    setFlyoutSlideTransform (flyout, x, y, opacity) {
+    setFlyoutSlideTransform (flyout, x, y) {
         if (!flyout || !flyout.svgGroup_) {
             return;
         }
         const group = flyout.svgGroup_;
         group.style.transform = `translate(${x}px, ${y}px)`;
         group.style.webkitTransform = group.style.transform;
-        if (opacity !== undefined) {
-            group.style.opacity = String(opacity);
+    }
+    syncFlyoutSlideBackground (flyout, x, y) {
+        if (!flyout || !flyout.svgBackground_) {
+            return;
         }
+        flyout.svgBackground_.style.transform = `translate(${x}px, ${y}px)`;
+        flyout.svgBackground_.style.webkitTransform = flyout.svgBackground_.style.transform;
+    }
+    syncPaletteChromeFlyoutWidth (flyoutX) {
+        const flyout = this.getToolboxFlyout();
+        const flyoutWidth = this._savedFlyoutWidth ||
+            (flyout && flyout.getWidth()) ||
+            DEFAULT_FLYOUT_WIDTH;
+        const displayWidth = Math.max(0, Math.round(flyoutX + flyoutWidth - CATEGORY_MENU_WIDTH));
+        if (this.blocks) {
+            this.blocks.style.setProperty('--blocks-flyout-width', `${displayWidth}px`);
+        }
+        return displayWidth;
     }
     animateFlyoutSlide (flyout, fromX, toX, onComplete) {
         if (!flyout || !flyout.svgGroup_) {
@@ -639,10 +711,11 @@ class Blocks extends React.Component {
 
         const step = now => {
             const t = Math.min(1, (now - startTime) / PALETTE_ANIMATION_MS);
-            const eased = easeInOutQuad(t);
+            const eased = easeInOutCubic(t);
             const x = fromX + ((toX - fromX) * eased);
-            const opacity = 1 - (eased * 0.4);
-            this.setFlyoutSlideTransform(flyout, x, y, opacity);
+            this.setFlyoutSlideTransform(flyout, x, y);
+            this.syncFlyoutSlideBackground(flyout, x, y);
+            this.syncPaletteChromeFlyoutWidth(x);
 
             if (t < 1) {
                 this._flyoutAnimationFrame = requestAnimationFrame(step);
@@ -654,7 +727,9 @@ class Blocks extends React.Component {
             }
         };
 
-        this.setFlyoutSlideTransform(flyout, fromX, y, 1);
+        this.setFlyoutSlideTransform(flyout, fromX, y);
+        this.syncFlyoutSlideBackground(flyout, fromX, y);
+        this.syncPaletteChromeFlyoutWidth(fromX);
         this._flyoutAnimationFrame = requestAnimationFrame(step);
     }
     clearFlyoutSlideStyles (flyout) {
@@ -663,9 +738,23 @@ class Blocks extends React.Component {
         }
         flyout.svgGroup_.style.transition = '';
         flyout.svgGroup_.style.opacity = '';
+        flyout.svgGroup_.style.transform = '';
+        flyout.svgGroup_.style.webkitTransform = '';
+        if (flyout.svgBackground_) {
+            flyout.svgBackground_.style.transition = '';
+            flyout.svgBackground_.style.transform = '';
+            flyout.svgBackground_.style.webkitTransform = '';
+            flyout.svgBackground_.style.opacity = '';
+        }
     }
     setPaletteAnimating (animating) {
         this.setState({paletteAnimating: animating});
+    }
+    setFlyoutScrollbarVisible (visible) {
+        const flyout = this.getToolboxFlyout();
+        if (flyout && flyout.scrollbar_ && flyout.scrollbar_.outerSvg_) {
+            flyout.scrollbar_.outerSvg_.setAttribute('display', visible ? 'block' : 'none');
+        }
     }
     setFlyoutDomVisible (visible) {
         const flyout = this.getToolboxFlyout();
@@ -676,9 +765,6 @@ class Blocks extends React.Component {
             if (flyout.svgBackground_) {
                 flyout.svgBackground_.style.display = display;
             }
-            if (flyout.scrollbar_ && flyout.scrollbar_.outerSvg_) {
-                flyout.scrollbar_.outerSvg_.style.display = display;
-            }
         }
         if (!root) {
             return;
@@ -688,6 +774,99 @@ class Blocks extends React.Component {
         } else {
             root.classList.add('flyout-palette-collapsed');
         }
+    }
+    applyPaletteFlyoutWidth (flyoutWidth, options) {
+        const skipResizeEvent = options && options.skipResizeEvent;
+        const width = clampFlyoutWidth(flyoutWidth);
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        if (!toolbox || !flyout) {
+            return width;
+        }
+
+        this._savedFlyoutWidth = width;
+        this._savedToolboxWidth = CATEGORY_MENU_WIDTH + width;
+
+        if (this.blocks) {
+            const displayWidth = this._paletteCollapsed ? 0 : width;
+            this.blocks.style.setProperty('--blocks-flyout-width', `${displayWidth}px`);
+        }
+
+        if (!this._paletteCollapsed) {
+            flyout.DEFAULT_WIDTH = width;
+            toolbox.width = this._savedToolboxWidth;
+            toolbox.position();
+            this.ScratchBlocks.svgResize(this.workspace);
+            if (!skipResizeEvent) {
+                window.dispatchEvent(new Event('resize'));
+            }
+        }
+
+        return width;
+    }
+    handlePaletteResizePointerDown (e) {
+        if (this.props.paletteCollapsed || this.state.paletteAnimating) {
+            return;
+        }
+        e.preventDefault();
+        const handle = e.currentTarget;
+        if (handle.setPointerCapture) {
+            handle.setPointerCapture(e.pointerId);
+        }
+
+        this._paletteResizing = true;
+        this._paletteResizeStartX = getEventXY(e).x;
+        this._paletteResizeStartWidth = this._savedFlyoutWidth ||
+            clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        this.setState({
+            paletteResizing: true,
+            paletteDragFlyoutWidth: this._paletteResizeStartWidth
+        });
+
+        const bodyStyle = document.body.style;
+        const prevCursor = bodyStyle.cursor;
+        const prevUserSelect = bodyStyle.userSelect;
+        bodyStyle.cursor = 'ew-resize';
+        bodyStyle.userSelect = 'none';
+
+        const onPointerMove = ev => {
+            const {x} = getEventXY(ev);
+            const dx = x - this._paletteResizeStartX;
+            const delta = this.props.isRtl ? -dx : dx;
+            const width = this.applyPaletteFlyoutWidth(this._paletteResizeStartWidth + delta);
+            this.setState({paletteDragFlyoutWidth: width});
+        };
+
+        const onPointerUp = ev => {
+            onPointerMove(ev);
+            if (handle.releasePointerCapture) {
+                try {
+                    handle.releasePointerCapture(e.pointerId);
+                } catch (releaseError) {
+                    // Pointer may already be released.
+                }
+            }
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+            bodyStyle.cursor = prevCursor;
+            bodyStyle.userSelect = prevUserSelect;
+            this._paletteResizing = false;
+            this.setState({
+                paletteResizing: false,
+                paletteDragFlyoutWidth: null
+            });
+
+            const finalWidth = this._savedFlyoutWidth ||
+                clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+            if (this.props.onSetBlocksPaletteFlyoutWidth) {
+                this.props.onSetBlocksPaletteFlyoutWidth(finalWidth);
+            }
+        };
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
     }
     updatePaletteVisibility (collapsed) {
         const toolbox = this.workspace && this.workspace.toolbox_;
@@ -701,15 +880,13 @@ class Blocks extends React.Component {
         this._paletteCollapsed = collapsed;
 
         if (this._savedToolboxWidth === undefined) {
-            this._savedToolboxWidth = toolbox.width;
-            this._savedFlyoutWidth = flyout.getWidth();
+            const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+            this._savedFlyoutWidth = flyoutWidth;
+            this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
         }
 
         if (collapsed) {
             toolbox.width = CATEGORY_MENU_WIDTH;
-            flyout.DEFAULT_WIDTH = 0;
-            flyout.width_ = 0;
-            flyout.hide();
             flyout.setContainerVisible(false);
 
             if (!this._flyoutPositionPatched) {
@@ -720,35 +897,126 @@ class Blocks extends React.Component {
 
             this.setFlyoutDomVisible(false);
         } else {
-            toolbox.width = this._savedToolboxWidth;
-            flyout.DEFAULT_WIDTH = this._savedFlyoutWidth;
-
-            if (this._flyoutPositionPatched) {
-                flyout.position = this._originalFlyoutPosition;
-                this._flyoutPositionPatched = false;
-            }
-
-            flyout.setContainerVisible(true);
-
-            const categoryId = toolbox.getSelectedCategoryId();
-            if (categoryId) {
-                toolbox.setSelectedCategoryById(categoryId);
-            } else {
-                flyout.setVisible(true);
-            }
-
-            this.setFlyoutDomVisible(true);
+            this.restorePaletteFlyoutLayout(toolbox, flyout);
         }
 
         toolbox.position();
         this.ScratchBlocks.svgResize(this.workspace);
 
-        if (collapsed) {
-            flyout.hide();
-            flyout.setContainerVisible(false);
-            this.setFlyoutDomVisible(false);
+        window.dispatchEvent(new Event('resize'));
+    }
+    ensureFlyoutBlocksLayoutAtFullWidth () {
+        this.repairFlyoutBlockLayout(false);
+    }
+    ensureFlyoutBlocksLayoutThenCollapse () {
+        this.repairFlyoutBlockLayout(true);
+    }
+    repairFlyoutBlockLayout (rehideIfCollapsed) {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        if (!toolbox || !flyout) {
+            return;
         }
 
+        if (this._flyoutPositionPatched && this._originalFlyoutPosition) {
+            flyout.position = this._originalFlyoutPosition;
+            this._flyoutPositionPatched = false;
+        }
+
+        const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        this._savedFlyoutWidth = flyoutWidth;
+        this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+        flyout.DEFAULT_WIDTH = flyoutWidth;
+        toolbox.width = this._savedToolboxWidth;
+
+        const root = this.getInjectionRoot();
+        if (root) {
+            root.classList.remove('flyout-palette-collapsed');
+        }
+
+        this.clearFlyoutSlideStyles(flyout);
+        flyout.setContainerVisible(true);
+        flyout.setVisible(true);
+        if (flyout.svgGroup_) {
+            flyout.svgGroup_.style.display = 'block';
+        }
+        if (flyout.svgBackground_) {
+            flyout.svgBackground_.style.display = 'block';
+        }
+
+        toolbox.position();
+
+        const flyoutWorkspace = typeof flyout.getWorkspace === 'function' ?
+            flyout.getWorkspace() : null;
+        if (flyoutWorkspace && typeof flyoutWorkspace.getTopBlocks === 'function') {
+            flyoutWorkspace.getTopBlocks(false).forEach(block => {
+                if (block && block.rendered && typeof block.render === 'function') {
+                    block.render(false);
+                }
+            });
+        }
+
+        if (typeof flyout.reflow === 'function') {
+            flyout.reflow();
+        }
+        if (flyout.scrollbar_ && typeof flyout.scrollbar_.resize === 'function') {
+            flyout.scrollbar_.resize();
+        }
+        this.ScratchBlocks.svgResize(this.workspace);
+
+        if (rehideIfCollapsed && this.props.paletteCollapsed) {
+            this._paletteCollapsed = false;
+            this.updatePaletteVisibility(true);
+            if (this.blocks) {
+                this.blocks.style.setProperty('--blocks-flyout-width', '0px');
+            }
+        }
+    }
+    restorePaletteFlyoutLayout (toolbox, flyout) {
+        const restoredWidth = this._savedFlyoutWidth ||
+            clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        this._savedFlyoutWidth = restoredWidth;
+        this._savedToolboxWidth = CATEGORY_MENU_WIDTH + restoredWidth;
+        toolbox.width = this._savedToolboxWidth;
+        flyout.DEFAULT_WIDTH = restoredWidth;
+        if (this.blocks) {
+            this.blocks.style.setProperty('--blocks-flyout-width', `${restoredWidth}px`);
+        }
+
+        if (this._flyoutPositionPatched) {
+            flyout.position = this._originalFlyoutPosition;
+            this._flyoutPositionPatched = false;
+        }
+
+        flyout.setContainerVisible(true);
+        flyout.setVisible(true);
+        flyout.svgGroup_.style.display = 'block';
+        if (flyout.svgBackground_) {
+            flyout.svgBackground_.style.display = 'block';
+        }
+
+        const root = this.getInjectionRoot();
+        if (root) {
+            root.classList.remove('flyout-palette-collapsed');
+        }
+    }
+    preparePaletteForExpandAnimation (toolbox, flyout) {
+        if (this._savedToolboxWidth === undefined) {
+            const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+            this._savedFlyoutWidth = flyoutWidth;
+            this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+        }
+
+        this._paletteCollapsed = false;
+        this.restorePaletteFlyoutLayout(toolbox, flyout);
+        this.setFlyoutScrollbarVisible(false);
+        toolbox.position();
+    }
+    finalizePaletteExpand (toolbox, flyout) {
+        this.repairFlyoutBlockLayout(false);
+        if (flyout.scrollbar_ && typeof flyout.scrollbar_.resize === 'function') {
+            flyout.scrollbar_.resize();
+        }
         window.dispatchEvent(new Event('resize'));
     }
     runPaletteAnimation (collapsed, onComplete) {
@@ -756,6 +1024,13 @@ class Blocks extends React.Component {
         const flyout = this.getToolboxFlyout();
         const finish = () => {
             this.setPaletteAnimating(false);
+            const chromeWidth = this._paletteCollapsed ?
+                0 :
+                (this._savedFlyoutWidth || DEFAULT_FLYOUT_WIDTH);
+            if (this.blocks) {
+                this.blocks.style.setProperty('--blocks-flyout-width', `${chromeWidth}px`);
+            }
+            this.setFlyoutScrollbarVisible(!this._paletteCollapsed);
             if (onComplete) {
                 onComplete();
             }
@@ -767,6 +1042,8 @@ class Blocks extends React.Component {
             return;
         }
 
+        this.setFlyoutScrollbarVisible(false);
+
         toolbox.position();
         const {x: startX} = this.parseFlyoutTranslate(flyout);
         const flyoutWidth = this._savedFlyoutWidth || flyout.getWidth() || DEFAULT_FLYOUT_WIDTH;
@@ -774,6 +1051,7 @@ class Blocks extends React.Component {
         const slideOffset = isRtl ? flyoutWidth : -flyoutWidth;
 
         if (collapsed) {
+            this.syncPaletteChromeFlyoutWidth(startX);
             this.animateFlyoutSlide(flyout, startX, startX + slideOffset, () => {
                 this.clearFlyoutSlideStyles(flyout);
                 this.updatePaletteVisibility(true);
@@ -782,16 +1060,16 @@ class Blocks extends React.Component {
             return;
         }
 
-        this.updatePaletteVisibility(false);
-        toolbox.position();
+        this.preparePaletteForExpandAnimation(toolbox, flyout);
         const {x: targetX, y: targetY} = this.parseFlyoutTranslate(flyout);
         const fromX = targetX + slideOffset;
 
-        this.setFlyoutSlideTransform(flyout, fromX, targetY, 0.6);
+        this.syncPaletteChromeFlyoutWidth(fromX);
+        this.setFlyoutSlideTransform(flyout, fromX, targetY);
+        this.syncFlyoutSlideBackground(flyout, fromX, targetY);
         requestAnimationFrame(() => {
             this.animateFlyoutSlide(flyout, fromX, targetX, () => {
-                this.clearFlyoutSlideStyles(flyout);
-                flyout.position();
+                this.finalizePaletteExpand(toolbox, flyout);
                 finish();
             });
         });
@@ -802,12 +1080,12 @@ class Blocks extends React.Component {
         }
         const nextCollapsed = !this.props.paletteCollapsed;
 
-        if (this.props.onTogglePalette) {
-            this.props.onTogglePalette(nextCollapsed);
-        }
-
         this.setPaletteAnimating(true);
-        this.runPaletteAnimation(nextCollapsed);
+        this.runPaletteAnimation(nextCollapsed, () => {
+            if (this.props.onTogglePalette) {
+                this.props.onTogglePalette(nextCollapsed);
+            }
+        });
     }
     handlePromptStart (message, defaultValue, callback, optTitle, optVarType) {
         const p = {prompt: {callback, message, defaultValue}};
@@ -877,6 +1155,9 @@ class Blocks extends React.Component {
             paletteCollapsed,
             paletteToggleTitle,
             onTogglePalette,
+            blocksPaletteFlyoutWidth,
+            onSetBlocksPaletteFlyoutWidth,
+            isRightPanelHidden,
             onActivateColorPicker,
             onOpenConnectionModal,
             onOpenSoundRecorder,
@@ -895,8 +1176,13 @@ class Blocks extends React.Component {
                     onDrop={this.handleDrop}
                     paletteCollapsed={paletteCollapsed}
                     paletteAnimating={this.state.paletteAnimating}
+                    paletteFlyoutWidth={this.state.paletteDragFlyoutWidth != null ?
+                        this.state.paletteDragFlyoutWidth : blocksPaletteFlyoutWidth}
+                    paletteResizing={this.state.paletteResizing}
+                    paletteResizeDisabled={paletteCollapsed || this.state.paletteAnimating}
                     paletteToggleTitle={paletteToggleTitle}
                     onTogglePalette={this.handleTogglePalette}
+                    onPaletteResizePointerDown={this.handlePaletteResizePointerDown}
                     {...props}
                 />
                 {this.state.prompt ? (
@@ -940,8 +1226,11 @@ Blocks.propTypes = {
     isRtl: PropTypes.bool,
     isVisible: PropTypes.bool,
     paletteCollapsed: PropTypes.bool,
+    isShowingProject: PropTypes.bool,
     paletteToggleTitle: PropTypes.string,
     onTogglePalette: PropTypes.func, // (collapsed: boolean) => void
+    blocksPaletteFlyoutWidth: PropTypes.number,
+    onSetBlocksPaletteFlyoutWidth: PropTypes.func,
     locale: PropTypes.string.isRequired,
     messages: PropTypes.objectOf(PropTypes.string),
     onActivateColorPicker: PropTypes.func,
@@ -1009,11 +1298,14 @@ Blocks.defaultOptions = {
 Blocks.defaultProps = {
     isVisible: true,
     paletteCollapsed: false,
+    blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
     options: Blocks.defaultOptions
 };
 
 const mapStateToProps = state => ({
+    isShowingProject: getIsShowingProject(state.scratchGui.projectState.loadingState),
     isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
+    blocksPaletteFlyoutWidth: state.scratchGui.layoutVisibility.blocksPaletteFlyoutWidth,
     anyModalVisible: (
         Object.keys(state.scratchGui.modals).some(key => state.scratchGui.modals[key]) ||
         state.scratchGui.mode.isFullScreen

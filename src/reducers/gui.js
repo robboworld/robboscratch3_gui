@@ -25,7 +25,9 @@ import timeoutReducer, {timeoutInitialState} from './timeout';
 import toolboxReducer, {toolboxInitialState} from './toolbox';
 import vmReducer, {vmInitialState} from './vm';
 import vmStatusReducer, {vmStatusInitialState} from './vm-status';
-import layoutVisibilityReducer, {layoutVisibilityInitialState} from './layout-visibility';
+import layoutVisibilityReducer from './layout-visibility';
+import {getLayoutVisibilityInitialState} from '../lib/layout-visibility-persistence';
+import {layoutVisibilityPersistenceMiddleware} from '../lib/layout-visibility-persistence';
 import throttle from 'redux-throttle';
 
 import decks from '../lib/libraries/decks/index.jsx';
@@ -51,7 +53,11 @@ import iot_blocks,{iot_blocks_InitialState} from '../RobboGui/reducers/iot_block
 
 import thunk from 'redux-thunk';
 
-const guiMiddleware = compose(applyMiddleware(throttle(300, {leading: true, trailing: true}),thunk));
+const guiMiddleware = compose(applyMiddleware(
+    throttle(300, {leading: true, trailing: true}),
+    layoutVisibilityPersistenceMiddleware,
+    thunk
+));
 
 const guiInitialState = {
     alerts: alertsInitialState,
@@ -80,7 +86,7 @@ const guiInitialState = {
     toolbox: toolboxInitialState,
     vm: vmInitialState,
     vmStatus: vmStatusInitialState,
-    layoutVisibility: layoutVisibilityInitialState,
+    layoutVisibility: getLayoutVisibilityInitialState(),
 
     robot_sensors:robot_sensors_InitialState,
   lab_external_sensors:lab_external_sensors_InitialState,

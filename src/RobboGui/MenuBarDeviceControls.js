@@ -29,7 +29,7 @@ const messages = defineMessages({
     },
     otto: {
         id: 'gui.RobboGui.OttoPalette.otto',
-        defaultMessage: 'Otto'
+        defaultMessage: 'Dancing robot'
     },
     arduino: {
         id: 'gui.RobboGui.ArduinoPalette.arduino',

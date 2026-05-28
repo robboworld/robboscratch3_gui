@@ -155,6 +155,41 @@
     pointer-events: none !important;
 }
 
+.palette-animating :global(.blocklyFlyoutScrollbar) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.palette-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 49;
+    width: 6px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: ew-resize;
+    touch-action: none;
+}
+
+.palette-resize-handle-disabled {
+    pointer-events: none;
+    cursor: default;
+}
+
+[dir="ltr"] .palette-resize-handle {
+    left: calc(var(--blocks-category-width) + var(--blocks-flyout-width) - 3px);
+    right: auto;
+}
+
+[dir="rtl"] .palette-resize-handle {
+    right: calc(var(--blocks-category-width) + var(--blocks-flyout-width) - 3px);
+    left: auto;
+}
+
 .palette-toggle {
     position: absolute;
     top: 50%;
@@ -174,9 +209,17 @@
     box-shadow: none;
     cursor: pointer;
     transition:
-        left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-        right 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-        transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+        left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        right 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        background-color 0.2s ease;
+}
+
+/* Instant follow during flyout width drag or collapse/expand animation. */
+.palette-resizing .palette-toggle,
+.palette-animating .palette-toggle {
+    transition:
+        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
         background-color 0.2s ease;
 }
 

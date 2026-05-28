@@ -23,7 +23,9 @@ import CostumeLibrary from '../../containers/costume-library.jsx';
 import BackdropLibrary from '../../containers/backdrop-library.jsx';
 import Watermark from '../../containers/watermark.jsx';
 import {
+    BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
     setBlocksPaletteCollapsed,
+    setBlocksPaletteFlyoutWidth,
     setRightPanelHidden
 } from '../../reducers/layout-visibility';
 
@@ -213,14 +215,17 @@ const GUIComponent = props => {
         connectDropTarget, //modified_by_Yaroslav
         isOver,
         isBlocksPaletteCollapsed,
+        blocksPaletteFlyoutWidth,
         onSetBlocksPaletteCollapsed,
+        onSetBlocksPaletteFlyoutWidth,
         ...componentProps
     } = omit(props, [
         'dispatch',
         'onSensorChooseWindowDrop',
         'onColorCorrectorWindowDrop',
         'onDraggableWindowDrop',
-        'onNewDraggableWindowDrop'
+        'onNewDraggableWindowDrop',
+        'onSetRightPanelHidden'
     ]);
 
     useEffect(() => {
@@ -228,7 +233,7 @@ const GUIComponent = props => {
             window.dispatchEvent(new Event('resize'));
         });
         return () => cancelAnimationFrame(frameId);
-    }, [isRightPanelHidden, isBlocksPaletteCollapsed]);
+    }, [isRightPanelHidden, isBlocksPaletteCollapsed, blocksPaletteFlyoutWidth]);
 
     if (children) {
         return <Box {...componentProps}>{children}</Box>;
@@ -417,12 +422,14 @@ const GUIComponent = props => {
                                             canUseCloud={canUseCloud}
                                             grow={1}
                                             isVisible={blocksTabVisible}
+                                            blocksPaletteFlyoutWidth={blocksPaletteFlyoutWidth}
                                             paletteCollapsed={isBlocksPaletteCollapsed}
                                             paletteToggleTitle={intl.formatMessage(
                                                 isBlocksPaletteCollapsed ?
                                                     messages.expandBlocksPanel :
                                                     messages.collapseBlocksPanel
                                             )}
+                                            onSetBlocksPaletteFlyoutWidth={onSetBlocksPaletteFlyoutWidth}
                                             onTogglePalette={onSetBlocksPaletteCollapsed}
                                             options={{
                                                 media: `${basePath}static/blocks-media/`
@@ -477,6 +484,21 @@ const GUIComponent = props => {
                                         vm={vm}
                                     />
                                 </Box>
+                            </Box>
+                        ) : null}
+                        {isRightPanelHidden && (loading || isCreating) && !isFullScreen ? (
+                            <Box
+                                aria-hidden="true"
+                                className={styles.stageLoadMount}
+                            >
+                                <StageWrapper
+                                    isFullScreen={isFullScreen}
+                                    isRendererSupported={isRendererSupported}
+                                    isRtl={isRtl}
+                                    loading={loading}
+                                    stageSize={stageSize}
+                                    vm={vm}
+                                />
                             </Box>
                         ) : null}
                         {isRightPanelHidden && !loading && !isCreating ? (
@@ -538,7 +560,9 @@ GUIComponent.propTypes = {
     isPlayerOnly: PropTypes.bool,
     isRightPanelHidden: PropTypes.bool,
     isBlocksPaletteCollapsed: PropTypes.bool,
+    blocksPaletteFlyoutWidth: PropTypes.number,
     onSetBlocksPaletteCollapsed: PropTypes.func,
+    onSetBlocksPaletteFlyoutWidth: PropTypes.func,
     isRtl: PropTypes.bool,
     isShared: PropTypes.bool,
     loading: PropTypes.bool,
@@ -589,7 +613,9 @@ GUIComponent.defaultProps = {
     isShared: false,
     loading: false,
     isBlocksPaletteCollapsed: false,
+    blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
     onSetBlocksPaletteCollapsed: () => {},
+    onSetBlocksPaletteFlyoutWidth: () => {},
     onUpdateProjectTitle: () => {},
     showComingSoon: false,
     stageSizeMode: STAGE_SIZE_MODES.large
@@ -623,6 +649,10 @@ const mapDispatchToProps = dispatch => ({
   },
   onSetBlocksPaletteCollapsed: isCollapsed => {
     dispatch(setBlocksPaletteCollapsed(isCollapsed));
+  },
+  onSetBlocksPaletteFlyoutWidth: width => {
+    dispatch(setBlocksPaletteFlyoutWidth(width));
+    window.dispatchEvent(new Event('resize'));
   }
 });
 
@@ -630,7 +660,8 @@ const mapStateToProps = state => ({
     // This is the button's mode, as opposed to the actual current state
     stageSizeMode: state.scratchGui.stageSize.stageSize,
     isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
-    isBlocksPaletteCollapsed: state.scratchGui.layoutVisibility.isBlocksPaletteCollapsed
+    isBlocksPaletteCollapsed: state.scratchGui.layoutVisibility.isBlocksPaletteCollapsed,
+    blocksPaletteFlyoutWidth: state.scratchGui.layoutVisibility.blocksPaletteFlyoutWidth
 });
 
 // export default injectIntl(connect(

@@ -13,10 +13,10 @@
         "id": "otto-self-test",
         "sb3": "otto_selftest .sb3",
         "preview": "Otto.jpeg",
-        "title": "Otto self test",
-        "titleRu": "Самотест Отто",
-        "description": "Give Otto a full check-up: test motors, movements, and reactions step by step before your next creative challenge.",
-        "descriptionRu": "Проведите полный чек-ап Отто: пошагово проверьте моторы, движения и реакции робота перед новым творческим заданием.",
+        "title": "Dancing robot self test",
+        "titleRu": "Самотест танцующего робота",
+        "description": "Give the dancing robot a full check-up: test motors, movements, and reactions step by step before your next creative challenge.",
+        "descriptionRu": "Проведите полный чек-ап танцующего робота: пошагово проверьте моторы, движения и реакции робота перед новым творческим заданием.",
         "tags": ["robbo"]
     }
 ]

@@ -31,7 +31,7 @@ const messages = defineMessages({
     device_otto: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_otto',
         description: ' ',
-        defaultMessage: 'Otto'
+        defaultMessage: 'Dancing robot'
     },
     device_arduino: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_arduino',

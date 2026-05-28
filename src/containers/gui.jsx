@@ -112,7 +112,8 @@ class GUI extends React.Component {
         }
         if (this.props.isShowingProject &&
             (this.props.isRightPanelHidden !== prevProps.isRightPanelHidden ||
-                this.props.isBlocksPaletteCollapsed !== prevProps.isBlocksPaletteCollapsed)) {
+                this.props.isBlocksPaletteCollapsed !== prevProps.isBlocksPaletteCollapsed ||
+                this.props.blocksPaletteFlyoutWidth !== prevProps.blocksPaletteFlyoutWidth)) {
             this.scheduleDebouncedAutoSave();
         }
         if (this.props.isShowingProject && !prevProps.isShowingProject) {
@@ -178,7 +179,8 @@ class GUI extends React.Component {
                     title: this.props.projectTitle,
                     layout: {
                         isRightPanelHidden: this.props.isRightPanelHidden,
-                        isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed
+                        isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed,
+                        blocksPaletteFlyoutWidth: this.props.blocksPaletteFlyoutWidth
                     }
                 }
             }))
@@ -186,7 +188,8 @@ class GUI extends React.Component {
                 this.lastAutoSavedChangeToken = savedUpToToken;
                 this.lastAutoSavedLayout = {
                     isRightPanelHidden: this.props.isRightPanelHidden,
-                    isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed
+                    isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed,
+                    blocksPaletteFlyoutWidth: this.props.blocksPaletteFlyoutWidth
                 };
                 return true;
             })
@@ -208,7 +211,8 @@ class GUI extends React.Component {
             return true;
         }
         return saved.isRightPanelHidden !== this.props.isRightPanelHidden ||
-            saved.isBlocksPaletteCollapsed !== this.props.isBlocksPaletteCollapsed;
+            saved.isBlocksPaletteCollapsed !== this.props.isBlocksPaletteCollapsed ||
+            saved.blocksPaletteFlyoutWidth !== this.props.blocksPaletteFlyoutWidth;
     }
     startProjectAutosaving () {
         // Session snapshot is driven by PROJECT_CHANGED + debounce (see handleVmProjectChanged).
@@ -294,6 +298,7 @@ GUI.propTypes = {
     isShowingProject: PropTypes.bool,
     isRightPanelHidden: PropTypes.bool,
     isBlocksPaletteCollapsed: PropTypes.bool,
+    blocksPaletteFlyoutWidth: PropTypes.number,
     loadingStateVisible: PropTypes.bool,
     onProjectLoaded: PropTypes.func,
     onSeeCommunity: PropTypes.func,
@@ -335,6 +340,7 @@ const mapStateToProps = state => {
         isPlayerOnly: state.scratchGui.mode.isPlayerOnly,
         isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
         isBlocksPaletteCollapsed: state.scratchGui.layoutVisibility.isBlocksPaletteCollapsed,
+        blocksPaletteFlyoutWidth: state.scratchGui.layoutVisibility.blocksPaletteFlyoutWidth,
         isRtl: state.locales.isRtl,
         projectChanged: state.scratchGui.projectChanged,
         isShowingProject: getIsShowingProject(loadingState),

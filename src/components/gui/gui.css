@@ -46,7 +46,7 @@
 
 .tab-list {
     height: $stage-menu-height;
-    width: 250px; /* Match width of the toolbox */
+    width: 250px; /* Fixed: not tied to resizable blocks flyout */
     display: flex;
     align-items: flex-end;
     flex-shrink: 0;
@@ -257,6 +257,21 @@
     Stage for fullscreen when the right panel is collapsed.
     position:fixed on the stage overlay is viewport-relative; this wrapper must not take flex width.
 */
+/*
+    Hidden stage mount while the right panel is collapsed and a project is loading.
+    Scratch VM needs a renderer (created in Stage) before loadProject can finish.
+*/
+.stage-load-mount {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    flex: 0 0 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
 .stage-fullscreen-mount {
     position: absolute;
     width: 0;
