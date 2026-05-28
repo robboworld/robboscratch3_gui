@@ -155,6 +155,25 @@
     pointer-events: none !important;
 }
 
+/* Invisible flyout relayout while palette stays collapsed (no flash on reload). */
+.blocks :global(.injectionDiv.flyout-palette-repairing) {
+    overflow: hidden;
+}
+
+.blocks :global(.injectionDiv.flyout-palette-repairing) :global(.blocklyFlyout),
+.blocks :global(.injectionDiv.flyout-palette-repairing) :global(.blocklyFlyoutBackground) {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.blocks :global(.injectionDiv.flyout-palette-repairing) :global(.blocklyFlyoutScrollbar) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
 .palette-animating :global(.blocklyFlyoutScrollbar) {
     display: none !important;
     visibility: hidden !important;
@@ -202,11 +221,14 @@
     margin: 0;
     padding: 0;
     appearance: none;
+    -webkit-appearance: none;
     border: none;
     border-radius: 0;
     background: var(--blocks-flyout-bg);
     color: $motion-primary;
     box-shadow: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
     cursor: pointer;
     transition:
         left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
@@ -282,6 +304,32 @@
     border-right-color: var(--blocks-toolbox-bg);
 }
 
+[dir="ltr"] .palette-toggle:focus,
+[dir="ltr"] .palette-toggle:focus-visible,
+[dir="ltr"] .palette-toggle:active {
+    border-left: 2px solid var(--blocks-flyout-bg);
+    border-right: 1px solid $ui-black-transparent;
+}
+
+[dir="rtl"] .palette-toggle:focus,
+[dir="rtl"] .palette-toggle:focus-visible,
+[dir="rtl"] .palette-toggle:active {
+    border-right: 2px solid var(--blocks-flyout-bg);
+    border-left: 1px solid $ui-black-transparent;
+}
+
+[dir="ltr"] .palette-toggle-collapsed:focus,
+[dir="ltr"] .palette-toggle-collapsed:focus-visible,
+[dir="ltr"] .palette-toggle-collapsed:active {
+    border-left-color: var(--blocks-toolbox-bg);
+}
+
+[dir="rtl"] .palette-toggle-collapsed:focus,
+[dir="rtl"] .palette-toggle-collapsed:focus-visible,
+[dir="rtl"] .palette-toggle-collapsed:active {
+    border-right-color: var(--blocks-toolbox-bg);
+}
+
 .palette-toggle:hover {
     background-color: #e9eef2;
 }
@@ -291,9 +339,16 @@
     opacity: 0.85;
 }
 
-.palette-toggle:focus-visible {
-    outline: 2px solid $motion-primary;
-    outline-offset: 2px;
+.palette-toggle::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+}
+
+.palette-toggle:focus,
+.palette-toggle:focus-visible,
+.palette-toggle:active {
+    outline: none;
+    box-shadow: none;
 }
 
 .palette-toggle-icon {

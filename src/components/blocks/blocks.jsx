@@ -47,6 +47,7 @@ const BlocksComponent = props => {
                     })}
                     aria-expanded={!paletteCollapsed}
                     title={paletteToggleTitle}
+                    onMouseDown={event => event.preventDefault()}
                     onClick={onTogglePalette}
                 >
                     <span

@@ -106,8 +106,13 @@ class Blocks extends React.Component {
             'syncPaletteChromeFlyoutWidth',
             'ensureFlyoutBlocksLayoutAtFullWidth',
             'ensureFlyoutBlocksLayoutThenCollapse',
-            'repairFlyoutBlockLayout'
+            'repairFlyoutBlockLayout',
+            'rerenderFlyoutBlocksAtFullWidth',
+            'scheduleFlyoutLayoutRepair',
+            'beginHiddenFlyoutRepair',
+            'endHiddenFlyoutRepair'
         ]);
+        this._flyoutLayoutRepairFrame = null;
         this._paletteCollapsed = false;
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -135,6 +140,31 @@ class Blocks extends React.Component {
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
         this.installToolboxPaletteInterceptor();
+
+        if (this.props.paletteCollapsed) {
+            const toolbox = this.workspace.toolbox_;
+            const flyout = this.getToolboxFlyout();
+            const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+            this._savedFlyoutWidth = flyoutWidth;
+            this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+            this._paletteCollapsed = true;
+            if (toolbox) {
+                toolbox.width = CATEGORY_MENU_WIDTH;
+            }
+            if (flyout) {
+                flyout.DEFAULT_WIDTH = flyoutWidth;
+                flyout.setContainerVisible(false);
+                if (!this._flyoutPositionPatched) {
+                    this._originalFlyoutPosition = flyout.position.bind(flyout);
+                    flyout.position = () => {};
+                    this._flyoutPositionPatched = true;
+                }
+            }
+            this.setFlyoutDomVisible(false);
+            if (this.blocks) {
+                this.blocks.style.setProperty('--blocks-flyout-width', '0px');
+            }
+        }
 
         // Store the xml of the toolbox that is actually rendered.
         // This is used in componentDidUpdate instead of prevProps, because
@@ -252,6 +282,9 @@ class Blocks extends React.Component {
                 this.props.isRightPanelHidden !== prevProps.isRightPanelHidden) {
                 // force workspace to redraw for the new stage size / right panel width
                 window.dispatchEvent(new Event('resize'));
+                if (this.props.paletteCollapsed) {
+                    this.scheduleFlyoutLayoutRepair();
+                }
             }
             return;
         }
@@ -267,7 +300,11 @@ class Blocks extends React.Component {
                 this.props.vm.refreshWorkspace();
             }
 
-            window.dispatchEvent(new Event('resize'));
+            if (this.props.paletteCollapsed) {
+                this.scheduleFlyoutLayoutRepair();
+            } else {
+                window.dispatchEvent(new Event('resize'));
+            }
         } else {
             this.workspace.setVisible(false);
         }
@@ -277,6 +314,10 @@ class Blocks extends React.Component {
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
         clearTimeout(this._paletteAnimationTimer);
+        if (this._flyoutLayoutRepairFrame) {
+            cancelAnimationFrame(this._flyoutLayoutRepairFrame);
+            this._flyoutLayoutRepairFrame = null;
+        }
         this.cancelFlyoutSlideAnimation();
         this._paletteResizing = false;
         const root = this.getInjectionRoot();
@@ -775,6 +816,24 @@ class Blocks extends React.Component {
             root.classList.add('flyout-palette-collapsed');
         }
     }
+    beginHiddenFlyoutRepair (root, flyout) {
+        if (root) {
+            root.classList.add('flyout-palette-repairing');
+            root.classList.remove('flyout-palette-collapsed');
+        }
+        if (flyout && flyout.svgGroup_) {
+            flyout.svgGroup_.style.display = 'block';
+        }
+        if (flyout && flyout.svgBackground_) {
+            flyout.svgBackground_.style.display = 'block';
+        }
+        this.setFlyoutScrollbarVisible(false);
+    }
+    endHiddenFlyoutRepair (root) {
+        if (root) {
+            root.classList.remove('flyout-palette-repairing');
+        }
+    }
     applyPaletteFlyoutWidth (flyoutWidth, options) {
         const skipResizeEvent = options && options.skipResizeEvent;
         const width = clampFlyoutWidth(flyoutWidth);
@@ -911,6 +970,35 @@ class Blocks extends React.Component {
     ensureFlyoutBlocksLayoutThenCollapse () {
         this.repairFlyoutBlockLayout(true);
     }
+    scheduleFlyoutLayoutRepair () {
+        if (this._flyoutLayoutRepairFrame) {
+            cancelAnimationFrame(this._flyoutLayoutRepairFrame);
+        }
+        this._flyoutLayoutRepairFrame = requestAnimationFrame(() => {
+            this._flyoutLayoutRepairFrame = null;
+            if (this.props.paletteCollapsed) {
+                this.ensureFlyoutBlocksLayoutThenCollapse();
+            } else {
+                this.ensureFlyoutBlocksLayoutAtFullWidth();
+            }
+        });
+    }
+    rerenderFlyoutBlocksAtFullWidth (flyoutWorkspace) {
+        if (!flyoutWorkspace || typeof flyoutWorkspace.getTopBlocks !== 'function') {
+            return;
+        }
+        const Field = this.ScratchBlocks.Field;
+        if (Field) {
+            Field.cacheWidths_ = null;
+            Field.cacheReference_ = 0;
+        }
+        flyoutWorkspace.getTopBlocks(false).forEach(block => {
+            if (block && block.rendered && typeof block.render === 'function') {
+                block.renderingMetrics_ = null;
+                block.render(true);
+            }
+        });
+    }
     repairFlyoutBlockLayout (rehideIfCollapsed) {
         const toolbox = this.workspace && this.workspace.toolbox_;
         const flyout = this.getToolboxFlyout();
@@ -918,59 +1006,79 @@ class Blocks extends React.Component {
             return;
         }
 
+        const hiddenRepair = rehideIfCollapsed && this.props.paletteCollapsed;
+        const root = this.getInjectionRoot();
+
         if (this._flyoutPositionPatched && this._originalFlyoutPosition) {
             flyout.position = this._originalFlyoutPosition;
-            this._flyoutPositionPatched = false;
+            if (!hiddenRepair) {
+                this._flyoutPositionPatched = false;
+            }
         }
 
         const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
         this._savedFlyoutWidth = flyoutWidth;
         this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
         flyout.DEFAULT_WIDTH = flyoutWidth;
-        toolbox.width = this._savedToolboxWidth;
 
-        const root = this.getInjectionRoot();
-        if (root) {
-            root.classList.remove('flyout-palette-collapsed');
+        if (hiddenRepair) {
+            toolbox.width = CATEGORY_MENU_WIDTH;
+        } else {
+            toolbox.width = this._savedToolboxWidth;
+            if (root) {
+                root.classList.remove('flyout-palette-collapsed');
+            }
         }
 
         this.clearFlyoutSlideStyles(flyout);
         flyout.setContainerVisible(true);
         flyout.setVisible(true);
-        if (flyout.svgGroup_) {
-            flyout.svgGroup_.style.display = 'block';
-        }
-        if (flyout.svgBackground_) {
-            flyout.svgBackground_.style.display = 'block';
+
+        if (hiddenRepair) {
+            this.beginHiddenFlyoutRepair(root, flyout);
+        } else {
+            if (flyout.svgGroup_) {
+                flyout.svgGroup_.style.display = 'block';
+            }
+            if (flyout.svgBackground_) {
+                flyout.svgBackground_.style.display = 'block';
+            }
+            this.setFlyoutScrollbarVisible(true);
         }
 
         toolbox.position();
 
         const flyoutWorkspace = typeof flyout.getWorkspace === 'function' ?
             flyout.getWorkspace() : null;
-        if (flyoutWorkspace && typeof flyoutWorkspace.getTopBlocks === 'function') {
-            flyoutWorkspace.getTopBlocks(false).forEach(block => {
-                if (block && block.rendered && typeof block.render === 'function') {
-                    block.render(false);
-                }
-            });
-        }
 
-        if (typeof flyout.reflow === 'function') {
-            flyout.reflow();
-        }
-        if (flyout.scrollbar_ && typeof flyout.scrollbar_.resize === 'function') {
-            flyout.scrollbar_.resize();
-        }
-        this.ScratchBlocks.svgResize(this.workspace);
-
-        if (rehideIfCollapsed && this.props.paletteCollapsed) {
-            this._paletteCollapsed = false;
-            this.updatePaletteVisibility(true);
-            if (this.blocks) {
-                this.blocks.style.setProperty('--blocks-flyout-width', '0px');
+        const finishBlockLayout = () => {
+            this.rerenderFlyoutBlocksAtFullWidth(flyoutWorkspace);
+            if (typeof flyout.reflow === 'function') {
+                flyout.reflow();
             }
-        }
+            if (flyout.scrollbar_ && typeof flyout.scrollbar_.resize === 'function') {
+                flyout.scrollbar_.resize();
+            }
+            this.ScratchBlocks.svgResize(this.workspace);
+
+            if (hiddenRepair) {
+                this.endHiddenFlyoutRepair(root);
+                if (this._flyoutPositionPatched && this._originalFlyoutPosition) {
+                    flyout.position = () => {};
+                }
+                this._paletteCollapsed = false;
+                this.updatePaletteVisibility(true);
+                if (this.blocks) {
+                    this.blocks.style.setProperty('--blocks-flyout-width', '0px');
+                }
+            }
+        };
+
+        // Dropdown fields cache text widths while the flyout may be display:none or
+        // at category-only toolbox width; re-measure after the flyout is in DOM (opacity 0).
+        requestAnimationFrame(() => {
+            requestAnimationFrame(finishBlockLayout);
+        });
     }
     restorePaletteFlyoutLayout (toolbox, flyout) {
         const restoredWidth = this._savedFlyoutWidth ||
