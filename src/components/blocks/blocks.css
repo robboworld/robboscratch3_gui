@@ -9,6 +9,10 @@
     */
     --blocks-category-width: 60px;
     --blocks-flyout-width: 250px;
+    --blocks-palette-toggle-width: 1.25rem;
+    /* Blockly.Colours toolbox / flyout */
+    --blocks-toolbox-bg: #ffffff;
+    --blocks-flyout-bg: #f9f9f9;
 
     height: 100%;
     position: relative;
@@ -158,15 +162,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.25rem;
+    width: var(--blocks-palette-toggle-width);
     height: 3rem;
     margin: 0;
     padding: 0;
-    border: 1px solid $ui-black-transparent;
-    border-radius: 0 $form-radius $form-radius 0;
-    background: $ui-white;
+    appearance: none;
+    border: none;
+    border-radius: 0;
+    background: var(--blocks-flyout-bg);
     color: $motion-primary;
-    box-shadow: 0 1px 4px $ui-black-transparent;
+    box-shadow: none;
     cursor: pointer;
     transition:
         left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
@@ -175,21 +180,67 @@
         background-color 0.2s ease;
 }
 
+.palette-toggle::before,
+.palette-toggle::after {
+    content: '';
+    position: absolute;
+    height: 1px;
+    background-color: $ui-black-transparent;
+    pointer-events: none;
+}
+
+.palette-toggle::before {
+    top: 0;
+}
+
+.palette-toggle::after {
+    bottom: 0;
+}
+
+[dir="ltr"] .palette-toggle::before,
+[dir="ltr"] .palette-toggle::after {
+    left: 0;
+    right: 0;
+}
+
+[dir="rtl"] .palette-toggle::before,
+[dir="rtl"] .palette-toggle::after {
+    left: 0;
+    right: 0;
+}
+
 [dir="ltr"] .palette-toggle {
     left: calc(var(--blocks-category-width) + var(--blocks-flyout-width));
     right: auto;
     transform: translate(0, -50%);
+    border-left: 2px solid var(--blocks-flyout-bg);
+    border-right: 1px solid $ui-black-transparent;
+    border-radius: 0 $form-radius $form-radius 0;
 }
 
 [dir="rtl"] .palette-toggle {
     right: calc(var(--blocks-category-width) + var(--blocks-flyout-width));
     left: auto;
+    transform: translate(0, -50%);
+    border-right: 2px solid var(--blocks-flyout-bg);
+    border-left: 1px solid $ui-black-transparent;
     border-radius: $form-radius 0 0 $form-radius;
-    transform: translate(100%, -50%);
+}
+
+.palette-toggle-collapsed {
+    background: var(--blocks-toolbox-bg);
+}
+
+[dir="ltr"] .palette-toggle-collapsed {
+    border-left-color: var(--blocks-toolbox-bg);
+}
+
+[dir="rtl"] .palette-toggle-collapsed {
+    border-right-color: var(--blocks-toolbox-bg);
 }
 
 .palette-toggle:hover {
-    background-color: $ui-primary;
+    background-color: #e9eef2;
 }
 
 .palette-toggle:disabled {
