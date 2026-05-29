@@ -41,6 +41,41 @@ class MenuBarDevicePreview extends Component {
         }
     }
 
+    componentWillUnmount () {
+        const {statusApi, deviceType} = this.props;
+        if (!statusApi) return;
+
+        switch (deviceType) {
+        case 'robot':
+            if (typeof statusApi.unregisterRobotStatusChangeCallback === 'function') {
+                statusApi.unregisterRobotStatusChangeCallback(this.handleStatusChange);
+            }
+            break;
+        case 'lab':
+            if (typeof statusApi.unregisterLabStatusChangeCallback === 'function') {
+                statusApi.unregisterLabStatusChangeCallback(this.handleStatusChange);
+            }
+            break;
+        case 'quadcopter':
+            if (typeof statusApi.unregisterQuadcopterStatusChangeCallback === 'function') {
+                statusApi.unregisterQuadcopterStatusChangeCallback(this.handleStatusChange);
+            }
+            break;
+        case 'otto':
+            if (typeof statusApi.unregisterOttoStatusChangeCallback === 'function') {
+                statusApi.unregisterOttoStatusChangeCallback(this.handleStatusChange);
+            }
+            break;
+        case 'arduino':
+            if (typeof statusApi.unregisterArduinoStatusChangeCallback === 'function') {
+                statusApi.unregisterArduinoStatusChangeCallback(this.handleStatusChange);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
     handleStatusChange (state) {
         const connected = this.props.deviceType === 'quadcopter' ?
             state === 'connected' :

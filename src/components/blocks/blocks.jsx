@@ -7,6 +7,7 @@ const BlocksComponent = props => {
     const {
         containerRef,
         dragOver,
+        layoutPending,
         paletteCollapsed,
         paletteAnimating,
         paletteFlyoutWidth,
@@ -21,6 +22,7 @@ const BlocksComponent = props => {
         <Box
             className={classNames(styles.blocks, {
                 [styles.dragOver]: dragOver,
+                [styles.layoutPending]: layoutPending,
                 [styles.paletteCollapsed]: paletteCollapsed,
                 [styles.paletteAnimating]: paletteAnimating,
                 [styles.paletteResizing]: paletteResizing
@@ -62,6 +64,7 @@ const BlocksComponent = props => {
 BlocksComponent.propTypes = {
     containerRef: PropTypes.func,
     dragOver: PropTypes.bool,
+    layoutPending: PropTypes.bool,
     paletteCollapsed: PropTypes.bool,
     paletteAnimating: PropTypes.bool,
     paletteFlyoutWidth: PropTypes.number,

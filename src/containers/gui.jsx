@@ -267,13 +267,14 @@ class GUI extends React.Component {
             children,
             fetchingProject,
             isLoading,
+            isBlocksWorkspaceLayoutPending,
             loadingStateVisible,
             ...componentProps
         } = this.props;
         return (
             <React.Fragment>
                 <GUIComponent
-                    loading={fetchingProject || isLoading || loadingStateVisible}
+                    loading={fetchingProject || isLoading || loadingStateVisible || isBlocksWorkspaceLayoutPending}
                     {...componentProps}
                 >
                     {children}
@@ -294,6 +295,7 @@ GUI.propTypes = {
     intl: intlShape,
     isError: PropTypes.bool,
     isLoading: PropTypes.bool,
+    isBlocksWorkspaceLayoutPending: PropTypes.bool,
     isScratchDesktop: PropTypes.bool,
     isShowingProject: PropTypes.bool,
     isRightPanelHidden: PropTypes.bool,
@@ -341,6 +343,7 @@ const mapStateToProps = state => {
         isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
         isBlocksPaletteCollapsed: state.scratchGui.layoutVisibility.isBlocksPaletteCollapsed,
         blocksPaletteFlyoutWidth: state.scratchGui.layoutVisibility.blocksPaletteFlyoutWidth,
+        isBlocksWorkspaceLayoutPending: state.scratchGui.layoutVisibility.isBlocksWorkspaceLayoutPending,
         isRtl: state.locales.isRtl,
         projectChanged: state.scratchGui.projectChanged,
         isShowingProject: getIsShowingProject(loadingState),

@@ -234,7 +234,7 @@ const GUIComponent = props => {
             window.dispatchEvent(new Event('resize'));
         });
         return () => cancelAnimationFrame(frameId);
-    }, [isRightPanelHidden, isBlocksPaletteCollapsed, blocksPaletteFlyoutWidth]);
+    }, [isRightPanelHidden]);
 
     if (children) {
         return <Box {...componentProps}>{children}</Box>;
@@ -660,7 +660,6 @@ const mapDispatchToProps = dispatch => ({
   },
   onSetBlocksPaletteFlyoutWidth: width => {
     dispatch(setBlocksPaletteFlyoutWidth(width));
-    window.dispatchEvent(new Event('resize'));
   }
 });
 

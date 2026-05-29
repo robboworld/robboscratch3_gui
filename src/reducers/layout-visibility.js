@@ -1,6 +1,7 @@
 const SET_RIGHT_PANEL_HIDDEN = 'scratch-gui/layout-visibility/SET_RIGHT_PANEL_HIDDEN';
 const SET_BLOCKS_PALETTE_COLLAPSED = 'scratch-gui/layout-visibility/SET_BLOCKS_PALETTE_COLLAPSED';
 const SET_BLOCKS_PALETTE_FLYOUT_WIDTH = 'scratch-gui/layout-visibility/SET_BLOCKS_PALETTE_FLYOUT_WIDTH';
+const SET_BLOCKS_WORKSPACE_LAYOUT_PENDING = 'scratch-gui/layout-visibility/SET_BLOCKS_WORKSPACE_LAYOUT_PENDING';
 const HYDRATE_LAYOUT_VISIBILITY = 'scratch-gui/layout-visibility/HYDRATE_LAYOUT_VISIBILITY';
 
 const BLOCKS_PALETTE_FLYOUT_WIDTH_MIN = 180;
@@ -10,7 +11,8 @@ const BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT = 250;
 const initialState = {
     isRightPanelHidden: false,
     isBlocksPaletteCollapsed: false,
-    blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT
+    blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
+    isBlocksWorkspaceLayoutPending: false
 };
 
 const normalizeBooleanField = (value, fallback) => (
@@ -42,6 +44,10 @@ const reducer = function (state, action) {
     case SET_BLOCKS_PALETTE_FLYOUT_WIDTH:
         return Object.assign({}, state, {
             blocksPaletteFlyoutWidth: clampFlyoutWidth(action.blocksPaletteFlyoutWidth)
+        });
+    case SET_BLOCKS_WORKSPACE_LAYOUT_PENDING:
+        return Object.assign({}, state, {
+            isBlocksWorkspaceLayoutPending: action.isBlocksWorkspaceLayoutPending
         });
     case HYDRATE_LAYOUT_VISIBILITY: {
         const layout = action.layout || {};
@@ -87,6 +93,13 @@ const setBlocksPaletteFlyoutWidth = function (blocksPaletteFlyoutWidth) {
     };
 };
 
+const setBlocksWorkspaceLayoutPending = function (isBlocksWorkspaceLayoutPending) {
+    return {
+        type: SET_BLOCKS_WORKSPACE_LAYOUT_PENDING,
+        isBlocksWorkspaceLayoutPending: isBlocksWorkspaceLayoutPending
+    };
+};
+
 const hydrateLayoutVisibility = function (layout) {
     return {
         type: HYDRATE_LAYOUT_VISIBILITY,
@@ -100,6 +113,7 @@ export {
     setRightPanelHidden,
     setBlocksPaletteCollapsed,
     setBlocksPaletteFlyoutWidth,
+    setBlocksWorkspaceLayoutPending,
     hydrateLayoutVisibility,
     BLOCKS_PALETTE_FLYOUT_WIDTH_MIN,
     BLOCKS_PALETTE_FLYOUT_WIDTH_MAX,

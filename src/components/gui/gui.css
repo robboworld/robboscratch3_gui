@@ -31,6 +31,7 @@
         Stop scrollbar popping in and out from scratch-blocks border issue
         https://github.com/LLK/scratch-gui/issues/318
     */
+    overflow-x: hidden;
     overflow-y: hidden;
 }
 
@@ -38,6 +39,8 @@
     flex-basis: 600px;
     flex-grow: 1;
     flex-shrink: 0;
+    min-width: 0;
+    overflow: hidden;
     position: relative;
 
     display: flex;
@@ -196,23 +199,31 @@
     */
     display: flex;
     flex-direction: column;
+    /* Keep stage column width stable when the blocks palette toggles or resizes. */
+    flex-basis: 0;
+    flex-grow: 0;
+    flex-shrink: 0;
     /* pad entire wrapper to the left and right; allow children to fill width */
     padding-left: $space;
     padding-right: $space;
 }
 
 .stage-and-target-wrapper.large {
-    /* Fix the max width to max large stage size (defined in layout_constants.js) + gutter size */
+    /* Fixed width: max large stage size (layout_constants.js) + horizontal gutter */
+    width: calc(480px + calc($space * 2));
+    min-width: calc(480px + calc($space * 2));
     max-width: calc(480px + calc($space * 2));
 }
 
 .stage-and-target-wrapper.large-constrained {
-    /* Fix the max width to max largeConstrained stage size (defined in layout_constants.js) + gutter size */
+    width: calc(408px + calc($space * 2));
+    min-width: calc(408px + calc($space * 2));
     max-width: calc(408px + calc($space * 2));
 }
 
 .stage-and-target-wrapper.small {
-    /* Fix the max width to max small stage size (defined in layout_constants.js) + gutter size */
+    width: calc(240px + calc($space * 2));
+    min-width: calc(240px + calc($space * 2));
     max-width: calc(240px + calc($space * 2));
 }
 

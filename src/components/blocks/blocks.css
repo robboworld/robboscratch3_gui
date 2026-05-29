@@ -22,6 +22,10 @@
     --blocks-flyout-width: 0px;
 }
 
+.layout-pending :global(.injectionDiv) {
+    visibility: hidden;
+}
+
 .drag-over:after {
     content: '';
     position: absolute;
