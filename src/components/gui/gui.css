@@ -223,7 +223,12 @@
 .stage-controls-overlay {
     position: absolute;
     top: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    max-width: min(100%, 24rem);
     pointer-events: none;
+    z-index: $z-index-stage-header;
 }
 
 [dir="ltr"] .stage-controls-overlay {
@@ -235,6 +240,15 @@
 }
 
 .stage-controls-overlay > * {
+    pointer-events: auto;
+}
+
+.collapsed-panel-monitors {
+    padding-top: $space;
+    pointer-events: none;
+}
+
+.collapsed-panel-monitors > * {
     pointer-events: auto;
 }
 

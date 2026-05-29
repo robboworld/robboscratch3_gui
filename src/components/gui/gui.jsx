@@ -16,6 +16,7 @@ import TargetPane from '../../containers/target-pane.jsx';
 import SoundTab from '../../containers/sound-tab.jsx';
 import StageWrapper from '../../containers/stage-wrapper.jsx';
 import StageHeader from '../../containers/stage-header.jsx';
+import MonitorList from '../../containers/monitor-list.jsx';
 import Loader from '../loader/loader.jsx';
 import Box from '../box/box.jsx';
 import MenuBar from '../menu-bar/menu-bar.jsx';
@@ -42,7 +43,7 @@ import ConnectionModal from '../../containers/connection-modal.jsx';
 import TelemetryModal from '../telemetry-modal/telemetry-modal.jsx';
 
 import layout, {STAGE_SIZE_MODES} from '../../lib/layout-constants';
-import {resolveStageSize} from '../../lib/screen-utils';
+import {getStageDimensions, resolveStageSize} from '../../lib/screen-utils';
 
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
@@ -501,9 +502,16 @@ const GUIComponent = props => {
                                 />
                             </Box>
                         ) : null}
-                        {isRightPanelHidden && !loading && !isCreating ? (
+                        {isRightPanelHidden && !loading && !isCreating && !isFullScreen ? (
                             <Box className={styles.stageControlsOverlay}>
                                 <StageHeader vm={vm} />
+                                <Box className={styles.collapsedPanelMonitors}>
+                                    <MonitorList
+                                        draggable={false}
+                                        layout="corner"
+                                        stageSize={getStageDimensions(stageSize, false)}
+                                    />
+                                </Box>
                             </Box>
                         ) : null}
                         {isRightPanelHidden && isFullScreen ? (

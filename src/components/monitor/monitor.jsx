@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
+import classNames from 'classnames';
 import Draggable from 'react-draggable';
 import {FormattedMessage} from 'react-intl';
 import {ContextMenuTrigger} from 'react-contextmenu';
@@ -44,7 +45,9 @@ const MonitorComponent = props => (
             onStop={props.onDragEnd}
         >
             <Box
-                className={styles.monitorContainer}
+                className={classNames(styles.monitorContainer, {
+                    [styles.monitorContainerCorner]: props.layout === 'corner'
+                })}
                 componentRef={props.componentRef}
                 onDoubleClick={props.mode === 'list' || !props.draggable ? null : props.onNextMode}
             >
@@ -114,6 +117,7 @@ MonitorComponent.propTypes = {
     category: PropTypes.oneOf(Object.keys(categories)),
     componentRef: PropTypes.func.isRequired,
     draggable: PropTypes.bool.isRequired,
+    layout: PropTypes.oneOf(['stage', 'corner']),
     label: PropTypes.string.isRequired,
     mode: PropTypes.oneOf(monitorModes),
     onDragEnd: PropTypes.func.isRequired,

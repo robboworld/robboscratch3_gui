@@ -1,3 +1,5 @@
+@import "../../css/units.css";
+
 .monitor-list {
     /* Width/height are set by the component, margin: auto centers in fullscreen */
     margin: auto;
@@ -8,6 +10,24 @@
 .monitor-list-scaler {
     /* Scaling for monitors should happen from the top left */
     transform-origin: left top;
+}
+
+.monitor-list-corner {
+    display: flex;
+    flex-direction: column;
+    gap: $space;
+    max-height: calc(100vh - $stage-menu-height - 3 * $space);
+    overflow-x: hidden;
+    overflow-y: auto;
+    pointer-events: all;
+}
+
+[dir="ltr"] .monitor-list-corner {
+    align-items: flex-end;
+}
+
+[dir="rtl"] .monitor-list-corner {
+    align-items: flex-start;
 }
 
 ::-ms-clear { display: none; }

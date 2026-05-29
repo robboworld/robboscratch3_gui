@@ -611,6 +611,10 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
           </value>
       </block>
 
+      <block type="copter_speed">
+
+      </block>
+
       <block type="copter_x_coord">
 
       </block>
@@ -654,6 +658,9 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
       </block>
 
       <block type="copter_rotate">
+          <value name="SIDE">
+              <shadow type="copter_turn_sides"/>
+          </value>
         <value name="DEGREES">
               <shadow type="math_number">
                   <field name="NUM">45</field>
