@@ -7,6 +7,10 @@ import {defineMessages, injectIntl, intlShape} from 'react-intl';
 
 import log from './log';
 import {
+    isNwRuntime,
+    readProjectFromAbsolutePath
+} from './nw-open-project-utils';
+import {
     LoadingState,
     LoadingStates,
     onLoadedProject,
@@ -23,56 +27,6 @@ const messages = defineMessages({
         description: 'An error that displays when a local project file fails to load.'
     }
 });
-
-const nwRuntime = () => typeof process !== 'undefined' && process.versions &&
-    (process.versions.nw || process.versions['node-webkit']);
-
-const normalizeNwPath = rawPath => {
-    if (!rawPath || typeof rawPath !== 'string') {
-        return null;
-    }
-    let normalized = rawPath.trim();
-    if (!normalized) {
-        return null;
-    }
-    if ((normalized[0] === '"' && normalized[normalized.length - 1] === '"') ||
-        (normalized[0] === '\'' && normalized[normalized.length - 1] === '\'')) {
-        normalized = normalized.slice(1, -1).trim();
-    }
-    if (/^file:\/\//i.test(normalized)) {
-        try {
-            normalized = decodeURIComponent(normalized.replace(/^file:\/\/\/?/i, ''));
-            if (/^\/[A-Za-z]:\//.test(normalized)) {
-                normalized = normalized.slice(1);
-            }
-        } catch (e) {
-            return null;
-        }
-    }
-    if (/^[A-Za-z]:\//.test(normalized)) {
-        normalized = normalized.replace(/\//g, '\\');
-    }
-    return normalized;
-};
-
-const readProjectFromAbsolutePath = function (absPath) {
-    const normalizedPath = normalizeNwPath(absPath);
-    if (!normalizedPath) {
-        return null;
-    }
-    const nwPath = window.nw.require('path');
-    const fs = window.nw.require('fs');
-    const ext = nwPath.extname(normalizedPath).toLowerCase();
-    if (ext !== '.sb3' && ext !== '.sb2' && ext !== '.sb') {
-        return null;
-    }
-    const buf = fs.readFileSync(normalizedPath);
-    const data = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    return {
-        data,
-        title: nwPath.basename(normalizedPath, ext)
-    };
-};
 
 const debugNwOpen = (stage, payload) => {
     try {
@@ -134,7 +88,7 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
             }
         }
         handleNwOpenEvent (ev) {
-            if (!nwRuntime()) {
+            if (!isNwRuntime()) {
                 return;
             }
             const p = ev.detail && ev.detail.path;
@@ -176,8 +130,11 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
             }, 150);
         }
         tryConsumePending () {
-            if (!nwRuntime() || !this.props.vm) {
-                debugNwOpen('tryConsumePending:no-runtime-or-vm', {hasVm: !!this.props.vm});
+            if (!isNwRuntime() || !this.props.vm) {
+                debugNwOpen('tryConsumePending:no-runtime-or-vm', {
+                    hasVm: !!this.props.vm,
+                    hasNw: isNwRuntime()
+                });
                 return;
             }
             const pending = window.__ROBBO_NW_PENDING_PROJECT__;
@@ -202,12 +159,12 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
                 this._scheduleRetry();
                 return;
             }
+            const {data, title} = pending;
+            window.__ROBBO_NW_LOADING_PROJECT__ = true;
             this.props.dispatchProjectUpload(action);
             delete window.__ROBBO_NW_PENDING_PROJECT__;
             this._nwRetryCount = 0;
-            const {data, title} = pending;
             this.props.openLoadingProject();
-            window.__ROBBO_NW_LOADING_PROJECT__ = true;
             setTimeout(() => {
                 debugNwOpen('vm.loadProject:begin', {title, bytes: data && data.byteLength});
                 this.props.vm.loadProject(data)
@@ -223,7 +180,11 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
                     })
                     .catch(err => {
                         log.warn(err);
-                        debugNwOpen('vm.loadProject:error', {message: err && err.message});
+                        debugNwOpen('vm.loadProject:error', {
+                            message: err && err.message,
+                            isArrayBuffer: data instanceof ArrayBuffer,
+                            isArrayBufferView: typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(data)
+                        });
                         alert(this.props.intl.formatMessage(messages.loadError)); // eslint-disable-line no-alert
                         this.props.onNwLoadFinished(LoadingState.LOADING_VM_FILE_UPLOAD, false);
                         window.__ROBBO_NW_LOADING_PROJECT__ = false;

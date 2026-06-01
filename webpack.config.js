@@ -29,7 +29,7 @@ const babelLoaderOptions = {
         }]
     ],
     presets: [
-        ['@babel/preset-env', {useBuiltIns: 'entry'}],
+        ['@babel/preset-env', {targets: {browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']}}],
         '@babel/preset-react'
     ]
 };
@@ -59,11 +59,8 @@ const base = {
     devtool: isProduction ? false : 'cheap-module-source-map',
     devServer: {
         contentBase: path.resolve(__dirname, 'build'),
-        host: '127.0.0.1',
-        port: process.env.PORT || 8601,
-        headers: {
-            'Permissions-Policy': 'unload=(self)'
-        }
+        host: '0.0.0.0',
+        port: process.env.PORT || 8601
     },
     output: {
         library: 'GUI',
@@ -74,23 +71,8 @@ const base = {
         ReactDOM: 'react-dom'
     },
     resolve: {
-        symlinks: false,
-        alias: {
-            'scratch-render$': 'scratch-render/dist/web/scratch-render.js',
-            'scratch-vm$': 'scratch-vm/dist/web/scratch-vm.js',
-            'scratch-audio$': 'scratch-audio/dist.js'
-        }
+        symlinks: false
     },
-    node: {
-        fs: 'empty',
-        path: 'empty',
-        os: 'empty',
-        crypto: 'empty',
-        stream: 'empty',
-        net: 'empty',
-        tls: 'empty'
-    },
-    target: 'web', // Явно указываем веб-таргет
     module: {
         rules: [babelRule,
         {
@@ -113,7 +95,9 @@ const base = {
                         return [
                             postcssImport,
                             postcssVars,
-                	    autoprefixer()
+                            autoprefixer({
+                                browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']
+                            })
                         ];
                     }
                 }
@@ -177,7 +161,7 @@ module.exports = [
                     'process.env.NODE_ENV': '"' + (process.env.NODE_ENV || 'development') + '"',
                     'process.env.DEBUG': Boolean(process.env.DEBUG),
                     'process.env.GA_ID': '"' + (process.env.GA_ID || 'UA-000000-01') + '"',
-                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"'
+                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '""'
                 }),
                 new HtmlWebpackPlugin({
                     chunks: ['lib.min', 'gui'],
@@ -257,7 +241,7 @@ module.exports = [
             },
             plugins: base.plugins.concat([
                 new webpack.DefinePlugin({
-                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"'
+                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '""'
                 }),
                 new CopyWebpackPlugin([{
                     from: 'node_modules/scratch-blocks/media',

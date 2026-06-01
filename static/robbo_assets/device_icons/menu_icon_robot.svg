@@ -1,6 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#000" aria-hidden="true">
-  <rect x="8" y="3" width="8" height="4" rx="1"/>
-  <rect x="5" y="7" width="14" height="10" rx="2"/>
-  <circle cx="8" cy="19" r="2"/>
-  <circle cx="16" cy="19" r="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" aria-hidden="true">
+  <defs>
+    <style>
+      .b{fill:#fff;}
+      .c{fill:#fff;stroke:none;}
+      .stroke{
+        fill:none;
+        stroke:#fff;
+        stroke-width:0.4px;
+        stroke-miterlimit:10;
+      }
+    </style>
+    <mask id="deck-cutout" maskUnits="userSpaceOnUse">
+      <circle cx="18" cy="18" r="11" fill="#fff"/>
+      <rect x="8.45" y="14.5" width="3.66" height="7" rx="1" fill="#000"/>
+      <rect x="9.75" y="16.76" width="3.66" height="2.47" rx="0.5" fill="#000"/>
+      <rect x="22.59" y="16.76" width="3.66" height="2.47" rx="0.5" fill="#000"/>
+      <rect x="23.89" y="14.5" width="3.66" height="7" rx="1" fill="#000"/>
+      <rect x="11.95" y="5.99" width="3.02" height="7.16" rx="0.5" fill="#000"/>
+      <rect x="12.33" y="22.35" width="3.02" height="7.83" rx="0.5" fill="#000"/>
+      <rect x="20.65" y="22.35" width="3.02" height="7.83" rx="0.5" fill="#000"/>
+      <rect x="16.49" y="4.49" width="3.02" height="7.07" rx="0.5" fill="#000"/>
+      <rect x="21.02" y="6.26" width="3.02" height="7.16" rx="0.5" fill="#000"/>
+      <rect x="15.33" y="14.64" width="5" height="5" rx="1" fill="#000"/>
+      <rect x="16.49" y="13.3" width="3.02" height="3.4" rx="1" fill="#000"/>
+    </mask>
+  </defs>
+  <circle class="b" cx="18" cy="18" r="11" mask="url(#deck-cutout)"/>
+  <rect class="c" x="12.35" y="6.39" width="2.22" height="6.36" rx="0.1"/>
+  <rect class="c" x="12.73" y="22.75" width="2.22" height="7.03" rx="0.1"/>
+  <rect class="c" x="21.05" y="22.75" width="2.22" height="7.03" rx="0.1"/>
+  <rect class="c" x="16.89" y="4.89" width="2.22" height="6.27" rx="0.1"/>
+  <rect class="c" x="15.73" y="15.04" width="4.2" height="4.2" rx="0.6"/>
+  <rect class="c" x="16.89" y="13.7" width="2.22" height="2.6" rx="0.6"/>
+  <rect class="c" x="21.42" y="6.66" width="2.22" height="6.36" rx="0.1"/>
+  <line class="stroke" x1="8.94" y1="15.56" x2="11.61" y2="15.56"/>
+  <line class="stroke" x1="8.94" y1="16.54" x2="11.61" y2="16.54"/>
+  <line class="stroke" x1="8.94" y1="17.51" x2="11.61" y2="17.51"/>
+  <line class="stroke" x1="8.94" y1="18.49" x2="11.61" y2="18.49"/>
+  <line class="stroke" x1="8.94" y1="19.46" x2="11.61" y2="19.46"/>
+  <line class="stroke" x1="8.94" y1="20.44" x2="11.61" y2="20.44"/>
+  <line class="stroke" x1="24.38" y1="15.56" x2="27.06" y2="15.56"/>
+  <line class="stroke" x1="24.38" y1="16.54" x2="27.06" y2="16.54"/>
+  <line class="stroke" x1="24.38" y1="17.51" x2="27.06" y2="17.51"/>
+  <line class="stroke" x1="24.38" y1="18.49" x2="27.06" y2="18.49"/>
+  <line class="stroke" x1="24.38" y1="19.46" x2="27.06" y2="19.46"/>
+  <line class="stroke" x1="24.38" y1="20.44" x2="27.06" y2="20.44"/>
+  <path class="stroke" d="M11.11,15.25a.25.25,0,0,1,.25.25v5a.25.25,0,0,1-.25.25H9.45a.25.25,0,0,1-.25-.25v-5a.25.25,0,0,1,.25-.25h1.66m0-.75H9.45a1,1,0,0,0-1,1v5a1,1,0,0,0,1,1h1.66a1,1,0,0,0,1-1v-5a1,1,0,0,0-1-1Z"/>
+  <path class="stroke" d="M26.55,15.25a.25.25,0,0,1,.25.25v5a.25.25,0,0,1-.25.25H24.89a.25.25,0,0,1-.25-.25v-5a.25.25,0,0,1,.25-.25h1.66m0-.75H24.89a1,1,0,0,0-1,1v5a1,1,0,0,0,1,1h1.66a1,1,0,0,0,1-1v-5a1,1,0,0,0-1-1Z"/>
 </svg>

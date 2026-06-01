@@ -37,7 +37,7 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
 }
 
 /* NW.js / старый Chromium: flex gap может не работать — отступ через margin */
-.previewButton + .previewButton {
+.previewButton+.previewButton {
     margin-left: 0.375rem;
 }
 
@@ -121,8 +121,28 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
         filter 0.25s ease;
 }
 
-.device_robot .previewIcon {
+/* Робот: без height:% (в NW.js flex → 0px); ~100% кнопки + крупнее фон; без invert */
+.previewButton.device_robot .previewIcon {
+    width: 2rem;
+    height: 2rem;
+    max-width: 100%;
+    max-height: 100%;
     background-image: url(../../static/robbo_assets/device_icons/menu_icon_robot.svg);
+    background-position: center;
+    background-size: 120%;
+    filter: none;
+}
+
+.previewButton.device_robot.disconnected .previewIcon {
+    filter: none;
+}
+
+.previewButton.device_robot.connected .previewIcon {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.65));
+}
+
+.previewButton.device_robot.searching .previewIcon {
+    filter: none;
 }
 
 .device_lab .previewIcon {
@@ -142,6 +162,7 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
 }
 
 @keyframes menu-bar-device-pulse {
+
     0%,
     100% {
         box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.35);
