@@ -78,7 +78,8 @@ class SearchPanelComponent extends Component {
       devices: [],
       /** Bumps when instance fields used in render change without device list updates */
       uiRev: 0,
-      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE
+      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE,
+      searchEpoch: 0
     };
 
     this.device_list = [];
@@ -89,6 +90,8 @@ class SearchPanelComponent extends Component {
     /** True until Crazyflie session emits searching — avoids «no devices» flash before dongle probe starts */
     this._quadcopterAwaitingFirstSearchingEmit = false;
     this._lastQuadcopterSearchPanelSig = null;
+    /** Keep Quadcopter row while cf2tool/cfloader temporarily release the radio (dongleAvailable flickers). */
+    this._quadcopterRowPinnedForSession = false;
 
     this.handleSearchPanelMouseDown = this.handleSearchPanelMouseDown.bind(this);
 
@@ -147,6 +150,10 @@ class SearchPanelComponent extends Component {
 
     this.DCA.registerDevicesStartSearchingCallback(() => {
       this._quadcopterAwaitingFirstSearchingEmit = shouldProbeQuadcopterOnDeviceSearch(this.QCA);
+      this._quadcopterRowPinnedForSession = false;
+      if (this.QCA && typeof this.QCA.resetFirmwareSessionOnDeviceSearch === 'function') {
+        this.QCA.resetFirmwareSessionOnDeviceSearch();
+      }
       this.usb_search_finished = false;
       // Same condition as DeviceControlAPI.searchAllDevices — Chrome Bluetooth scan only on Win/Linux desktop
       const useChromeBluetooth = typeof node_process !== 'undefined' &&
@@ -162,7 +169,7 @@ class SearchPanelComponent extends Component {
         this.bluetooth_search_finished = true;
       }
       if (this._isMounted) {
-        this.setState({ uiRev: Date.now() });
+        this.setState(prev => ({ uiRev: Date.now(), searchEpoch: prev.searchEpoch + 1 }));
       }
     });
 
@@ -245,7 +252,22 @@ class SearchPanelComponent extends Component {
         isMacBluetooth: false
       });
     }
-    if (this.QCA && typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable()) {
+    const qcaDongleAvailable = this.QCA && typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable();
+    const qcaSearchingNow = this.QCA && typeof this.QCA.isQuadcopterSearching === 'function' && this.QCA.isQuadcopterSearching();
+    const qcaFirmwareBusy = this.QCA && (
+      this.QCA._firmwareFlashInProgress === true ||
+      this.QCA._firmwareVersionProbeInProgress === true
+    );
+    if (qcaDongleAvailable) {
+      this._quadcopterRowPinnedForSession = true;
+    }
+    const showQuadcopterRow = this.QCA && (
+      qcaDongleAvailable ||
+      this._quadcopterRowPinnedForSession ||
+      qcaSearchingNow ||
+      qcaFirmwareBusy
+    );
+    if (showQuadcopterRow) {
       newList.push({
         devicePort: 'Quadcopter',
         isBluetooth: false,
@@ -302,9 +324,24 @@ class SearchPanelComponent extends Component {
 
     void this.state.uiRev;
 
+    const firmwareFlashWindows = showFirmwareUi ? this.state.devices.map((device, index) => (
+      <DraggableWindowComponent key={index + 'devices-list-draggable'} draggableWindowId={7 + index}>
+        <FirmwareFlasherFlashingStatusComponent
+          key={index + 'devices-list-status'}
+          componentId={index}
+          draggableWindowId={7 + index}
+          DCA={this.DCA}
+          RCA={this.RCA}
+          LCA={this.LCA}
+          QCA={this.QCA}
+          OCA={this.OCA}
+          ACA={this.ACA}
+        />
+      </DraggableWindowComponent>
+    )) : null;
+
     return (
-
-
+      <React.Fragment>
       <div
           id="SearchPanelComponent"
           className={classNames(sharedStyles.palette, styles.search_panel)}
@@ -335,7 +372,7 @@ class SearchPanelComponent extends Component {
 
 
 
-                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} disableFirmwareUi={!showFirmwareUi} VM={this.VM} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
+                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} disableFirmwareUi={!showFirmwareUi} VM={this.VM} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} searchEpoch={this.state.searchEpoch} />
 
 
 
@@ -345,18 +382,6 @@ class SearchPanelComponent extends Component {
 
             }
 
-
-            {showFirmwareUi && this.state.devices.map((device, index) => {
-              return <DraggableWindowComponent key={index + "devices-list-draggable"} draggableWindowId={7 + index}>
-
-                <FirmwareFlasherFlashingStatusComponent key={index + "devices-list-status"} componentId={index} draggableWindowId={7 + index} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
-
-              </DraggableWindowComponent>
-
-
-
-
-            })}
 
             {
 
@@ -388,7 +413,8 @@ class SearchPanelComponent extends Component {
         </div>
 
       </div>
-
+      {firmwareFlashWindows}
+      </React.Fragment>
     )
   };
 

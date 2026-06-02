@@ -102,7 +102,10 @@ class MenuBarDeviceControls extends Component {
         vm.getACA().searchArduinoDevices();
 
         if (isDesktopWithBluetooth()) {
-            vm.getQCA().searchQuadcopterDevices();
+            const qca = vm.getQCA();
+            if (qca) {
+                qca.searchQuadcopterDevices();
+            }
         }
     }
 
