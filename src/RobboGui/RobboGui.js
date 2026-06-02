@@ -9,7 +9,11 @@ import {ActionSearchRobotDevices} from './actions/sensor_actions';
 import {ActionSearchLaboratoryDevices} from './actions/sensor_actions';
 import {ActionRobotStopSearchProcess} from './actions/sensor_actions';
 import {ActionRobotStopDataRecievingProcess}  from './actions/sensor_actions';
-import {ActionTriggerExtensionPack} from './actions/sensor_actions';
+import {
+  ActionSetLCALocal,
+  ActionSetRCALocal,
+  ActionTriggerExtensionPack
+} from './actions/sensor_actions';
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 //import {ActionTriggerNeedLanguageReload} from './actions/sensor_actions';
 
@@ -25,6 +29,11 @@ import AboutWindowComponent from './AboutWindowComponent';
 
 import NewDraggableWindowComponent from './NewDraggableWindowComponent';
 import ProfilerWindowComponent from './ProfilerWindowComponent';
+import {
+  ROBBO_POPUP_SIZE_ABOUT,
+  ROBBO_POPUP_SIZE_FIRMWARE,
+  ROBBO_POPUP_SIZE_SETTINGS
+} from '../lib/robbo-popup-position';
 
 import IotConnectionComponent from './IotConnectionComponent';
 import {
@@ -105,6 +114,14 @@ class RobboGui extends Component {
 
   componentDidMount(){
       if (this.props.vm) {
+        const RCA = this.props.vm.getRCA();
+        const LCA = this.props.vm.getLCA();
+        if (RCA) {
+          this.props.onSetRCALocal(RCA);
+        }
+        if (LCA) {
+          this.props.onSetLCALocal(LCA);
+        }
         getSettingsFromStorage().then((r) => {
           let firmwareSettingsApplied = false;
           let fullscreenRenderQuality = normalizeFullscreenRenderQuality();
@@ -268,8 +285,6 @@ class RobboGui extends Component {
 
   var initial_coords_profiler = [300,300];
 
-  var initial_coords_about = [350,350];
-
   var initial_coords_iot = [500,500];
 
   return (
@@ -282,14 +297,22 @@ class RobboGui extends Component {
          <SensorPallete RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} VM={this.props.vm} />
 
          {!isMobileBridgeContext ? (
-           <DraggableWindowComponent draggableWindowId={3}>
+           <DraggableWindowComponent
+             draggableWindowId={3}
+             centerOnCreate
+             estimatedPopupSize={ROBBO_POPUP_SIZE_FIRMWARE}
+           >
 
               <FirmwareFlasherComponent DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
             </DraggableWindowComponent>
          ) : null}
 
-        <DraggableWindowComponent draggableWindowId={4}>
+        <DraggableWindowComponent
+          draggableWindowId={4}
+          centerOnCreate
+          estimatedPopupSize={ROBBO_POPUP_SIZE_SETTINGS}
+        >
 
           <SettingsWindowComponent VM={this.props.vm} />
 
@@ -318,7 +341,11 @@ class RobboGui extends Component {
 
          
 
-         <NewDraggableWindowComponent draggableWindowId={"about-window"} initialCoords={initial_coords_about}>
+         <NewDraggableWindowComponent
+           draggableWindowId={"about-window"}
+           centerOnCreate
+           estimatedPopupSize={ROBBO_POPUP_SIZE_ABOUT}
+         >
 
             <AboutWindowComponent VM={this.props.vm} RCA={this.RCA} DCA={this.DCA}/>
 
@@ -373,9 +400,14 @@ const mapDispatchToProps = dispatch => ({
             dispatch(ActionRobotStopDataRecievingProcess(RCA));
 
     },
-    onTriggerExtensionPack: () => {
-
-        dispatch(ActionTriggerExtensionPack());
+    onTriggerExtensionPack: RCA => {
+        dispatch(ActionTriggerExtensionPack(RCA));
+      },
+    onSetRCALocal: RCA => {
+        dispatch(ActionSetRCALocal(RCA));
+      },
+    onSetLCALocal: LCA => {
+        dispatch(ActionSetLCALocal(LCA));
       },
 
 

@@ -8,6 +8,7 @@ import {
 
 import classNames from 'classnames';
 import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
 import styles from './AboutWindowComponent.css';
 import {
   ActionTriggerNewDraggableWindow,
@@ -19,8 +20,17 @@ import {
   getSystemInfoAsync,
   formatArchitectureDisplay
 } from '../lib/platform';
+import {
+  showTransientButtonFeedback,
+  clearTransientButtonFeedbackTimer,
+  isTransientButtonFeedbackActive,
+  renderTransientActionLabel
+} from '../lib/transient-button-feedback';
 
-const VERSION = 'Robbo Scratch v.3.121.0';
+const COPY_FEEDBACK_TOKEN = 'copied';
+const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
+
+const VERSION = 'Robbo Scratch v.3.122.0';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   process &&
   process.env &&
@@ -28,6 +38,12 @@ const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   ? process.env.ROBBO_BUILD_VERSION_SUFFIX
   : '';
 const DISPLAY_VERSION = `${VERSION}${BUILD_VERSION_SUFFIX}`;
+
+const PROFILING_METRIC_IDS = [
+  'raw-3-about-window-content-column-2',
+  'raw-4-about-window-content-column-2',
+  'raw-8-about-window-content-column-2'
+];
 
 const messages = defineMessages({
   about_window: {
@@ -107,16 +123,37 @@ const messages = defineMessages({
     id: 'gui.RobboGui.copy_system_info',
     description: ' ',
     defaultMessage: 'Copy system information'
+  },
+  copied_to_clipboard: {
+    id: 'gui.RobboGui.copied_to_clipboard',
+    description: 'About window copy button success label',
+    defaultMessage: 'Copied'
+  },
+  profiling_section: {
+    id: 'gui.RobboGui.profiling_section',
+    description: 'About window profiling block title',
+    defaultMessage: 'Performance measurement'
+  },
+  system_section: {
+    id: 'gui.RobboGui.about_system_section',
+    description: 'About window system info block title',
+    defaultMessage: 'System information'
   }
 });
 
 class AboutWindowComponent extends Component {
-  constructor(props) {
+  constructor (props) {
     super(props);
-    this.state = { systemInfo: null };
+    this.state = {
+      systemInfo: null,
+      profilingEnabled: false,
+      [COPY_BUTTON_FEEDBACK_KEY]: null
+    };
+    this.onThisWindowClose = this.onThisWindowClose.bind(this);
+    this.toggleProfiling = this.toggleProfiling.bind(this);
   }
 
-  onThisWindowClose() {
+  onThisWindowClose () {
     console.log('aboutWindow close');
     this.props.onAboutWindowClose('about-window');
   }
@@ -134,7 +171,36 @@ class AboutWindowComponent extends Component {
     });
   }
 
+  componentWillUnmount () {
+    clearTransientButtonFeedbackTimer(this, COPY_BUTTON_FEEDBACK_KEY);
+    if (this.state.profilingEnabled) {
+      this.stopProfiling({ updateState: false });
+    }
+  }
+
+  clearProfilingMetrics () {
+    PROFILING_METRIC_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = '';
+      }
+    });
+  }
+
+  toggleProfiling () {
+    if (this.state.profilingEnabled) {
+      this.stopProfiling();
+    } else {
+      this.startProfiling();
+    }
+  }
+
   startProfiling() {
+    if (this.state.profilingEnabled) {
+      return;
+    }
+
+    this.setState({ profilingEnabled: true });
     console.warn(`start profiling`);
 
     let time_counter = 0;
@@ -245,34 +311,68 @@ class AboutWindowComponent extends Component {
     });
   }
 
-  stopProfiling() {
+  stopProfiling ({ updateState = true } = {}) {
     console.warn(`stop profiling`);
 
-    clearInterval(this.avTimeInterval);
+    if (this.avTimeInterval) {
+      clearInterval(this.avTimeInterval);
+      this.avTimeInterval = null;
+    }
 
-    this.VM.runtime.disableProfiling();
+    if (this.VM && this.VM.runtime) {
+      this.VM.runtime.disableProfiling();
+    }
+
+    this.clearProfilingMetrics();
+
+    if (updateState && this.state.profilingEnabled) {
+      this.setState({ profilingEnabled: false });
+    }
   }
 
-  copyToClipboard(textToCopy) {
-    console.warn(`copyToClipboard()`);
+  onCopySystemInfoClick (systemInfoText) {
+    this.copyToClipboard(systemInfoText, () => {
+      showTransientButtonFeedback(this, {
+        stateKey: COPY_BUTTON_FEEDBACK_KEY,
+        feedbackToken: COPY_FEEDBACK_TOKEN
+      });
+    });
+  }
 
+  copyToClipboard (textToCopy, onSuccess) {
     const text = textToCopy != null ? String(textToCopy) : '';
-    if (!text) return;
+    if (!text) {
+      return;
+    }
+
+    const notifySuccess = () => {
+      if (typeof onSuccess === 'function') {
+        onSuccess();
+      }
+    };
 
     if (typeof navigator !== 'undefined' &&
         navigator.clipboard &&
         typeof navigator.clipboard.writeText === 'function') {
-      navigator.clipboard.writeText(text).catch(() => {
-        this.copyToClipboardWithExecCommand(text);
-      });
+      navigator.clipboard.writeText(text)
+        .then(notifySuccess)
+        .catch(() => {
+          if (this.copyToClipboardWithExecCommand(text)) {
+            notifySuccess();
+          }
+        });
       return;
     }
 
-    this.copyToClipboardWithExecCommand(text);
+    if (this.copyToClipboardWithExecCommand(text)) {
+      notifySuccess();
+    }
   }
 
-  copyToClipboardWithExecCommand(text) {
-    if (typeof document === 'undefined' || !document.body) return;
+  copyToClipboardWithExecCommand (text) {
+    if (typeof document === 'undefined' || !document.body) {
+      return false;
+    }
 
     const textarea = document.createElement('textarea');
     textarea.value = text;
@@ -283,11 +383,13 @@ class AboutWindowComponent extends Component {
     textarea.focus();
     textarea.select();
 
+    let copied = false;
     try {
-      document.execCommand('copy');
+      copied = document.execCommand('copy');
     } finally {
       document.body.removeChild(textarea);
     }
+    return copied;
   }
 
   buildSystemInfoText(rows) {
@@ -298,23 +400,23 @@ class AboutWindowComponent extends Component {
     return [DISPLAY_VERSION].concat(details).join('\n');
   }
 
-  renderInfoRow(rowId, label, value) {
+  renderInfoRow (rowId, label, value) {
     return (
       <div
         key={rowId}
         id={`about-window-content-raw-${rowId}`}
-        className={styles.about_window_content_raw}
+        className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}
       >
         <div
           id={`raw-${rowId}-about-window-content-column-1`}
-          className={styles.about_window_content_column}
+          className={formStyles.field_label}
         >
           {label}
         </div>
 
         <div
           id={`raw-${rowId}-about-window-content-column-2`}
-          className={styles.about_window_value_column}
+          className={formStyles.field_value}
         >
           {value}
         </div>
@@ -375,6 +477,12 @@ class AboutWindowComponent extends Component {
     ];
     const infoRows = isWebSystemInfo ? webRows : desktopRows;
     const systemInfoText = this.buildSystemInfoText(infoRows);
+    const { profilingEnabled } = this.state;
+    const copyFeedbackActive = isTransientButtonFeedbackActive(
+      this.state,
+      COPY_BUTTON_FEEDBACK_KEY,
+      COPY_FEEDBACK_TOKEN
+    );
     return (
       <div id="about-window" className={classNames(sharedStyles.palette, styles.about_window)}>
         <div
@@ -388,131 +496,141 @@ class AboutWindowComponent extends Component {
             type="button"
             className={sharedStyles.closeButton}
             aria-label="Close"
-            onClick={this.onThisWindowClose.bind(this)}
+            onClick={this.onThisWindowClose}
           />
         </div>
 
         <div
           id="about-window-content"
-          className={classNames(sharedStyles.body, styles.about_window_content)}
+          className={classNames(
+            sharedStyles.body,
+            formStyles.palette_content,
+            styles.about_content
+          )}
         >
-          <div
+          <section
             id="about-window-content-raw-1"
-            className={styles.about_window_content_raw}
+            className={classNames(formStyles.section, styles.about_section)}
           >
-            <div
-              id="raw-1-about-window-content-column-1"
-              className={styles.about_window_content_column}
-            >
-              {DISPLAY_VERSION}
-            </div>
-
-            <div
-              id="raw-1-about-window-content-column-2"
-              className={styles.about_window_content_column}
-            >
-              <button
-                id={`about-window-copy-system-info`}
-                onClick={this.copyToClipboard.bind(this, systemInfoText)}
+            <div className={styles.about_version_block}>
+              <div
+                id="raw-1-about-window-content-column-1"
+                className={formStyles.version_label}
               >
-                {this.props.intl.formatMessage(
-                  messages.copy_system_info
-                )}{' '}
+                {DISPLAY_VERSION}
+              </div>
+              <button
+                type="button"
+                id="about-window-copy-system-info"
+                className={classNames(
+                  formStyles.action_button,
+                  formStyles.footer_action_button,
+                  styles.about_button
+                )}
+                onClick={() => this.onCopySystemInfoClick(systemInfoText)}
+              >
+                {renderTransientActionLabel({
+                  feedbackActive: copyFeedbackActive,
+                  defaultMessage: messages.copy_system_info,
+                  successMessage: messages.copied_to_clipboard,
+                  intl,
+                  labelClassName: formStyles.action_button_label
+                })}
               </button>
+              {!profilingEnabled ? (
+                <button
+                  type="button"
+                  id="about-window-toggle-profiling"
+                  className={classNames(
+                    formStyles.action_button,
+                    formStyles.footer_action_button,
+                    styles.about_button
+                  )}
+                  aria-pressed={false}
+                  onClick={this.toggleProfiling}
+                >
+                  {intl.formatMessage(messages.start_profiling)}
+                </button>
+              ) : null}
             </div>
-          </div>
+          </section>
 
-          <div
+          {profilingEnabled ? (
+          <section
             id="about-window-content-raw-2"
-            className={styles.about_window_content_raw}
+            className={classNames(formStyles.section, styles.about_section)}
           >
-            <div
-              id="raw-2-about-window-content-column-1"
-              className={styles.about_window_content_column}
+            <h3 className={classNames(formStyles.section_title, styles.about_section_title)}>
+              {intl.formatMessage(messages.profiling_section)}
+            </h3>
+            <button
+              type="button"
+              id="about-window-toggle-profiling"
+              className={classNames(
+                formStyles.action_button,
+                formStyles.footer_action_button,
+                styles.about_button,
+                styles.about_button_active
+              )}
+              aria-pressed
+              onClick={this.toggleProfiling}
             >
-              <button
-                id={`about-window-start-profiling`}
-                onClick={this.startProfiling.bind(this)}
+              {intl.formatMessage(messages.stop_profiling)}
+            </button>
+
+            <div className={styles.about_metrics}>
+              <div
+                id="about-window-content-raw-3"
+                className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}
               >
-                {this.props.intl.formatMessage(
-                  messages.start_profiling
-                )}{' '}
-              </button>
-            </div>
+                <div className={formStyles.field_label}>
+                  {intl.formatMessage(messages.step_duration)}
+                </div>
+                <span
+                  id="raw-3-about-window-content-column-2"
+                  className={formStyles.field_value}
+                />
+              </div>
 
-            <div
-              id="raw-2-about-window-content-column-2"
-              className={styles.about_window_content_column}
-            >
-              <button
-                id={`about-window-stop-profiling`}
-                onClick={this.stopProfiling.bind(this)}
+              <div
+                id="about-window-content-raw-4"
+                className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}
               >
-                {this.props.intl.formatMessage(
-                  messages.stop_profiling
-                )}{' '}
-              </button>
+                <div className={formStyles.field_label}>
+                  {intl.formatMessage(messages.recieve_delta)}
+                </div>
+                <span
+                  id="raw-4-about-window-content-column-2"
+                  className={formStyles.field_value}
+                />
+              </div>
+
+              <div
+                id="about-window-content-raw-8"
+                className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}
+              >
+                <div className={formStyles.field_label}>
+                  {intl.formatMessage(messages.average_step_delay_time)}
+                </div>
+                <span
+                  id="raw-8-about-window-content-column-2"
+                  className={formStyles.field_value}
+                />
+              </div>
             </div>
-          </div>
+          </section>
+          ) : null}
 
-          <div
-            id="about-window-content-raw-3"
-            className={styles.about_window_content_raw}
-          >
-            <div
-              id="raw-3-about-window-content-column-1"
-              className={styles.about_window_content_column}
-            >
-              {this.props.intl.formatMessage(
-                messages.step_duration
-              )}
-            </div>
-
-            <div
-              id="raw-3-about-window-content-column-2"
-              className={styles.about_window_content_column}
-            ></div>
-          </div>
-
-          <div
-            id="about-window-content-raw-4"
-            className={styles.about_window_content_raw}
-          >
-            <div
-              id="raw-4-about-window-content-column-1"
-              className={styles.about_window_content_column}
-            >
-              {this.props.intl.formatMessage(
-                messages.recieve_delta
-              )}
-            </div>
-
-            <div
-              id="raw-4-about-window-content-column-2"
-              className={styles.about_window_content_column}
-            ></div>
-          </div>
-
-          <div
-            id="about-window-content-raw-8"
-            className={styles.about_window_content_raw}
-          >
-            <div
-              id="raw-7-about-window-content-column-1"
-              className={styles.about_window_content_column}
-            >
-              {this.props.intl.formatMessage(
-                messages.average_step_delay_time
-              )}
-            </div>
-
-            <div
-              id="raw-8-about-window-content-column-2"
-              className={styles.about_window_content_column}
-            ></div>
-          </div>
-
-          {infoRows.map(row => this.renderInfoRow(row.id, row.label, row.value))}
+          {infoRows.length > 0 ? (
+            <section className={classNames(formStyles.section, styles.about_section)}>
+              <h3 className={classNames(formStyles.section_title, styles.about_section_title)}>
+                {intl.formatMessage(messages.system_section)}
+              </h3>
+              <div className={styles.about_info_list}>
+                {infoRows.map(row => this.renderInfoRow(row.id, row.label, row.value))}
+              </div>
+            </section>
+          ) : null}
         </div>
       </div>
     );

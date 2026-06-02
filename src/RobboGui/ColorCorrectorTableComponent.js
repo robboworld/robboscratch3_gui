@@ -2,7 +2,9 @@ import classNames from 'classnames';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import { connect } from 'react-redux';
-import styles from  './ColorCorrectorTableComponent.css';
+import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
+import styles from './ColorCorrectorTableComponent.css';
 import { ItemTypes } from './drag_constants';
 import { DragSource } from 'react-dnd';
 import ColorCorrectorTableRowElement from './ColorCorrectorTableRowElement';
@@ -14,6 +16,25 @@ import {
     ROBBO_POPUP_Z_INDEX_BASE,
     raiseRobboPopupZIndex
 } from '../lib/robbo-popup-z-index';
+import {
+    attachEmptyDragPreview,
+    collectPopupDragSource,
+    createPopupDragFollowState,
+    handlePopupDragFollowLifecycle,
+    resolvePopupDragTopLeft,
+    stopPopupDragFollow,
+    wrapPopupDragSource
+} from '../lib/robbo-popup-drag-position';
+import RobboPopupTransition from './RobboPopupTransition';
+import {
+  showTransientButtonFeedback,
+  clearTransientButtonFeedbackTimer,
+  isTransientButtonFeedbackActive,
+  renderTransientActionLabel
+} from '../lib/transient-button-feedback';
+
+const APPLY_FEEDBACK_TOKEN = 'applied';
+const APPLY_BUTTON_FEEDBACK_KEY = 'applyButtonFeedback';
 
 
 var mouse_coords = {x:0,y:0};
@@ -26,14 +47,10 @@ var slider_rounded_flag_old = 0;
 
 var one_slider_percent_value_old = 0;
 
-const ColorCorrectorWindowSource = {
-  beginDrag(props) {
-
-     console.log("beginDrag");
-
+const ColorCorrectorWindowSource = wrapPopupDragSource({
+  beginDrag () {
     return {
-
-          element_type: ItemTypes.COLOR_CORRECTOR_WINDOW
+      element_type: ItemTypes.COLOR_CORRECTOR_WINDOW
     };
   },
 
@@ -63,15 +80,20 @@ const ColorCorrectorWindowSource = {
 
         return false;
   }
-};
+}, props => ({
+  top: props.color_corrector_table.position_top,
+  left: props.color_corrector_table.position_left
+}));
 
-function collect(connect, monitor) {
-  return {
-    connectDragSource: connect.dragSource(),
-    isDragging: monitor.isDragging()
-  }
+function collect (connect, monitor) {
+    return collectPopupDragSource(connect, monitor);
 }
 const messages = defineMessages({
+  mtitle: {
+    id: 'gui.ColorCorrectorTable.title',
+    description: 'Color corrector window title',
+    defaultMessage: 'Color corrector {sensorNumber}'
+  },
   mautocor: {
       id: 'gui.ColorCorrectorTable.auto_correction',
       description: ' ',
@@ -97,6 +119,11 @@ const messages = defineMessages({
       description: ' ',
       defaultMessage: 'Apply changes'
 	},
+  changes_applied:{
+      id: 'gui.ColorCorrectorTable.changes_applied',
+      description: 'Apply button success label',
+      defaultMessage: 'Applied'
+	},
 	showAdvOpt:{
 		id: 'gui.ColorCorrectorTable.showAdvOpt',
 		description: ' ',
@@ -115,8 +142,58 @@ class ColorCorrectorTableComponent extends Component {
 
   constructor (props) {
     super(props);
+    this.state = {
+      ...createPopupDragFollowState(),
+      [APPLY_BUTTON_FEEDBACK_KEY]: null
+    };
     this.popupZIndex = ROBBO_POPUP_Z_INDEX_BASE;
     this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
+    this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
+    this.onThisWindowClose = this.onThisWindowClose.bind(this);
+    this._colorBoxPollingStarted = false;
+  }
+
+  _bindDomListeners () {
+    const bindSliderInput = (id, handler) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', handler, false);
+      }
+    };
+
+    bindSliderInput('left-color-slider-1', this.handleSliderChange.bind(this, 'left-color-slider-1'));
+    bindSliderInput('left-color-slider-2', this.handleSliderChange.bind(this, 'left-color-slider-2'));
+    bindSliderInput('left-color-slider-3', this.handleSliderChange.bind(this, 'left-color-slider-3'));
+    bindSliderInput(
+      'right-color-slider-1',
+      this.handleSliderChange.bind(this, 'right-color-slider-1', this.props.RCA, this.props.color_corrector_table.sensor_caller_id)
+    );
+    bindSliderInput(
+      'right-color-slider-2',
+      this.handleSliderChange.bind(this, 'right-color-slider-2', this.props.RCA, this.props.color_corrector_table.sensor_caller_id)
+    );
+    bindSliderInput(
+      'right-color-slider-3',
+      this.handleSliderChange.bind(this, 'right-color-slider-3', this.props.RCA, this.props.color_corrector_table.sensor_caller_id)
+    );
+
+    const cctc = ReactDOM.findDOMNode(this);
+    if (cctc) {
+      cctc.addEventListener('dragstart', this.handleDragStart.bind(this, 'dragstart'), false);
+    }
+
+    if (!this._colorBoxPollingStarted) {
+      this._colorBoxPollingStarted = true;
+      this.updateColorBox();
+    }
+  }
+
+  _handleTransitionEntered () {
+    this.popupZIndex = raiseRobboPopupZIndex();
+    this._bindDomListeners();
+    this._syncColorCorrectorInputsFromRca();
+    this.setDisplayOfAdvancedSettings();
+    this.forceUpdate();
   }
 
   handlePopupMouseDown () {
@@ -125,64 +202,47 @@ class ColorCorrectorTableComponent extends Component {
   }
 
   componentDidMount () {
+    attachEmptyDragPreview(this.props.connectDragPreview);
+    if (this.props.color_corrector_table.isShowing) {
+      this._bindDomListeners();
+      this._syncColorCorrectorInputsFromRca();
+    }
+  }
 
-
-       let lcs_1 = document.getElementById("left-color-slider-1");
-       lcs_1.addEventListener("input",this.handleSliderChange.bind(this,"left-color-slider-1"), false);
-
-       let lcs_2 = document.getElementById("left-color-slider-2");
-       lcs_2.addEventListener("input",this.handleSliderChange.bind(this,"left-color-slider-2"), false);
-
-       let lcs_3 = document.getElementById("left-color-slider-3");
-       lcs_3.addEventListener("input",this.handleSliderChange.bind(this,"left-color-slider-3"), false);
-
-       let rcs_1 = document.getElementById("right-color-slider-1");
-       rcs_1.addEventListener("input",this.handleSliderChange.bind(this,"right-color-slider-1",this.props.RCA,this.props.color_corrector_table.sensor_caller_id), false);
-
-       let rcs_2 = document.getElementById("right-color-slider-2");
-       rcs_2.addEventListener("input",this.handleSliderChange.bind(this,"right-color-slider-2",this.props.RCA,this.props.color_corrector_table.sensor_caller_id), false);
-
-       let rcs_3 = document.getElementById("right-color-slider-3");
-       rcs_3.addEventListener("input",this.handleSliderChange.bind(this,"right-color-slider-3",this.props.RCA,this.props.color_corrector_table.sensor_caller_id), false);
-
-
-
-
-
-
-       let cctc = ReactDOM.findDOMNode(this);
-       cctc.addEventListener("dragstart",this.handleDragStart.bind(this,"dragstart"), false);
-
-
-       this.updateColorBox();
-
+  _syncColorCorrectorInputsFromRca () {
+    if (!this.props.color_corrector_table.isShowing || !this.props.RCA) {
+      return;
+    }
+    const color_corrector_table_object = this.props.RCA.getColorFilterTable(
+      this.props.color_corrector_table.sensor_caller_id
+    );
+    colors_arr.forEach(color => {
+      const color_name = color.toLowerCase();
+      correctors_arr.forEach(corrector => {
+        const input = document.getElementById(`color-${color_name}-corrector-${corrector}`);
+        if (input) {
+          input.value = color_corrector_table_object[color_name][corrector];
+        }
+      });
+    });
   }
 
   componentDidUpdate (prevProps) {
-
     if (prevProps && !prevProps.color_corrector_table.isShowing &&
         this.props.color_corrector_table.isShowing) {
       this.popupZIndex = raiseRobboPopupZIndex();
     }
 
-    //update colors filter table
-    var color_corrector_table_object = this.props.RCA.getColorFilterTable(this.props.color_corrector_table.sensor_caller_id);
+    if (this.props.color_corrector_table.isShowing) {
+      this._syncColorCorrectorInputsFromRca();
+    }
 
-    colors_arr.forEach(function(color,color_index){
+    handlePopupDragFollowLifecycle(this, prevProps, this.props.isDragging);
+  }
 
-
-          let color_name = color.toLowerCase();
-
-
-
-          correctors_arr.forEach(function(corrector,corrector_index){
-
-                document.getElementById(`color-${color_name}-corrector-${corrector}`).value =  color_corrector_table_object[color_name][corrector];
-
-          });
-
-    });
-
+  componentWillUnmount () {
+    clearTransientButtonFeedbackTimer(this, APPLY_BUTTON_FEEDBACK_KEY);
+    stopPopupDragFollow(this);
   }
 
 
@@ -195,6 +255,9 @@ class ColorCorrectorTableComponent extends Component {
 
 
           var color_box = document.getElementById(`color-box-${this.props.color_corrector_table.sensor_caller_id}`);
+          if (!color_box) {
+            return;
+          }
 
           var sensors_data = this.props.RCA.colorFilter(this.props.color_corrector_table.sensor_caller_id);
 
@@ -476,27 +539,25 @@ class ColorCorrectorTableComponent extends Component {
     var buttonLoad = document.getElementById("buttons-row-load");
     var buttonAppl = document.getElementById("buttons-row-apply");
 
-		if(checkboxAdv.checked == true){
-      advOpt.style.display = "inline-block";
-		} else {
+		if (checkboxAdv && checkboxAdv.checked === true) {
+      advOpt.style.display = "block";
+		} else if (advOpt) {
 			advOpt.style.display = "none";
 		}
 
 		var checkboxAdvMax = document.getElementById("showMaxAdvancedOptions");
 		var advOptMax = document.getElementById("data-block");
 
-		if(checkboxAdvMax.checked == true){
-      advOptMax.style.display = "inline-block";
-      
-      buttonAppl.style.display = "inline-block";
-      buttonLoad.style.display = "inline-block";
-      buttonSave.style.display = "inline-block";
+		if (checkboxAdvMax && checkboxAdvMax.checked === true) {
+      advOptMax.style.display = "block";
+      if (buttonAppl) buttonAppl.style.display = "inline-block";
+      if (buttonLoad) buttonLoad.style.display = "inline-block";
+      if (buttonSave) buttonSave.style.display = "inline-block";
 		} else {
-      advOptMax.style.display = "none";
-      
-      buttonAppl.style.display = "none";
-      buttonLoad.style.display = "none";
-      buttonSave.style.display = "none";
+      if (advOptMax) advOptMax.style.display = "none";
+      if (buttonAppl) buttonAppl.style.display = "none";
+      if (buttonLoad) buttonLoad.style.display = "none";
+      if (buttonSave) buttonSave.style.display = "none";
     }
   }
   
@@ -537,6 +598,10 @@ class ColorCorrectorTableComponent extends Component {
 
         RCA.setColorFilterTable(sensor_id, color_corrector_table_object );
 
+        showTransientButtonFeedback(this, {
+          stateKey: APPLY_BUTTON_FEEDBACK_KEY,
+          feedbackToken: APPLY_FEEDBACK_TOKEN
+        });
   }
 
   onButtonSaveClick(){
@@ -704,6 +769,12 @@ class ColorCorrectorTableComponent extends Component {
   }
 
   render() {
+    const { intl } = this.props;
+    const applyFeedbackActive = isTransientButtonFeedbackActive(
+      this.state,
+      APPLY_BUTTON_FEEDBACK_KEY,
+      APPLY_FEEDBACK_TOKEN
+    );
 
     var top   =  this.props.color_corrector_table.position_top;
     var left  =  this.props.color_corrector_table.position_left;
@@ -713,33 +784,73 @@ class ColorCorrectorTableComponent extends Component {
 
 
 
-    return this.props.connectDragSource(
+    const isShowing = this.props.color_corrector_table.isShowing;
+    const isDragging = this.props.isDragging;
+    const position = resolvePopupDragTopLeft(
+      top,
+      left,
+      isDragging,
+      this.state.dragFollowTop,
+      this.state.dragFollowLeft
+    );
+
+    return (
+        <RobboPopupTransition
+            in={isShowing}
+            onEntered={this._handleTransitionEntered}
+        >
+        {this.props.connectDragSource(
 				<div id={`color-corrector-table-${this.props.color_corrector_table.sensor_caller_id}_sensor-caller-id-${this.props.color_corrector_table.sensor_caller_id}`}
-						className={classNames(
-								{[styles.color_corrector_table]: true},
-								{[styles.color_corrector_table_show]: this.props.color_corrector_table.isShowing},
-								{[styles.color_corrector_table_hide]: !this.props.color_corrector_table.isShowing}
-						)}
+						className={classNames(sharedStyles.palette, styles.color_corrector_table)}
 						style={{
 								position: 'fixed',
-								top: `${top}px`,
-								left: `${left}px`,
-								zIndex: this.props.color_corrector_table.isShowing ?
-									this.popupZIndex : undefined
+								top: `${position.top}px`,
+								left: `${position.left}px`,
+								zIndex: isShowing ? this.popupZIndex : undefined
 						}}
-						onMouseDown={this.props.color_corrector_table.isShowing ?
-							this.handlePopupMouseDown : undefined}>
-						<div className={classNames({[styles.color_corrector_table_tittle]: true})}
-									id="color-corrector-table-tittle">
-								Color corrector {this.props.color_corrector_table.sensor_caller_id+1}
+						aria-hidden={!isShowing}
+						onMouseDown={isShowing ? this.handlePopupMouseDown : undefined}
+        >
+						<div
+								id="color-corrector-table-tittle"
+								className={sharedStyles.header}
+						>
+								<span className={sharedStyles.headerTitle}>
+										{this.props.intl.formatMessage(messages.mtitle, {
+											sensorNumber: sensor_caller_id + 1
+										})}
+								</span>
+								<button
+										type="button"
+										className={sharedStyles.closeButton}
+										aria-label="Close"
+										onClick={this.onThisWindowClose}
+								/>
 						</div>
 
-						<div id="content" className={styles.content}>
-								<input type="checkbox" id="showAdvancedOptions" onClick={this.setDisplayOfAdvancedSettings.bind(this)}/> {this.props.intl.formatMessage(messages.showAdvOpt)}
-								<br></br>
-								<input type="checkbox" id="showMaxAdvancedOptions" onClick={this.setDisplayOfAdvancedSettings.bind(this)}/> {this.props.intl.formatMessage(messages.showMaximallyAdvOpt)}
+						<div id="content" className={classNames(sharedStyles.body, formStyles.palette_content, styles.color_corrector_content)}>
+								<section className={formStyles.section}>
+								<div className={formStyles.options_bar}>
+										<label className={formStyles.option_label} htmlFor="showAdvancedOptions">
+												<input
+														type="checkbox"
+														id="showAdvancedOptions"
+														onClick={this.setDisplayOfAdvancedSettings.bind(this)}
+												/>
+												<span>{this.props.intl.formatMessage(messages.showAdvOpt)}</span>
+										</label>
+										<label className={formStyles.option_label} htmlFor="showMaxAdvancedOptions">
+												<input
+														type="checkbox"
+														id="showMaxAdvancedOptions"
+														onClick={this.setDisplayOfAdvancedSettings.bind(this)}
+												/>
+												<span>{this.props.intl.formatMessage(messages.showMaximallyAdvOpt)}</span>
+										</label>
+								</div>
+								</section>
 
-								<div id="data-row" className={styles.row}>
+								<div id="data-row" className={styles.workspace}>
 										<div id="left-slider-block"
 												className={classNames(
 														{[styles.data_block]: true},
@@ -766,7 +877,7 @@ class ColorCorrectorTableComponent extends Component {
 
 												<div>
 														<div className={styles.automatic_correcton_button_left}>
-																<button>{this.props.intl.formatMessage(messages.mautocor)}</button>
+																<button type="button" className={formStyles.action_button}>{this.props.intl.formatMessage(messages.mautocor)}</button>
 														</div>
 
 														<div className={styles.rgb_sum}>
@@ -777,16 +888,29 @@ class ColorCorrectorTableComponent extends Component {
 												</div>
 										</div>
 
-										<div id={`color-box-${sensor_caller_id}`} className={classNames({[styles.data_block]: true})}></div>
-
-										<div className={styles.automatic_correcton_button_right}>
-												<button  onClick={this.automaticCollorCorrection.bind(this,this.props.RCA,
-																	this.props.color_corrector_table.sensor_caller_id)}> {this.props.intl.formatMessage(messages.mautocor)}</button>
+										<div className={styles.preview_row}>
+												<div
+														id={`color-box-${sensor_caller_id}`}
+														className={styles.color_box}
+														aria-hidden="true"
+												/>
+												<div className={styles.autocorrect_wrap}>
+														<button
+																type="button"
+																className={formStyles.action_button}
+																onClick={this.automaticCollorCorrection.bind(this, this.props.RCA,
+																	this.props.color_corrector_table.sensor_caller_id)}
+														>
+																{this.props.intl.formatMessage(messages.mautocor)}
+														</button>
+												</div>
 										</div>
 
-										<br></br>
-
-										<div id="right-slider-block" className={classNames({[styles.data_block]: true})} style={{display: 'none'}}>
+										<div
+												id="right-slider-block"
+												className={classNames(styles.data_block, styles.advanced_sliders)}
+												style={{display: 'none'}}
+										>
 												<div className={styles.left_slider_labels}>
 														<span className={styles.slider_label}>R</span>
 														<span className={styles.slider_label}>G</span>
@@ -812,8 +936,12 @@ class ColorCorrectorTableComponent extends Component {
 												</div>
 										</div>
 
-										<div id="data-block" className={classNames({[styles.data_block]: true})} style={{display: 'none'}}>
-													<div id="color-row-1" className={styles.color_row}>
+										<div
+												id="data-block"
+												className={classNames(formStyles.section, styles.correction_table)}
+												style={{display: 'none'}}
+										>
+													<div id="color-row-1" className={classNames(styles.color_row, styles.table_header_row)}>
 																<div id="color-row-1-col-1"
 																			className={classNames(
                                                 {[styles.color_col]: true},
@@ -928,15 +1056,43 @@ class ColorCorrectorTableComponent extends Component {
 
 								</div>
 
-								<div id="buttons-row" className={styles.row}>
-									<button id="buttons-row-close" className={styles.button_cancel} onClick={this.onThisWindowClose.bind(this)} >{this.props.intl.formatMessage(messages.mclose)}</button>
-									<button id="buttons-row-save" className={styles.buttons} onClick={this.onButtonSaveClick.bind(this)}>{this.props.intl.formatMessage(messages.msave)}</button>
-									<button id="buttons-row-load" className={styles.buttons} onClick={this.onButtonLoadClick.bind(this)}>{this.props.intl.formatMessage(messages.mload)}</button>
-									<button id="buttons-row-apply" className={styles.buttons} onClick={this.onButtonApplyChangesClick.bind(this, this.props.RCA, this.props.color_corrector_table.sensor_caller_id)}>{this.props.intl.formatMessage(messages.mapply)}</button>
+								<div id="buttons-row" className={formStyles.footer}>
+									<button
+											id="buttons-row-apply"
+											type="button"
+											className={classNames(formStyles.action_button, formStyles.footer_action_button)}
+											onClick={this.onButtonApplyChangesClick.bind(this, this.props.RCA, this.props.color_corrector_table.sensor_caller_id)}
+									>
+											{renderTransientActionLabel({
+												feedbackActive: applyFeedbackActive,
+												defaultMessage: messages.mapply,
+												successMessage: messages.changes_applied,
+												intl,
+												labelClassName: formStyles.action_button_label
+											})}
+									</button>
+									<button
+											id="buttons-row-load"
+											type="button"
+											className={classNames(formStyles.action_button, formStyles.footer_action_button)}
+											onClick={this.onButtonLoadClick.bind(this)}
+									>
+											{this.props.intl.formatMessage(messages.mload)}
+									</button>
+									<button
+											id="buttons-row-save"
+											type="button"
+											className={classNames(formStyles.action_button, formStyles.footer_action_button)}
+											onClick={this.onButtonSaveClick.bind(this)}
+									>
+											{this.props.intl.formatMessage(messages.msave)}
+									</button>
 							</div>
 						</div>
 				</div>
-    )
+        )}
+        </RobboPopupTransition>
+    );
   };
 };
 

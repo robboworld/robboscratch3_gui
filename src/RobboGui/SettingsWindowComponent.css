@@ -1,25 +1,7 @@
+@import "../css/units.css";
+
 .settings_window {
-    min-width: 520px;
-}
-
-.settings_window_content_raw {
-    margin: 0.5rem 0;
-}
-
-.settings_window_content_column {
-    display: inline-block;
-    margin-left: 0.625rem;
-    margin-right: 0.625rem;
-    vertical-align: top;
-    color: #000;
-}
-
-.settings_window_content_column select {
-    min-width: 11.25rem;
-}
-
-.settings_window_hint {
-    color: #666;
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
+    min-width: 22rem;
+    max-width: min(96vw, 26rem);
+    pointer-events: auto;
 }

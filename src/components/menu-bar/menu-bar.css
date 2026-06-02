@@ -140,7 +140,10 @@
 }
 
 .menu-bar-menu {
-    margin-top: $menu-bar-height;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0;
     z-index: $z-index-menu-bar;
 }
 

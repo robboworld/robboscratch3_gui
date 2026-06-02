@@ -7,6 +7,7 @@ import { ActionCreateDraggableWindow } from './actions/sensor_actions';
 import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
 
 import { createDiv } from './lib/lib.js';
+import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 import { isRobboLinkMobileWebContext } from '../lib/platform';
@@ -83,10 +84,7 @@ class FirmwareFlasherDeviceComponent extends Component {
 
     var cId = this.props.flashingStatusComponentId;
 
-    var firmwareFlasherFlashingStatusComponent = document.getElementById(`firmware-flasher-flashing-status-component-${cId}`);
-
-    var flashingStatusComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[1] ? firmwareFlasherFlashingStatusComponent.children[1] : null;
-    var flashingLogComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[2] ? firmwareFlasherFlashingStatusComponent.children[2] : null;
+    const {statusEl: flashingStatusComponent, logEl: flashingLogComponent} = getFirmwareFlashLogElements(cId);
 
     var block_ids_component = null;
 

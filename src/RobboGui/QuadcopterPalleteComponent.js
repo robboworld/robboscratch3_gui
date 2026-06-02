@@ -2,6 +2,8 @@ import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
+import rowStyles from './DevicePaletteRows.css';
 import styles from './QuadcopterPalleteComponent.css';
 import SensorDataBlockComponent  from './SensorDataBlockComponent'
 
@@ -16,30 +18,30 @@ const messages = defineMessages({
     battery_level: {
         id: 'gui.RobboGui.QuadcopterPalette.battery_level',
         description: ' ',
-        defaultMessage: 'Battery level: '
+        defaultMessage: 'Battery level'
     },
 
     yaw: {
         id: 'gui.RobboGui.QuadcopterPalette.yaw',
         description: ' ',
-        defaultMessage: 'Yaw: '
+        defaultMessage: 'Yaw'
     },
 
     x_coord: {
         id: 'gui.RobboGui.QuadcopterPalette.x_coord',
         description: ' ',
-        defaultMessage: 'X coord: '
+        defaultMessage: 'X coord'
     },
 
     y_coord: {
         id: 'gui.RobboGui.QuadcopterPalette.y_coord',
         description: ' ',
-        defaultMessage: 'Y coord: '
+        defaultMessage: 'Y coord'
     },
     z_coord: {
         id: 'gui.RobboGui.QuadcopterPalette.z_coord',
         description: ' ',
-        defaultMessage: 'Z coord:  '
+        defaultMessage: 'Z coord'
     },
     quadcopter: {
         id: 'gui.RobboGui.QuadcopterPalette.quadcopter',
@@ -148,7 +150,7 @@ class QuadcopterPalleteComponent extends Component {
 
     return (
 
-          <div id="quadcopter-1" className={classNames(sharedStyles.palette, styles.quadcopter_palette)}>
+          <div id="quadcopter-1" className={classNames(sharedStyles.palette, sharedStyles.device_palette)}>
                 <div id="quadcopter-tittle" className={sharedStyles.header}>
                     <span className={sharedStyles.headerTitle}>
                         {this.props.intl.formatMessage(messages.quadcopter)}
@@ -160,7 +162,8 @@ class QuadcopterPalleteComponent extends Component {
                         onClick={this.onThisWindowClose.bind(this)}
                     />
                 </div>
-                <div className={sharedStyles.body}>
+                <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
+                <div className={rowStyles.palette_device_list}>
                 <SensorDataBlockComponent key={`copter-${this.props.quadcopterIndex}-battery-level`} sensorId={`copter-${this.props.quadcopterIndex}-battery-level`}
                                    deviceName={`quadcopter`} sensorType={`analog`}
                                    sensorFieldText={this.props.intl.formatMessage(messages.battery_level)}
@@ -191,6 +194,7 @@ class QuadcopterPalleteComponent extends Component {
               sensorFieldText={this.props.intl.formatMessage(messages.yaw)}
               sensorName={`yaw`}
               sensorData={this.state.yawText} />
+                </div>
                 </div>
           </div>
 

@@ -61,55 +61,45 @@ import {ActionDropNewDraggableWindow} from '../../RobboGui/actions/sensor_action
 
 
 import { DropTarget } from 'react-dnd';
+import {resolvePopupDropPosition} from '../../lib/robbo-popup-drag-position';
 
 const Target = {
   drop(props,monitor,component) {
 
-  //  let coords = monitor.getClientOffset();
-
-   let coords =  monitor.getSourceClientOffset();
-
-    let item = monitor.getItem();
+    const item = monitor.getItem();
+    const dropPos = resolvePopupDropPosition(monitor, item);
+    if (!dropPos) {
+      return;
+    }
 
     if (item.element_type == ItemTypes.SENSOR_CHOOSE_WINDOW){
 
-      props.onSensorChooseWindowDrop(coords.y, coords.x);
+      props.onSensorChooseWindowDrop(dropPos.top, dropPos.left);
 
-      console.log(`Drop: SensorChooseWindow y:${coords.y}  x:${coords.x}`);
+      console.log(`Drop: SensorChooseWindow y:${dropPos.top}  x:${dropPos.left}`);
 
 
     }else if (item.element_type == ItemTypes.COLOR_CORRECTOR_WINDOW){
 
-    //  let _coords  = monitor.getDifferenceFromInitialOffset();
+        props.onColorCorrectorWindowDrop(dropPos.top, dropPos.left);
 
-      // let _coords  = monitor.getSourceClientOffset()
-
-        props.onColorCorrectorWindowDrop(coords.y, coords.x);
-
-        console.log(`Drop: ColorCorrectorWindow y:${coords.y}  x:${coords.x}`);
+        console.log(`Drop: ColorCorrectorWindow y:${dropPos.top}  x:${dropPos.left}`);
 
     }else if (item.element_type == ItemTypes.DRAGGABLE_WINDOW){
-      //
-      // let id = ReactDOM.findDOMNode(component).id;
-      //
-      // let data = id.split("-");
-
-
-    //  let draggable_window_id = Number.parseInt(data[1]);
 
          let draggable_window_id = item.draggableWindowId;
 
-        props.onDraggableWindowDrop(coords.y, coords.x,draggable_window_id);
+        props.onDraggableWindowDrop(dropPos.top, dropPos.left,draggable_window_id);
 
-        console.log(`Drop: DRAGGABLE_WINDOW id: ${draggable_window_id} y:${coords.y}  x:${coords.x}`);
+        console.log(`Drop: DRAGGABLE_WINDOW id: ${draggable_window_id} y:${dropPos.top}  x:${dropPos.left}`);
 
     } else if (item.element_type == ItemTypes.NEW_DRAGGABLE_WINDOW){
       
          let draggable_window_id = item.draggableWindowId;
 
-        props.onNewDraggableWindowDrop(coords.y, coords.x,draggable_window_id);
+        props.onNewDraggableWindowDrop(dropPos.top, dropPos.left,draggable_window_id);
 
-        console.log(`Drop: NEW DRAGGABLE_WINDOW id: ${draggable_window_id} y:${coords.y}  x:${coords.x}`);
+        console.log(`Drop: NEW DRAGGABLE_WINDOW id: ${draggable_window_id} y:${dropPos.top}  x:${dropPos.left}`);
 
     }
 

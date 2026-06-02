@@ -6,12 +6,5 @@
     pointer-events: auto;
     border-radius: calc($form-radius + 4px);
     overflow: hidden;
-}
-
-.window_show {
-    display: block;
-}
-
-.window_hide {
-    display: none;
+    transform-origin: top left;
 }

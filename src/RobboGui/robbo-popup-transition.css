@@ -1,0 +1,21 @@
+:global(.robboPopup-enter) {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+}
+
+:global(.robboPopup-enter-active) {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+:global(.robboPopup-exit) {
+    opacity: 1;
+    transform: none;
+}
+
+:global(.robboPopup-exit-active) {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}

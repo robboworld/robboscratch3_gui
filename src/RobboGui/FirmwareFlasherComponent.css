@@ -1,23 +1,6 @@
 .firmware_flasher_component {
-    min-width: 815px;
+    min-width: 32rem;
+    max-width: min(96vw, 52rem);
     font-size: 0.75rem;
-}
-
-.get_devices_info {
-    margin: 0 0 0.625rem;
-}
-
-.devices_header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-    font-weight: bold;
-}
-
-.devices_header_element {
-    display: inline-block;
-    padding: 0 0.25rem;
-    width: 10rem;
-    color: #000;
+    pointer-events: auto;
 }

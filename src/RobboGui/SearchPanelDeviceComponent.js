@@ -10,11 +10,13 @@ import { ActionCreateDraggableWindow } from './actions/sensor_actions';
 
 
 import styles from './SearchPanelDeviceComponent.css';
+import {hideSearchPanel, showSearchPanel} from './search-panel-visibility';
 
 import { createDiv } from './lib/lib.js';
 import { getFirmwareSettingsFromRuntime } from '../lib/settingsLoader';
 import { applyRobboPopupZIndex } from '../lib/robbo-popup-z-index';
 import { resolveCf2FirmwareVersionLabel, parseCf2FlashToolLine } from '../lib/crazyflie-flash-ui';
+import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
 
 
 
@@ -461,14 +463,8 @@ class SearchPanelDeviceComponent extends Component {
     _getQuadcopterFlashWindowElements() {
         const cId = this.props.flashingStatusComponentId;
         const root = document.getElementById(`firmware-flasher-flashing-status-component-${cId}`);
-        if (!root) {
-            return { root: null, statusEl: null, logEl: null };
-        }
-        return {
-            root,
-            statusEl: root.children && root.children[1] ? root.children[1] : null,
-            logEl: root.children && root.children[2] ? root.children[2] : null
-        };
+        const {statusEl, logEl} = getFirmwareFlashLogElements(cId);
+        return {root, statusEl, logEl};
     }
 
     _resetQuadcopterFlashWindow() {
@@ -742,10 +738,7 @@ class SearchPanelDeviceComponent extends Component {
                 return;
             }
         }
-        const searchPanel = document.getElementById('SearchPanelComponent');
-        if (searchPanel) {
-            searchPanel.style.display = 'none';
-        }
+        hideSearchPanel();
     }
 
     syncStateFromDevice() {
@@ -1330,9 +1323,7 @@ class SearchPanelDeviceComponent extends Component {
             unlockMenuBarSearch();
 
             let info_field_local = document.getElementById(`search-panel-device-info-${this.props.Id}`);
-            let search_panel = document.getElementById(`SearchPanelComponent`);
-
-            if (search_panel) search_panel.style.display = "block";
+            showSearchPanel();
 
             if (hasFirmwareUi) {
                 flashing_show_details_icon.style.display = 'none';
@@ -1358,8 +1349,7 @@ class SearchPanelDeviceComponent extends Component {
 
             if (error && error.code == 1 && (!this.isFlashing)) { //Device was good but connection lost.
 
-                let search_panel = document.getElementById(`SearchPanelComponent`);
-                if (search_panel) search_panel.style.display = "block";
+                showSearchPanel();
 
                 if (info_field) {
                     info_field.innerHTML = '';
@@ -1490,18 +1480,15 @@ class SearchPanelDeviceComponent extends Component {
 
             }
 
-            let search_panel = document.getElementById(`SearchPanelComponent`);
-            search_panel.style.display = "block";
+            showSearchPanel();
 
         }
     }
 
 
     searchDevices(showPanel = true) {
-        let search_panel = document.getElementById(`SearchPanelComponent`);
-
-        if (search_panel && showPanel) {
-            search_panel.style.display = "block";
+        if (showPanel) {
+            showSearchPanel();
         }
 
 
@@ -1544,10 +1531,7 @@ class SearchPanelDeviceComponent extends Component {
 
         var cId = this.props.flashingStatusComponentId;
 
-        var firmwareFlasherFlashingStatusComponent = document.getElementById(`firmware-flasher-flashing-status-component-${cId}`);
-
-        var flashingStatusComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[1] ? firmwareFlasherFlashingStatusComponent.children[1] : null;
-        var flashingLogComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[2] ? firmwareFlasherFlashingStatusComponent.children[2] : null;
+        const {statusEl: flashingStatusComponent, logEl: flashingLogComponent} = getFirmwareFlashLogElements(cId);
 
         var block_ids_component = null;
 
@@ -1613,8 +1597,7 @@ class SearchPanelDeviceComponent extends Component {
             // Обновляем список устройств, но окно поиска должно оставаться скрытым
             // (как на Desktop после успешной прошивки).
             try {
-                const search_panel = document.getElementById(`SearchPanelComponent`);
-                if (search_panel) search_panel.style.display = "none";
+                hideSearchPanel();
             } catch (_) { }
             this.searchDevices(false); //search devices (hidden)
 
@@ -1634,8 +1617,7 @@ class SearchPanelDeviceComponent extends Component {
             let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
             if (device_status_icon) device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
 
-            let search_panel = document.getElementById(`SearchPanelComponent`);
-            if (search_panel) search_panel.style.display = "block";
+            showSearchPanel();
 
         } else {
 
@@ -1717,9 +1699,7 @@ class SearchPanelDeviceComponent extends Component {
 
         // Иконку не трогаем через innerHTML — она управляется React по deviceState (state 10 приходит из disco() в VM)
         var cId = this.props.flashingStatusComponentId;
-        var firmwareFlasherFlashingStatusComponent = document.getElementById(`firmware-flasher-flashing-status-component-${cId}`);
-        var flashingStatusComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[1] ? firmwareFlasherFlashingStatusComponent.children[1] : null;
-        var flashingLogComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[2] ? firmwareFlasherFlashingStatusComponent.children[2] : null;
+        const {statusEl: flashingStatusComponent, logEl: flashingLogComponent} = getFirmwareFlashLogElements(cId);
 
         if (flashingStatusComponent) flashingStatusComponent.innerHTML = "";
         if (flashingLogComponent) flashingLogComponent.innerHTML = "";
@@ -1791,8 +1771,7 @@ class SearchPanelDeviceComponent extends Component {
                 // Обновляем список устройств, но окно поиска должно оставаться скрытым
                 // (как на Desktop после успешной прошивки).
                 try {
-                    const search_panel = document.getElementById(`SearchPanelComponent`);
-                    if (search_panel) search_panel.style.display = "none";
+                    hideSearchPanel();
                 } catch (_) { }
                 this.searchDevices(false);
             } else if ((status.indexOf("Error") !== -1)) {
@@ -1809,8 +1788,7 @@ class SearchPanelDeviceComponent extends Component {
 
                 this.setState({ deviceState: 8 });
 
-                let search_panel = document.getElementById(`SearchPanelComponent`);
-                if (search_panel) search_panel.style.display = "block";
+                showSearchPanel();
 
                 var isVerifyFailure = (status.indexOf("Firmware was not updated") !== -1) || (status.indexOf("verification timeout") !== -1);
                 if (isVerifyFailure) {

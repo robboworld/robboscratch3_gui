@@ -6,6 +6,7 @@ import { withAlert } from 'react-alert';
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 
 import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
 import styles from './SettingsWindowComponent.css';
 import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
 import { isDesktopWithBluetooth } from '../lib/platform';
@@ -22,6 +23,16 @@ import {
   applySimulationStepMsToRuntime
 } from '../lib/settingsLoader';
 import { setFullscreenRenderQuality, setSimSensorDebugOverlayEnabled } from './reducers/settings';
+import RobboSelect, { syncRobboSelectFromNative } from './RobboSelect';
+import {
+  showTransientButtonFeedback,
+  clearTransientButtonFeedbackTimer,
+  isTransientButtonFeedbackActive,
+  renderTransientActionLabel
+} from '../lib/transient-button-feedback';
+
+const SAVE_FEEDBACK_TOKEN = 'saved';
+const SAVE_BUTTON_FEEDBACK_KEY = 'saveButtonFeedback';
 
 const messages = defineMessages({
   settings_window: {
@@ -38,6 +49,11 @@ const messages = defineMessages({
     id: 'gui.RobboGui.save_settings',
     description: ' ',
     defaultMessage: 'Save settings'
+  },
+  settings_saved: {
+    id: 'gui.RobboGui.settings_saved',
+    description: 'Settings save button success label',
+    defaultMessage: 'Saved'
   },
   fullscreen_render_quality: {
     id: 'gui.RobboGui.settings_window.fullscreen_render_quality',
@@ -126,11 +142,22 @@ const messages_for_DCA_intervals = defineMessages({
 });
 
 class SettingsWindowComponent extends Component {
-  onThisWindowClose() {
+  constructor (props) {
+    super(props);
+    this.state = {
+      [SAVE_BUTTON_FEEDBACK_KEY]: null
+    };
+    this.onThisWindowClose = this.onThisWindowClose.bind(this);
+    this.saveSettings = this.saveSettings.bind(this);
+  }
 
+  componentWillUnmount () {
+    clearTransientButtonFeedbackTimer(this, SAVE_BUTTON_FEEDBACK_KEY);
+  }
+
+  onThisWindowClose () {
     console.log("SettingsWindow close");
     this.props.onSettingsWindowClose(4);
-
   }
 
   readSettings() {
@@ -140,7 +167,14 @@ class SettingsWindowComponent extends Component {
 
   getInput(id) {
     const component = document.getElementById(id);
-    return component && component.children && component.children[0] ? component.children[0] : null;
+    if (!component) {
+      return null;
+    }
+    const select = component.querySelector('select');
+    if (select) {
+      return select;
+    }
+    return component.children && component.children[0] ? component.children[0] : null;
   }
 
   saveDCASettings() {
@@ -212,6 +246,11 @@ class SettingsWindowComponent extends Component {
 
     this.deleteSettingsFile(() => {
       this.saveSettingsData(settings_data_serialized);
+    });
+
+    showTransientButtonFeedback(this, {
+      stateKey: SAVE_BUTTON_FEEDBACK_KEY,
+      feedbackToken: SAVE_FEEDBACK_TOKEN
     });
   }
 
@@ -289,6 +328,7 @@ class SettingsWindowComponent extends Component {
     const fullscreenQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
     if (fullscreenQualityInput) {
       fullscreenQualityInput.value = FULLSCREEN_RENDER_QUALITY_DEFAULT;
+      syncRobboSelectFromNative(fullscreenQualityInput);
     }
     const simSensorOverlay = this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
     if (simSensorOverlay) {
@@ -310,10 +350,7 @@ class SettingsWindowComponent extends Component {
     this.DCA_maxes_bluetooth = this.VM.DCA.getMaxValuesOfIntervalsBluetooth();
 
     this.readSettings().then((result) => {
-      const child0 = (id) => {
-        const n = document.getElementById(id);
-        return n && n.children && n.children[0] ? n.children[0] : null;
-      };
+      const child0 = (id) => this.getInput(id);
 
       const c1 = child0("raw-connection-1-settings-window-content-column-2");
       const c2 = child0("raw-connection-2-settings-window-content-column-2");
@@ -340,7 +377,10 @@ class SettingsWindowComponent extends Component {
           if (btSearchEl) btSearchEl.checked = settings_data.bluetooth_search_enabled !== false;
 
           const fullscreenRenderQuality = normalizeFullscreenRenderQuality(settings_data);
-          if (fullscreenQuality) fullscreenQuality.value = fullscreenRenderQuality;
+          if (fullscreenQuality) {
+            fullscreenQuality.value = fullscreenRenderQuality;
+            syncRobboSelectFromNative(fullscreenQuality);
+          }
           const simulationStepMsValue = normalizeSimulationStepMs(settings_data);
           if (simulationStepMs) simulationStepMs.value = simulationStepMsValue;
           const simSensorDebugOverlayEnabled = settings_data.sim_sensor_debug_overlay_enabled === true;
@@ -378,7 +418,14 @@ class SettingsWindowComponent extends Component {
     });
   }
 
-  render() {
+  render () {
+    const { intl } = this.props;
+    const saveFeedbackActive = isTransientButtonFeedbackActive(
+      this.state,
+      SAVE_BUTTON_FEEDBACK_KEY,
+      SAVE_FEEDBACK_TOKEN
+    );
+
     return (
       <div id="settings-window" className={classNames(sharedStyles.palette, styles.settings_window)}>
 
@@ -390,123 +437,168 @@ class SettingsWindowComponent extends Component {
             type="button"
             className={sharedStyles.closeButton}
             aria-label="Close"
-            onClick={this.onThisWindowClose.bind(this)}
+            onClick={this.onThisWindowClose}
           />
         </div>
 
-        <div id="settings-window-content" className={classNames(sharedStyles.body, styles.settings_window_content)}>
+        <div id="settings-window-content" className={classNames(sharedStyles.body, formStyles.palette_content)}>
 
-          <div id="settings-window-content-raw-connection-title" className={styles.settings_window_content_raw}>
-            <div id="raw-connection-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <b>{this.props.intl.formatMessage(messages_for_DCA_intervals.device_connection_section)}</b>
-            </div>
-          </div>
+          <section
+            id="settings-window-content-raw-connection-title"
+            className={formStyles.section}
+            aria-labelledby="raw-connection-title-settings-window-content-column-1"
+          >
+            <h3
+              id="raw-connection-title-settings-window-content-column-1"
+              className={formStyles.section_title}
+            >
+              {this.props.intl.formatMessage(messages_for_DCA_intervals.device_connection_section)}
+            </h3>
 
-          {isDesktopWithBluetooth() && (
-            <div id="settings-window-content-raw-bt-search" className={styles.settings_window_content_raw}>
-              <div id="raw-bt-search-settings-window-content-column-1" className={styles.settings_window_content_column}>
-                {this.props.intl.formatMessage(messages_for_DCA_intervals.bluetooth_search_enabled)}
+            {isDesktopWithBluetooth() && (
+              <div id="settings-window-content-raw-bt-search" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30, formStyles.checkbox_row)}>
+                <div id="raw-bt-search-settings-window-content-column-1" className={formStyles.field_label}>
+                  {this.props.intl.formatMessage(messages_for_DCA_intervals.bluetooth_search_enabled)}
+                </div>
+                <div id="raw-bt-search-settings-window-content-column-2" className={formStyles.field_control}>
+                  <input type="checkbox" defaultChecked />
+                </div>
               </div>
-              <div id="raw-bt-search-settings-window-content-column-2" className={styles.settings_window_content_column}>
-                <input type="checkbox" defaultChecked />
+            )}
+
+            <div id="settings-window-content-raw-connection-1" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
+              <div id="raw-connection-1-settings-window-content-column-1" className={formStyles.field_label}>
+                {this.props.intl.formatMessage(messages_for_DCA_intervals.no_response_time)}
               </div>
-            </div>
-          )}
-
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-connection-1-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.no_response_time)}
-            </div>
-            <div id="raw-connection-1-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
-            </div>
-          </div>
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-connection-2-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.no_start_timeout)}
-            </div>
-            <div id="raw-connection-2-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
-            </div>
-          </div>
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-connection-3-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.device_handle_timeout)}
-            </div>
-            <div id="raw-connection-3-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
-            </div>
-          </div>
-          <div id="settings-window-content-raw-2" className={styles.settings_window_content_raw}>
-            <div id="raw-connection-4-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.uno_timeout)}
-            </div>
-            <div id="raw-connection-4-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" />
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-vm-section-title" className={styles.settings_window_content_raw}>
-            <div id="raw-vm-section-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <b>{this.props.intl.formatMessage(messages.vm_section_title)}</b>
-            </div>
-          </div>
-
-          <div id="settings-window-content-raw-fullscreen-quality" className={styles.settings_window_content_raw}>
-            <div id="raw-fullscreen-quality-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <div>{this.props.intl.formatMessage(messages.fullscreen_render_quality)}</div>
-              <div className={styles.settings_window_hint}>
-                {this.props.intl.formatMessage(messages.fullscreen_quality_note)}
+              <div id="raw-connection-1-settings-window-content-column-2" className={formStyles.field_control}>
+                <input type="number" />
               </div>
             </div>
-            <div id="raw-fullscreen-quality-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <select defaultValue={FULLSCREEN_RENDER_QUALITY_DEFAULT}>
-                <option value="1">{this.props.intl.formatMessage(messages.fullscreen_quality_performance)}</option>
-                <option value="2">{this.props.intl.formatMessage(messages.fullscreen_quality_balanced)}</option>
-                <option value="3">{this.props.intl.formatMessage(messages.fullscreen_quality_quality)}</option>
-              </select>
-            </div>
-          </div>
 
-          <div id="settings-window-content-raw-simulation-step-ms" className={styles.settings_window_content_raw}>
-            <div id="raw-simulation-step-ms-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <div>{this.props.intl.formatMessage(messages.simulation_step_ms)}</div>
-              <div className={styles.settings_window_hint}>
-                {this.props.intl.formatMessage(messages.simulation_step_ms_hint)}
+            <div id="settings-window-content-raw-connection-2" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
+              <div id="raw-connection-2-settings-window-content-column-1" className={formStyles.field_label}>
+                {this.props.intl.formatMessage(messages_for_DCA_intervals.no_start_timeout)}
+              </div>
+              <div id="raw-connection-2-settings-window-content-column-2" className={formStyles.field_control}>
+                <input type="number" />
               </div>
             </div>
-            <div id="raw-simulation-step-ms-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="number" min="1" max="10" defaultValue={SIMULATION_STEP_MS_DEFAULT} />
-            </div>
-          </div>
 
-          <div id="settings-window-content-raw-sim-sensor-debug-overlay-title" className={styles.settings_window_content_raw}>
-            <div id="raw-sim-sensor-debug-overlay-title-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <b>{this.props.intl.formatMessage(messages.experimental_section_title)}</b>
+            <div id="settings-window-content-raw-connection-3" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
+              <div id="raw-connection-3-settings-window-content-column-1" className={formStyles.field_label}>
+                {this.props.intl.formatMessage(messages_for_DCA_intervals.device_handle_timeout)}
+              </div>
+              <div id="raw-connection-3-settings-window-content-column-2" className={formStyles.field_control}>
+                <input type="number" />
+              </div>
             </div>
-          </div>
 
-          <div id="settings-window-content-raw-sim-sensor-debug-overlay-row" className={styles.settings_window_content_raw}>
-            <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              {this.props.intl.formatMessage(messages.sim_sensor_debug_overlay)}
+            <div id="settings-window-content-raw-connection-4" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
+              <div id="raw-connection-4-settings-window-content-column-1" className={formStyles.field_label}>
+                {this.props.intl.formatMessage(messages_for_DCA_intervals.uno_timeout)}
+              </div>
+              <div id="raw-connection-4-settings-window-content-column-2" className={formStyles.field_control}>
+                <input type="number" />
+              </div>
             </div>
-            <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-2" className={styles.settings_window_content_column}>
-              <input type="checkbox" defaultChecked={false} />
+          </section>
+
+          <section
+            id="settings-window-content-raw-vm-section-title"
+            className={formStyles.section}
+            aria-labelledby="raw-vm-section-title-settings-window-content-column-1"
+          >
+            <h3
+              id="raw-vm-section-title-settings-window-content-column-1"
+              className={formStyles.section_title}
+            >
+              {this.props.intl.formatMessage(messages.vm_section_title)}
+            </h3>
+
+            <div id="settings-window-content-raw-fullscreen-quality" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
+              <div id="raw-fullscreen-quality-settings-window-content-column-1" className={formStyles.field_label}>
+                <div>{this.props.intl.formatMessage(messages.fullscreen_render_quality)}</div>
+                <div className={formStyles.field_hint}>
+                  {this.props.intl.formatMessage(messages.fullscreen_quality_note)}
+                </div>
+              </div>
+              <div id="raw-fullscreen-quality-settings-window-content-column-2" className={formStyles.field_control}>
+                <RobboSelect
+                  defaultValue={FULLSCREEN_RENDER_QUALITY_DEFAULT}
+                  options={[
+                    {
+                      value: '1',
+                      label: this.props.intl.formatMessage(messages.fullscreen_quality_performance)
+                    },
+                    {
+                      value: '2',
+                      label: this.props.intl.formatMessage(messages.fullscreen_quality_balanced)
+                    },
+                    {
+                      value: '3',
+                      label: this.props.intl.formatMessage(messages.fullscreen_quality_quality)
+                    }
+                  ]}
+                />
+              </div>
             </div>
-          </div>
 
-          <div id="settings-window-content-raw-3" className={styles.settings_window_content_raw}>
-
-            <div id="raw-13-settings-window-content-column-1" className={styles.settings_window_content_column}>
-              <button onClick={this.saveSettings.bind(this)}> {this.props.intl.formatMessage(messages.save_settings)} </button>
+            <div id="settings-window-content-raw-simulation-step-ms" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
+              <div id="raw-simulation-step-ms-settings-window-content-column-1" className={formStyles.field_label}>
+                <div>{this.props.intl.formatMessage(messages.simulation_step_ms)}</div>
+                <div className={formStyles.field_hint}>
+                  {this.props.intl.formatMessage(messages.simulation_step_ms_hint)}
+                </div>
+              </div>
+              <div id="raw-simulation-step-ms-settings-window-content-column-2" className={formStyles.field_control}>
+                <input type="number" min="1" max="10" defaultValue={SIMULATION_STEP_MS_DEFAULT} />
+              </div>
             </div>
-            <div id="raw-13-settings-window-content-column-2" className={styles.settings_window_content_column}></div>
+          </section>
 
+          <section
+            id="settings-window-content-raw-sim-sensor-debug-overlay-title"
+            className={formStyles.section}
+            aria-labelledby="raw-sim-sensor-debug-overlay-title-settings-window-content-column-1"
+          >
+            <h3
+              id="raw-sim-sensor-debug-overlay-title-settings-window-content-column-1"
+              className={formStyles.section_title}
+            >
+              {this.props.intl.formatMessage(messages.experimental_section_title)}
+            </h3>
+
+            <div id="settings-window-content-raw-sim-sensor-debug-overlay-row" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30, formStyles.checkbox_row)}>
+              <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-1" className={formStyles.field_label}>
+                {this.props.intl.formatMessage(messages.sim_sensor_debug_overlay)}
+              </div>
+              <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-2" className={formStyles.field_control}>
+                <input type="checkbox" defaultChecked={false} />
+              </div>
+            </div>
+          </section>
+
+          <div id="settings-window-content-raw-3" className={formStyles.footer}>
+            <div id="raw-13-settings-window-content-column-1" className={formStyles.footer_actions}>
+              <button
+                type="button"
+                className={classNames(formStyles.action_button, formStyles.footer_action_button)}
+                onClick={this.saveSettings}
+              >
+                {renderTransientActionLabel({
+                  feedbackActive: saveFeedbackActive,
+                  defaultMessage: messages.save_settings,
+                  successMessage: messages.settings_saved,
+                  intl,
+                  labelClassName: formStyles.action_button_label
+                })}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    )
-  };
+    );
+  }
 }
 
 const mapStateToProps = state => ({});

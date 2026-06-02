@@ -1,169 +1,165 @@
-import classNames from 'classnames';
-import React  from 'react';
-import { Component } from 'react';
-import { connect } from 'react-redux';
-import  styles from './DraggableWindowComponent.css';
+import React from 'react';
+import {Component} from 'react';
+import {connect} from 'react-redux';
+import styles from './DraggableWindowComponent.css';
 
-import PropTypes from 'prop-types';
-import { ItemTypes } from './drag_constants';
-import { DragSource } from 'react-dnd';
+import {ItemTypes} from './drag_constants';
+import {DragSource} from 'react-dnd';
 
-import {ActionDropNewDraggableWindow }  from './actions/sensor_actions';
-import {ActionCreateNewDraggableWindow }  from './actions/sensor_actions';
+import {ActionDropNewDraggableWindow} from './actions/sensor_actions';
+import {ActionCreateNewDraggableWindow} from './actions/sensor_actions';
+import RobboPopupTransition from './RobboPopupTransition';
 import {
     ROBBO_POPUP_Z_INDEX_BASE,
     raiseRobboPopupZIndex
 } from '../lib/robbo-popup-z-index';
+import {getViewportCenteredCoords} from '../lib/robbo-popup-position';
+import {
+    attachEmptyDragPreview,
+    collectPopupDragSource,
+    createPopupDragFollowState,
+    handlePopupDragFollowLifecycle,
+    resolvePopupDragTopLeft,
+    stopPopupDragFollow,
+    wrapPopupDragSource
+} from '../lib/robbo-popup-drag-position';
 
-const DraggableWindowSource = {
-  beginDrag(props) {
+const DraggableWindowSource = wrapPopupDragSource({
+    beginDrag (props) {
+        return {
+            element_type: ItemTypes.NEW_DRAGGABLE_WINDOW,
+            draggableWindowId: props.draggableWindowId
+        };
+    }
+}, props => {
+    const w = props.draggable_window[props.draggableWindowId];
     return {
-
-          element_type: ItemTypes.NEW_DRAGGABLE_WINDOW,
-          draggableWindowId: props.draggableWindowId
+        top: w ? w.position_top : 0,
+        left: w ? w.position_left : 0
     };
-  }
-};
+});
 
-function collect(connect, monitor) {
-  return {
-    connectDragSource: connect.dragSource(),
-    isDragging: monitor.isDragging()
-  }
+function collect (connect, monitor) {
+    return collectPopupDragSource(connect, monitor);
 }
 
 class NewDraggableWindowComponent extends Component {
 
-  constructor (props) {
-    super(props);
-    this.state = {
-      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE
-    };
-    this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
-  }
-
-  componentDidUpdate (prevProps) {
-    const windowId = this.props.draggableWindowId;
-    const prevWindow = prevProps.draggable_window[windowId];
-    const nextWindow = this.props.draggable_window[windowId];
-    if (nextWindow && prevWindow && !prevWindow.isShowing && nextWindow.isShowing) {
-      this.setState({popupZIndex: raiseRobboPopupZIndex()});
+    constructor (props) {
+        super(props);
+        this.state = {
+            popupZIndex: ROBBO_POPUP_Z_INDEX_BASE,
+            ...createPopupDragFollowState()
+        };
+        this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
+        this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
     }
-  }
 
-  handlePopupMouseDown () {
-    this.setState({popupZIndex: raiseRobboPopupZIndex()});
-  }
+    componentDidUpdate (prevProps) {
+        const windowId = this.props.draggableWindowId;
+        const prevWindow = prevProps.draggable_window[windowId];
+        const nextWindow = this.props.draggable_window[windowId];
+        if (nextWindow && prevWindow && !prevWindow.isShowing && nextWindow.isShowing) {
+            this.setState({popupZIndex: raiseRobboPopupZIndex()});
+        }
+        handlePopupDragFollowLifecycle(this, prevProps, this.props.isDragging);
+    }
 
-  componentDidMount () {
+    componentWillUnmount () {
+        stopPopupDragFollow(this);
+    }
 
-      //  this.props.onCreateDraggableWindow(this.props.draggableWindowId);
+    handlePopupMouseDown () {
+        this.setState({popupZIndex: raiseRobboPopupZIndex()});
+    }
 
-      if (typeof(this.props.initialCoords) != 'undefined'){
+    _handleTransitionEntered () {
+        this.setState({popupZIndex: raiseRobboPopupZIndex()});
+    }
 
-        let  top   =  this.props.initialCoords[1];
-        let  left  =  this.props.initialCoords[0];
+    _resolveMountCoords () {
+        if (typeof this.props.initialCoords !== 'undefined') {
+            return {
+                left: this.props.initialCoords[0],
+                top: this.props.initialCoords[1]
+            };
+        }
+        if (this.props.centerOnCreate && this.props.estimatedPopupSize) {
+            return getViewportCenteredCoords(
+                this.props.estimatedPopupSize.width,
+                this.props.estimatedPopupSize.height
+            );
+        }
+        return null;
+    }
 
-         this.props.onCreateDraggableWindow(top,left,this.props.draggableWindowId);
+    componentDidMount () {
+        attachEmptyDragPreview(this.props.connectDragPreview);
+        const coords = this._resolveMountCoords();
+        if (coords) {
+            this.props.onCreateDraggableWindow(coords.top, coords.left, this.props.draggableWindowId);
+        }
+    }
 
+    render () {
+        const {connectDragSource, isDragging} = this.props;
+        const draggable_window_id = this.props.draggableWindowId;
 
-      }else{
+        let top = 200;
+        let left = 200;
+        let isShowing = false;
 
-           this.props.onCreateDraggableWindow(300,300,this.props.draggableWindowId);
-      }
-
-
-  }
-
-
-  render(){
-
-
-
-     const { connectDragSource, isDragging} = this.props;
-
-      var draggable_window_id =  this.props.draggableWindowId;
-
-      var top   = 200;
-      var left  =  200;
-      var isShowing =  false;
-
-
-
-      if (typeof(this.props.draggable_window[draggable_window_id]) != 'undefined'){
-
-         top   =  this.props.draggable_window[draggable_window_id].position_top;
-         left  =  this.props.draggable_window[draggable_window_id].position_left;
-         isShowing =  this.props.draggable_window[draggable_window_id].isShowing;
-
-      }
-
-
-
-
-
-          return connectDragSource(
-
-                  <div    className={classNames(
-
-                                {[styles.draggable_window]: true},
-                                {[styles.window_show]: isShowing},
-                                {[styles.window_hide]: !isShowing},
-
-                                )}
-
-                          style={{
-
-                                position: 'fixed',
-                                top: `${top}px`,
-                                left: `${left}px`,
-                                zIndex: isShowing ? this.state.popupZIndex : undefined
-                                }}
-                          onMouseDown={isShowing ? this.handlePopupMouseDown : undefined}
-
-                          id={`draggable_window_id-${this.props.draggableWindowId}`}>
-
-
-                      {this.props.children}
-
-
-                      </div>
-
-
-
-             )
-
+        if (typeof this.props.draggable_window[draggable_window_id] !== 'undefined') {
+            top = this.props.draggable_window[draggable_window_id].position_top;
+            left = this.props.draggable_window[draggable_window_id].position_left;
+            isShowing = this.props.draggable_window[draggable_window_id].isShowing;
         }
 
+        const position = resolvePopupDragTopLeft(
+            top,
+            left,
+            isDragging,
+            this.state.dragFollowTop,
+            this.state.dragFollowLeft
+        );
 
+        return (
+            <RobboPopupTransition
+                in={isShowing}
+                onEntered={this._handleTransitionEntered}
+            >
+                {connectDragSource(
+                    <div
+                        className={styles.draggable_window}
+                        style={{
+                            position: 'fixed',
+                            top: `${position.top}px`,
+                            left: `${position.left}px`,
+                            zIndex: isShowing ? this.state.popupZIndex : undefined
+                        }}
+                        onMouseDown={isShowing ? this.handlePopupMouseDown : undefined}
+                        aria-hidden={!isShowing}
+                        id={`draggable_window_id-${this.props.draggableWindowId}`}
+                    >
+                        {this.props.children}
+                    </div>
+                )}
+            </RobboPopupTransition>
+        );
     }
+}
 
+const mapStateToProps = state => ({
+    draggable_window: state.scratchGui.new_draggable_window
+});
 
-    const mapStateToProps =  state => ({
+const mapDispatchToProps = dispatch => ({
+    onCreateDraggableWindow: (top, left, draggable_window_id) => {
+        dispatch(ActionCreateNewDraggableWindow(top, left, draggable_window_id));
+    }
+});
 
-
-    draggable_window:state.scratchGui.new_draggable_window
-
-
-      });
-
-    const mapDispatchToProps = dispatch => ({
-
-
-      // onCreateDraggableWindow: (draggable_window_id) => {
-      //
-      //     dispatch(ActionCreateDraggableWindow(draggable_window_id));
-      //   }
-
-      onCreateDraggableWindow: (top,left, draggable_window_id) => {
-
-            dispatch(ActionCreateNewDraggableWindow(top,left, draggable_window_id));
-          }
-
-
-    });
-
-    export default connect(
-      mapStateToProps,
-      mapDispatchToProps
-    )(DragSource(ItemTypes.NEW_DRAGGABLE_WINDOW, DraggableWindowSource, collect)(NewDraggableWindowComponent));
+export default connect(
+    mapStateToProps,
+    mapDispatchToProps
+)(DragSource(ItemTypes.NEW_DRAGGABLE_WINDOW, DraggableWindowSource, collect)(NewDraggableWindowComponent));

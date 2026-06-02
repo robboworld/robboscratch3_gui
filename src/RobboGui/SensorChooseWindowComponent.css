@@ -2,16 +2,9 @@
 
 .sensor_choose_window {
   z-index: $z-index-robbo-popup;
-/*background-color: #AAAAAA;*/
-/*position: absolute;
-top:40%;
-left:20%;*/
-
-border: 1px solid #00af41;
-
-
-
-
+  border: 1px solid #00af41;
+  transform-origin: top left;
+  pointer-events: auto;
 }
 
 .sensor_choose_window_components_block{
@@ -23,28 +16,7 @@ border: 1px solid #00af41;
 
 }
 
-.window_show {
-    display: block;
-    pointer-events: auto;
-}
-
-.window_drag{
-
-
-        opacity:  0.5;
-        cursor: move;
-        background-color: yellow;
-
-}
-
-.window_hide{
-
-
-    display: none;
-
-}
-
-.sensor_choose_window_tittle{
+.sensor_choose_window_tittle {
 
     background-color: #00af41;
     color: white;

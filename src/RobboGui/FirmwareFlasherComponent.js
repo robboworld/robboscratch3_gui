@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
 import styles from './FirmwareFlasherComponent.css';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
@@ -111,13 +112,14 @@ class FirmwareFlasherComponent extends Component {
                   onClick={this.onThisWindowClose.bind(this)}
               />
           </div>
-          <div className={sharedStyles.body}>
-            <button type="button" className={styles.get_devices_info} onClick={this.getDevicesInfo.bind(this)}>
+          <div className={classNames(sharedStyles.body, formStyles.palette_content)}>
+            <section className={formStyles.section}>
+            <button type="button" className={formStyles.action_button} onClick={this.getDevicesInfo.bind(this)}>
                 {this.props.intl.formatMessage(messages.get_devices_info)}
             </button>
-          <div id="devices-header" className={styles.devices_header}>
+          <div id="devices-header" className={formStyles.table_header_bar}>
 
-                <div id="devices-header-device-name" className={styles.devices_header_element}>
+                <div id="devices-header-device-name" className={formStyles.table_header_cell}>
 
                       {this.props.intl.formatMessage(messages.device_name)}
 
@@ -125,19 +127,19 @@ class FirmwareFlasherComponent extends Component {
 
 
 
-                <div id="devices-header-device-port" className={styles.devices_header_element}>
+                <div id="devices-header-device-port" className={formStyles.table_header_cell}>
 
                       {this.props.intl.formatMessage(messages.device_port)}
 
                 </div>
 
-                <div id="devices-header-device-serial" className={styles.devices_header_element}>
+                <div id="devices-header-device-serial" className={formStyles.table_header_cell}>
 
                       {this.props.intl.formatMessage(messages.device_serial)}
 
                 </div>
 
-                <div id="devices-header-device-firmware" className={styles.devices_header_element}>
+                <div id="devices-header-device-firmware" className={formStyles.table_header_cell}>
 
                       {this.props.intl.formatMessage(messages.device_firmware)}
 
@@ -201,7 +203,7 @@ class FirmwareFlasherComponent extends Component {
 
 
           </div>
-
+            </section>
           </div>
     </div>
 

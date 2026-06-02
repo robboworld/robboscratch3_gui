@@ -1,11 +1,13 @@
 
 import classNames from 'classnames';
 import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
-
-import sharedStyles from './DevicePaletteShared.css';
+import RobboPopupTransition from './RobboPopupTransition';
 import styles from './SearchPanelComponent.css';
-import { ActionAddNewFoundDevice } from './actions/sensor_actions';
+import {getMenuBarDropdownTopPx} from '../lib/menu-bar-dropdown-anchor';
+import {
+    hideSearchPanel,
+    subscribeSearchPanelVisibility
+} from './search-panel-visibility';
 
 import FirmwareFlasherFlashingStatusComponent from './FirmwareFlasherFlashingStatusComponent';
 import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
@@ -26,11 +28,6 @@ function shouldProbeQuadcopterOnDeviceSearch(QCA) {
 
 const messages = defineMessages({
 
-  search_panel_title: {
-    id: 'gui.RobboGui.search_devices',
-    description: 'Search panel title',
-    defaultMessage: 'Search devices'
-  },
   devices_not_found: {
 
     id: 'gui.RobboGui.devices_not_found',
@@ -79,8 +76,17 @@ class SearchPanelComponent extends Component {
       /** Bumps when instance fields used in render change without device list updates */
       uiRev: 0,
       popupZIndex: ROBBO_POPUP_Z_INDEX_BASE,
-      searchEpoch: 0
+      searchEpoch: 0,
+      isShowing: false,
+      anchorStyle: {}
     };
+
+    this._panelRef = null;
+    this._handleSearchPanelShow = this._handleSearchPanelShow.bind(this);
+    this._handleSearchPanelHide = this._handleSearchPanelHide.bind(this);
+    this._handleWindowResize = this._handleWindowResize.bind(this);
+    this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
+    this.onThisWindowClose = this.onThisWindowClose.bind(this);
 
     this.device_list = [];
 
@@ -102,27 +108,75 @@ class SearchPanelComponent extends Component {
     this.setState({popupZIndex: raiseRobboPopupZIndex()});
   }
 
+  _getSearchPanelAnchorElement () {
+    return document.getElementById('robbo_search_devices');
+  }
+
+  updateAnchorPosition () {
+    const anchor = this._getSearchPanelAnchorElement();
+    if (!anchor || typeof window === 'undefined') {
+      return {};
+    }
+    const rect = anchor.getBoundingClientRect();
+    const margin = 8;
+    const panelWidth = (this._panelRef && this._panelRef.offsetWidth) || 220;
+    const panelHeight = (this._panelRef && this._panelRef.offsetHeight) || 200;
+    const menuBarTop = getMenuBarDropdownTopPx();
+    let top = menuBarTop != null ? menuBarTop : rect.bottom;
+    let left = rect.left;
+    left = Math.max(margin, Math.min(left, window.innerWidth - panelWidth - margin));
+    top = Math.max(margin, Math.min(top, window.innerHeight - panelHeight - margin));
+    return {
+      top: `${top}px`,
+      left: `${left}px`
+    };
+  }
+
+  _handleSearchPanelShow () {
+    const anchorStyle = this.updateAnchorPosition();
+    this.setState({isShowing: true, anchorStyle}, () => {
+      requestAnimationFrame(() => {
+        if (this._isMounted && this.state.isShowing) {
+          this.setState({anchorStyle: this.updateAnchorPosition()});
+        }
+      });
+    });
+    if (typeof window !== 'undefined' && !this._resizeListenerAttached) {
+      window.addEventListener('resize', this._handleWindowResize);
+      this._resizeListenerAttached = true;
+    }
+  }
+
+  _handleSearchPanelHide () {
+    if (typeof window !== 'undefined' && this._resizeListenerAttached) {
+      window.removeEventListener('resize', this._handleWindowResize);
+      this._resizeListenerAttached = false;
+    }
+    this.setState({isShowing: false});
+  }
+
+  _handleWindowResize () {
+    if (this.state.isShowing) {
+      this.setState({anchorStyle: this.updateAnchorPosition()});
+    }
+  }
+
+  _handleTransitionEntered () {
+    this.setState({
+      popupZIndex: raiseRobboPopupZIndex(),
+      anchorStyle: this.updateAnchorPosition()
+    });
+  }
+
   componentDidMount() {
     this._isMounted = true;
-
-    const searchPanelEl = document.getElementById('SearchPanelComponent');
-    if (searchPanelEl) {
-      this._searchPanelLastDisplay = searchPanelEl.style.display || '';
-      this._searchPanelVisibilityObserver = new MutationObserver(() => {
-        const display = searchPanelEl.style.display || '';
-        if (display === this._searchPanelLastDisplay) {
-          return;
-        }
-        this._searchPanelLastDisplay = display;
-        if (display === 'block') {
-          this.setState({popupZIndex: raiseRobboPopupZIndex()});
-        }
-      });
-      this._searchPanelVisibilityObserver.observe(searchPanelEl, {
-        attributes: true,
-        attributeFilter: ['style']
-      });
-    }
+    this._unsubscribeSearchPanelVisibility = subscribeSearchPanelVisibility(showing => {
+      if (showing) {
+        this._handleSearchPanelShow();
+      } else {
+        this._handleSearchPanelHide();
+      }
+    });
 
     // this.DCA =  this.props.deviceControlInterfaces.DCA;
     // this.RCA =  this.props.deviceControlInterfaces.RCA;
@@ -287,16 +341,20 @@ class SearchPanelComponent extends Component {
 
   componentWillUnmount() {
     this._isMounted = false;
-    if (this._searchPanelVisibilityObserver) {
-      this._searchPanelVisibilityObserver.disconnect();
+    if (this._unsubscribeSearchPanelVisibility) {
+      this._unsubscribeSearchPanelVisibility();
+      this._unsubscribeSearchPanelVisibility = null;
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this._handleWindowResize);
     }
     if (this.QCA && this._quadcopterStatusCallback && typeof this.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
       this.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
     }
   }
 
-  onThisWindowClose() {
-    ReactDOM.findDOMNode(this).style.display = "none";
+  onThisWindowClose () {
+    hideSearchPanel();
   }
 
   render() {
@@ -340,79 +398,95 @@ class SearchPanelComponent extends Component {
       </DraggableWindowComponent>
     )) : null;
 
+    const panelStyle = {
+      zIndex: this.state.popupZIndex,
+      ...this.state.anchorStyle
+    };
+
     return (
       <React.Fragment>
-      <div
-          id="SearchPanelComponent"
-          className={classNames(sharedStyles.palette, styles.search_panel)}
-          style={{zIndex: this.state.popupZIndex}}
-          onMouseDown={this.handleSearchPanelMouseDown}
+      <RobboPopupTransition
+          in={this.state.isShowing}
+          onEntered={this._handleTransitionEntered}
       >
-        <div id="SearchPanelComponent-tittle" className={sharedStyles.header}>
-            <span className={sharedStyles.headerTitle}>
-                {this.props.intl.formatMessage(messages.search_panel_title)}
-            </span>
-            <button
-                type="button"
-                className={sharedStyles.closeButton}
-                aria-label="Close"
-                onClick={this.onThisWindowClose.bind(this)}
-            />
-        </div>
-        <div id="SearchPanelComponent-body" className={classNames(sharedStyles.body, styles.search_panel_body)}>
+        <div
+            ref={el => {
+              this._panelRef = el;
+            }}
+            id="SearchPanelComponent"
+            className={styles.search_panel}
+            style={panelStyle}
+            aria-hidden={!this.state.isShowing}
+            onMouseDown={this.handleSearchPanelMouseDown}
+        >
+          <button
+              type="button"
+              className={styles.search_panel_close}
+              aria-label="Close"
+              onClick={this.onThisWindowClose}
+          />
+          <div id="SearchPanelComponent-body" className={styles.search_panel_body}>
 
-          <div id="SearchPanelComponent-devices-list">
+            <div id="SearchPanelComponent-devices-list">
 
-            {
-
-
-              this.state.devices.map((device, index) => {
-
-
-
-
-
-                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} disableFirmwareUi={!showFirmwareUi} VM={this.VM} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} searchEpoch={this.state.searchEpoch} />
-
-
-
+              {
+                this.state.devices.map((device, index) => (
+                  <SearchPanelDeviceComponent
+                      Id={index}
+                      flashingStatusComponentId={index}
+                      draggableWindowId={7 + index}
+                      key={device.devicePort + '-search-panel-devices-list'}
+                      devicePort={device.devicePort}
+                      isBluetooth={device.isBluetooth}
+                      isMacBluetooth={device.isMacBluetooth}
+                      isQuadcopter={device.isQuadcopter}
+                      disableFirmwareUi={!showFirmwareUi}
+                      VM={this.VM}
+                      DCA={this.DCA}
+                      RCA={this.RCA}
+                      LCA={this.LCA}
+                      QCA={this.QCA}
+                      OCA={this.OCA}
+                      ACA={this.ACA}
+                      searchEpoch={this.state.searchEpoch}
+                  />
+                ))
               }
 
-              )
+              {
+                showDevicesSearching ? (
+                  <div className={styles.bluetooth_devices_not_found}>
+                    {this.props.intl.formatMessage(messages.devices_searching)}
+                  </div>
+                ) : null
+              }
 
-            }
+              {
+                showDevicesNotFound ? (
+                  <div className={styles.devices_not_found}>
+                    {this.props.intl.formatMessage(messages.devices_not_found)}
+                  </div>
+                ) : null
+              }
 
+              {
+                showBluetoothNotFound && isMobileBridgeContext ? (
+                  <div className={styles.bluetooth_devices_not_found}>
+                    {this.props.intl.formatMessage(
+                      isEmbeddedAndroidApp ?
+                        messages.robbo_android_devices_not_found :
+                        messages.robbolink_mobile_devices_not_found
+                    )}
+                  </div>
+                ) : null
+              }
 
-            {
-
-              showDevicesSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.devices_searching)}</div> : ""
-
-            }
-
-            {
-
-              showDevicesNotFound ? <div className={styles.devices_not_found}>{this.props.intl.formatMessage(messages.devices_not_found)}</div> : ""
-
-            }
-
-            {
-              showBluetoothNotFound && isMobileBridgeContext ? (
-                <div className={styles.bluetooth_devices_not_found}>
-                  {this.props.intl.formatMessage(
-                    isEmbeddedAndroidApp ? messages.robbo_android_devices_not_found : messages.robbolink_mobile_devices_not_found
-                  )}
-                </div>
-              ) : ""
-
-            }
-
+            </div>
 
           </div>
 
-
         </div>
-
-      </div>
+      </RobboPopupTransition>
       {firmwareFlashWindows}
       </React.Fragment>
     )

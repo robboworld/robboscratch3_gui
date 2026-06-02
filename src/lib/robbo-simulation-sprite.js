@@ -3,7 +3,14 @@
  */
 import spriteLibraryContent from './libraries/sprites.json';
 
-export const SIMULATION_ROBOT_SPRITE_NAMES = ['Robbo Robot', 'RobboPlatform', 'Robot'];
+/** Library entry name in sprites.json (with space). */
+export const SIMULATION_ROBOT_SPRITE_LIBRARY_NAME = 'Robbo Platform';
+
+export const SIMULATION_ROBOT_SPRITE_NAMES = [
+    'Robbo Robot',
+    SIMULATION_ROBOT_SPRITE_LIBRARY_NAME,
+    'RobboPlatform' // legacy alias from older builds
+];
 
 /**
  * @param {import('scratch-vm')} vm
@@ -20,13 +27,12 @@ export const hasSimulationRobotSprite = function (vm) {
  * @returns {object|null} Sprite JSON suitable for vm.addSprite, or null if library missing.
  */
 export const getDefaultSimulationRobotSpriteJson = function () {
-    const item = spriteLibraryContent.find(s => s.name === 'RobboPlatform') ||
-        spriteLibraryContent.find(s => s.name === 'Robot') ||
-        spriteLibraryContent[0];
+    const item = spriteLibraryContent.find(s => s.name === SIMULATION_ROBOT_SPRITE_LIBRARY_NAME) ||
+        spriteLibraryContent.find(s => s.name === 'RobboPlatform');
     if (!item || !item.json) return null;
     const baseJson = Object.assign({}, item.json);
     if (typeof baseJson.scale !== 'number' || !Number.isFinite(baseJson.scale)) {
-        baseJson.scale = 0.25;
+        baseJson.scale = 0.2;
     }
     return Object.assign({}, baseJson, {objName: 'Robbo Robot', direction: 90});
 };

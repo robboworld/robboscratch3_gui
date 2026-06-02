@@ -2,7 +2,9 @@
 
 .menu {
     position: absolute;
+    transform-origin: top left;
     border: 1px solid $ui-black-transparent;
+    border-top: none;
     border-radius: 0 0 8px 8px;
     background-color: #00af41;
     padding: 0;

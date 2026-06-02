@@ -7,6 +7,7 @@ import PropTypes from 'prop-types';
 import MenuBarDevicePreview from './MenuBarDevicePreview';
 import {ActionTriggerSensorsPalette} from './actions/sensor_actions';
 import {isDesktopWithBluetooth} from '../lib/platform';
+import {showSearchPanel} from './search-panel-visibility';
 import styles from './MenuBarDeviceControls.css';
 
 const messages = defineMessages({
@@ -85,10 +86,7 @@ class MenuBarDeviceControls extends Component {
     searchDevices () {
         if (this.state.searchBusy) return;
 
-        const searchPanel = document.getElementById('SearchPanelComponent');
-        if (searchPanel) {
-            searchPanel.style.display = 'block';
-        }
+        showSearchPanel();
 
         this.setState({searchBusy: true});
 

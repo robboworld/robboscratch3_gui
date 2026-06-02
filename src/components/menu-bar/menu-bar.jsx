@@ -335,6 +335,7 @@ class MenuBar extends React.Component {
         );
         return (
             <Box
+                id="rs3-menu-bar"
                 className={classNames(
                     this.props.className,
                     styles.menuBar
@@ -499,7 +500,7 @@ class MenuBar extends React.Component {
                     </div>
                     <Divider className={classNames(styles.divider)} />
 
-                    <div className={styles.robboMenuGroup}>
+                    <div id="robbo-menu-group" className={styles.robboMenuGroup}>
                         <div
                             id="trigger-robbo-menu"
                             className={styles.trigger_robbo_menu}

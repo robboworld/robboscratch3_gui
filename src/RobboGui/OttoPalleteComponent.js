@@ -2,8 +2,11 @@ import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
+import rowStyles from './DevicePaletteRows.css';
 import styles from './OttoPalleteComponent.css';
 import SensorDataBlockComponent from './SensorDataBlockComponent';
+import { getPaletteSensorValueNode } from './sensor-palette-dom';
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 
@@ -13,13 +16,13 @@ const messages = defineMessages({
     sound_level: {
         id: 'gui.RobboGui.OttoPalette.sound_level',
         description: ' ',
-        defaultMessage: 'Sound: '
+        defaultMessage: 'Sound'
     },
 
     distance: {
         id: 'gui.RobboGui.OttoPalette.distance',
         description: ' ',
-        defaultMessage: 'Distance: '
+        defaultMessage: 'Distance'
     },
 
     otto: {
@@ -37,9 +40,9 @@ class OttoPalleteComponent extends Component {
 
     startGetDataLoop () {
         const sound_sensor_component = document.getElementById(`otto_sensor-data-block-otto-${this.props.ottoIndex}-sound-level_type-analog`);
-        const sound_sensor_value_field = sound_sensor_component.children[0].children[1].children[0];
+        const sound_sensor_value_field = getPaletteSensorValueNode(sound_sensor_component);
         const distanse_sensor_component = document.getElementById(`otto_sensor-data-block-otto-${this.props.ottoIndex}-distanse_type-analog`);
-        const distanse_sensor_value_field = distanse_sensor_component.children[0].children[1].children[0];
+        const distanse_sensor_value_field = getPaletteSensorValueNode(distanse_sensor_component);
         setInterval(() => {
             sound_sensor_value_field.innerHTML = this.props.OCA.get_sound();
             distanse_sensor_value_field.innerHTML = this.props.OCA.get_dist();
@@ -52,7 +55,7 @@ class OttoPalleteComponent extends Component {
 
     render () {
         return (
-            <div id="otto-1" className={classNames(sharedStyles.palette, styles.otto_palette)}>
+            <div id="otto-1" className={classNames(sharedStyles.palette, sharedStyles.device_palette)}>
                 <div id="otto-tittle" className={sharedStyles.header}>
                     <span className={sharedStyles.headerTitle}>
                         {this.props.intl.formatMessage(messages.otto)}
@@ -64,7 +67,8 @@ class OttoPalleteComponent extends Component {
                         onClick={this.onThisWindowClose.bind(this)}
                     />
                 </div>
-                <div className={sharedStyles.body}>
+                <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
+                    <div className={rowStyles.palette_device_list}>
                     <SensorDataBlockComponent
                         key={`otto-${this.props.ottoIndex}-sound-level`}
                         sensorId={`otto-${this.props.ottoIndex}-sound-level`}
@@ -83,7 +87,8 @@ class OttoPalleteComponent extends Component {
                         sensorName="distanse"
                         sensorData="0"
                     />
-                </div>
+                    </div>
+                    </div>
             </div>
         );
     }
