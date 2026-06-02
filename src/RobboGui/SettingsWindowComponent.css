@@ -1,7 +1,16 @@
 @import "../css/units.css";
 
 .settings_window {
-    min-width: 22rem;
-    max-width: min(96vw, 26rem);
+    box-sizing: border-box;
+    width: 26rem;
+    max-width: 96vw;
     pointer-events: auto;
+}
+
+.settings_content > .settings_section + .settings_section {
+    margin-top: 14px;
+}
+
+.settings_footer {
+    margin-top: 14px;
 }

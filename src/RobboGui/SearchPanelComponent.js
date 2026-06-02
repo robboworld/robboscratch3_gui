@@ -280,6 +280,13 @@ class SearchPanelComponent extends Component {
         if (searchingNow) {
           this._quadcopterAwaitingFirstSearchingEmit = false;
         }
+        const qcaFirmwareBusy = this.QCA && (
+          this.QCA._firmwareFlashInProgress === true ||
+          this.QCA._firmwareVersionProbeInProgress === true
+        );
+        if (!dongleNow && !searchingNow && !qcaFirmwareBusy) {
+          this._quadcopterRowPinnedForSession = false;
+        }
         this._refreshDeviceList();
         if (this._isMounted) {
           this.setState({ uiRev: Date.now() });
@@ -307,7 +314,6 @@ class SearchPanelComponent extends Component {
       });
     }
     const qcaDongleAvailable = this.QCA && typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable();
-    const qcaSearchingNow = this.QCA && typeof this.QCA.isQuadcopterSearching === 'function' && this.QCA.isQuadcopterSearching();
     const qcaFirmwareBusy = this.QCA && (
       this.QCA._firmwareFlashInProgress === true ||
       this.QCA._firmwareVersionProbeInProgress === true
@@ -315,10 +321,10 @@ class SearchPanelComponent extends Component {
     if (qcaDongleAvailable) {
       this._quadcopterRowPinnedForSession = true;
     }
+    /** Do not show the row while radio search runs before the dongle is detected (searching + !dongle). */
     const showQuadcopterRow = this.QCA && (
       qcaDongleAvailable ||
       this._quadcopterRowPinnedForSession ||
-      qcaSearchingNow ||
       qcaFirmwareBusy
     );
     if (showQuadcopterRow) {
@@ -367,7 +373,10 @@ class SearchPanelComponent extends Component {
       this.bluetooth_devices_state === 'searching' && this.usb_search_finished;
     const showBluetoothNotFound = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "not_found";
     const shouldDelayNoDevicesMessage = bluetoothSearchEnabled && !this.bluetooth_search_finished;
-    const quadcopterSearchActive = this.QCA &&
+    const qcaDongleForSearchUi = this.QCA &&
+      typeof this.QCA.isDongleAvailable === 'function' &&
+      this.QCA.isDongleAvailable();
+    const quadcopterSearchActive = qcaDongleForSearchUi && this.QCA &&
       typeof this.QCA.isQuadcopterSearching === 'function' &&
       this.QCA.isQuadcopterSearching();
     const quadcopterUsbRaceGrace = shouldProbeQuadcopterOnDeviceSearch(this.QCA) &&

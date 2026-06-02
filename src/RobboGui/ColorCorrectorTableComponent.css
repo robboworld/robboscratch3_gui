@@ -4,14 +4,15 @@
 
 .color_corrector_table {
     z-index: $z-index-robbo-popup;
-    min-width: 32rem;
-    max-width: min(96vw, 42rem);
+    box-sizing: border-box;
+    width: 42rem;
+    max-width: 96vw;
     transform-origin: top left;
     pointer-events: auto;
 }
 
 .color_corrector_content {
-    max-height: min(75vh, 640px);
+    max-height: 75vh;
 }
 
 .workspace {

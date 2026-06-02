@@ -441,11 +441,12 @@ class SettingsWindowComponent extends Component {
           />
         </div>
 
-        <div id="settings-window-content" className={classNames(sharedStyles.body, formStyles.palette_content)}>
+        <div id="settings-window-content" className={classNames(sharedStyles.body, formStyles.palette_content, styles.settings_content)}>
 
-          <section
+          <div
             id="settings-window-content-raw-connection-title"
-            className={formStyles.section}
+            className={classNames(formStyles.section, styles.settings_section)}
+            role="group"
             aria-labelledby="raw-connection-title-settings-window-content-column-1"
           >
             <h3
@@ -501,11 +502,12 @@ class SettingsWindowComponent extends Component {
                 <input type="number" />
               </div>
             </div>
-          </section>
+          </div>
 
-          <section
+          <div
             id="settings-window-content-raw-vm-section-title"
-            className={formStyles.section}
+            className={classNames(formStyles.section, styles.settings_section)}
+            role="group"
             aria-labelledby="raw-vm-section-title-settings-window-content-column-1"
           >
             <h3
@@ -554,11 +556,12 @@ class SettingsWindowComponent extends Component {
                 <input type="number" min="1" max="10" defaultValue={SIMULATION_STEP_MS_DEFAULT} />
               </div>
             </div>
-          </section>
+          </div>
 
-          <section
+          <div
             id="settings-window-content-raw-sim-sensor-debug-overlay-title"
-            className={formStyles.section}
+            className={classNames(formStyles.section, styles.settings_section)}
+            role="group"
             aria-labelledby="raw-sim-sensor-debug-overlay-title-settings-window-content-column-1"
           >
             <h3
@@ -576,9 +579,9 @@ class SettingsWindowComponent extends Component {
                 <input type="checkbox" defaultChecked={false} />
               </div>
             </div>
-          </section>
+          </div>
 
-          <div id="settings-window-content-raw-3" className={formStyles.footer}>
+          <div id="settings-window-content-raw-3" className={classNames(formStyles.footer, styles.settings_footer)}>
             <div id="raw-13-settings-window-content-column-1" className={formStyles.footer_actions}>
               <button
                 type="button"

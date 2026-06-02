@@ -113,7 +113,7 @@ class FirmwareFlasherComponent extends Component {
               />
           </div>
           <div className={classNames(sharedStyles.body, formStyles.palette_content)}>
-            <section className={formStyles.section}>
+            <div className={formStyles.section}>
             <button type="button" className={formStyles.action_button} onClick={this.getDevicesInfo.bind(this)}>
                 {this.props.intl.formatMessage(messages.get_devices_info)}
             </button>
@@ -203,7 +203,7 @@ class FirmwareFlasherComponent extends Component {
 
 
           </div>
-            </section>
+            </div>
           </div>
     </div>
 

@@ -5,17 +5,18 @@
 .device_palette {
     box-sizing: border-box;
     width: 14.4rem;
-    max-width: min(96vw, 14.4rem);
+    max-width: 96vw;
 }
 
 .device_palette_wide {
     width: 20.8rem;
-    max-width: min(96vw, 20.8rem);
+    max-width: 96vw;
 }
 
 .palette {
     display: inline-block;
     vertical-align: top;
+    box-sizing: border-box;
     overflow: hidden;
     border-radius: calc($form-radius + 4px);
     border: 1px solid rgba(0, 175, 65, 0.35);
@@ -85,8 +86,9 @@
 }
 
 .body {
-    padding: 0.375rem 0.5rem 0.5rem;
-    max-height: min(70vh, 520px);
+    box-sizing: border-box;
+    padding: 10px 12px 12px;
+    max-height: 70vh;
     overflow-x: hidden;
     overflow-y: auto;
     color: #000;

@@ -30,7 +30,7 @@ import {
 const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
 
-const VERSION = 'Robbo Scratch v.3.122.0';
+const VERSION = 'Robbo Scratch v.3.122.1';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   process &&
   process.env &&
@@ -405,18 +405,18 @@ class AboutWindowComponent extends Component {
       <div
         key={rowId}
         id={`about-window-content-raw-${rowId}`}
-        className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}
+        className={styles.about_info_row}
       >
         <div
           id={`raw-${rowId}-about-window-content-column-1`}
-          className={formStyles.field_label}
+          className={styles.about_info_label}
         >
           {label}
         </div>
 
         <div
           id={`raw-${rowId}-about-window-content-column-2`}
-          className={formStyles.field_value}
+          className={styles.about_info_value}
         >
           {value}
         </div>
@@ -508,7 +508,7 @@ class AboutWindowComponent extends Component {
             styles.about_content
           )}
         >
-          <section
+          <div
             id="about-window-content-raw-1"
             className={classNames(formStyles.section, styles.about_section)}
           >
@@ -553,10 +553,10 @@ class AboutWindowComponent extends Component {
                 </button>
               ) : null}
             </div>
-          </section>
+          </div>
 
           {profilingEnabled ? (
-          <section
+          <div
             id="about-window-content-raw-2"
             className={classNames(formStyles.section, styles.about_section)}
           >
@@ -618,18 +618,18 @@ class AboutWindowComponent extends Component {
                 />
               </div>
             </div>
-          </section>
+          </div>
           ) : null}
 
           {infoRows.length > 0 ? (
-            <section className={classNames(formStyles.section, styles.about_section)}>
+            <div className={classNames(formStyles.section, styles.about_section)}>
               <h3 className={classNames(formStyles.section_title, styles.about_section_title)}>
                 {intl.formatMessage(messages.system_section)}
               </h3>
               <div className={styles.about_info_list}>
                 {infoRows.map(row => this.renderInfoRow(row.id, row.label, row.value))}
               </div>
-            </section>
+            </div>
           ) : null}
         </div>
       </div>

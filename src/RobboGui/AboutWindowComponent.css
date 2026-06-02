@@ -1,19 +1,27 @@
 @import "../css/units.css";
 
 .about_window {
-    width: auto;
-    min-width: 22rem;
-    max-width: min(96vw, 26rem);
+    box-sizing: border-box;
+    width: 26rem;
+    max-width: 96vw;
     pointer-events: auto;
 }
 
-.about_content {
-    gap: 0.5rem;
+/* NW.js 69 / старый Chromium: flex gap не работает — только margin */
+.about_content > * + * {
+    margin-top: 0.5rem;
+}
+
+.about_content > .about_section + .about_section {
+    margin-top: 14px;
 }
 
 .about_section {
-    padding: 0.625rem 0.75rem;
-    gap: 0.5rem;
+    padding: 10px 12px;
+}
+
+.about_section > * + * {
+    margin-top: 10px;
 }
 
 .about_section_title {
@@ -25,7 +33,10 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 0.5rem;
+}
+
+.about_version_block > * + * {
+    margin-top: 0.5rem;
 }
 
 .about_version_block .version_label {
@@ -52,15 +63,55 @@
 .about_metrics {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+}
+
+.about_section > .about_info_list,
+.about_section > .about_metrics {
+    margin-top: 10px;
+}
+
+.about_info_list > * + *,
+.about_metrics > * + * {
+    margin-top: 0.5rem;
+}
+
+/* Сведения о системе: подпись слева (50%), значение справа до края (50%) */
+.about_info_row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    box-sizing: border-box;
     margin: 0;
 }
 
-.about_metrics {
-    margin-top: 0.125rem;
+.about_info_label {
+    flex: 0 0 50%;
+    width: 50%;
+    max-width: 50%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-right: 12px;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: #000;
+    text-align: left;
 }
 
-/* Hide empty profiling values without reserving the 30% column */
-.about_metrics .field_value:empty {
-    display: none;
+.about_info_value {
+    flex: 0 0 50%;
+    width: 50%;
+    max-width: 50%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin-left: 0;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: #000;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }

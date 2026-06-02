@@ -1,6 +1,7 @@
 .flashing_status_window {
-    min-width: 28rem;
-    max-width: min(90vw, 36rem);
+    box-sizing: border-box;
+    width: 36rem;
+    max-width: 90vw;
     font-size: 0.75rem;
     pointer-events: auto;
 }

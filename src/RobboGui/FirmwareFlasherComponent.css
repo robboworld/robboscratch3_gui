@@ -1,6 +1,7 @@
 .firmware_flasher_component {
-    min-width: 32rem;
-    max-width: min(96vw, 52rem);
+    box-sizing: border-box;
+    width: 52rem;
+    max-width: 96vw;
     font-size: 0.75rem;
     pointer-events: auto;
 }

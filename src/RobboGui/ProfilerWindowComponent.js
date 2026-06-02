@@ -66,7 +66,7 @@ class ProfilerWindowComponent extends Component {
 
            <div id="profiler-window-content" className={classNames(sharedStyles.body, formStyles.palette_content)}>
 
-                <section className={formStyles.section}>
+                <div className={formStyles.section}>
                 <div id="profiler-window-content-hat" className={styles.profiler_window_content_hat}>
 
                     <div id="profiler-window-content-hat-element-1" className={styles.profiler_window_content_hat_element}>{"Id"} </div> 
@@ -88,7 +88,7 @@ class ProfilerWindowComponent extends Component {
 
 
                 </div>
-                </section>
+                </div>
 
            </div>
 

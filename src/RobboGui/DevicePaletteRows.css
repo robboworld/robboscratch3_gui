@@ -79,8 +79,11 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.375rem;
     min-width: 0;
+}
+
+.telemetry_value_group > * + * {
+    margin-left: 0.375rem;
 }
 
 .telemetry_value {

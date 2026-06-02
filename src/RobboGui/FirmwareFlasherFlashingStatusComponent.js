@@ -51,7 +51,7 @@ class FirmwareFlasherFlashingStatusComponent extends Component {
                 </div>
 
                 <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
-                    <section className={formStyles.section}>
+                    <div className={formStyles.section}>
                     <div
                         id={`firmware-flasher-flashing-status-component-${componentId}-log-status`}
                         className={styles.flashing_status_log_status}
@@ -61,7 +61,7 @@ class FirmwareFlasherFlashingStatusComponent extends Component {
                         id={`firmware-flasher-flashing-status-component-${componentId}-log-content`}
                         className={formStyles.log_panel}
                     />
-                    </section>
+                    </div>
                 </div>
             </div>
         );

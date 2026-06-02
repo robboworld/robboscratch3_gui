@@ -616,8 +616,10 @@ class SearchPanelDeviceComponent extends Component {
             const searchingByQca = typeof this.props.QCA.isQuadcopterSearching === 'function'
                 ? this.props.QCA.isQuadcopterSearching() === true
                 : false;
+            const dongleAvailable = typeof this.props.QCA.isDongleAvailable === 'function' &&
+                this.props.QCA.isDongleAvailable() === true;
             const effectiveConnected = connectedByQca || quadcopterConnected;
-            const effectiveSearching = searchingByQca || quadcopterSearching;
+            const effectiveSearching = dongleAvailable && (searchingByQca || quadcopterSearching);
             if (this._quadcopterFirmwareFlashActive || quadcopterRowPhase === 'flashing' ||
                 quadcopterRowPhase === 'flashDone') {
                 if (quadcopterRowPhase === 'flashDone') {
