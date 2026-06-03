@@ -260,9 +260,13 @@ const GUIComponent = props => {
                 ) : null}
             </StageWrapper>
         ) : connectDropTarget((
-          <div className={styles.pageWrapper}>
+          <div className={classNames(styles.pageWrapper, {
+              [styles.pageWrapperFullScreen]: isFullScreen
+          })}>
             <Box
-                className={styles.pageWrapper}
+                className={classNames(styles.pageWrapper, {
+                    [styles.pageWrapperFullScreen]: isFullScreen
+                })}
                 dir={isRtl ? 'rtl' : 'ltr'}
                 {...componentProps}
             >
@@ -506,6 +510,7 @@ const GUIComponent = props => {
                         ) : null}
                         {isRightPanelHidden && isFullScreen ? (
                             <Box className={styles.stageFullscreenMount}>
+                                <StageHeader vm={vm} />
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}

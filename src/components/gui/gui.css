@@ -396,6 +396,24 @@ $fade-out-distance: 15px;
     position: relative;
     z-index: $z-index-menu-bar;
 }
+
+/*
+    Fullscreen stage overlays (z-index-stage-header) cover the viewport from top: 0.
+    Remove menu-bar from layout (not visibility:hidden — that still reserves 3rem and causes scroll).
+*/
+.page-wrapper-full-screen {
+    overflow: hidden;
+    height: 100%;
+}
+
+.page-wrapper-full-screen .menu-bar-position {
+    display: none;
+}
+
+.page-wrapper-full-screen .body-wrapper {
+    height: 100%;
+    overflow: hidden;
+}
 /* Alerts */
 
 .alerts-container {
