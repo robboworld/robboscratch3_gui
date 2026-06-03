@@ -3,11 +3,14 @@ import classNames from 'classnames';
 import React, { Component } from 'react';
 import RobboPopupTransition from './RobboPopupTransition';
 import styles from './SearchPanelComponent.css';
+import SearchPanelStatusBlock from './SearchPanelStatusBlock';
 import {getMenuBarDropdownTopPx} from '../lib/menu-bar-dropdown-anchor';
 import {
     hideSearchPanel,
+    showSearchPanel,
     subscribeSearchPanelVisibility
 } from './search-panel-visibility';
+import {notifySearchIdle} from './search-button-feedback';
 
 import FirmwareFlasherFlashingStatusComponent from './FirmwareFlasherFlashingStatusComponent';
 import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
@@ -39,6 +42,16 @@ const messages = defineMessages({
     id: 'gui.RobboGui.devices_searching',
     description: 'Shown while USB and/or Bluetooth device scan is in progress',
     defaultMessage: 'Searching…'
+  },
+  search_panel_title: {
+    id: 'gui.RobboGui.search_panel_title',
+    description: 'Title for device search popup window',
+    defaultMessage: 'Device search'
+  },
+  devices_not_found_hint: {
+    id: 'gui.RobboGui.devices_not_found_hint',
+    description: 'Secondary hint when no devices were found during search',
+    defaultMessage: 'Check that the device is powered on and connected, then search again.'
   },
   robbo_android_searching: {
     id: 'gui.RobboGui.robbo_android_searching',
@@ -225,6 +238,7 @@ class SearchPanelComponent extends Component {
       if (this._isMounted) {
         this.setState(prev => ({ uiRev: Date.now(), searchEpoch: prev.searchEpoch + 1 }));
       }
+      showSearchPanel();
     });
 
     this.DCA.registerDevicesNotFoundCallback(() => {
@@ -236,6 +250,7 @@ class SearchPanelComponent extends Component {
         search_device_button.style.pointerEvents = 'auto';
         search_device_button.removeAttribute('disabled');
       }
+      notifySearchIdle();
       this._refreshDeviceList();
       if (this._isMounted) {
         this.setState({ uiRev: Date.now() });
@@ -256,12 +271,6 @@ class SearchPanelComponent extends Component {
     this.DCA.registerDeviceFoundCallback(() => {
       this.is_bluetooth_devices_not_found = false;
       this.usb_search_finished = true;
-      let search_device_button = document.getElementById(`robbo_search_devices`);
-      if (search_device_button) {
-        search_device_button.style.pointerEvents = 'none';
-        search_device_button.style.pointerEvents = 'auto';
-        search_device_button.removeAttribute('disabled');
-      }
       this._refreshDeviceList();
     });
 
@@ -428,12 +437,17 @@ class SearchPanelComponent extends Component {
             aria-hidden={!this.state.isShowing}
             onMouseDown={this.handleSearchPanelMouseDown}
         >
-          <button
-              type="button"
-              className={styles.search_panel_close}
-              aria-label="Close"
-              onClick={this.onThisWindowClose}
-          />
+          <div className={styles.search_panel_header}>
+            <span className={styles.search_panel_header_title}>
+              {this.props.intl.formatMessage(messages.search_panel_title)}
+            </span>
+            <button
+                type="button"
+                className={styles.search_panel_close}
+                aria-label="Close"
+                onClick={this.onThisWindowClose}
+            />
+          </div>
           <div id="SearchPanelComponent-body" className={styles.search_panel_body}>
 
             <div id="SearchPanelComponent-devices-list">
@@ -464,29 +478,33 @@ class SearchPanelComponent extends Component {
 
               {
                 showDevicesSearching ? (
-                  <div className={styles.bluetooth_devices_not_found}>
-                    {this.props.intl.formatMessage(messages.devices_searching)}
-                  </div>
+                  <SearchPanelStatusBlock
+                      variant="searching"
+                      title={this.props.intl.formatMessage(messages.devices_searching)}
+                  />
                 ) : null
               }
 
               {
                 showDevicesNotFound ? (
-                  <div className={styles.devices_not_found}>
-                    {this.props.intl.formatMessage(messages.devices_not_found)}
-                  </div>
+                  <SearchPanelStatusBlock
+                      variant="empty"
+                      title={this.props.intl.formatMessage(messages.devices_not_found)}
+                      hint={this.props.intl.formatMessage(messages.devices_not_found_hint)}
+                  />
                 ) : null
               }
 
               {
                 showBluetoothNotFound && isMobileBridgeContext ? (
-                  <div className={styles.bluetooth_devices_not_found}>
-                    {this.props.intl.formatMessage(
-                      isEmbeddedAndroidApp ?
-                        messages.robbo_android_devices_not_found :
-                        messages.robbolink_mobile_devices_not_found
-                    )}
-                  </div>
+                  <SearchPanelStatusBlock
+                      variant="info"
+                      title={this.props.intl.formatMessage(
+                        isEmbeddedAndroidApp ?
+                          messages.robbo_android_devices_not_found :
+                          messages.robbolink_mobile_devices_not_found
+                      )}
+                  />
                 ) : null
               }
 

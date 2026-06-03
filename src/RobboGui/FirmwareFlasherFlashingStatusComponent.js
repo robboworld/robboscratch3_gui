@@ -4,6 +4,7 @@ import {connect} from 'react-redux';
 import sharedStyles from './DevicePaletteShared.css';
 import formStyles from './RobboPaletteForm.css';
 import styles from './FirmwareFlasherFlashingStatusComponent.css';
+import './RobboDeviceStatus.css';
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 

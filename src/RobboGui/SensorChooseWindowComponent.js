@@ -4,6 +4,7 @@ import { Component } from 'react';
 import { connect } from 'react-redux';
 import  SensorChooseWindowComponentElement from './SensorChooseWindowComponentElement'
 import  styles from './SensorChooseWindowComponent.css';
+import sharedStyles from './DevicePaletteShared.css';
 
 import PropTypes from 'prop-types';
 import { ItemTypes } from './drag_constants';
@@ -100,7 +101,7 @@ class SensorChooseWindowComponent extends Component {
                 >
                 {connectDragSource(
                 <div
-                        className={styles.sensor_choose_window}
+                        className={classNames(sharedStyles.palette, styles.sensor_choose_window)}
                         style={{
                               position: 'fixed',
                               top: `${position.top}px`,
@@ -111,14 +112,13 @@ class SensorChooseWindowComponent extends Component {
                         onMouseDown={isShowing ? this.handlePopupMouseDown : undefined}
                 >
 
-
-                  <div className={styles.sensor_choose_window_tittle}>
-
-                      Sensor type
-
+                  <div className={sharedStyles.header}>
+                      <span className={sharedStyles.headerTitle}>
+                          Sensor type
+                      </span>
                   </div>
 
-                  <div className={styles.sensor_choose_window_components_block}>
+                  <div className={classNames(sharedStyles.body, styles.sensor_choose_window_components_block)}>
 
                     {
 

@@ -8,6 +8,8 @@ import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
 
 import { createDiv } from './lib/lib.js';
 import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
+import {setFlashLogStatusTone} from '../lib/device-status-dom';
+import './RobboDeviceStatus.css';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 import { isRobboLinkMobileWebContext } from '../lib/platform';
@@ -184,18 +186,18 @@ class FirmwareFlasherDeviceComponent extends Component {
 
         if ((status.indexOf("Port closed") !== -1)) {
 
-          if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "green";
+          setFlashLogStatusTone(flashingStatusComponent, 'success');
 
           if (search_device_button) search_device_button.removeAttribute("disabled");
 
         } else if ((status.indexOf("Error") !== -1)) {
 
-          if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
+          setFlashLogStatusTone(flashingStatusComponent, 'error');
           if (search_device_button) search_device_button.removeAttribute("disabled");
 
         } else {
 
-          if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "#FFFF99"; //Light yellow2
+          setFlashLogStatusTone(flashingStatusComponent, 'pending');
 
         }
 

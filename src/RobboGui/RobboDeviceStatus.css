@@ -1,0 +1,27 @@
+@import "../css/colors.css";
+
+/* Global class names — toggled from device-status-dom.js (imperative flash UI) */
+
+:global(.robbo_status_pending) {
+    background-color: rgba(255, 193, 7, 0.18);
+    border: 1px solid rgba(255, 193, 7, 0.45);
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: $text-primary;
+}
+
+:global(.robbo_status_success) {
+    background-color: rgba(0, 175, 65, 0.14);
+    border: 1px solid rgba(0, 175, 65, 0.45);
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: $text-primary;
+}
+
+:global(.robbo_status_error) {
+    background-color: rgba(255, 80, 80, 0.14);
+    border: 1px solid rgba(255, 80, 80, 0.45);
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: $text-primary;
+}

@@ -10,13 +10,16 @@ import { ActionCreateDraggableWindow } from './actions/sensor_actions';
 
 
 import styles from './SearchPanelDeviceComponent.css';
+import './RobboDeviceStatus.css';
 import {hideSearchPanel, showSearchPanel} from './search-panel-visibility';
+import {notifySearchButtonFeedback} from './search-button-feedback';
 
 import { createDiv } from './lib/lib.js';
 import { getFirmwareSettingsFromRuntime } from '../lib/settingsLoader';
 import { applyRobboPopupZIndex } from '../lib/robbo-popup-z-index';
 import { resolveCf2FirmwareVersionLabel, parseCf2FlashToolLine } from '../lib/crazyflie-flash-ui';
 import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
+import {setFlashButtonVisualMode, setFlashLogStatusTone} from '../lib/device-status-dom';
 
 
 
@@ -472,7 +475,7 @@ class SearchPanelDeviceComponent extends Component {
         const started = this.props.intl.formatMessage(messages.quadcopter_firmware_flash_started);
         if (statusEl) {
             statusEl.innerHTML = started;
-            statusEl.style.backgroundColor = '#FFFF99';
+            setFlashLogStatusTone(statusEl, 'pending');
         }
         if (logEl) {
             logEl.innerHTML = '';
@@ -487,7 +490,7 @@ class SearchPanelDeviceComponent extends Component {
         const { statusEl, logEl } = this._getQuadcopterFlashWindowElements();
         if (parsed.headline && statusEl) {
             statusEl.innerHTML = this._translateCf2FlashHeadline(parsed.headline);
-            statusEl.style.backgroundColor = '#FFFF99';
+            setFlashLogStatusTone(statusEl, 'pending');
         }
         if (parsed.logLine && logEl) {
             const styles = { margin: '6px 10px', fontSize: '11px' };
@@ -502,7 +505,7 @@ class SearchPanelDeviceComponent extends Component {
             statusEl.innerHTML = success
                 ? this._translateCf2FlashHeadline('Firmware update complete')
                 : message;
-            statusEl.style.backgroundColor = success ? '#90EE90' : '#ff9999';
+            setFlashLogStatusTone(statusEl, success ? 'success' : 'error');
         }
     }
 
@@ -758,6 +761,16 @@ class SearchPanelDeviceComponent extends Component {
 
     componentDidUpdate(prevProps, prevState) {
         this.syncStateFromDevice();
+        if (prevState.deviceState !== this.state.deviceState && !this.props.isQuadcopter) {
+            if ([0, 2, 3, 9].indexOf(this.state.deviceState) !== -1) {
+                showSearchPanel();
+            }
+        }
+        if (this.props.isQuadcopter &&
+            prevState.quadcopterConnected !== this.state.quadcopterConnected &&
+            this.state.quadcopterConnected === true) {
+            notifySearchButtonFeedback('connected');
+        }
         if (this.props.isQuadcopter && this.props.searchEpoch !== prevProps.searchEpoch) {
             this._quadcopterFirmwareVersionChecked = false;
             this._quadcopterFirmwarePrompted = false;
@@ -863,6 +876,7 @@ class SearchPanelDeviceComponent extends Component {
                 if (wasSearching && !isSearching && !connected &&
                     !this._quadcopterConnectFailureHandled) {
                     this._quadcopterConnectFailureHandled = true;
+                    notifySearchButtonFeedback('error');
                     this._maybeCheckFirmwareAfterConnectFailure();
                 } else if (connected && !isSearching) {
                     this._quadcopterFirmwareVersionChecked = true;
@@ -903,7 +917,7 @@ class SearchPanelDeviceComponent extends Component {
                     info_field.innerHTML = this.props.intl.formatMessage(messages.differ_firm_msg) + "<br/><br/>" + this.props.intl.formatMessage(messages.cr_firm_msg, { current_firmware: result.current_device_firmware, required_firmware: result.need_firmware }) + "<br/><br/>" + this.props.intl.formatMessage(messages.differ_firm_msg_device_maybe_incorrect) + "<br/><br/>" + this.props.intl.formatMessage(messages.update_firm_msg);
                 }
                 var flashing_button = document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
-                if (flashing_button) flashing_button.style.backgroundColor = "";
+                if (flashing_button) setFlashButtonVisualMode(flashing_button, 'default');
             });
         }
 
@@ -1146,6 +1160,16 @@ class SearchPanelDeviceComponent extends Component {
         }
         this.setState({ deviceState: state, deviceId, deviceError: error });
 
+        if (!this.props.isQuadcopter && !this.flashSessionActive) {
+            if (state === 6) {
+                notifySearchButtonFeedback('connected');
+            } else if (state === 7) {
+                notifySearchButtonFeedback('error');
+            } else if (state === 8 && !(error && error.code === 1)) {
+                notifySearchButtonFeedback('error');
+            }
+        }
+
         let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
         let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
         let flashing_button = document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
@@ -1242,8 +1266,7 @@ class SearchPanelDeviceComponent extends Component {
             }
 
             if (hasFirmwareUi) {
-                flashing_button.style.backgroundColor = '';
-                flashing_button.style.backgroundImage = '-webkit-linear-gradient(top,#00af41,#008a00)';
+                setFlashButtonVisualMode(flashing_button, 'default');
                 flashing_button.innerText = this.props.intl.formatMessage(messages.flash_device);
                 flashing_show_details_icon.style.display = 'none';
                 flashing_button.style.display = 'none';
@@ -1264,8 +1287,7 @@ class SearchPanelDeviceComponent extends Component {
             }
 
             if (hasFirmwareUi) {
-                flashing_button.style.backgroundColor = '';
-                flashing_button.style.backgroundImage = '-webkit-linear-gradient(top,#00af41,#008a00)';
+                setFlashButtonVisualMode(flashing_button, 'default');
                 flashing_button.innerText = this.props.intl.formatMessage(messages.flash_device);
                 flashing_show_details_icon.style.display = 'none';
                 flashing_button.style.display = 'none';
@@ -1586,12 +1608,12 @@ class SearchPanelDeviceComponent extends Component {
 
         if ((status.indexOf("Port closed") !== -1)) {
 
-            if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "green";
+            setFlashLogStatusTone(flashingStatusComponent, 'success');
 
             if (search_device_button) search_device_button.removeAttribute("disabled");
 
             if (flashing_button) {
-                flashing_button.style.backgroundImage = "";
+                setFlashButtonVisualMode(flashing_button, 'default');
                 flashing_button.removeAttribute("disabled");
                 flashing_button.style.display = "inline-block";
             }
@@ -1605,13 +1627,11 @@ class SearchPanelDeviceComponent extends Component {
 
         } else if ((status.indexOf("Error") !== -1)) {
 
-            if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
+            setFlashLogStatusTone(flashingStatusComponent, 'error');
             if (search_device_button) search_device_button.removeAttribute("disabled");
 
             if (flashing_button) {
-                flashing_button.style.backgroundImage = "-webkit-linear-gradient(top,#ff0000,#ff0000)";
-                flashing_button.style.backgroundColor = "#ff0000";
-                flashing_button.style.textAlign = "center";
+                setFlashButtonVisualMode(flashing_button, 'error');
                 flashing_button.innerText = this.props.intl.formatMessage(messages.error);
                 flashing_button.removeAttribute("disabled");
             }
@@ -1623,7 +1643,7 @@ class SearchPanelDeviceComponent extends Component {
 
         } else {
 
-            if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "#FFFF99"; //Light yellow2
+            setFlashLogStatusTone(flashingStatusComponent, 'pending');
 
         }
 
@@ -1685,12 +1705,7 @@ class SearchPanelDeviceComponent extends Component {
         var flashing_button = document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
         if (flashing_button) {
             flashing_button.setAttribute("disabled", "disabled");
-            flashing_button.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
-            flashing_button.style.backgroundColor = "#FFFF99"; //Light yellow2
-            flashing_button.style.backgroundRepeat = "no-repeat";
-            flashing_button.style.backgroundPosition = "center";
-            flashing_button.style.textAlign = "left";
-            flashing_button.style.color = "black";
+            setFlashButtonVisualMode(flashing_button, 'busy');
             flashing_button.innerText = this.props.intl.formatMessage(messages.flashing_device);
         }
 
@@ -1747,10 +1762,10 @@ class SearchPanelDeviceComponent extends Component {
             if (flashingLogComponent) flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
 
             if ((status.indexOf("Port closed") !== -1)) {
-                if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "green";
+                setFlashLogStatusTone(flashingStatusComponent, 'success');
                 if (search_device_button) search_device_button.removeAttribute("disabled");
                 if (flashing_button) {
-                    flashing_button.style.backgroundImage = "";
+                    setFlashButtonVisualMode(flashing_button, 'default');
                     flashing_button.removeAttribute("disabled");
                     flashing_button.style.display = "inline-block";
                 }
@@ -1777,13 +1792,11 @@ class SearchPanelDeviceComponent extends Component {
                 } catch (_) { }
                 this.searchDevices(false);
             } else if ((status.indexOf("Error") !== -1)) {
-                if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
+                setFlashLogStatusTone(flashingStatusComponent, 'error');
                 if (search_device_button) search_device_button.removeAttribute("disabled");
 
                 if (flashing_button) {
-                    flashing_button.style.backgroundImage = "-webkit-linear-gradient(top,#ff0000,#ff0000)";
-                    flashing_button.style.backgroundColor = "#ff0000";
-                    flashing_button.style.textAlign = "center";
+                    setFlashButtonVisualMode(flashing_button, 'error');
                     flashing_button.innerText = this.props.intl.formatMessage(messages.error);
                     flashing_button.removeAttribute("disabled");
                 }
@@ -1822,7 +1835,7 @@ class SearchPanelDeviceComponent extends Component {
 
                 this._finishFlashSession('error');
             } else {
-                if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "#FFFF99"; //Light yellow2
+                setFlashLogStatusTone(flashingStatusComponent, 'pending');
                 if (status.indexOf("Upload complete. Verifying") !== -1) {
                     this.flashStage = 'verify';
                     this._logFlashFlow('statusCallback', 'verify_started_search_suppressed', {}, true);

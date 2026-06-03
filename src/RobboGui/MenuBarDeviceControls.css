@@ -36,12 +36,12 @@
     transition: background-color 0.2s ease, opacity 0.2s ease;
 }
 
-.searchDevices:hover:not(:disabled) {
+.searchDevices:hover:not(:disabled):not(.searchFeedbackOk):not(.searchFeedbackError) {
     background-color: $ui-black-transparent;
 }
 
 .searchDevices:focus-visible {
-    outline: 2px solid white;
+    outline: 2px solid rgba(255, 255, 255, 0.85);
     outline-offset: 2px;
 }
 
@@ -50,6 +50,14 @@
     opacity: 0.55;
     cursor: wait;
     pointer-events: none;
+}
+
+.searchFeedbackOk {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.searchFeedbackError {
+    background-color: rgba(255, 120, 120, 0.28);
 }
 
 .searchIcon {
@@ -61,6 +69,25 @@
     background-position: center;
     background-size: contain;
     filter: brightness(0) invert(1);
+}
+
+.searchSpinner {
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: menuBarSearchSpinner 0.75s linear infinite;
+}
+
+@keyframes menuBarSearchSpinner {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .searchLabel {
@@ -101,7 +128,7 @@
 }
 
 .collapsedToggle:focus-visible {
-    outline: 2px solid white;
+    outline: 2px solid rgba(255, 255, 255, 0.85);
     outline-offset: 2px;
 }
 

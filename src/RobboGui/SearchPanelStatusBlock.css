@@ -1,0 +1,61 @@
+@import "../css/colors.css";
+
+/* NW.js 69: flex gap не работает — margin через соседние селекторы */
+
+.statusBlock {
+    padding: 10px 12px;
+    font-weight: normal;
+}
+
+.statusBlockSearching {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+}
+
+.statusBlockSearching > .statusSpinner + .statusTitle {
+    margin-left: 0.5rem;
+}
+
+.statusBlockSearching > .statusTitle + .statusHint,
+.statusBlockEmpty > .statusTitle + .statusHint {
+    margin-top: 0.375rem;
+}
+
+.statusBlockEmpty {
+    display: flex;
+    flex-direction: column;
+}
+
+.statusTitle {
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: $text-primary;
+}
+
+.statusHint {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: rgba(0, 0, 0, 0.62);
+}
+
+.statusSpinner {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.125rem;
+    border: 2px solid rgba(0, 175, 65, 0.25);
+    border-top-color: rgba(0, 175, 65, 0.9);
+    border-radius: 50%;
+    animation: searchPanelSpinner 0.75s linear infinite;
+}
+
+@keyframes searchPanelSpinner {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

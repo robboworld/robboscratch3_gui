@@ -1,3 +1,5 @@
+@import "../css/colors.css";
+
 .flashing_status_window {
     box-sizing: border-box;
     width: 36rem;
@@ -10,5 +12,6 @@
     margin: 0 0 0.5rem;
     font-weight: bold;
     font-size: 0.875rem;
-    color: #000;
+    line-height: 1.45;
+    color: $text-primary;
 }

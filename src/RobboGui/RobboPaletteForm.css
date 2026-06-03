@@ -53,7 +53,7 @@
     font-size: 0.8125rem;
     font-weight: bold;
     line-height: 1.35;
-    color: #000;
+    color: $text-primary;
 }
 
 .field_row {
@@ -132,7 +132,7 @@
     min-width: 0;
     font-size: 0.8125rem;
     line-height: 1.35;
-    color: #000;
+    color: $text-primary;
 }
 
 .version_label {
@@ -157,7 +157,7 @@
     border-radius: $form-radius;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 0.8125rem;
-    color: #000;
+    color: $text-primary;
     background-color: $ui-white;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -180,7 +180,7 @@
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 0.8125rem;
     line-height: 1.35;
-    color: #000;
+    color: $text-primary;
     background-color: $ui-white;
     cursor: pointer;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -190,6 +190,7 @@
     border-color: rgba(0, 0, 0, 0.35);
 }
 
+.field_select_trigger:focus,
 .field_select_trigger:focus-visible {
     outline: none;
     border-color: rgba(0, 175, 65, 0.65);
@@ -225,7 +226,7 @@
     align-items: center;
     font-size: 0.8125rem;
     line-height: 1.35;
-    color: #000;
+    color: $text-primary;
     cursor: pointer;
     user-select: none;
 }
@@ -249,7 +250,7 @@
     font-size: 0.8125rem;
     line-height: 1.35;
     text-align: right;
-    color: #000;
+    color: $text-primary;
     overflow-wrap: anywhere;
     word-break: break-word;
 }
@@ -304,7 +305,7 @@
     border: 1px solid rgba(0, 175, 65, 0.45);
     border-radius: $form-radius;
     background-color: rgba(0, 175, 65, 0.08);
-    color: #000;
+    color: $text-primary;
     cursor: pointer;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 0.8125rem;
@@ -318,6 +319,7 @@
     border-color: rgba(0, 175, 65, 0.65);
 }
 
+.action_button:focus,
 .action_button:focus-visible {
     outline: 2px solid $motion-primary;
     outline-offset: 2px;
@@ -350,7 +352,7 @@
     border: 1px solid rgba(0, 175, 65, 0.15);
     font-weight: bold;
     font-size: 0.8125rem;
-    color: #000;
+    color: $text-primary;
 }
 
 .table_header_bar > * + * {
@@ -361,7 +363,7 @@
     display: inline-block;
     padding: 0 0.25rem;
     width: 10rem;
-    color: #000;
+    color: $text-primary;
 }
 
 .log_panel {
@@ -369,7 +371,7 @@
     max-height: 50vh;
     font-size: 0.8125rem;
     line-height: 1.35;
-    color: #000;
+    color: $text-primary;
 }
 
 .log_panel::-webkit-scrollbar {
@@ -388,7 +390,7 @@
     padding: 0.25rem 0.375rem;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 0.8125rem;
-    color: #000;
+    color: $text-primary;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
