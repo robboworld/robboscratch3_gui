@@ -1,17 +1,18 @@
 @import "../css/colors.css";
+@import "../css/units.css";
 
 .flashing_status_window {
     box-sizing: border-box;
     width: 36rem;
     max-width: 90vw;
-    font-size: 0.75rem;
+    font-size: $popup-font-size-sm;
     pointer-events: auto;
 }
 
 .flashing_status_log_status {
     margin: 0 0 0.5rem;
     font-weight: bold;
-    font-size: 0.875rem;
+    font-size: $popup-font-size;
     line-height: 1.45;
     color: $text-primary;
 }

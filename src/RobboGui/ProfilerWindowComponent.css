@@ -16,7 +16,7 @@
     background-color: rgba(0, 175, 65, 0.08);
     border: 1px solid rgba(0, 175, 65, 0.15);
     font-weight: bold;
-    font-size: 0.8125rem;
+    font-size: $popup-font-size;
     color: #000;
 }
 
@@ -35,7 +35,7 @@
     overflow-y: auto;
     max-height: 50vh;
     color: #000;
-    font-size: 0.8125rem;
+    font-size: $popup-font-size;
     line-height: 1.35;
 }
 

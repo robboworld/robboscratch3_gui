@@ -1,4 +1,5 @@
 @import "../css/colors.css";
+@import "../css/units.css";
 
 /* NW.js 69: flex gap не работает — margin через соседние селекторы */
 
@@ -29,13 +30,13 @@
 }
 
 .statusTitle {
-    font-size: 0.875rem;
+    font-size: $popup-font-size;
     line-height: 1.45;
     color: $text-primary;
 }
 
 .statusHint {
-    font-size: 0.75rem;
+    font-size: $popup-font-size-sm;
     line-height: 1.4;
     color: rgba(0, 0, 0, 0.62);
 }

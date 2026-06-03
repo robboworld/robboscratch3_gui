@@ -32,9 +32,11 @@ class SensorComponent extends Component {
 
                       return (this.props.isSensorVersionNew)
                                 ?<NewVersionSensorComponent sensorId={this.props.sensorId} sensorPictureUrl={this.props.sensorPictureUrl}  fieldText={this.props.sensorFieldText}
+                                deviceName={this.props.deviceName} sensorType={this.props.sensorType}
                                 sensorName={this.props.sensorName} sensorData={this.props.sensorData}      />
 
                                 :<OldVersionSensorComponent   sensorId={this.props.sensorId} fieldText={this.props.sensorFieldText}
+                                deviceName={this.props.deviceName} sensorType={this.props.sensorType}
                                 sensorName={this.props.sensorName} sensorData={this.props.sensorData}/>
 
 
@@ -47,6 +49,7 @@ class SensorComponent extends Component {
 
                           if  (this.props.isSensorVersionNew)
                             return    <NewVersionSensorComponent sensorId={this.props.sensorId} sensorPictureUrl={this.props.sensorPictureUrl}  fieldText={this.props.sensorFieldText}
+                                            deviceName={this.props.deviceName} sensorType={this.props.sensorType}
                                             sensorName={this.props.sensorName} sensorData={this.props.sensorData}      />
 
 

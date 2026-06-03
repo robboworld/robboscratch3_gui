@@ -30,7 +30,7 @@ import {
 const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
 
-const VERSION = 'Robbo Scratch v.3.122.1';
+const VERSION = 'Robbo Scratch v.3.122.2';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   process &&
   process.env &&
@@ -39,11 +39,16 @@ const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   : '';
 const DISPLAY_VERSION = `${VERSION}${BUILD_VERSION_SUFFIX}`;
 
-const PROFILING_METRIC_IDS = [
-  'raw-3-about-window-content-column-2',
-  'raw-4-about-window-content-column-2',
-  'raw-8-about-window-content-column-2'
-];
+const EMPTY_PROFILING_METRICS = {
+  stepDuration: '',
+  recieveDelta: '',
+  averageDelay: ''
+};
+
+const formatProfilingMetric = value => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(2) : '';
+};
 
 const messages = defineMessages({
   about_window: {
@@ -147,6 +152,7 @@ class AboutWindowComponent extends Component {
     this.state = {
       systemInfo: null,
       profilingEnabled: false,
+      profilingMetrics: { ...EMPTY_PROFILING_METRICS },
       [COPY_BUTTON_FEEDBACK_KEY]: null
     };
     this.onThisWindowClose = this.onThisWindowClose.bind(this);
@@ -179,12 +185,7 @@ class AboutWindowComponent extends Component {
   }
 
   clearProfilingMetrics () {
-    PROFILING_METRIC_IDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.textContent = '';
-      }
-    });
+    this.setState({ profilingMetrics: { ...EMPTY_PROFILING_METRICS } });
   }
 
   toggleProfiling () {
@@ -195,55 +196,47 @@ class AboutWindowComponent extends Component {
     }
   }
 
-  startProfiling() {
+  startProfiling () {
     if (this.state.profilingEnabled) {
       return;
     }
 
-    this.setState({ profilingEnabled: true });
-    console.warn(`start profiling`);
+    console.warn('start profiling');
 
+    this.setState({
+      profilingEnabled: true,
+      profilingMetrics: { ...EMPTY_PROFILING_METRICS }
+    }, () => {
+      this.attachProfilingListeners();
+    });
+  }
+
+  attachProfilingListeners () {
     let time_counter = 0;
-
-    let steps_ids_list = [];
-
-    let average_self_time = 0;
-    let average_total_time = 0;
 
     let self_time_summ = 0;
     let total_time_summ = 0;
 
     let recieve_time_delta = 0;
     let recieve_time_delta_sum = 0;
-    let recieve_time_delta_average = 0;
 
-    const step_time_field = document.getElementById(
-      `raw-3-about-window-content-column-2`
-    );
-    const robot_recieve_time_field = document.getElementById(
-      `raw-4-about-window-content-column-2`
-    );
-
-    // ///////////////////av_time
-
-    const performance =
+    const performanceApi =
       typeof window === 'object' && window.performance;
 
-    let time_1 = performance.now();
-    let time_2 = performance.now();
+    let time_1 = performanceApi ? performanceApi.now() : 0;
+    let time_2 = time_1;
     let counter = 0;
-    // let average_time = 0;
     let time_delta = 0;
     let time_delta_sum = 0;
 
-    const av_time_comp = document.getElementById(
-      `raw-8-about-window-content-column-2`
-    );
-
     this.avTimeInterval = setInterval(() => {
-      time_2 = performance.now();
+      if (!performanceApi) {
+        return;
+      }
+
+      time_2 = performanceApi.now();
       time_delta = time_2 - time_1;
-      time_1 = performance.now();
+      time_1 = performanceApi.now();
 
       time_delta_sum += time_delta;
       counter++;
@@ -251,24 +244,23 @@ class AboutWindowComponent extends Component {
       if (counter >= 300) {
         this.averageTime = time_delta_sum / counter;
         counter = 0;
-
-        // console.log(`RobboGui average_time: ${average_time}`);
-        av_time_comp.innerHTML = this.averageTime.toFixed(7);
-
         time_delta_sum = 0;
 
-        // this.VM.runtime.setFullscreenInterval(this.averageTime);
+        this.setState(prevState => ({
+          profilingMetrics: {
+            ...prevState.profilingMetrics,
+            averageDelay: formatProfilingMetric(this.averageTime)
+          }
+        }));
       }
     }, 0);
-
-    // /////////////////////////////////end of av_time
 
     this.VM.runtime.enableProfiling(frame => {
       const frame_id = this.VM.runtime.profiler.nameById(
         frame.id
       );
 
-      if (frame_id == 'Runtime._step') {
+      if (frame_id === 'Runtime._step') {
         time_counter++;
 
         self_time_summ += frame.selfTime;
@@ -277,35 +269,24 @@ class AboutWindowComponent extends Component {
         recieve_time_delta = this.DCA.getRecieveTimeDelta();
         recieve_time_delta_sum += recieve_time_delta;
 
-        if (time_counter == 100) {
-          average_self_time = (
-            self_time_summ / time_counter
-          ).toFixed(7);
-          average_total_time = (
-            total_time_summ / time_counter
-          ).toFixed(7);
-
-          recieve_time_delta_average = (
-            recieve_time_delta_sum / time_counter
-          ).toFixed(7);
+        if (time_counter === 100) {
+          const average_total_time = total_time_summ / time_counter;
+          const recieve_time_delta_average = recieve_time_delta_sum / time_counter;
 
           time_counter = 0;
-
-          step_time_field.innerHTML = average_total_time;
-          robot_recieve_time_field.innerHTML =
-            recieve_time_delta_average;
-
-          // profiler_window_average_time_field.innerHTML = `<div>Runtime._step total_time:${average_total_time} self_time: ${average_self_time} </div>
-          //                                                 <div>Recieve time delta: ${recieve_time_delta}</div>
-          //                                                 <div>Recieve time delta average: ${recieve_time_delta_average}</div>`;
-
           self_time_summ = 0;
           total_time_summ = 0;
           recieve_time_delta_sum = 0;
+
+          this.setState(prevState => ({
+            profilingMetrics: {
+              ...prevState.profilingMetrics,
+              stepDuration: formatProfilingMetric(average_total_time),
+              recieveDelta: formatProfilingMetric(recieve_time_delta_average)
+            }
+          }));
         }
       }
-
-      // if (frame_id != "Runtime._step") return;
 
       return;
     });
@@ -323,10 +304,13 @@ class AboutWindowComponent extends Component {
       this.VM.runtime.disableProfiling();
     }
 
-    this.clearProfilingMetrics();
-
     if (updateState && this.state.profilingEnabled) {
-      this.setState({ profilingEnabled: false });
+      this.setState({
+        profilingEnabled: false,
+        profilingMetrics: { ...EMPTY_PROFILING_METRICS }
+      });
+    } else {
+      this.clearProfilingMetrics();
     }
   }
 
@@ -477,7 +461,7 @@ class AboutWindowComponent extends Component {
     ];
     const infoRows = isWebSystemInfo ? webRows : desktopRows;
     const systemInfoText = this.buildSystemInfoText(infoRows);
-    const { profilingEnabled } = this.state;
+    const { profilingEnabled, profilingMetrics } = this.state;
     const copyFeedbackActive = isTransientButtonFeedbackActive(
       this.state,
       COPY_BUTTON_FEEDBACK_KEY,
@@ -581,41 +565,47 @@ class AboutWindowComponent extends Component {
             <div className={styles.about_metrics}>
               <div
                 id="about-window-content-raw-3"
-                className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}
+                className={styles.about_metric_row}
               >
-                <div className={formStyles.field_label}>
+                <div className={styles.about_metric_label}>
                   {intl.formatMessage(messages.step_duration)}
                 </div>
                 <span
                   id="raw-3-about-window-content-column-2"
-                  className={formStyles.field_value}
-                />
+                  className={styles.about_metric_value}
+                >
+                  {profilingMetrics.stepDuration}
+                </span>
               </div>
 
               <div
                 id="about-window-content-raw-4"
-                className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}
+                className={styles.about_metric_row}
               >
-                <div className={formStyles.field_label}>
+                <div className={styles.about_metric_label}>
                   {intl.formatMessage(messages.recieve_delta)}
                 </div>
                 <span
                   id="raw-4-about-window-content-column-2"
-                  className={formStyles.field_value}
-                />
+                  className={styles.about_metric_value}
+                >
+                  {profilingMetrics.recieveDelta}
+                </span>
               </div>
 
               <div
                 id="about-window-content-raw-8"
-                className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}
+                className={styles.about_metric_row}
               >
-                <div className={formStyles.field_label}>
+                <div className={styles.about_metric_label}>
                   {intl.formatMessage(messages.average_step_delay_time)}
                 </div>
                 <span
                   id="raw-8-about-window-content-column-2"
-                  className={formStyles.field_value}
-                />
+                  className={styles.about_metric_value}
+                >
+                  {profilingMetrics.averageDelay}
+                </span>
               </div>
             </div>
           </div>

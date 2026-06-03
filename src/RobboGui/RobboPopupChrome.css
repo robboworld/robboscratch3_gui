@@ -26,7 +26,7 @@
     background-image: linear-gradient(180deg, $ui-white 0%, rgba(0, 175, 65, 0.05) 100%);
     border-bottom: 1px solid rgba(0, 175, 65, 0.22);
     color: $text-primary;
-    font-size: 0.8125rem;
+    font-size: $popup-font-size;
     font-weight: bold;
     line-height: 1.2;
     cursor: grab;
@@ -81,7 +81,7 @@
     overflow-x: hidden;
     overflow-y: auto;
     color: $text-primary;
-    font-size: 0.8125rem;
+    font-size: $popup-font-size;
     line-height: 1.35;
 }
 

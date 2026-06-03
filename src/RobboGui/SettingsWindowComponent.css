@@ -2,7 +2,7 @@
 
 .settings_window {
     box-sizing: border-box;
-    width: 26rem;
+    width: $popup-settings-width;
     max-width: 96vw;
     pointer-events: auto;
 }

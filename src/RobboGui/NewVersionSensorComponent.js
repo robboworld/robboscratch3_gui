@@ -5,6 +5,7 @@ import { connect } from 'react-redux';
 import styles from './SensorComponent.css';
 import CommonFieldsSensorComponent from './CommonFieldsSensorComponent';
 import { ActionTriggerSensorChooseWindow } from './actions/sensor_actions';
+import {resolveTelemetryValueVariant} from './telemetry-value-variant';
 
 class NewVersionSensorComponent extends Component {
   ChooseSensorName () {
@@ -18,6 +19,11 @@ class NewVersionSensorComponent extends Component {
         sensorId={this.props.sensorId}
         sensorName={this.props.sensorName}
         sensorData={this.props.sensorData}
+        valueVariant={resolveTelemetryValueVariant({
+          deviceName: this.props.deviceName,
+          sensorName: this.props.sensorName,
+          sensorType: this.props.sensorType
+        })}
         control={
           <button
             type="button"

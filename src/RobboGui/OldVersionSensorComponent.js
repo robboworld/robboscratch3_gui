@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { connect } from 'react-redux';
 import CommonFieldsSensorComponent from './CommonFieldsSensorComponent';
 import { ActionTriggerOldAnalogSensorState } from './actions/sensor_actions';
+import {resolveTelemetryValueVariant} from './telemetry-value-variant';
 
 class OldVersionSensorComponent extends Component {
   triggerOldAnalogSensorState () {
@@ -18,6 +19,11 @@ class OldVersionSensorComponent extends Component {
         sensorId={this.props.sensorId}
         sensorName={this.props.sensorName}
         sensorData={this.props.sensorData}
+        valueVariant={resolveTelemetryValueVariant({
+          deviceName: this.props.deviceName,
+          sensorName: this.props.sensorName,
+          sensorType: this.props.sensorType
+        })}
         control={
           <input
             type="checkbox"

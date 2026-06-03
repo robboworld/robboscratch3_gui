@@ -1,7 +1,9 @@
+@import "../css/units.css";
+
 .firmware_flasher_component {
     box-sizing: border-box;
     width: 52rem;
     max-width: 96vw;
-    font-size: 0.75rem;
+    font-size: $popup-font-size-sm;
     pointer-events: auto;
 }

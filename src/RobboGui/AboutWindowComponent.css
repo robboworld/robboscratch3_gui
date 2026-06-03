@@ -1,8 +1,9 @@
+@import "../css/colors.css";
 @import "../css/units.css";
 
 .about_window {
     box-sizing: border-box;
-    width: 26rem;
+    width: $popup-about-width;
     max-width: 96vw;
     pointer-events: auto;
 }
@@ -41,7 +42,7 @@
 
 .about_version_block .version_label {
     margin: 0;
-    font-size: 0.8125rem;
+    font-size: $popup-font-size;
     line-height: 1.45;
 }
 
@@ -78,6 +79,42 @@
     margin-top: 0.5rem;
 }
 
+/* Измерение производительности: подпись растягивается, число — по ширине контента */
+.about_metric_row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.about_metric_label {
+    composes: field_label from './RobboPaletteForm.css';
+    flex: 1 1 auto;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-right: 0.75rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.about_metric_value {
+    composes: field_value from './RobboPaletteForm.css';
+    flex: 0 0 auto;
+    width: max-content;
+    min-width: 2.75rem;
+    box-sizing: border-box;
+    margin-left: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.375rem;
+    white-space: nowrap;
+}
+
+.about_metric_value:empty {
+    display: none;
+}
+
 /* Сведения о системе: подпись слева (50%), значение справа до края (50%) */
 .about_info_row {
     display: flex;
@@ -89,28 +126,24 @@
 }
 
 .about_info_label {
+    composes: field_label from './RobboPaletteForm.css';
     flex: 0 0 50%;
     width: 50%;
     max-width: 50%;
     min-width: 0;
     box-sizing: border-box;
     padding-right: 12px;
-    font-size: 0.8125rem;
-    line-height: 1.35;
-    color: #000;
     text-align: left;
 }
 
 .about_info_value {
+    composes: field_value from './RobboPaletteForm.css';
     flex: 0 0 50%;
     width: 50%;
     max-width: 50%;
     min-width: 0;
     box-sizing: border-box;
     margin-left: 0;
-    font-size: 0.8125rem;
-    line-height: 1.35;
-    color: #000;
     text-align: right;
     overflow-wrap: anywhere;
     word-break: break-word;

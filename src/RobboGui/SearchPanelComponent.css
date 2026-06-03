@@ -13,7 +13,7 @@
     max-height: 70vh;
     transform-origin: top left;
     font-weight: bold;
-    font-size: 0.8125rem;
+    font-size: $popup-font-size;
 }
 
 .search_panel_header {
@@ -43,7 +43,7 @@
 }
 
 .devices_status_message {
-    font-size: 0.875rem;
+    font-size: $popup-font-size;
     padding: 0.5rem 0.625rem;
     font-weight: normal;
     color: $text-primary;
