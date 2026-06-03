@@ -9,126 +9,20 @@ import { getPaletteSensorValueNode } from './sensor-palette-dom';
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions'
 
-import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import {defineMessages, injectIntl} from 'react-intl';
+
+function formatArduinoPinLabel (pinIndex) {
+    if (pinIndex < 14) return `D${pinIndex}`;
+    return `A${pinIndex - 14}`;
+}
 
 const messages = defineMessages({
-    pin0: {
-        id: 'gui.RobboGui.ArduinoPalette.pin0',
-        description: ' ',
-        defaultMessage: 'D0'
-    },
-
-    pin1: {
-        id: 'gui.RobboGui.ArduinoPalette.pin1',
-        description: ' ',
-        defaultMessage: 'D1'
-    },
-    pin2: {
-        id: 'gui.RobboGui.ArduinoPalette.pin2',
-        description: ' ',
-        defaultMessage: 'D2'
-    },
-    pin3: {
-        id: 'gui.RobboGui.ArduinoPalette.pin3',
-        description: ' ',
-        defaultMessage: 'D3'
-    },
-    pin4: {
-        id: 'gui.RobboGui.ArduinoPalette.pin4',
-        description: ' ',
-        defaultMessage: 'D4'
-    },
-    pin5: {
-        id: 'gui.RobboGui.ArduinoPalette.pin5',
-        description: ' ',
-        defaultMessage: 'D5'
-    },
-    pin6: {
-        id: 'gui.RobboGui.ArduinoPalette.pin6',
-        description: ' ',
-        defaultMessage: 'D6'
-    },
-    pin7: {
-        id: 'gui.RobboGui.ArduinoPalette.pin7',
-        description: ' ',
-        defaultMessage: 'D7'
-    },
-    pin8: {
-        id: 'gui.RobboGui.ArduinoPalette.pin8',
-        description: ' ',
-        defaultMessage: 'D8'
-    },
-    pin9: {
-        id: 'gui.RobboGui.ArduinoPalette.pin9',
-        description: ' ',
-        defaultMessage: 'D9'
-    },
-    pin10: {
-        id: 'gui.RobboGui.ArduinoPalette.pin10',
-        description: ' ',
-        defaultMessage: 'D10'
-    },
-    pin11: {
-        id: 'gui.RobboGui.ArduinoPalette.pin11',
-        description: ' ',
-        defaultMessage: 'D11'
-    },
-    pin12: {
-        id: 'gui.RobboGui.ArduinoPalette.pin12',
-        description: ' ',
-        defaultMessage: 'D12'
-    },
-    pin13: {
-        id: 'gui.RobboGui.ArduinoPalette.pin13',
-        description: ' ',
-        defaultMessage: 'D13'
-    },
-    pin14: {
-        id: 'gui.RobboGui.ArduinoPalette.pin14',
-        description: ' ',
-        defaultMessage: 'A0'
-    },
-    pin15: {
-        id: 'gui.RobboGui.ArduinoPalette.pin15',
-        description: ' ',
-        defaultMessage: 'A1'
-    },
-    pin16: {
-        id: 'gui.RobboGui.ArduinoPalette.pin16',
-        description: ' ',
-        defaultMessage: 'A2'
-    },
-    pin17: {
-        id: 'gui.RobboGui.ArduinoPalette.pin17',
-        description: ' ',
-        defaultMessage: 'A3'
-    },
-    pin18: {
-        id: 'gui.RobboGui.ArduinoPalette.pin18',
-        description: ' ',
-        defaultMessage: 'A4'
-    },
-    pin19: {
-        id: 'gui.RobboGui.ArduinoPalette.pin19',
-        description: ' ',
-        defaultMessage: 'A5'
-    },
-    pin20: {
-        id: 'gui.RobboGui.ArduinoPalette.pin20',
-        description: ' ',
-        defaultMessage: 'PIN 20'
-    },
-    pin21: {
-        id: 'gui.RobboGui.ArduinoPalette.pin21',
-        description: ' ',
-        defaultMessage: 'PIN 21'
-    },
     arduino: {
         id: 'gui.RobboGui.ArduinoPalette.arduino',
         description: ' ',
         defaultMessage: 'Arduino'
     }
-  });
+});
 
 class ArduinoPalleteComponent extends Component {
   onThisWindowClose(){
@@ -235,60 +129,60 @@ class ArduinoPalleteComponent extends Component {
                      
                                   <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin0`} sensorId={`arduino-${this.props.arduinoIndex}-pin0`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin0)}
+                                   sensorFieldText={formatArduinoPinLabel(0)}
                                    sensorName={`pin0`}
                                    sensorData={`0`} />
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin1`} sensorId={`arduino-${this.props.arduinoIndex}-pin1`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin1)}
+                                   sensorFieldText={formatArduinoPinLabel(1)}
                                    sensorName={`pin1`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin2`} sensorId={`arduino-${this.props.arduinoIndex}-pin2`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin2)}
+                                   sensorFieldText={formatArduinoPinLabel(2)}
                                    sensorName={`pin2`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin3`} sensorId={`arduino-${this.props.arduinoIndex}-pin3`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin3)}
+                                   sensorFieldText={formatArduinoPinLabel(3)}
                                    sensorName={`pin3`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin4`} sensorId={`arduino-${this.props.arduinoIndex}-pin4`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin4)}
+                                   sensorFieldText={formatArduinoPinLabel(4)}
                                    sensorName={`pin4`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin5`} sensorId={`arduino-${this.props.arduinoIndex}-pin5`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin5)}
+                                   sensorFieldText={formatArduinoPinLabel(5)}
                                    sensorName={`pin5`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin6`} sensorId={`arduino-${this.props.arduinoIndex}-pin6`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin6)}
+                                   sensorFieldText={formatArduinoPinLabel(6)}
                                    sensorName={`pin6`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin7`} sensorId={`arduino-${this.props.arduinoIndex}-pin7`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin7)}
+                                   sensorFieldText={formatArduinoPinLabel(7)}
                                    sensorName={`pin7`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin8`} sensorId={`arduino-${this.props.arduinoIndex}-pin8`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin8)}
+                                   sensorFieldText={formatArduinoPinLabel(8)}
                                    sensorName={`pin8`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin9`} sensorId={`arduino-${this.props.arduinoIndex}-pin9`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin9)}
+                                   sensorFieldText={formatArduinoPinLabel(9)}
                                    sensorName={`pin9`}
                                    sensorData={`0`} />
                           </div>
@@ -297,61 +191,61 @@ class ArduinoPalleteComponent extends Component {
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin10`} sensorId={`arduino-${this.props.arduinoIndex}-pin10`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin10)}
+                                   sensorFieldText={formatArduinoPinLabel(10)}
                                    sensorName={`pin10`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin11`} sensorId={`arduino-${this.props.arduinoIndex}-pin11`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin11)}
+                                   sensorFieldText={formatArduinoPinLabel(11)}
                                    sensorName={`pin11`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin12`} sensorId={`arduino-${this.props.arduinoIndex}-pin12`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin12)}
+                                   sensorFieldText={formatArduinoPinLabel(12)}
                                    sensorName={`pin12`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin13`} sensorId={`arduino-${this.props.arduinoIndex}-pin13`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin13)}
+                                   sensorFieldText={formatArduinoPinLabel(13)}
                                    sensorName={`pin13`}
                                    sensorData={`0`} /> 
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin14`} sensorId={`arduino-${this.props.arduinoIndex}-pin14`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin14)}
+                                   sensorFieldText={formatArduinoPinLabel(14)}
                                    sensorName={`pin14`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin15`} sensorId={`arduino-${this.props.arduinoIndex}-pin15`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin15)}
+                                   sensorFieldText={formatArduinoPinLabel(15)}
                                    sensorName={`pin15`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin16`} sensorId={`arduino-${this.props.arduinoIndex}-pin16`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin16)}
+                                   sensorFieldText={formatArduinoPinLabel(16)}
                                    sensorName={`pin16`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin17`} sensorId={`arduino-${this.props.arduinoIndex}-pin17`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin17)}
+                                   sensorFieldText={formatArduinoPinLabel(17)}
                                    sensorName={`pin17`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin18`} sensorId={`arduino-${this.props.arduinoIndex}-pin18`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin18)}
+                                   sensorFieldText={formatArduinoPinLabel(18)}
                                    sensorName={`pin18`}
                                    sensorData={`0`} />
 
                                  <SensorDataBlockComponent key={`arduino-${this.props.arduinoIndex}-pin19`} sensorId={`arduino-${this.props.arduinoIndex}-pin19`}
                                    deviceName={`arduino`} sensorType={`analog`}
-                                   sensorFieldText={this.props.intl.formatMessage(messages.pin19)}
+                                   sensorFieldText={formatArduinoPinLabel(19)}
                                    sensorName={`pin19`}
                                    sensorData={`0`} />
 

@@ -1,21 +1,39 @@
 /**
  * @fileoverview
- * Utility function to detect locale from the browser setting or paramenter on the URL.
+ * Startup locale: URL, saved layout preference, browser, then en fallback.
  */
 
 import queryString from 'query-string';
 
+import {readPersistedLocale} from './layout-visibility-persistence';
+
+const DEFAULT_LOCALE = 'en';
+
 /**
- * look for language setting in the browser. Check against supported locales.
- * If there's a parameter in the URL, override the browser setting
- * @param {Array.string} supportedLocales An array of supported locale codes.
- * @return {string} the preferred locale
+ * @param {Array.string} supportedLocales
+ * @return {?string} locale from URL or null
  */
-const detectLocale = supportedLocales => {
-    let locale = 'ru'; // default
+const getLocaleFromUrl = function (supportedLocales) {
+    const queryParams = queryString.parse(location.search);
+    const potentialLocales = [].concat(queryParams.locale, queryParams.lang).filter(l => l);
+    if (!potentialLocales.length) {
+        return null;
+    }
+    const urlLocale = potentialLocales[0].toLowerCase();
+    if (supportedLocales.includes(urlLocale)) {
+        return urlLocale;
+    }
+    return null;
+};
+
+/**
+ * @param {Array.string} supportedLocales
+ * @return {string}
+ */
+const getLocaleFromBrowser = function (supportedLocales) {
+    let locale = DEFAULT_LOCALE;
     let browserLocale = window.navigator.userLanguage || window.navigator.language;
     browserLocale = browserLocale.toLowerCase();
-    // try to set locale from browserLocale
     if (supportedLocales.includes(browserLocale)) {
         locale = browserLocale;
     } else {
@@ -24,22 +42,42 @@ const detectLocale = supportedLocales => {
             locale = browserLocale;
         }
     }
-
-    const queryParams = queryString.parse(location.search);
-    // Flatten potential arrays and remove falsy values
-    const potentialLocales = [].concat(queryParams.locale, queryParams.lang).filter(l => l);
-    if (!potentialLocales.length) {
-        return locale;
-    }
-
-    const urlLocale = potentialLocales[0].toLowerCase();
-    if (supportedLocales.includes(urlLocale)) {
-        return urlLocale;
-    }
-
     return locale;
 };
 
+/**
+ * @param {Array.string} supportedLocales
+ * @return {string}
+ */
+const resolveStartupLocale = function (supportedLocales) {
+    const fromUrl = getLocaleFromUrl(supportedLocales);
+    if (fromUrl) {
+        return fromUrl;
+    }
+    const fromStorage = readPersistedLocale(supportedLocales);
+    if (fromStorage) {
+        return fromStorage;
+    }
+    return getLocaleFromBrowser(supportedLocales);
+};
+
+/**
+ * Browser + URL only (no localStorage). Kept for unit tests and legacy callers.
+ * @param {Array.string} supportedLocales
+ * @return {string}
+ */
+const detectLocale = function (supportedLocales) {
+    const fromUrl = getLocaleFromUrl(supportedLocales);
+    if (fromUrl) {
+        return fromUrl;
+    }
+    return getLocaleFromBrowser(supportedLocales);
+};
+
 export {
-    detectLocale
+    DEFAULT_LOCALE,
+    detectLocale,
+    getLocaleFromBrowser,
+    getLocaleFromUrl,
+    resolveStartupLocale
 };

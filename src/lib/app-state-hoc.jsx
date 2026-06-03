@@ -9,7 +9,7 @@ import localesReducer, {initLocale, localesInitialState} from '../reducers/local
 import {setPlayer, setFullScreen} from '../reducers/mode.js';
 
 import locales from 'scratch-l10n';
-import {detectLocale} from './detect-locale';
+import {resolveStartupLocale} from './detect-locale';
 
 import { Provider as AlertProvider } from 'react-alert';
 import AlertTemplate from 'react-alert-template-basic';
@@ -41,11 +41,8 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
             let reducers = {};
             let enhancer;
 
-            let initializedLocales = localesInitialState;
-            const locale = detectLocale(Object.keys(locales));
-            if (locale !== 'en') {
-                initializedLocales = initLocale(initializedLocales, locale);
-            }
+            const locale = resolveStartupLocale(Object.keys(locales));
+            const initializedLocales = initLocale(localesInitialState, locale);
             if (localesOnly) {
                 // Used for instantiating minimal state for the unsupported
                 // browser modal

@@ -4,7 +4,6 @@ import { connect } from 'react-redux';
 import sharedStyles from './DevicePaletteShared.css';
 import formStyles from './RobboPaletteForm.css';
 import rowStyles from './DevicePaletteRows.css';
-import styles from './OttoPalleteComponent.css';
 import SensorDataBlockComponent from './SensorDataBlockComponent';
 import { getPaletteSensorValueNode } from './sensor-palette-dom';
 

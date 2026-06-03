@@ -4,12 +4,10 @@ import { connect } from 'react-redux';
 import sharedStyles from './DevicePaletteShared.css';
 import formStyles from './RobboPaletteForm.css';
 import rowStyles from './DevicePaletteRows.css';
-import styles from './LaboratoryPalleteComponent.css';
-import SensorDataBlockComponent  from './SensorDataBlockComponent';
+import SensorDataBlockComponent from './SensorDataBlockComponent';
 import SensorComponent from './SensorComponent';
 import { getPaletteSensorValueNode } from './sensor-palette-dom';
-
-import {ActionLaboratoryGetDataStart} from  './actions/sensor_actions';
+import {ActionLaboratoryGetDataStart} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionSetLCALocal}  from './actions/sensor_actions';
 

@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import sharedStyles from './DevicePaletteShared.css';
+import rowStyles from './DevicePaletteRows.css';
 import styles from './QuadcopterPalleteComponent.css';
 import SensorDataBlockComponent  from './SensorDataBlockComponent'
 
@@ -143,7 +144,7 @@ class QuadcopterPalleteComponent extends Component {
 
     return (
 
-          <div id="quadcopter-1" className={classNames(sharedStyles.palette, styles.quadcopter_palette)}>
+          <div id="quadcopter-1" className={classNames(sharedStyles.palette, sharedStyles.device_palette, styles.quadcopter_palette)}>
                 <div id="quadcopter-tittle" className={sharedStyles.header}>
                     <span className={sharedStyles.headerTitle}>
                         {this.props.intl.formatMessage(messages.quadcopter)}
@@ -156,6 +157,7 @@ class QuadcopterPalleteComponent extends Component {
                     />
                 </div>
                 <div className={sharedStyles.body}>
+                <div className={rowStyles.palette_device_list}>
                 <SensorDataBlockComponent key={`copter-${this.props.quadcopterIndex}-battery-level`} sensorId={`copter-${this.props.quadcopterIndex}-battery-level`}
                                    deviceName={`quadcopter`} sensorType={`analog`}
                                    sensorFieldText={this.props.intl.formatMessage(messages.battery_level)}
@@ -186,6 +188,7 @@ class QuadcopterPalleteComponent extends Component {
               sensorFieldText={this.props.intl.formatMessage(messages.yaw)}
               sensorName={`yaw`}
               sensorData={this.state.yawText} />
+                </div>
                 </div>
           </div>
 

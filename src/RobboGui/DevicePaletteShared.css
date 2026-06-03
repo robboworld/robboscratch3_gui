@@ -3,15 +3,16 @@
 @import "./RobboPopupChrome.css";
 @import './RobboDeviceStatus.css';
 
-/* Fixed width — telemetry panel (base 18rem / 26rem wide, −20%) */
+/* Device palettes: width follows content (min floor, viewport cap) */
 .device_palette {
     box-sizing: border-box;
-    width: 14.4rem;
+    width: max-content;
+    min-width: 10.5rem;
     max-width: 96vw;
 }
 
 .device_palette_wide {
-    width: 20.8rem;
+    min-width: 14rem;
     max-width: 96vw;
 }
 

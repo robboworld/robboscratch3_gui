@@ -14,3 +14,10 @@
 .settings_footer {
     margin-top: 14px;
 }
+
+/* Save button stays visible; scroll only the form sections (desktop has more fields) */
+.settings_footer_outside {
+    box-sizing: border-box;
+    margin-top: 0;
+    padding: 0 12px 12px;
+}

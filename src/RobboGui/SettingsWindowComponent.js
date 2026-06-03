@@ -580,23 +580,26 @@ class SettingsWindowComponent extends Component {
               </div>
             </div>
           </div>
+        </div>
 
-          <div id="settings-window-content-raw-3" className={classNames(formStyles.footer, styles.settings_footer)}>
-            <div id="raw-13-settings-window-content-column-1" className={formStyles.footer_actions}>
-              <button
-                type="button"
-                className={classNames(formStyles.action_button, formStyles.footer_action_button)}
-                onClick={this.saveSettings}
-              >
-                {renderTransientActionLabel({
-                  feedbackActive: saveFeedbackActive,
-                  defaultMessage: messages.save_settings,
-                  successMessage: messages.settings_saved,
-                  intl,
-                  labelClassName: formStyles.action_button_label
-                })}
-              </button>
-            </div>
+        <div
+          id="settings-window-content-raw-3"
+          className={classNames(formStyles.footer, styles.settings_footer, styles.settings_footer_outside)}
+        >
+          <div id="raw-13-settings-window-content-column-1" className={formStyles.footer_actions}>
+            <button
+              type="button"
+              className={classNames(formStyles.action_button, formStyles.footer_action_button)}
+              onClick={this.saveSettings}
+            >
+              {renderTransientActionLabel({
+                feedbackActive: saveFeedbackActive,
+                defaultMessage: messages.save_settings,
+                successMessage: messages.settings_saved,
+                intl,
+                labelClassName: formStyles.action_button_label
+              })}
+            </button>
           </div>
         </div>
       </div>

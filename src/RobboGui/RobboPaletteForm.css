@@ -124,6 +124,16 @@
     align-items: center;
 }
 
+/* NW.js 69: flex-basis 0% on .field_control collapses the checkbox column when the label wraps */
+.field_row_ratio_70_30.checkbox_row > .field_label {
+    flex: 1 1 auto;
+}
+
+.field_row_ratio_70_30.checkbox_row > .field_control {
+    flex: 0 0 auto;
+    min-width: 1.125rem;
+}
+
 .checkbox_row {
     align-items: center;
 }
