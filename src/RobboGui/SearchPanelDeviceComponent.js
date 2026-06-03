@@ -21,8 +21,6 @@ import { resolveCf2FirmwareVersionLabel, parseCf2FlashToolLine } from '../lib/cr
 import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
 import {setFlashButtonVisualMode, setFlashLogStatusTone} from '../lib/device-status-dom';
 
-
-
 const messages = defineMessages({
 
     device_robot: {
@@ -69,6 +67,11 @@ const messages = defineMessages({
         id: 'gui.SearchPanel.quadcopter_disconnected',
         description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
         defaultMessage: 'Not connected'
+    },
+    quadcopter_copter_not_found: {
+        id: 'gui.SearchPanel.quadcopter_copter_not_found',
+        description: 'Crazyradio closed or copter powered off during search (deviceClosed).',
+        defaultMessage: 'Crazyflie not found. Turn on the copter and try searching again.'
     },
     quadcopter_landing: {
         id: 'gui.SearchPanel.quadcopter_landing',
@@ -418,13 +421,170 @@ class SearchPanelDeviceComponent extends Component {
         this._quadcopterFirmwareProbeInFlight = false;
         this._quadcopterFirmwarePrompted = false;
         this._quadcopterFirmwareFlashActive = false;
+        this._quadcopterFirmwareUpdateDeclined = false;
+        this._quadcopterSearchReachedTocReady = false;
+        this._quadcopterSearchReachedLinkReady = false;
+        this._quadcopterSearchSawRadioAck = false;
         this._debugMounted = false;
 
     }
 
+    _noteQuadcopterSearchProgress(snapshot) {
+        const cs = snapshot && snapshot.connectionState;
+        if (cs === 'linkReady' || cs === 'tocReady' || cs === 'telemetryActive') {
+            this._quadcopterSearchReachedLinkReady = true;
+        }
+        if (cs === 'tocReady' || cs === 'telemetryActive') {
+            this._quadcopterSearchReachedTocReady = true;
+        }
+        if (snapshot && snapshot.copterRadioRespondedDuringSearch === true) {
+            this._quadcopterSearchSawRadioAck = true;
+        }
+    }
+
+    _copterLikelyPoweredDuringSearch(snapshot) {
+        if (this._quadcopterSearchReachedTocReady) {
+            return true;
+        }
+        if (this._quadcopterSearchSawRadioAck) {
+            return true;
+        }
+        return !!(snapshot && snapshot.copterRadioRespondedDuringSearch === true);
+    }
+
+    _quadcopterSearchErrorText(snapshot) {
+        const err = snapshot && snapshot.lastError;
+        if (!err) return '';
+        const tech = err.details && err.details.technical ? String(err.details.technical) : '';
+        return `${err.code || ''}:${err.message || ''}:${tech}`;
+    }
+
+    /**
+     * cf2tool probe only when the copter answered on radio but session connect failed.
+     * Opening the Crazyradio dongle alone (copter powered off) must not start firmware check.
+     */
+    _shouldProbeFirmwareAfterFailedSearch(snapshot) {
+        if (!this._copterLikelyPoweredDuringSearch(snapshot)) {
+            return false;
+        }
+
+        const cs = snapshot && snapshot.connectionState;
+        if (this._quadcopterSearchReachedTocReady || cs === 'tocReady' || cs === 'telemetryActive') {
+            return true;
+        }
+
+        const err = snapshot && snapshot.lastError;
+        const code = err && err.code ? String(err.code) : '';
+        if (code === 'dongleNotFound') {
+            return false;
+        }
+        if (code === 'copterRadioUnresponsive') {
+            return true;
+        }
+
+        const blob = this._quadcopterSearchErrorText(snapshot);
+        if (/control response did not arrive|TOC fetch timeout|missing in TOC|TOC item/i.test(blob)) {
+            return true;
+        }
+        if (code === 'searchOperationTimeout' && this._quadcopterSearchReachedLinkReady) {
+            return true;
+        }
+        return code === 'searchFailed' &&
+            /TOC|control response|log reset|log block|missing in TOC/i.test(blob);
+    }
+
+    _isStrongQuadcopterFirmwareProbeHint(snapshot) {
+        if (this._quadcopterSearchReachedTocReady) {
+            return true;
+        }
+        const err = snapshot && snapshot.lastError;
+        if (err && String(err.code) === 'copterRadioUnresponsive') {
+            return true;
+        }
+        return this._copterLikelyPoweredDuringSearch(snapshot);
+    }
+
+    _getQuadcopterFirmwareProbeTimeoutMs(snapshot) {
+        const qca = this.props.QCA;
+        const strong = this._isStrongQuadcopterFirmwareProbeHint(snapshot);
+        if (qca && typeof qca.getFirmwareProbeAfterFailedConnectTimeoutMs === 'function') {
+            return qca.getFirmwareProbeAfterFailedConnectTimeoutMs(strong);
+        }
+        return strong ? 45000 : 12000;
+    }
+
+    _skipQuadcopterFirmwareProbeAfterSearch(snapshot) {
+        this._quadcopterFirmwareVersionChecked = true;
+        this._quadcopterFirmwareProbeInFlight = false;
+        if (this._debugMounted !== true) {
+            return;
+        }
+        this.setState({
+            quadcopterFlashStatus: null,
+            quadcopterRowPhase: 'idle',
+            quadcopterLastError: snapshot && snapshot.lastError != null
+                ? snapshot.lastError
+                : this.state.quadcopterLastError
+        });
+    }
+
+    _isQuadcopterFirmwareProbeUiActive() {
+        return this._quadcopterFirmwareProbeInFlight === true &&
+            this._quadcopterFirmwareVersionChecked !== true;
+    }
+
+    _isQuadcopterFirmwareCheckUiActive() {
+        if (this._quadcopterFirmwareUpdateDeclined) {
+            return false;
+        }
+        if (this._isQuadcopterFirmwareProbeUiActive()) {
+            return true;
+        }
+        return this.props.QCA &&
+            typeof this.props.QCA.isQuadcopterPreflightActive === 'function' &&
+            this.props.QCA.isQuadcopterPreflightActive() === true &&
+            this._quadcopterFirmwareVersionChecked !== true;
+    }
+
+    _quadcopterFirmwareMismatchStatusText(info) {
+        if (!info || !info.required) {
+            return this._quadcopterConnectFailureStatusText(info);
+        }
+        const currentUi = this._getQuadcopterCurrentVersionForUi(info);
+        if (currentUi) {
+            return this.props.intl.formatMessage(messages.quadcopter_firmware_versions_line, {
+                current: currentUi,
+                required: info.required
+            });
+        }
+        return this.props.intl.formatMessage(messages.quadcopter_firmware_version_unknown, {
+            required: info.required
+        });
+    }
+
+    _resetQuadcopterRowAfterFirmwareDeclined(info) {
+        this._quadcopterFirmwareProbeInFlight = false;
+        this._quadcopterFirmwarePrompted = false;
+        this._quadcopterFirmwareUpdateDeclined = true;
+        if (this._debugMounted !== true) {
+            return;
+        }
+        this.setState({
+            quadcopterLastError: null,
+            quadcopterFlashStatus: info && info.needsUpdate
+                ? this._quadcopterFirmwareMismatchStatusText(info)
+                : this._quadcopterConnectFailureStatusText(info),
+            quadcopterRowPhase: 'idle'
+        });
+    }
+
+    _isQuadcopterSearchUiActive(effectiveSearching, quadcopterRowPhase) {
+        return effectiveSearching === true || quadcopterRowPhase === 'searching';
+    }
+
     _isQuadcopterFirmwareFlowBlockingHide() {
         if (!this.props.isQuadcopter) return false;
-        if (this._quadcopterFirmwareProbeInFlight) return true;
+        if (this._isQuadcopterFirmwareProbeUiActive()) return true;
         if (this._quadcopterFirmwareFlashActive) return true;
         if (!this._quadcopterFirmwareVersionChecked) return true;
         return false;
@@ -513,8 +673,17 @@ class SearchPanelDeviceComponent extends Component {
         if (!this.state.quadcopterFlashStatus) {
             return false;
         }
+        const errMsg = this.state.quadcopterLastError && this.state.quadcopterLastError.message
+            ? String(this.state.quadcopterLastError.message)
+            : '';
+        if (errMsg && String(this.state.quadcopterFlashStatus) === errMsg) {
+            return false;
+        }
         const phase = this.state.quadcopterRowPhase;
-        if (phase === 'checking' || phase === 'connecting' || phase === 'flashing') {
+        if (phase === 'checking' || phase === 'connecting' || phase === 'searching' || phase === 'flashing') {
+            return false;
+        }
+        if (this._isQuadcopterFirmwareCheckUiActive()) {
             return false;
         }
         return true;
@@ -545,9 +714,8 @@ class SearchPanelDeviceComponent extends Component {
     }
 
     _isQuadcopterConnectErrorHintSuppressed() {
-        return this._quadcopterFirmwareProbeInFlight === true ||
+        return this._isQuadcopterFirmwareCheckUiActive() ||
             this._quadcopterFirmwareFlashActive === true ||
-            this.state.quadcopterRowPhase === 'checking' ||
             this.state.quadcopterRowPhase === 'flashing';
     }
 
@@ -636,7 +804,7 @@ class SearchPanelDeviceComponent extends Component {
                     statusText: this.props.intl.formatMessage(messages.quadcopter_firmware_flash_started)
                 };
             }
-            if (quadcopterRowPhase === 'checking') {
+            if (this._isQuadcopterFirmwareCheckUiActive()) {
                 return {
                     iconSrc: './static/robbo_assets/yellow.png',
                     statusText: this.props.intl.formatMessage(messages.quadcopter_firmware_checking)
@@ -660,21 +828,11 @@ class SearchPanelDeviceComponent extends Component {
                     statusText: this.props.intl.formatMessage(messages.quadcopter_connected)
                 };
             }
-            if (this._quadcopterFirmwareProbeInFlight) {
+            if (this._isQuadcopterSearchUiActive(effectiveSearching, quadcopterRowPhase)) {
                 return {
                     iconSrc: './static/robbo_assets/yellow.png',
-                    statusText: this.props.intl.formatMessage(messages.quadcopter_firmware_checking)
+                    statusText: this.props.intl.formatMessage(messages.quadcopter_searching)
                 };
-            }
-            if (this.props.QCA && typeof this.props.QCA.isQuadcopterPreflightActive === 'function' &&
-                this.props.QCA.isQuadcopterPreflightActive()) {
-                return {
-                    iconSrc: './static/robbo_assets/yellow.png',
-                    statusText: this.props.intl.formatMessage(messages.quadcopter_firmware_checking)
-                };
-            }
-            if (effectiveSearching) {
-                return { iconSrc: './static/robbo_assets/yellow.png', statusText: this.props.intl.formatMessage(messages.quadcopter_connecting) };
             }
             if (effectiveConnected) {
                 if (quadcopterState === 'landing') {
@@ -776,11 +934,18 @@ class SearchPanelDeviceComponent extends Component {
             this._quadcopterFirmwarePrompted = false;
             this._quadcopterFirmwareProbeInFlight = false;
             this._quadcopterFirmwareFlashActive = false;
+            this._quadcopterFirmwareUpdateDeclined = false;
+            this._quadcopterSearchReachedTocReady = false;
+            this._quadcopterSearchReachedLinkReady = false;
+            this._quadcopterSearchSawRadioAck = false;
             this._quadcopterConnectFailureHandled = false;
+            this._lastQuadcopterConnected = null;
+            this._lastQuadcopterSearching = null;
+            this._lastQuadcopterState = null;
             this.setState({
                 quadcopterLastError: null,
                 quadcopterFlashStatus: null,
-                quadcopterRowPhase: 'connecting'
+                quadcopterRowPhase: 'searching'
             });
         }
     }
@@ -814,6 +979,7 @@ class SearchPanelDeviceComponent extends Component {
             this._lastQuadcopterState = null;
             this._quadcopterStatusCallback = (state, searching, snapshot) => {
                 const nextSnapshot = snapshot || {};
+                this._noteQuadcopterSearchProgress(nextSnapshot);
                 const isSearching = nextSnapshot.searching === true || searching === true;
                 const connected = !isSearching && (
                     nextSnapshot.connected === true ||
@@ -826,10 +992,8 @@ class SearchPanelDeviceComponent extends Component {
                 const quadcopterState = nextSnapshot.state || state || 'disconnected';
                 const preflightActive = typeof this.props.QCA.isQuadcopterPreflightActive === 'function' &&
                     this.props.QCA.isQuadcopterPreflightActive();
-                const suppressConnectError = this._quadcopterFirmwareProbeInFlight === true ||
+                const suppressConnectError = this._isQuadcopterFirmwareCheckUiActive() ||
                     this._quadcopterFirmwareFlashActive === true ||
-                    preflightActive ||
-                    this.state.quadcopterRowPhase === 'checking' ||
                     this.state.quadcopterRowPhase === 'flashing';
                 const nextQuadHint = connected || suppressConnectError
                     ? null
@@ -859,10 +1023,10 @@ class SearchPanelDeviceComponent extends Component {
                     this._lastQuadcopterState = quadcopterState;
                     let nextRowPhase = 'idle';
                     if (isSearching) {
-                        nextRowPhase = 'connecting';
+                        nextRowPhase = 'searching';
                     } else if (connected) {
                         nextRowPhase = 'connected';
-                    } else if (preflightActive || this._quadcopterFirmwareProbeInFlight) {
+                    } else if (this._isQuadcopterFirmwareCheckUiActive()) {
                         nextRowPhase = 'checking';
                     }
                     this.setState({
@@ -877,7 +1041,7 @@ class SearchPanelDeviceComponent extends Component {
                     !this._quadcopterConnectFailureHandled) {
                     this._quadcopterConnectFailureHandled = true;
                     notifySearchButtonFeedback('error');
-                    this._maybeCheckFirmwareAfterConnectFailure();
+                    this._maybeCheckFirmwareAfterConnectFailure(nextSnapshot);
                 } else if (connected && !isSearching) {
                     this._quadcopterFirmwareVersionChecked = true;
                     this._quadcopterFirmwareProbeInFlight = false;
@@ -958,10 +1122,23 @@ class SearchPanelDeviceComponent extends Component {
         //      });
     }
 
+    _formatQuadcopterLastErrorMessage(err) {
+        if (!err) {
+            return null;
+        }
+        const code = err.code ? String(err.code) : '';
+        const msg = err.message ? String(err.message) : '';
+        if (code === 'deviceClosed' || msg.indexOf('Crazyradio handle is not opened') !== -1) {
+            return this.props.intl.formatMessage(messages.quadcopter_copter_not_found);
+        }
+        return msg || null;
+    }
+
     _quadcopterConnectFailureStatusText(info) {
         const err = this.state.quadcopterLastError;
-        if (err && err.message) {
-            return String(err.message);
+        const formatted = this._formatQuadcopterLastErrorMessage(err);
+        if (formatted) {
+            return formatted;
         }
         if (!info || info.supported !== true) {
             return this.props.intl.formatMessage(messages.quadcopter_disconnected);
@@ -981,38 +1158,26 @@ class SearchPanelDeviceComponent extends Component {
         if (probeEpoch !== this.props.searchEpoch) {
             return;
         }
+        this._quadcopterFirmwareProbeInFlight = false;
         this._quadcopterFirmwareVersionChecked = true;
 
         if (!info || info.supported !== true || !info.needsUpdate) {
             if (this._debugMounted === true) {
                 this.setState({
-                    quadcopterFlashStatus: this._quadcopterConnectFailureStatusText(info),
-                    quadcopterRowPhase: 'idle'
+                    quadcopterFlashStatus: null,
+                    quadcopterRowPhase: 'idle',
+                    quadcopterLastError: this.state.quadcopterLastError
                 });
             }
             return;
         }
 
         if (this._debugMounted === true) {
-            const currentUi = this._getQuadcopterCurrentVersionForUi(info);
-            if (currentUi && info.required) {
-                this.setState({
-                    quadcopterLastError: null,
-                    quadcopterFlashStatus: this.props.intl.formatMessage(messages.quadcopter_firmware_versions_line, {
-                        current: currentUi,
-                        required: info.required
-                    }),
-                    quadcopterRowPhase: 'checking'
-                });
-            } else if (info.required) {
-                this.setState({
-                    quadcopterLastError: null,
-                    quadcopterFlashStatus: this.props.intl.formatMessage(messages.quadcopter_firmware_version_unknown, {
-                        required: info.required
-                    }),
-                    quadcopterRowPhase: 'checking'
-                });
-            }
+            this.setState({
+                quadcopterLastError: null,
+                quadcopterFlashStatus: this._quadcopterFirmwareMismatchStatusText(info),
+                quadcopterRowPhase: 'idle'
+            });
         }
         if (!info.required) {
             return;
@@ -1028,28 +1193,28 @@ class SearchPanelDeviceComponent extends Component {
             const warning = this.props.intl.formatMessage(messages.quadcopter_firmware_update_warning);
             const ok = confirm(promptText + '\n\n' + warning);
             if (ok) {
+                this._quadcopterFirmwareUpdateDeclined = false;
                 this.flashDevice('quadcopter_auto');
                 return;
             }
-            this._quadcopterFirmwarePrompted = false;
-            if (this._debugMounted === true) {
-                this.setState({
-                    quadcopterFlashStatus: this._quadcopterConnectFailureStatusText(info),
-                    quadcopterRowPhase: 'idle'
-                });
-            }
+            this._resetQuadcopterRowAfterFirmwareDeclined(info);
         } catch (confirmErr) {
             console.error('[CF2 firmware] confirm failed', confirmErr);
+            this._resetQuadcopterRowAfterFirmwareDeclined(info);
         }
     }
 
-    _maybeCheckFirmwareAfterConnectFailure() {
+    _maybeCheckFirmwareAfterConnectFailure(searchSnapshot) {
         if (!this.props.isQuadcopter || !this.props.QCA) return;
         if (this._quadcopterFirmwareVersionChecked) return;
         if (this._quadcopterFirmwarePrompted) return;
         if (this._quadcopterFirmwareProbeInFlight) return;
         if (typeof this.props.QCA.isQuadcopterConnected === 'function' &&
             this.props.QCA.isQuadcopterConnected()) {
+            return;
+        }
+        if (!this._shouldProbeFirmwareAfterFailedSearch(searchSnapshot)) {
+            this._skipQuadcopterFirmwareProbeAfterSearch(searchSnapshot);
             return;
         }
         if (!this.isFirmwareFlashingSupportedForQuadcopter()) {
@@ -1080,7 +1245,8 @@ class SearchPanelDeviceComponent extends Component {
                 quadcopterRowPhase: 'checking'
             });
         }
-        runProbe({ onLine: () => {} })
+        const probeTimeoutMs = this._getQuadcopterFirmwareProbeTimeoutMs(searchSnapshot);
+        runProbe({ onLine: () => {}, timeoutMs: probeTimeoutMs })
             .then((info) => {
                 this._applyQuadcopterFirmwareAfterConnectFailure(info, probeEpoch);
             })
@@ -1088,7 +1254,7 @@ class SearchPanelDeviceComponent extends Component {
                 this._quadcopterFirmwareVersionChecked = true;
                 if (this._debugMounted === true) {
                     this.setState({
-                        quadcopterFlashStatus: this._quadcopterConnectFailureStatusText(null),
+                        quadcopterFlashStatus: null,
                         quadcopterRowPhase: 'idle'
                     });
                 }
@@ -1913,9 +2079,20 @@ class SearchPanelDeviceComponent extends Component {
         if (_mode !== 'quadcopter_auto') {
             const warning = this.props.intl.formatMessage(messages.quadcopter_firmware_update_warning);
             const ok = confirm(warning);
-            if (!ok) return;
+            if (!ok) {
+                const probe = typeof this.props.QCA.getLastFirmwareProbe === 'function'
+                    ? this.props.QCA.getLastFirmwareProbe()
+                    : null;
+                if (probe && probe.needsUpdate) {
+                    this._resetQuadcopterRowAfterFirmwareDeclined(probe);
+                } else if (this._debugMounted === true) {
+                    this.setState({ quadcopterRowPhase: 'idle' });
+                }
+                return;
+            }
         }
 
+        this._quadcopterFirmwareUpdateDeclined = false;
         this._quadcopterFirmwareFlashActive = true;
         this.setState({
             quadcopterLastError: null,
@@ -1995,8 +2172,7 @@ class SearchPanelDeviceComponent extends Component {
         const { iconSrc, statusText } = this.getStatusDisplay();
         const quadcopterHintText = this.props.isQuadcopter &&
             !this._isQuadcopterConnectErrorHintSuppressed() &&
-            this.state.quadcopterLastError &&
-            this.state.quadcopterLastError.message;
+            this._formatQuadcopterLastErrorMessage(this.state.quadcopterLastError);
         const quadcopterFlashStatus = this.props.isQuadcopter && this._shouldShowQuadcopterFlashStatusHint()
             ? String(this.state.quadcopterFlashStatus)
             : '';

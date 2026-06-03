@@ -244,4 +244,10 @@ export function applySettingsToDCA(vm, settingsData) {
   if (dca && typeof dca.set_all_intervals_in_bluetooth === 'function') {
     dca.set_all_intervals_in_bluetooth(settingsData);
   }
+  if (vm && typeof vm.getQCA === 'function') {
+    const qca = vm.getQCA();
+    if (qca && typeof qca.applyRobboConnectionSettings === 'function') {
+      qca.applyRobboConnectionSettings(settingsData);
+    }
+  }
 }
