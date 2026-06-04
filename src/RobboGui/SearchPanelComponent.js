@@ -243,10 +243,11 @@ class SearchPanelComponent extends Component {
 
     this.DCA.registerDevicesNotFoundCallback(() => {
       this.usb_search_finished = true;
-      const qcaStillSearching = this.QCA &&
-        typeof this.QCA.isQuadcopterSearching === 'function' &&
-        this.QCA.isQuadcopterSearching() === true;
-      if (this._quadcopterAwaitingFirstSearchingEmit && !qcaStillSearching) {
+      // Do not clear _quadcopterAwaitingFirstSearchingEmit here when USB finishes first:
+      // Crazyflie search() emits searching:true only after async link teardown.
+      if (this._quadcopterAwaitingFirstSearchingEmit && !shouldProbeQuadcopterOnDeviceSearch(this.QCA)) {
+        this._quadcopterAwaitingFirstSearchingEmit = false;
+      } else if (this._quadcopterAwaitingFirstSearchingEmit && this.QCA && !this.QCA.crazyflieSession) {
         this._quadcopterAwaitingFirstSearchingEmit = false;
       }
       let search_device_button = document.getElementById(`robbo_search_devices`);
@@ -293,8 +294,6 @@ class SearchPanelComponent extends Component {
         }
         this._lastQuadcopterSearchPanelSig = panelSig;
         if (searchingNow) {
-          this._quadcopterAwaitingFirstSearchingEmit = false;
-        } else if (this.usb_search_finished) {
           this._quadcopterAwaitingFirstSearchingEmit = false;
         }
         const qcaFirmwareBusy = this.QCA && (
@@ -390,23 +389,20 @@ class SearchPanelComponent extends Component {
       this.bluetooth_devices_state === 'searching' && this.usb_search_finished;
     const showBluetoothNotFound = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "not_found";
     const shouldDelayNoDevicesMessage = bluetoothSearchEnabled && !this.bluetooth_search_finished;
-    const qcaDongleForSearchUi = this.QCA &&
-      typeof this.QCA.isDongleAvailable === 'function' &&
-      this.QCA.isDongleAvailable();
     const qcaSearchingNow = this.QCA &&
       typeof this.QCA.isQuadcopterSearching === 'function' &&
-      this.QCA.isQuadcopterSearching();
-    const quadcopterSearchActive = qcaDongleForSearchUi && qcaSearchingNow;
-    const quadcopterUsbRaceGrace = shouldProbeQuadcopterOnDeviceSearch(this.QCA) &&
+      this.QCA.isQuadcopterSearching() === true;
+    const quadcopterProbePending = shouldProbeQuadcopterOnDeviceSearch(this.QCA) &&
       this._quadcopterAwaitingFirstSearchingEmit &&
       this.usb_search_finished &&
-      this.state.devices.length === 0 &&
-      qcaSearchingNow;
+      this.state.devices.length === 0;
+    const quadcopterSearchActive = qcaSearchingNow;
     const showDevicesSearching = this.state.devices.length === 0 &&
       (!this.usb_search_finished || showBluetoothPhaseSearching ||
-        quadcopterSearchActive || quadcopterUsbRaceGrace);
+        quadcopterSearchActive || quadcopterProbePending);
     const showDevicesNotFound = this.state.devices.length === 0 && this.usb_search_finished &&
-      !showDevicesSearching && !shouldDelayNoDevicesMessage;
+      !showDevicesSearching && !shouldDelayNoDevicesMessage &&
+      !this._quadcopterAwaitingFirstSearchingEmit && !qcaSearchingNow;
 
     void this.state.uiRev;
 

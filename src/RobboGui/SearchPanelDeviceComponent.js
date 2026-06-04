@@ -11,7 +11,7 @@ import { ActionCreateDraggableWindow } from './actions/sensor_actions';
 
 import styles from './SearchPanelDeviceComponent.css';
 import './RobboDeviceStatus.css';
-import {hideSearchPanel, showSearchPanel} from './search-panel-visibility';
+import {hideSearchPanel, scheduleHideSearchPanelAfterConnect, showSearchPanel} from './search-panel-visibility';
 import {notifySearchButtonFeedback} from './search-button-feedback';
 
 import { createDiv } from './lib/lib.js';
@@ -881,27 +881,34 @@ class SearchPanelDeviceComponent extends Component {
     }
 
     // Hide search panel when all DCA devices are ready; if dongle row is shown, require copter connected (not searching).
-    _tryHideSearchPanelWhenAllDevicesReady() {
+    _canHideSearchPanelWhenAllDevicesReady() {
         if (this._isQuadcopterFirmwareFlowBlockingHide()) {
-            return;
+            return false;
         }
-        if (!this.props.DCA) return;
+        if (!this.props.DCA) return false;
         const allDevices = this.props.DCA.getDevices();
         for (let i = 0; i < allDevices.length; i++) {
             const dev = allDevices[i];
             if (!(dev.getState() === 6 && !dev.isFirmwareVersionDiffers())) {
-                return;
+                return false;
             }
         }
         if (this.props.QCA && typeof this.props.QCA.isDongleAvailable === 'function' && this.props.QCA.isDongleAvailable()) {
             if (typeof this.props.QCA.isQuadcopterConnected !== 'function' || !this.props.QCA.isQuadcopterConnected()) {
-                return;
+                return false;
             }
             if (typeof this.props.QCA.isQuadcopterSearching === 'function' && this.props.QCA.isQuadcopterSearching()) {
-                return;
+                return false;
             }
         }
-        hideSearchPanel();
+        return true;
+    }
+
+    _tryHideSearchPanelWhenAllDevicesReady() {
+        if (!this._canHideSearchPanelWhenAllDevicesReady()) {
+            return;
+        }
+        scheduleHideSearchPanelAfterConnect(() => this._canHideSearchPanelWhenAllDevicesReady());
     }
 
     syncStateFromDevice() {
