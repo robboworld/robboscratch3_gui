@@ -145,6 +145,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
                             if (persisted) {
                                 layout.isBlocksPaletteCollapsed = persisted.isBlocksPaletteCollapsed;
                                 layout.blocksPaletteFlyoutWidth = persisted.blocksPaletteFlyoutWidth;
+                                layout.isRobboUiHidden = persisted.isRobboUiHidden;
                             }
                             this.props.onRestoreLayoutVisibility(layout);
                         }

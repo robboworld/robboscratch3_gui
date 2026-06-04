@@ -2,6 +2,7 @@ const SET_RIGHT_PANEL_HIDDEN = 'scratch-gui/layout-visibility/SET_RIGHT_PANEL_HI
 const SET_BLOCKS_PALETTE_COLLAPSED = 'scratch-gui/layout-visibility/SET_BLOCKS_PALETTE_COLLAPSED';
 const SET_BLOCKS_PALETTE_FLYOUT_WIDTH = 'scratch-gui/layout-visibility/SET_BLOCKS_PALETTE_FLYOUT_WIDTH';
 const SET_BLOCKS_WORKSPACE_LAYOUT_PENDING = 'scratch-gui/layout-visibility/SET_BLOCKS_WORKSPACE_LAYOUT_PENDING';
+const SET_ROBBO_UI_HIDDEN = 'scratch-gui/layout-visibility/SET_ROBBO_UI_HIDDEN';
 const HYDRATE_LAYOUT_VISIBILITY = 'scratch-gui/layout-visibility/HYDRATE_LAYOUT_VISIBILITY';
 
 const BLOCKS_PALETTE_FLYOUT_WIDTH_MIN = 180;
@@ -12,7 +13,8 @@ const initialState = {
     isRightPanelHidden: false,
     isBlocksPaletteCollapsed: false,
     blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
-    isBlocksWorkspaceLayoutPending: false
+    isBlocksWorkspaceLayoutPending: false,
+    isRobboUiHidden: false
 };
 
 const normalizeBooleanField = (value, fallback) => (
@@ -49,6 +51,10 @@ const reducer = function (state, action) {
         return Object.assign({}, state, {
             isBlocksWorkspaceLayoutPending: action.isBlocksWorkspaceLayoutPending
         });
+    case SET_ROBBO_UI_HIDDEN:
+        return Object.assign({}, state, {
+            isRobboUiHidden: action.isRobboUiHidden
+        });
     case HYDRATE_LAYOUT_VISIBILITY: {
         const layout = action.layout || {};
         return {
@@ -64,7 +70,12 @@ const reducer = function (state, action) {
                 layout.blocksPaletteFlyoutWidth != null ?
                     layout.blocksPaletteFlyoutWidth :
                     state.blocksPaletteFlyoutWidth
-            )
+            ),
+            isRobboUiHidden: normalizeBooleanField(
+                layout.isRobboUiHidden,
+                state.isRobboUiHidden
+            ),
+            isBlocksWorkspaceLayoutPending: state.isBlocksWorkspaceLayoutPending
         };
     }
     default:
@@ -100,6 +111,13 @@ const setBlocksWorkspaceLayoutPending = function (isBlocksWorkspaceLayoutPending
     };
 };
 
+const setRobboUiHidden = function (isRobboUiHidden) {
+    return {
+        type: SET_ROBBO_UI_HIDDEN,
+        isRobboUiHidden: isRobboUiHidden
+    };
+};
+
 const hydrateLayoutVisibility = function (layout) {
     return {
         type: HYDRATE_LAYOUT_VISIBILITY,
@@ -114,6 +132,7 @@ export {
     setBlocksPaletteCollapsed,
     setBlocksPaletteFlyoutWidth,
     setBlocksWorkspaceLayoutPending,
+    setRobboUiHidden,
     hydrateLayoutVisibility,
     BLOCKS_PALETTE_FLYOUT_WIDTH_MIN,
     BLOCKS_PALETTE_FLYOUT_WIDTH_MAX,

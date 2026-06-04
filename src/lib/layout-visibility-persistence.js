@@ -32,7 +32,10 @@ const readPersistedLayoutVisibility = function () {
                 parsed.blocksPaletteFlyoutWidth != null ?
                     parsed.blocksPaletteFlyoutWidth :
                     layoutVisibilityInitialState.blocksPaletteFlyoutWidth
-            )
+            ),
+            isRobboUiHidden: typeof parsed.isRobboUiHidden === 'boolean' ?
+                parsed.isRobboUiHidden :
+                layoutVisibilityInitialState.isRobboUiHidden
         };
         if (typeof parsed.locale === 'string') {
             result.locale = parsed.locale;
@@ -63,7 +66,8 @@ const writePersistedLayoutVisibility = function (layout, locale) {
         const payload = {
             isRightPanelHidden: layout.isRightPanelHidden,
             isBlocksPaletteCollapsed: layout.isBlocksPaletteCollapsed,
-            blocksPaletteFlyoutWidth: layout.blocksPaletteFlyoutWidth
+            blocksPaletteFlyoutWidth: layout.blocksPaletteFlyoutWidth,
+            isRobboUiHidden: layout.isRobboUiHidden
         };
         if (locale !== undefined) {
             payload.locale = locale;
@@ -99,7 +103,10 @@ const persistLayoutAndLocale = function (store) {
             layoutVisibilityInitialState.isBlocksPaletteCollapsed,
         blocksPaletteFlyoutWidth: persisted ?
             persisted.blocksPaletteFlyoutWidth :
-            layoutVisibilityInitialState.blocksPaletteFlyoutWidth
+            layoutVisibilityInitialState.blocksPaletteFlyoutWidth,
+        isRobboUiHidden: persisted ?
+            persisted.isRobboUiHidden :
+            layoutVisibilityInitialState.isRobboUiHidden
     };
     const locale = localesState ? localesState.locale : undefined;
     writePersistedLayoutVisibility(layoutSnapshot, locale);

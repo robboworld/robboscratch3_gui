@@ -215,7 +215,7 @@
 
 .palette-toggle {
     position: absolute;
-    top: 50%;
+    top: 0;
     z-index: 50;
     display: flex;
     align-items: center;
@@ -237,16 +237,13 @@
     transition:
         left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
         right 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
         background-color 0.2s ease;
 }
 
 /* Instant follow during flyout width drag or collapse/expand animation. */
 .palette-resizing .palette-toggle,
 .palette-animating .palette-toggle {
-    transition:
-        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-        background-color 0.2s ease;
+    transition: background-color 0.2s ease;
 }
 
 .palette-toggle::before,
@@ -279,21 +276,27 @@
 }
 
 [dir="ltr"] .palette-toggle {
-    left: calc(var(--blocks-category-width) + var(--blocks-flyout-width));
+    left: calc(var(--blocks-category-width) + var(--blocks-flyout-width) + 1px);
     right: auto;
-    transform: translate(0, -50%);
-    border-left: 2px solid var(--blocks-flyout-bg);
     border-right: 1px solid $ui-black-transparent;
     border-radius: 0 $form-radius $form-radius 0;
+    background-color: var(--blocks-flyout-bg);
+    background-image: linear-gradient(var(--blocks-flyout-bg), var(--blocks-flyout-bg));
+    background-repeat: no-repeat;
+    background-size: 2px calc(100% - 1px);
+    background-position: 0 1px;
 }
 
 [dir="rtl"] .palette-toggle {
-    right: calc(var(--blocks-category-width) + var(--blocks-flyout-width));
+    right: calc(var(--blocks-category-width) + var(--blocks-flyout-width) - 1px);
     left: auto;
-    transform: translate(0, -50%);
-    border-right: 2px solid var(--blocks-flyout-bg);
     border-left: 1px solid $ui-black-transparent;
     border-radius: $form-radius 0 0 $form-radius;
+    background-color: var(--blocks-flyout-bg);
+    background-image: linear-gradient(var(--blocks-flyout-bg), var(--blocks-flyout-bg));
+    background-repeat: no-repeat;
+    background-size: 2px calc(100% - 1px);
+    background-position: 100% 1px;
 }
 
 .palette-toggle-collapsed {
@@ -301,41 +304,37 @@
 }
 
 [dir="ltr"] .palette-toggle-collapsed {
-    border-left-color: var(--blocks-toolbox-bg);
+    background-color: var(--blocks-toolbox-bg);
+    background-image: linear-gradient(var(--blocks-toolbox-bg), var(--blocks-toolbox-bg));
 }
 
 [dir="rtl"] .palette-toggle-collapsed {
-    border-right-color: var(--blocks-toolbox-bg);
+    background-color: var(--blocks-toolbox-bg);
+    background-image: linear-gradient(var(--blocks-toolbox-bg), var(--blocks-toolbox-bg));
 }
 
 [dir="ltr"] .palette-toggle:focus,
 [dir="ltr"] .palette-toggle:focus-visible,
 [dir="ltr"] .palette-toggle:active {
-    border-left: 2px solid var(--blocks-flyout-bg);
     border-right: 1px solid $ui-black-transparent;
 }
 
 [dir="rtl"] .palette-toggle:focus,
 [dir="rtl"] .palette-toggle:focus-visible,
 [dir="rtl"] .palette-toggle:active {
-    border-right: 2px solid var(--blocks-flyout-bg);
     border-left: 1px solid $ui-black-transparent;
-}
-
-[dir="ltr"] .palette-toggle-collapsed:focus,
-[dir="ltr"] .palette-toggle-collapsed:focus-visible,
-[dir="ltr"] .palette-toggle-collapsed:active {
-    border-left-color: var(--blocks-toolbox-bg);
-}
-
-[dir="rtl"] .palette-toggle-collapsed:focus,
-[dir="rtl"] .palette-toggle-collapsed:focus-visible,
-[dir="rtl"] .palette-toggle-collapsed:active {
-    border-right-color: var(--blocks-toolbox-bg);
 }
 
 .palette-toggle:hover {
     background-color: #e9eef2;
+}
+
+[dir="ltr"] .palette-toggle:hover {
+    background-image: linear-gradient(#e9eef2, #e9eef2);
+}
+
+[dir="rtl"] .palette-toggle:hover {
+    background-image: linear-gradient(#e9eef2, #e9eef2);
 }
 
 .palette-toggle:disabled {

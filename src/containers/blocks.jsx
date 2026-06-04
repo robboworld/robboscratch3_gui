@@ -225,6 +225,7 @@ class Blocks extends React.Component {
             this.props.robbo_settings.robot_is_scratchduino !==  nextProps.robbo_settings.robot_is_scratchduino || //not original
             this.props.robbo_settings.is_sim_activated !== nextProps.robbo_settings.is_sim_activated ||
             this.props.robbo_settings.is_copter_sim_activated !== nextProps.robbo_settings.is_copter_sim_activated ||
+            this.props.isRobboUiHidden !== nextProps.isRobboUiHidden ||
             this.props.paletteCollapsed !== nextProps.paletteCollapsed ||
             this.props.blocksPaletteFlyoutWidth !== nextProps.blocksPaletteFlyoutWidth ||
             this.props.isBlocksWorkspaceLayoutPending !== nextProps.isBlocksWorkspaceLayoutPending ||
@@ -250,7 +251,8 @@ class Blocks extends React.Component {
         if ((this.props.extension_pack.is_extension_pack_activated !== prevProps.extension_pack.is_extension_pack_activated) || (this.props.robbo_settings.is_lab_ext_enabled !== prevProps.robbo_settings.is_lab_ext_enabled)
           || (this.props.robbo_settings.robot_is_scratchduino !== prevProps.robbo_settings.robot_is_scratchduino)
           || (this.props.robbo_settings.is_sim_activated !== prevProps.robbo_settings.is_sim_activated)
-          || (this.props.robbo_settings.is_copter_sim_activated !== prevProps.robbo_settings.is_copter_sim_activated)   ){
+          || (this.props.robbo_settings.is_copter_sim_activated !== prevProps.robbo_settings.is_copter_sim_activated)
+          || (this.props.isRobboUiHidden !== prevProps.isRobboUiHidden)   ){
 
           const dynamicBlocksXML = this.props.vm.runtime.getBlocksXML();
           const target = this.props.vm.editingTarget;
@@ -261,6 +263,7 @@ class Blocks extends React.Component {
           config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
           config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
           config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
+          config.robbo_ui_hidden            = this.props.isRobboUiHidden;
           config.locale = this.props.locale;
           config.messages = this.props.messages;
           const toolboxXML = makeToolboxXML(target.isStage, target.id, config, dynamicBlocksXML);
@@ -531,6 +534,7 @@ class Blocks extends React.Component {
             config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
             config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
             config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
+            config.robbo_ui_hidden            = this.props.isRobboUiHidden;
             config.locale = this.props.locale;
             config.messages = this.props.messages;
 
@@ -1580,6 +1584,7 @@ Blocks.defaultProps = {
 const mapStateToProps = state => ({
     isShowingProject: getIsShowingProject(state.scratchGui.projectState.loadingState),
     isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
+    isRobboUiHidden: state.scratchGui.layoutVisibility.isRobboUiHidden,
     isBlocksWorkspaceLayoutPending: state.scratchGui.layoutVisibility.isBlocksWorkspaceLayoutPending,
     blocksPaletteFlyoutWidth: state.scratchGui.layoutVisibility.blocksPaletteFlyoutWidth,
     anyModalVisible: (

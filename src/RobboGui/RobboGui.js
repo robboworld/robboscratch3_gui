@@ -289,7 +289,10 @@ class RobboGui extends Component {
 
   return (
 
-    <div className={styles.robbo_gui}>
+    <div
+      className={styles.robbo_gui}
+      style={{display: this.props.isRobboUiHidden ? 'none' : undefined}}
+    >
 
 
           <div className={styles.version}> </div>
@@ -371,7 +374,8 @@ class RobboGui extends Component {
 const mapStateToProps =  state => ({
 
 
-  sensorsChooseWindow:state.scratchGui.sensors_choose_window
+  sensorsChooseWindow:state.scratchGui.sensors_choose_window,
+  isRobboUiHidden: state.scratchGui.layoutVisibility.isRobboUiHidden
 
   });
 

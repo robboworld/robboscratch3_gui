@@ -1748,6 +1748,7 @@ const makeToolboxXML = function (isStage, targetId,config, categoriesXML,
   var  isExtensionPackActivated   = false;
   var  robot_is_scratchduino      = false;
   var  is_sim_activated           = false;
+  var  robbo_ui_hidden            = false;
 
 
 
@@ -1758,19 +1759,24 @@ const makeToolboxXML = function (isStage, targetId,config, categoriesXML,
       isExtensionPackActivated   = config.isExtensionPackActivated;
       robot_is_scratchduino      = config.robot_is_scratchduino;
       is_sim_activated           = config.is_sim_activated;
+      robbo_ui_hidden            = config.robbo_ui_hidden === true;
 
 
     }
 
-    const everything = [
-        xmlOpen,
-
+    const robboCategories = robbo_ui_hidden ? [] : [
         robot(false, targetId,isExtensionPackActivated,is_sim_activated,robot_is_scratchduino),gap, //modified_by_Yaroslav //toolbox generator main
         laboratory(false, targetId,isExternalSensorsActivated),gap, //modified_by_Yaroslav
         ...(showQuadcopterInUi ? [quadcopter(isStage, targetId), gap] : []), //modified_by_Yaroslav
         otto(false, targetId), gap,
-        newcat(false),gap,
+        newcat(false),gap
        // iotBlocks(isStage, targetId),
+    ];
+
+    const everything = [
+        xmlOpen,
+
+        ...robboCategories,
         motion(isStage, targetId), gap,
         looks(isStage, targetId, costumeName, backdropName), gap,
         sound(isStage, targetId, soundName), gap,

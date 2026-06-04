@@ -65,14 +65,26 @@ import remixIcon from './icon--remix.svg';
 import dropdownCaret from './dropdown-caret.svg';
 import fileIcon from './icon--file.svg';
 import editIcon from './icon--edit.svg';
+import robboScratchIcon from './icon--robboscratch3.png';
 import languageIcon from '../language-selector/language-icon.svg';
 import languageSelectorStyles from '../language-selector/language-selector.css';
 
 import {ActionTriggerRobboMenu} from '../../RobboGui/actions/sensor_actions.js'; //Robbo //modified_by_Yaroslav
 import MenuBarDeviceControls from '../../RobboGui/MenuBarDeviceControls';
+import {setRobboUiHidden} from '../../reducers/layout-visibility';
 import storage from '../../lib/storage';
 
 const messages = defineMessages({
+    showRobboUi: {
+        id: 'gui.menuBar.show_robbo_ui',
+        description: 'Menu bar button to show ROBBO interface',
+        defaultMessage: 'Show ROBBO'
+    },
+    hideRobboUi: {
+        id: 'gui.menuBar.hide_robbo_ui',
+        description: 'Menu bar button to hide ROBBO interface',
+        defaultMessage: 'Hide ROBBO'
+    },
     confirmNav: {
         id: 'gui.menuBar.confirmNewWithoutSaving',
         defaultMessage: 'Replace contents of the current project?',
@@ -542,20 +554,47 @@ class MenuBar extends React.Component {
                     </div>
                     <Divider className={classNames(styles.divider)} />
 
-                    <div id="robbo-menu-group" className={styles.robboMenuGroup}>
-                        <div
-                            id="trigger-robbo-menu"
-                            className={styles.trigger_robbo_menu}
-                            onClick={this.props.onTriggerRobboMenu}
-                        >
-                            <FormattedMessage
-                                defaultMessage="Robbo menu"
-                                description=""
-                                id="gui.menuBar.robbo_menu"
-                            />
+                    <button
+                        type="button"
+                        id="toggle-robbo-ui"
+                        className={classNames(styles.toggle_robbo_ui, {
+                            [styles.toggle_robbo_ui_active]: !this.props.isRobboUiHidden
+                        })}
+                        title={this.props.intl.formatMessage(
+                            this.props.isRobboUiHidden ? messages.showRobboUi : messages.hideRobboUi
+                        )}
+                        aria-label={this.props.intl.formatMessage(
+                            this.props.isRobboUiHidden ? messages.showRobboUi : messages.hideRobboUi
+                        )}
+                        aria-pressed={!this.props.isRobboUiHidden ? 'true' : 'false'}
+                        onClick={() => this.props.onSetRobboUiHidden(!this.props.isRobboUiHidden)}
+                    >
+                        <img
+                            alt=""
+                            aria-hidden="true"
+                            className={classNames(styles.toggle_robbo_ui_icon, {
+                                [styles.toggle_robbo_ui_icon_active]: !this.props.isRobboUiHidden
+                            })}
+                            draggable={false}
+                            src={robboScratchIcon}
+                        />
+                    </button>
+                    {!this.props.isRobboUiHidden ? (
+                        <div id="robbo-menu-group" className={styles.robboMenuGroup}>
+                            <div
+                                id="trigger-robbo-menu"
+                                className={styles.trigger_robbo_menu}
+                                onClick={this.props.onTriggerRobboMenu}
+                            >
+                                <FormattedMessage
+                                    defaultMessage="Robbo menu"
+                                    description=""
+                                    id="gui.menuBar.robbo_menu"
+                                />
+                            </div>
+                            <MenuBarDeviceControls vm={this.props.vm} />
                         </div>
-                        <MenuBarDeviceControls vm={this.props.vm} />
-                    </div>
+                    ) : null}
 
                     {/*this.props.canEditTitle ? (
                         <div className={classNames(styles.menuBarItem, styles.growable)}>
@@ -606,6 +645,7 @@ MenuBar.propTypes = {
     fileMenuOpen: PropTypes.bool,
     intl: intlShape,
     isRtl: PropTypes.bool,
+    isRobboUiHidden: PropTypes.bool,
     isShared: PropTypes.bool,
     isShowingProject: PropTypes.bool,
     isUpdating: PropTypes.bool,
@@ -625,6 +665,7 @@ MenuBar.propTypes = {
     onOpenRegistration: PropTypes.func,
     onOpenTipLibrary: PropTypes.func,
     onOpenScenariosLibrary: PropTypes.func,
+    onSetRobboUiHidden: PropTypes.func,
     onRequestCloseAccount: PropTypes.func,
     onRequestCloseEdit: PropTypes.func,
     onRequestCloseFile: PropTypes.func,
@@ -664,7 +705,8 @@ const mapStateToProps = state => {
         projectTitle: state.scratchGui.projectTitle,
         sessionExists: state.session && typeof state.session.session !== 'undefined',
         username: user ? user.username : null,
-        vm: state.scratchGui.vm
+        vm: state.scratchGui.vm,
+        isRobboUiHidden: state.scratchGui.layoutVisibility.isRobboUiHidden
     };
 };
 
@@ -690,7 +732,8 @@ const mapDispatchToProps = dispatch => ({
     onTriggerRobboMenu: () => {
 
       dispatch(ActionTriggerRobboMenu());
-    }
+    },
+    onSetRobboUiHidden: isHidden => dispatch(setRobboUiHidden(isHidden))
 });
 
 export default injectIntl(connect(
