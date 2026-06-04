@@ -667,6 +667,27 @@ class SearchPanelDeviceComponent extends Component {
                 : message;
             setFlashLogStatusTone(statusEl, success ? 'success' : 'error');
         }
+        if (success) {
+            this._scheduleQuadcopterFlashWindowHide(1000);
+        } else if (this._quadcopterFlashHideTimer != null) {
+            clearTimeout(this._quadcopterFlashHideTimer);
+            this._quadcopterFlashHideTimer = null;
+        }
+    }
+
+    _scheduleQuadcopterFlashWindowHide(delayMs) {
+        if (this._quadcopterFlashHideTimer != null) {
+            clearTimeout(this._quadcopterFlashHideTimer);
+        }
+        this._quadcopterFlashHideTimer = setTimeout(() => {
+            this._quadcopterFlashHideTimer = null;
+            if (this._debugMounted !== true) {
+                return;
+            }
+            try {
+                this.flashingHideDetails();
+            } catch (_) { /* ignore */ }
+        }, delayMs > 0 ? delayMs : 1000);
     }
 
     _shouldShowQuadcopterFlashStatusHint() {
@@ -959,6 +980,10 @@ class SearchPanelDeviceComponent extends Component {
 
     componentWillUnmount() {
         this._debugMounted = false;
+        if (this._quadcopterFlashHideTimer != null) {
+            clearTimeout(this._quadcopterFlashHideTimer);
+            this._quadcopterFlashHideTimer = null;
+        }
         if (this.props.isQuadcopter && this.props.QCA && this._quadcopterStatusCallback &&
             typeof this.props.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
             this.props.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
@@ -1028,8 +1053,12 @@ class SearchPanelDeviceComponent extends Component {
                     this._lastQuadcopterConnected = connected;
                     this._lastQuadcopterSearching = isSearching;
                     this._lastQuadcopterState = quadcopterState;
+                    const qcaFlashBusy = this.props.QCA &&
+                        this.props.QCA._firmwareFlashInProgress === true;
                     let nextRowPhase = 'idle';
-                    if (isSearching) {
+                    if (qcaFlashBusy || this._quadcopterFirmwareFlashActive) {
+                        nextRowPhase = 'flashing';
+                    } else if (isSearching) {
                         nextRowPhase = 'searching';
                     } else if (connected) {
                         nextRowPhase = 'connected';
@@ -1050,17 +1079,21 @@ class SearchPanelDeviceComponent extends Component {
                     notifySearchButtonFeedback('error');
                     this._maybeCheckFirmwareAfterConnectFailure(nextSnapshot);
                 } else if (connected && !isSearching) {
-                    this._quadcopterFirmwareVersionChecked = true;
-                    this._quadcopterFirmwareProbeInFlight = false;
-                    this._quadcopterFirmwareFlashActive = false;
-                    if (this._debugMounted === true) {
-                        this.setState({
-                            quadcopterLastError: null,
-                            quadcopterFlashStatus: null,
-                            quadcopterRowPhase: 'connected'
-                        });
+                    const qcaFlashBusy = this.props.QCA &&
+                        this.props.QCA._firmwareFlashInProgress === true;
+                    if (!qcaFlashBusy && !this._quadcopterFirmwareFlashActive) {
+                        this._quadcopterFirmwareVersionChecked = true;
+                        this._quadcopterFirmwareProbeInFlight = false;
+                        this._quadcopterFirmwareFlashActive = false;
+                        if (this._debugMounted === true) {
+                            this.setState({
+                                quadcopterLastError: null,
+                                quadcopterFlashStatus: null,
+                                quadcopterRowPhase: 'connected'
+                            });
+                        }
+                        this._tryHideSearchPanelWhenAllDevicesReady();
                     }
-                    this._tryHideSearchPanelWhenAllDevicesReady();
                 }
             };
             this.props.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
@@ -1699,7 +1732,7 @@ class SearchPanelDeviceComponent extends Component {
         this.ACA.searchArduinoDevices();
 
         if (this.props.QCA) {
-            this.props.QCA.searchQuadcopterDevices();
+            this.props.QCA.searchQuadcopterDevices({ from: 'SearchPanelDeviceComponent.searchDevices' });
         }
     }
 
@@ -2101,6 +2134,10 @@ class SearchPanelDeviceComponent extends Component {
 
         this._quadcopterFirmwareUpdateDeclined = false;
         this._quadcopterFirmwareFlashActive = true;
+        if (this._quadcopterFlashHideTimer != null) {
+            clearTimeout(this._quadcopterFlashHideTimer);
+            this._quadcopterFlashHideTimer = null;
+        }
         this.setState({
             quadcopterLastError: null,
             quadcopterFlashStatus: null,

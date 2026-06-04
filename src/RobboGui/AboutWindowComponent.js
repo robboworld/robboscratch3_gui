@@ -30,7 +30,7 @@ import {
 const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
 
-const VERSION = 'Robbo Scratch v.3.122.6';
+const VERSION = 'Robbo Scratch v.3.122.7';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   process &&
   process.env &&
