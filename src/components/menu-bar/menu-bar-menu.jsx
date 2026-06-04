@@ -5,12 +5,14 @@ import Menu from '../../containers/menu.jsx';
 const MenuBarMenu = ({
     children,
     className,
+    menuClassName,
     onRequestClose,
     open,
     place = 'right'
 }) => (
     <div className={className}>
         <Menu
+            className={menuClassName}
             open={open}
             place={place}
             onRequestClose={onRequestClose}
@@ -23,6 +25,7 @@ const MenuBarMenu = ({
 MenuBarMenu.propTypes = {
     children: PropTypes.node,
     className: PropTypes.string,
+    menuClassName: PropTypes.string,
     onRequestClose: PropTypes.func,
     open: PropTypes.bool,
     place: PropTypes.oneOf(['left', 'right'])

@@ -71,8 +71,9 @@ export default class RobboSelect extends Component {
 
   onNativeSelectChange () {
     this.setState({ syncRevision: this.state.syncRevision + 1 });
-    if (this.props.onChange) {
-      this.props.onChange();
+    const select = this.selectRef.current;
+    if (this.props.onChange && select) {
+      this.props.onChange({ target: { value: select.value } });
     }
   }
 
@@ -103,26 +104,69 @@ export default class RobboSelect extends Component {
     return maxTextWidth + 24;
   }
 
-  getListAnchorRect () {
-    const triggerRect = this.triggerRef.current.getBoundingClientRect();
-    const contentWidth = this.measureListContentWidth();
-    let width = Math.max(Math.ceil(triggerRect.width), contentWidth);
-    let left = triggerRect.right - width;
+  getListAnchorElement () {
+    const { listAnchorId } = this.props;
+    if (listAnchorId && typeof document !== 'undefined') {
+      return document.getElementById(listAnchorId);
+    }
+    return this.triggerRef.current;
+  }
 
-    const fieldControl = this.rootRef.current && this.rootRef.current.parentElement;
-    const fieldRow = fieldControl && fieldControl.parentElement;
-    if (fieldRow && typeof fieldRow.getBoundingClientRect === 'function') {
-      const rowRect = fieldRow.getBoundingClientRect();
-      if (left < rowRect.left) {
-        left = rowRect.left;
-        width = triggerRect.right - left;
+  getListAnchorRect () {
+    const anchorEl = this.getListAnchorElement();
+    if (!anchorEl) {
+      return null;
+    }
+    const anchorRect = anchorEl.getBoundingClientRect();
+    const contentWidth = this.measureListContentWidth();
+    const minWidth = 8.5 * 16; /* ~8.5rem */
+    let width = Math.max(Math.ceil(anchorRect.width), contentWidth, minWidth);
+
+    const isRtl =
+      typeof document !== 'undefined' &&
+      document.documentElement.getAttribute('dir') === 'rtl';
+
+    let left;
+    if (isRtl) {
+      left = anchorRect.left;
+    } else {
+      left = anchorRect.right - width;
+    }
+
+    const triggerRect = this.triggerRef.current
+      ? this.triggerRef.current.getBoundingClientRect()
+      : anchorRect;
+
+    if (!this.props.listAnchorId) {
+      const fieldControl = this.rootRef.current && this.rootRef.current.parentElement;
+      const fieldRow = fieldControl && fieldControl.parentElement;
+      if (fieldRow && typeof fieldRow.getBoundingClientRect === 'function') {
+        const rowRect = fieldRow.getBoundingClientRect();
+        if (left < rowRect.left) {
+          left = rowRect.left;
+          width = triggerRect.right - left;
+        }
+      }
+    } else {
+      const viewportPad = 8;
+      const maxLeft = window.innerWidth - width - viewportPad;
+      if (left > maxLeft) {
+        left = Math.max(viewportPad, maxLeft);
+      }
+      if (left < viewportPad) {
+        left = viewportPad;
       }
     }
 
+    const maxHeight = this.props.listMaxHeightPx
+      ? Number(this.props.listMaxHeightPx)
+      : null;
+
     return {
-      top: triggerRect.bottom + 2,
+      top: anchorRect.bottom + 2,
       left,
-      width
+      width,
+      maxHeight
     };
   }
 
@@ -171,13 +215,17 @@ export default class RobboSelect extends Component {
         ref={node => {
           this.listPortalRef = node;
         }}
-        className={styles.list}
+        className={classNames(
+          styles.list,
+          listPosition.maxHeight && styles.listScrollable
+        )}
         role="listbox"
         style={{
           position: 'fixed',
           top: listPosition.top,
           left: listPosition.left,
           width: listPosition.width,
+          maxHeight: listPosition.maxHeight || undefined,
           right: 'auto'
         }}
       >
@@ -211,7 +259,7 @@ export default class RobboSelect extends Component {
   }
 
   render () {
-    const { options, defaultValue, className, id } = this.props;
+    const { options, defaultValue, className, id, triggerAriaLabel } = this.props;
     void this.state.syncRevision;
 
     const currentValue = this.getCurrentValue();
@@ -245,6 +293,7 @@ export default class RobboSelect extends Component {
           className={classNames(formStyles.field_select_trigger, styles.trigger)}
           aria-haspopup="listbox"
           aria-expanded={this.state.open}
+          aria-label={triggerAriaLabel}
           onClick={() => this.toggleOpen()}
         >
           <span className={styles.triggerLabel}>

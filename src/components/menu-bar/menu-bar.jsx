@@ -47,8 +47,8 @@ import {
     openEditMenu,
     closeEditMenu,
     editMenuOpen,
-    openLanguageMenu,
     closeLanguageMenu,
+    openLanguageMenu,
     languageMenuOpen,
     openLoginMenu,
     closeLoginMenu,
@@ -63,7 +63,10 @@ import feedbackIcon from './icon--feedback.svg';
 import profileIcon from './icon--profile.png';
 import remixIcon from './icon--remix.svg';
 import dropdownCaret from './dropdown-caret.svg';
+import fileIcon from './icon--file.svg';
+import editIcon from './icon--edit.svg';
 import languageIcon from '../language-selector/language-icon.svg';
+import languageSelectorStyles from '../language-selector/language-selector.css';
 
 import {ActionTriggerRobboMenu} from '../../RobboGui/actions/sensor_actions.js'; //Robbo //modified_by_Yaroslav
 import MenuBarDeviceControls from '../../RobboGui/MenuBarDeviceControls';
@@ -160,7 +163,6 @@ class MenuBar extends React.Component {
             'handleClickShare',
             'handleCloseFileMenuAndThen',
             'handleKeyPress',
-            'handleLanguageMouseUp',
             'handleRestoreOption',
             'restoreOptionMessage'
         ]);
@@ -255,11 +257,6 @@ class MenuBar extends React.Component {
         if (modifier && event.key === 's') {
             this.props.onClickSave();
             event.preventDefault();
-        }
-    }
-    handleLanguageMouseUp (e) {
-        if (!this.props.languageMenuOpen) {
-            this.props.onClickLanguage(e);
         }
     }
     restoreOptionMessage (deletedItem) {
@@ -358,19 +355,34 @@ class MenuBar extends React.Component {
                             </span>
                         </div>
                         <div
-                            className={classNames(styles.menuBarItem, styles.hoverable, styles.languageMenu)}
+                            className={classNames(styles.menuBarItem, styles.hoverable, styles.languageMenu, {
+                                [styles.active]: this.props.languageMenuOpen
+                            })}
+                            onMouseUp={this.props.onClickLanguage}
                         >
-                            <div>
+                            <span className={styles.menuBarItemContent} aria-hidden="true">
                                 <img
-                                    className={styles.languageIcon}
+                                    alt=""
+                                    className={styles.menuBarItemIcon}
+                                    draggable={false}
                                     src={languageIcon}
                                 />
                                 <img
-                                    className={styles.languageCaret}
+                                    alt=""
+                                    className={styles.dropdownCaretIcon}
+                                    draggable={false}
                                     src={dropdownCaret}
                                 />
-                            </div>
-                            <LanguageSelector label={this.props.intl.formatMessage(ariaMessages.language)} />
+                            </span>
+                            <LanguageSelector
+                                menuListClassName={languageSelectorStyles.languageMenuList}
+                                menuWrapperClassName={classNames(
+                                    styles.menuBarMenu,
+                                    languageSelectorStyles.languageMenuDropdown
+                                )}
+                                open={this.props.languageMenuOpen}
+                                onRequestClose={this.props.onRequestCloseLanguage}
+                            />
                         </div>
                         <div
                             className={classNames(styles.menuBarItem, styles.hoverable, {
@@ -378,11 +390,27 @@ class MenuBar extends React.Component {
                             })}
                             onMouseUp={this.props.onClickFile}
                         >
-                            <FormattedMessage
-                                defaultMessage="File"
-                                description="Text for file dropdown menu"
-                                id="gui.menuBar.file"
-                            />
+                            <span className={styles.menuBarItemContent}>
+                                <img
+                                    alt=""
+                                    className={styles.menuBarItemIcon}
+                                    draggable={false}
+                                    src={fileIcon}
+                                />
+                                <span className={styles.menuBarItemLabel}>
+                                    <FormattedMessage
+                                        defaultMessage="File"
+                                        description="Text for file dropdown menu"
+                                        id="gui.menuBar.file"
+                                    />
+                                </span>
+                                <img
+                                    alt=""
+                                    className={styles.dropdownCaretIcon}
+                                    draggable={false}
+                                    src={dropdownCaret}
+                                />
+                            </span>
                             <MenuBarMenu
                                 className={classNames(styles.menuBarMenu)}
                                 open={this.props.fileMenuOpen}
@@ -455,13 +483,27 @@ class MenuBar extends React.Component {
                             })}
                             onMouseUp={this.props.onClickEdit}
                         >
-                            <div className={classNames(styles.editMenu)}>
-                                <FormattedMessage
-                                    defaultMessage="Edit"
-                                    description="Text for edit dropdown menu"
-                                    id="gui.menuBar.edit"
+                            <span className={styles.menuBarItemContent}>
+                                <img
+                                    alt=""
+                                    className={styles.menuBarItemIcon}
+                                    draggable={false}
+                                    src={editIcon}
                                 />
-                            </div>
+                                <span className={styles.menuBarItemLabel}>
+                                    <FormattedMessage
+                                        defaultMessage="Edit"
+                                        description="Text for edit dropdown menu"
+                                        id="gui.menuBar.edit"
+                                    />
+                                </span>
+                                <img
+                                    alt=""
+                                    className={styles.dropdownCaretIcon}
+                                    draggable={false}
+                                    src={dropdownCaret}
+                                />
+                            </span>
                             <MenuBarMenu
                                 className={classNames(styles.menuBarMenu)}
                                 open={this.props.editMenuOpen}

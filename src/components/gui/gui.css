@@ -113,7 +113,12 @@
 }
 
 .tab:hover {
-  background-color: $ui-primary;
+    background-color: $ui-primary;
+}
+
+.tab:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: -2px;
 }
 
 .tab.is-selected {

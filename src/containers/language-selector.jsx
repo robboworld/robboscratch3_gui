@@ -5,51 +5,51 @@ import {connect} from 'react-redux';
 import {selectLocale} from '../reducers/locales';
 import {closeLanguageMenu} from '../reducers/menus';
 
-import LanguageSelectorComponent from '../components/language-selector/language-selector.jsx';
+import LanguageMenu from '../components/language-selector/language-selector.jsx';
 
 class LanguageSelector extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, [
-            'handleChange'
+            'handleSelectLocale'
         ]);
         document.documentElement.lang = props.currentLocale;
     }
-    handleChange (e) {
-        const newLocale = e.target.value;
-        if (this.props.messagesByLocale[newLocale]) {
-            this.props.onChangeLanguage(newLocale);
-            document.documentElement.lang = newLocale;
+    handleSelectLocale (locale) {
+        if (this.props.messagesByLocale[locale]) {
+            this.props.onChangeLanguage(locale);
+            document.documentElement.lang = locale;
         }
     }
     render () {
-        const {
-            onChangeLanguage, // eslint-disable-line no-unused-vars
-            messagesByLocale, // eslint-disable-line no-unused-vars
-            children,
-            ...props
-        } = this.props;
         return (
-            <LanguageSelectorComponent
-                onChange={this.handleChange}
-                {...props}
-            >
-                {children}
-            </LanguageSelectorComponent>
+            <LanguageMenu
+                className={this.props.menuWrapperClassName}
+                currentLocale={this.props.currentLocale}
+                menuClassName={this.props.menuListClassName}
+                open={this.props.open}
+                place={this.props.isRtl ? 'left' : 'right'}
+                onRequestClose={this.props.onRequestClose}
+                onSelectLocale={this.handleSelectLocale}
+            />
         );
     }
 }
 
 LanguageSelector.propTypes = {
-    children: PropTypes.node,
     currentLocale: PropTypes.string.isRequired,
-    // Only checking key presence for messagesByLocale, no need to be more specific than object
+    isRtl: PropTypes.bool,
+    menuListClassName: PropTypes.string,
+    menuWrapperClassName: PropTypes.string,
     messagesByLocale: PropTypes.object, // eslint-disable-line react/forbid-prop-types
-    onChangeLanguage: PropTypes.func.isRequired
+    onChangeLanguage: PropTypes.func.isRequired,
+    onRequestClose: PropTypes.func.isRequired,
+    open: PropTypes.bool
 };
 
 const mapStateToProps = state => ({
     currentLocale: state.locales.locale,
+    isRtl: state.locales.isRtl,
     messagesByLocale: state.locales.messagesByLocale
 });
 

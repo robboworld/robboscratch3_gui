@@ -64,6 +64,12 @@
     overflow-y: visible;
 }
 
+.list-scrollable {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
 .measureOption {
     position: absolute;
     visibility: hidden;

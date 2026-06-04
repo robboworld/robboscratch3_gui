@@ -129,7 +129,7 @@ const StageHeaderComponent = function (props) {
                             className={classNames(
                                 styles.stageButton,
                                 styles.stageButtonFirst,
-                                isRightPanelHidden ? null : styles.stageButtonToggledOff
+                                isRightPanelHidden ? styles.stageButtonActive : null
                             )}
                             onClick={() => onSetRightPanelHidden(!isRightPanelHidden)}
                         >
@@ -152,7 +152,7 @@ const StageHeaderComponent = function (props) {
                                 styles.stageButton,
                                 styles.stageButtonMiddle,
                                 (stageSizeMode === STAGE_SIZE_MODES.small && !isRightPanelHidden) ?
-                                    null : styles.stageButtonToggledOff
+                                    styles.stageButtonActive : null
                             )}
                             onClick={onSetStageSmall}
                         >
@@ -170,7 +170,7 @@ const StageHeaderComponent = function (props) {
                                 styles.stageButton,
                                 styles.stageButtonLast,
                                 (stageSizeMode === STAGE_SIZE_MODES.large && !isRightPanelHidden) ?
-                                    null : styles.stageButtonToggledOff
+                                    styles.stageButtonActive : null
                             )}
                             onClick={onSetStageLarge}
                         >
