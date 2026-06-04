@@ -183,6 +183,7 @@ module.exports = [
                     chunks: ['lib.min', 'gui'],
                     template: 'src/playground/index.ejs',
                     title: 'Robbo Scratch',
+                    favicon: path.resolve(__dirname, 'static/favicon.png'),
                     sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null
                 })
             ],
