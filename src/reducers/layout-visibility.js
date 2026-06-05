@@ -14,7 +14,7 @@ const initialState = {
     isBlocksPaletteCollapsed: false,
     blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
     isBlocksWorkspaceLayoutPending: false,
-    isRobboUiHidden: false
+    isRobboUiHidden: true
 };
 
 const normalizeBooleanField = (value, fallback) => (
