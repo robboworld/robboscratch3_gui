@@ -55,7 +55,7 @@ const messages = defineMessages({
     },
     quadcopter_connecting: {
         id: 'gui.SearchPanel.quadcopter_connecting',
-        description: 'Crazyflie radio link is being established during device search.',
+        description: 'Quadcopter radio link is being established during device search.',
         defaultMessage: 'Connecting…'
     },
     quadcopter_connected: {
@@ -71,7 +71,7 @@ const messages = defineMessages({
     quadcopter_copter_not_found: {
         id: 'gui.SearchPanel.quadcopter_copter_not_found',
         description: 'Crazyradio closed or copter powered off during search (deviceClosed).',
-        defaultMessage: 'Crazyflie not found. Turn on the copter and try searching again.'
+        defaultMessage: 'Quadcopter not found. Turn on the copter and try searching again.'
     },
     quadcopter_landing: {
         id: 'gui.SearchPanel.quadcopter_landing',
@@ -90,18 +90,18 @@ const messages = defineMessages({
     },
     quadcopter_firmware_update_prompt: {
         id: 'gui.SearchPanel.quadcopter_firmware_update_prompt',
-        description: 'Confirm text when Crazyflie firmware differs from bundled desktop firmware.',
-        defaultMessage: 'Crazyflie firmware version differs from the required one.\n\nCurrent: {current}\nRequired: {required}\n\nUpdate now?'
+        description: 'Confirm text when quadcopter firmware differs from bundled desktop firmware.',
+        defaultMessage: 'Quadcopter firmware version differs from the required one.\n\nCurrent: {current}\nRequired: {required}\n\nUpdate now?'
     },
     quadcopter_firmware_update_warning: {
         id: 'gui.SearchPanel.quadcopter_firmware_update_warning',
-        description: 'Shown before flashing Crazyflie firmware.',
-        defaultMessage: 'Before updating: remove propellers, ensure good battery charge, and do not power off the Crazyflie during flashing.'
+        description: 'Shown before flashing quadcopter firmware.',
+        defaultMessage: 'Before updating: remove propellers, ensure good battery charge, and do not power off the quadcopter during flashing.'
     },
     quadcopter_firmware_checking: {
         id: 'gui.SearchPanel.quadcopter_firmware_checking',
         description: 'Shown in quadcopter row while reading firmware version.',
-        defaultMessage: 'Checking Crazyflie firmware version…'
+        defaultMessage: 'Checking quadcopter firmware version…'
     },
     quadcopter_firmware_versions_line: {
         id: 'gui.SearchPanel.quadcopter_firmware_versions_line',
@@ -121,17 +121,17 @@ const messages = defineMessages({
     quadcopter_firmware_flash_started: {
         id: 'gui.SearchPanel.quadcopter_firmware_flash_started',
         description: 'Shown in quadcopter row during flashing.',
-        defaultMessage: 'Flashing Crazyflie firmware…'
+        defaultMessage: 'Flashing quadcopter firmware…'
     },
     quadcopter_firmware_flash_done: {
         id: 'gui.SearchPanel.quadcopter_firmware_flash_done',
         description: 'Shown in quadcopter row when flashing succeeds.',
-        defaultMessage: 'Crazyflie firmware updated.'
+        defaultMessage: 'Quadcopter firmware updated.'
     },
     quadcopter_firmware_flash_failed: {
         id: 'gui.SearchPanel.quadcopter_firmware_flash_failed',
         description: 'Shown in quadcopter row when flashing fails.',
-        defaultMessage: 'Crazyflie firmware update failed. Try again.'
+        defaultMessage: 'Quadcopter firmware update failed. Try again.'
     },
     cf2_flash_scanning: {
         id: 'gui.SearchPanel.cf2_flash_scanning',
