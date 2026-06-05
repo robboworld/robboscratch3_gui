@@ -108,11 +108,14 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
 .previewIcon {
     display: block;
     flex-shrink: 0;
-    width: 1.5rem;
-    height: 1.5rem;
+    /* без height:% (в NW.js flex → 0px); ~100% кнопки + крупнее фон */
+    width: 1.7rem;
+    height: 1.7rem;
+    max-width: 100%;
+    max-height: 100%;
     background-repeat: no-repeat;
     background-position: center;
-    background-size: contain;
+    background-size: 110%;
     filter: brightness(0) invert(1);
     pointer-events: none;
     user-select: none;
@@ -121,29 +124,13 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
         filter 0.25s ease;
 }
 
-/* Робот: без height:% (в NW.js flex → 0px); ~100% кнопки + крупнее фон; без invert */
+/* Робот: крупнее остальных; силуэт выше геом. центра viewBox — чуть вниз */
 .previewButton.device_robot .previewIcon {
     width: 2rem;
     height: 2rem;
-    max-width: 100%;
-    max-height: 100%;
     background-image: url(../../static/robbo_assets/device_icons/menu_icon_robot.svg);
-    /* силуэт выше геом. центра viewBox — чуть вниз для оптического баланса */
     background-position: 50% 42%;
     background-size: 120%;
-    filter: none;
-}
-
-.previewButton.device_robot.disconnected .previewIcon {
-    filter: none;
-}
-
-.previewButton.device_robot.connected .previewIcon {
-    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.65));
-}
-
-.previewButton.device_robot.searching .previewIcon {
-    filter: none;
 }
 
 .device_lab .previewIcon {
@@ -155,7 +142,10 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
 }
 
 .device_otto .previewIcon {
+    width: 1.85rem;
+    height: 1.85rem;
     background-image: url(../../static/robbo_assets/device_icons/menu_icon_otto.svg);
+    background-size: 115%;
 }
 
 .device_arduino .previewIcon {

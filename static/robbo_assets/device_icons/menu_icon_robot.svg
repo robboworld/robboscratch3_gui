@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" aria-hidden="true">
   <defs>
     <style>
-      .b{fill:#fff;}
-      .c{fill:#fff;stroke:none;}
+      .b{fill:#000;}
+      .c{fill:#000;stroke:none;}
       .stroke{
         fill:none;
-        stroke:#fff;
+        stroke:#000;
         stroke-width:0.4px;
         stroke-miterlimit:10;
       }
