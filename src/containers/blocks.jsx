@@ -1046,7 +1046,7 @@ class Blocks extends React.Component {
         window.addEventListener('pointerup', onPointerUp);
         window.addEventListener('pointercancel', onPointerUp);
     }
-    updatePaletteVisibility (collapsed) {
+    updatePaletteVisibility (collapsed, options) {
         const toolbox = this.workspace && this.workspace.toolbox_;
         const flyout = this.getToolboxFlyout();
         if (!this.workspace || !toolbox || !flyout) {
@@ -1073,7 +1073,7 @@ class Blocks extends React.Component {
             }
 
             this.setFlyoutDomVisible(false);
-            this.setToolboxLayoutWidth(toolbox, CATEGORY_MENU_WIDTH);
+            this.setToolboxLayoutWidth(toolbox, CATEGORY_MENU_WIDTH, options);
         } else {
             this.restorePaletteFlyoutLayout(toolbox, flyout);
         }
@@ -1270,7 +1270,7 @@ class Blocks extends React.Component {
                     flyout.position = () => {};
                 }
                 this._paletteCollapsed = false;
-                this.updatePaletteVisibility(true);
+                this.updatePaletteVisibility(true, {skipScrollCompensation: true});
                 if (this.blocks) {
                     this.blocks.style.setProperty('--blocks-flyout-width', '0px');
                 }
