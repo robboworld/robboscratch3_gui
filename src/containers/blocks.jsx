@@ -123,6 +123,9 @@ class Blocks extends React.Component {
             'endHiddenFlyoutRepair'
         ]);
         this._flyoutLayoutRepairFrame = null;
+        this._flyoutRepairFinishOuterFrame = null;
+        this._flyoutRepairFinishInnerFrame = null;
+        this._flyoutRepairGeneration = 0;
         this._workspaceScrollCenterFrame = null;
         this._pendingInitialWorkspaceCenter = true;
         this._paletteCollapsed = false;
@@ -349,6 +352,7 @@ class Blocks extends React.Component {
             cancelAnimationFrame(this._flyoutLayoutRepairFrame);
             this._flyoutLayoutRepairFrame = null;
         }
+        this.cancelPendingFlyoutRepairFinish();
         if (this._workspaceScrollCenterFrame) {
             cancelAnimationFrame(this._workspaceScrollCenterFrame);
             this._workspaceScrollCenterFrame = null;
@@ -399,6 +403,10 @@ class Blocks extends React.Component {
 
         const categoryId = this.workspace.toolbox_.getSelectedCategoryId();
         const offset = this.workspace.toolbox_.getCategoryScrollOffset();
+        if (this.props.paletteCollapsed) {
+            this.prepareHiddenFlyoutForToolboxPopulate();
+        }
+
         this.workspace.updateToolbox(this.props.toolboxXML);
         this._renderedToolboxXML = this.props.toolboxXML;
 
@@ -867,6 +875,37 @@ class Blocks extends React.Component {
             root.classList.add('flyout-palette-collapsed');
         }
     }
+    cancelPendingFlyoutRepairFinish () {
+        if (this._flyoutRepairFinishOuterFrame) {
+            cancelAnimationFrame(this._flyoutRepairFinishOuterFrame);
+            this._flyoutRepairFinishOuterFrame = null;
+        }
+        if (this._flyoutRepairFinishInnerFrame) {
+            cancelAnimationFrame(this._flyoutRepairFinishInnerFrame);
+            this._flyoutRepairFinishInnerFrame = null;
+        }
+    }
+    prepareHiddenFlyoutForToolboxPopulate () {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        const root = this.getInjectionRoot();
+        if (!toolbox || !flyout) {
+            return;
+        }
+        if (this._flyoutPositionPatched && this._originalFlyoutPosition) {
+            flyout.position = this._originalFlyoutPosition;
+        }
+        const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        this._savedFlyoutWidth = flyoutWidth;
+        this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+        flyout.DEFAULT_WIDTH = flyoutWidth;
+        this.setToolboxLayoutWidth(toolbox, this._savedToolboxWidth, {skipScrollCompensation: true});
+        this.clearFlyoutSlideStyles(flyout);
+        flyout.setContainerVisible(true);
+        flyout.setVisible(true);
+        this.beginHiddenFlyoutRepair(root, flyout);
+        toolbox.position();
+    }
     beginHiddenFlyoutRepair (root, flyout) {
         if (root) {
             root.classList.add('flyout-palette-repairing');
@@ -1166,6 +1205,9 @@ class Blocks extends React.Component {
             return;
         }
 
+        this.cancelPendingFlyoutRepairFinish();
+        const repairGeneration = ++this._flyoutRepairGeneration;
+
         const hiddenRepair = rehideIfCollapsed && this.props.paletteCollapsed;
         const root = this.getInjectionRoot();
 
@@ -1181,13 +1223,11 @@ class Blocks extends React.Component {
         this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
         flyout.DEFAULT_WIDTH = flyoutWidth;
 
-        if (hiddenRepair) {
-            this.setToolboxLayoutWidth(toolbox, CATEGORY_MENU_WIDTH, {skipScrollCompensation: true});
-        } else {
-            this.setToolboxLayoutWidth(toolbox, this._savedToolboxWidth);
-            if (root) {
-                root.classList.remove('flyout-palette-collapsed');
-            }
+        // Hidden repair must lay out at full flyout width so populate_/rerender measure
+        // fields correctly; palette is re-collapsed in finishBlockLayout below.
+        this.setToolboxLayoutWidth(toolbox, this._savedToolboxWidth, {skipScrollCompensation: true});
+        if (!hiddenRepair && root) {
+            root.classList.remove('flyout-palette-collapsed');
         }
 
         this.clearFlyoutSlideStyles(flyout);
@@ -1212,6 +1252,9 @@ class Blocks extends React.Component {
             flyout.getWorkspace() : null;
 
         const finishBlockLayout = () => {
+            if (repairGeneration !== this._flyoutRepairGeneration) {
+                return;
+            }
             this.rerenderFlyoutBlocksAtFullWidth(flyoutWorkspace);
             if (typeof flyout.reflow === 'function') {
                 flyout.reflow();
@@ -1239,8 +1282,12 @@ class Blocks extends React.Component {
 
         // Dropdown fields cache text widths while the flyout may be display:none or
         // at category-only toolbox width; re-measure after the flyout is in DOM (opacity 0).
-        requestAnimationFrame(() => {
-            requestAnimationFrame(finishBlockLayout);
+        this._flyoutRepairFinishOuterFrame = requestAnimationFrame(() => {
+            this._flyoutRepairFinishOuterFrame = null;
+            this._flyoutRepairFinishInnerFrame = requestAnimationFrame(() => {
+                this._flyoutRepairFinishInnerFrame = null;
+                finishBlockLayout();
+            });
         });
     }
     restorePaletteFlyoutLayout (toolbox, flyout) {
