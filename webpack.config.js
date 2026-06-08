@@ -16,6 +16,18 @@ const isProduction = process.env.NODE_ENV === 'production' || process.env.BUILD_
 const shouldBuildLibraryDist = process.env.BUILD_MODE === 'dist';
 const isAppBuild = process.env.BUILD_MODE === 'app';
 
+const webSeo = {
+    enabled: true,
+    description: 'Robbo Scratch — онлайн-среда визуального программирования на Scratch для детей и школ. Создавайте анимации и 2D-игры и программируйте роботов РОББО в браузере.',
+    canonical: 'https://scratch.ru/',
+    siteUrl: 'https://scratch.ru',
+    siteName: 'Robbo Scratch',
+    locale: 'ru_RU',
+    ogImage: 'https://scratch.ru/static/favicon.png',
+    organizationName: 'ROBBO',
+    organizationUrl: 'https://robboclub.ru'
+};
+
 const useBabelCache = !isProduction;
 
 const babelLoaderOptions = {
@@ -182,9 +194,10 @@ module.exports = [
                 new HtmlWebpackPlugin({
                     chunks: ['lib.min', 'gui'],
                     template: 'src/playground/index.ejs',
-                    title: 'Robbo Scratch',
+                    title: 'Robbo Scratch — Скретч онлайн для детей и школ',
                     favicon: path.resolve(__dirname, 'static/favicon.png'),
-                    sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null
+                    sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null,
+                    seo: webSeo
                 })
             ],
             isAppBuild ? [] : [
@@ -208,6 +221,14 @@ module.exports = [
                 })
             ],
             [
+                new CopyWebpackPlugin([{
+                    from: 'static/seo/robots.txt',
+                    to: 'robots.txt'
+                }]),
+                new CopyWebpackPlugin([{
+                    from: 'static/seo/sitemap.xml',
+                    to: 'sitemap.xml'
+                }]),
                 new CopyWebpackPlugin([{
                     from: 'static',
                     to: 'static'

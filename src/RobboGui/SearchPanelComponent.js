@@ -29,6 +29,9 @@ function shouldProbeQuadcopterOnDeviceSearch(QCA) {
   return isDesktopWithBluetooth() && !!QCA;
 }
 
+/** DCA device states while port open / identify / flash — search button stays busy until settled */
+const USB_SEARCH_CONNECTING_STATES = [0, 2, 3, 9, 10];
+
 const messages = defineMessages({
 
   devices_not_found: {
@@ -279,6 +282,7 @@ class SearchPanelComponent extends Component {
       this.is_bluetooth_devices_not_found = false;
       this.usb_search_finished = true;
       this._refreshDeviceList();
+      this._maybeNotifySearchIdleWhenSettled();
     });
 
     if (this.QCA) {
@@ -317,6 +321,30 @@ class SearchPanelComponent extends Component {
 
 
 
+  }
+
+  /**
+   * Web Serial: cancel or re-select an already-connected port does not emit a new state-6
+   * transition, so the menu-bar search spinner must be cleared explicitly when no device
+   * is still connecting.
+   */
+  _maybeNotifySearchIdleWhenSettled() {
+    if (!this.DCA || typeof this.DCA.getDevices !== 'function') {
+      return;
+    }
+    const allDevices = this.DCA.getDevices();
+    if (!allDevices || allDevices.length === 0) {
+      return;
+    }
+    const anyConnecting = allDevices.some(dev => {
+      if (!dev || typeof dev.getState !== 'function') {
+        return false;
+      }
+      return USB_SEARCH_CONNECTING_STATES.indexOf(dev.getState()) !== -1;
+    });
+    if (!anyConnecting) {
+      notifySearchIdle();
+    }
   }
 
   _refreshDeviceList() {

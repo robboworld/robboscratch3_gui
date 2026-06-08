@@ -174,6 +174,7 @@ const GUIComponent = props => {
         isShared,
         loading,
         isRightPanelHidden,
+        isRobboUiHidden,
         renderLogin,
         onClickAccountNav,
         onCloseAccountNav,

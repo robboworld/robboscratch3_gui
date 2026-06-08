@@ -1475,6 +1475,7 @@ class Blocks extends React.Component {
             blocksPaletteFlyoutWidth,
             onSetBlocksPaletteFlyoutWidth,
             isRightPanelHidden,
+            isRobboUiHidden,
             isBlocksWorkspaceLayoutPending,
             isShowingProject,
             onBlocksWorkspaceLayoutPending,

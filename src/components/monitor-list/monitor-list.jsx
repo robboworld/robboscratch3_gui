@@ -95,7 +95,15 @@ const MonitorList = props => {
 MonitorList.propTypes = {
     layout: PropTypes.oneOf(['stage', 'corner']),
     draggable: PropTypes.bool.isRequired,
-    monitors: PropTypes.instanceOf(OrderedMap),
+    monitors: (props, propName, componentName) => {
+        const value = props[propName];
+        if (value != null && !OrderedMap.isOrderedMap(value)) {
+            return new Error(
+                `Invalid prop \`${propName}\` supplied to \`${componentName}\`, expected OrderedMap.`
+            );
+        }
+        return null;
+    },
     onMonitorChange: PropTypes.func.isRequired,
     stageSize: PropTypes.shape({
         width: PropTypes.number,

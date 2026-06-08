@@ -32,31 +32,33 @@ const modes = {
 };
 
 const MonitorComponent = props => (
-    <ContextMenuTrigger
-        disable={!props.draggable}
-        holdToDisplay={props.mode === 'slider' ? -1 : 1000}
-        id={`monitor-${props.label}`}
-    >
-        <Draggable
-            bounds=".monitor-overlay" // Class for monitor container
-            cancel=".no-drag" // Class used for slider input to prevent drag
-            defaultClassNameDragging={styles.dragging}
-            disabled={!props.draggable}
-            onStop={props.onDragEnd}
+    <React.Fragment>
+        <ContextMenuTrigger
+            disable={!props.draggable}
+            holdToDisplay={props.mode === 'slider' ? -1 : 1000}
+            id={`monitor-${props.label}`}
         >
-            <Box
-                className={classNames(styles.monitorContainer, {
-                    [styles.monitorContainerCorner]: props.layout === 'corner'
-                })}
-                componentRef={props.componentRef}
-                onDoubleClick={props.mode === 'list' || !props.draggable ? null : props.onNextMode}
+            <Draggable
+                bounds=".monitor-overlay" // Class for monitor container
+                cancel=".no-drag" // Class used for slider input to prevent drag
+                defaultClassNameDragging={styles.dragging}
+                disabled={!props.draggable}
+                onStop={props.onDragEnd}
             >
-                {React.createElement(modes[props.mode], {
-                    categoryColor: categories[props.category],
-                    ...props
-                })}
-            </Box>
-        </Draggable>
+                <Box
+                    className={classNames(styles.monitorContainer, {
+                        [styles.monitorContainerCorner]: props.layout === 'corner'
+                    })}
+                    componentRef={props.componentRef}
+                    onDoubleClick={props.mode === 'list' || !props.draggable ? null : props.onNextMode}
+                >
+                    {React.createElement(modes[props.mode], {
+                        categoryColor: categories[props.category],
+                        ...props
+                    })}
+                </Box>
+            </Draggable>
+        </ContextMenuTrigger>
         {ReactDOM.createPortal((
             // Use a portal to render the context menu outside the flow to avoid
             // positioning conflicts between the monitors `transform: scale` and
@@ -105,8 +107,7 @@ const MonitorComponent = props => (
                     </MenuItem>}
             </ContextMenu>
         ), document.body)}
-    </ContextMenuTrigger>
-
+    </React.Fragment>
 );
 
 MonitorComponent.categories = categories;
