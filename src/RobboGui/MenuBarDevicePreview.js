@@ -6,6 +6,15 @@ import PropTypes from 'prop-types';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import styles from './MenuBarDevicePreview.css';
 
+const DEVICE_IS_READY = 6;
+
+const CONNECTED_DEVICES_BY_TYPE = {
+    robot: 'ConnectedRobots',
+    lab: 'ConnectedLaboratories',
+    otto: 'ConnectedOttos',
+    arduino: 'ConnectedArduinos'
+};
+
 class MenuBarDevicePreview extends Component {
     constructor (props) {
         super(props);
@@ -14,6 +23,7 @@ class MenuBarDevicePreview extends Component {
             searching: false
         };
         this.handleStatusChange = this.handleStatusChange.bind(this);
+        this.syncInitialConnectionState = this.syncInitialConnectionState.bind(this);
     }
 
     componentDidMount () {
@@ -38,6 +48,31 @@ class MenuBarDevicePreview extends Component {
             break;
         default:
             break;
+        }
+
+        this.syncInitialConnectionState();
+    }
+
+    syncInitialConnectionState () {
+        const {statusApi, deviceType} = this.props;
+        if (!statusApi) return;
+
+        if (deviceType === 'quadcopter') {
+            if (typeof statusApi.getStatusSnapshot !== 'function') return;
+            const snap = statusApi.getStatusSnapshot();
+            const state = snap.state || 'disconnected';
+            this.handleStatusChange(state);
+            if (snap.searching === true) {
+                this.setState({searching: true});
+            }
+            return;
+        }
+
+        const connectedDevicesKey = CONNECTED_DEVICES_BY_TYPE[deviceType];
+        const connectedDevices = connectedDevicesKey ? statusApi[connectedDevicesKey] : null;
+        if (connectedDevices && connectedDevices[0] &&
+            typeof connectedDevices[0].getState === 'function') {
+            this.handleStatusChange(connectedDevices[0].getState());
         }
     }
 
@@ -79,7 +114,7 @@ class MenuBarDevicePreview extends Component {
     handleStatusChange (state) {
         const connected = this.props.deviceType === 'quadcopter' ?
             state === 'connected' :
-            state === 6;
+            state === DEVICE_IS_READY;
 
         this.setState({
             connected,
