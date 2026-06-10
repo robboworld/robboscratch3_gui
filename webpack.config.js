@@ -194,10 +194,11 @@ module.exports = [
                 new HtmlWebpackPlugin({
                     chunks: ['lib.min', 'gui'],
                     template: 'src/playground/index.ejs',
-                    title: 'Robbo Scratch — Скретч онлайн для детей и школ',
+                    title: 'Robbo Scratch | Роббо скретч — скретч онлайн для детей и школ, российская платформа для программирования',
                     favicon: path.resolve(__dirname, 'static/favicon.png'),
                     sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null,
-                    seo: webSeo
+                    seo: webSeo,
+                    yandexMetrika: isProduction ? 93772324 : null
                 })
             ],
             isAppBuild ? [] : [
