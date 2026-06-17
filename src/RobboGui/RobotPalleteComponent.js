@@ -75,6 +75,13 @@ class RobotPalleteComponent extends Component {
      this.getDataInterval = null;
   }
 
+  componentWillUnmount () {
+    if (this.getDataInterval) {
+      clearInterval(this.getDataInterval);
+      this.getDataInterval = null;
+    }
+  }
+
 
 
   startGetDataLoop(){

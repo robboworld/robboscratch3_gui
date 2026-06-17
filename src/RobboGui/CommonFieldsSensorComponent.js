@@ -1,7 +1,6 @@
 import classNames from 'classnames';
 import React, { Component } from 'react';
 import rowStyles from './DevicePaletteRows.css';
-import styles from './SensorComponent.css';
 import {getTelemetryValueVariantClassNames} from './telemetry-value-variant';
 
 class CommonFieldsSensorComponent extends Component {
@@ -30,17 +29,7 @@ class CommonFieldsSensorComponent extends Component {
     }
 
     if (sensorName === 'color') {
-      if (!Array.isArray(sensors_data) || sensors_data[0] === -1) {
-        return '---';
-      }
-      return (
-        <span
-          className={styles.color_value_swatch}
-          style={{
-            backgroundColor: `rgb(${sensors_data[0]},${sensors_data[1]},${sensors_data[2]})`
-          }}
-        />
-      );
+      return '---';
     }
 
     if (Array.isArray(sensors_data)) {
@@ -53,13 +42,8 @@ class CommonFieldsSensorComponent extends Component {
   render () {
     const valueContent = this.renderValue();
     const hasControl = Boolean(this.props.control);
-    const isColorSwatch = this.props.sensorName === 'color' &&
-      valueContent !== '---' &&
-      typeof valueContent !== 'string';
     const variant = this.props.valueVariant || 'small';
-    const variantClassNames = isColorSwatch
-      ? {valueClassName: null, rowClassName: rowStyles.telemetry_row_value_small}
-      : getTelemetryValueVariantClassNames(variant, rowStyles);
+    const variantClassNames = getTelemetryValueVariantClassNames(variant, rowStyles);
 
     return (
       <div
