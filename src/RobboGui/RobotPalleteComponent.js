@@ -172,6 +172,11 @@ componentDidUpdate(){
 
           const isSimulation = Boolean(this.props.VM && this.props.VM.runtime && this.props.VM.runtime.sim_ac);
           const primitives = isSimulation ? this.props.VM.runtime._primitives : null;
+          const hasLiveSensorData = Boolean(
+            this.props.RCA &&
+            typeof this.props.RCA.getSensorsData === 'function' &&
+            this.props.RCA.getSensorsData() != null
+          );
 
           if (!isSimulation) {
             sensors_values_field_list[0].innerHTML = this.props.RCA.getLeftPath();
@@ -222,8 +227,10 @@ componentDidUpdate(){
             } else {
               if (isSimulation && primitives && primitives.getSensorDataFromLastUtil) {
                 sensor_data = primitives.getSensorDataFromLastUtil(index);
-              } else {
+              } else if (hasLiveSensorData) {
                 sensor_data = this.props.RCA.getSensorData(index);
+              } else {
+                sensor_data = undefined;
               }
 
               if (typeof sensor_data !== 'undefined' && !isNaN(sensor_data)) {

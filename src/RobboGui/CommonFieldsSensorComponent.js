@@ -5,6 +5,17 @@ import styles from './SensorComponent.css';
 import {getTelemetryValueVariantClassNames} from './telemetry-value-variant';
 
 class CommonFieldsSensorComponent extends Component {
+  formatDisplayValue (rawValue) {
+    if (
+      rawValue == null ||
+      rawValue === '' ||
+      (typeof rawValue === 'number' && isNaN(rawValue))
+    ) {
+      return '---';
+    }
+    return rawValue;
+  }
+
   renderValue () {
     const sensors_data = this.props.sensorData;
     const sensorName = this.props.sensorName;
@@ -12,13 +23,14 @@ class CommonFieldsSensorComponent extends Component {
     if (
       sensorName === 'nosensor' ||
       typeof sensorName === 'undefined' ||
+      sensors_data == null ||
       typeof sensors_data === 'undefined'
     ) {
       return '---';
     }
 
     if (sensorName === 'color') {
-      if (sensors_data[0] === -1) {
+      if (!Array.isArray(sensors_data) || sensors_data[0] === -1) {
         return '---';
       }
       return (
@@ -32,10 +44,10 @@ class CommonFieldsSensorComponent extends Component {
     }
 
     if (Array.isArray(sensors_data)) {
-      return sensors_data[3];
+      return this.formatDisplayValue(sensors_data[3]);
     }
 
-    return sensors_data;
+    return this.formatDisplayValue(sensors_data);
   }
 
   render () {

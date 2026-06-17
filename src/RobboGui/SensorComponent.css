@@ -13,16 +13,34 @@
 
 .sensor_choose_icon {
     flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    border: none;
-    background: transparent;
+    border: 1px solid rgba(0, 175, 65, 0.45);
+    border-radius: 2px;
+    background-color: rgba(0, 175, 65, 0.1);
     cursor: pointer;
     line-height: 0;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .sensor_choose_icon:hover {
-    opacity: 0.85;
+    background-color: rgba(0, 175, 65, 0.18);
+    border-color: rgba(0, 175, 65, 0.65);
+}
+
+.sensor_choose_icon:active {
+    background-color: rgba(0, 175, 65, 0.24);
+    border-color: $motion-primary;
+}
+
+.sensor_choose_icon:focus,
+.sensor_choose_icon:focus-visible {
+    outline: 1px solid $motion-primary;
+    outline-offset: 0;
 }
 
 .sensor_choose_icon img {
