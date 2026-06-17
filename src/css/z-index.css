@@ -15,7 +15,6 @@ $z-index-card: 480;
 $z-index-alerts: 490;
 $z-index-menu-bar: 491; /* menu-bar should go over monitors, alerts and tutorials */
 $z-index-loader: 500;
-$z-index-modal: 510;
 
 $z-index-drag-layer: 1000;
 /* Block drag z-index: 1000; default 50 is overriden in blocks.css */
@@ -24,12 +23,16 @@ $z-index-dragging-sprite: 1020; /* so it is draggable into other panes */
 
 $z-index-stage-color-picker-background: 2000;
 $z-index-stage-with-color-picker: 2010;
+
+/* Robbo floating palettes, search, settings — above editor chrome, below modals (3000–3899) */
+$z-index-robbo-overlay: 3000;
+$z-index-robbo-popup: 3000;
+$z-index-robbo-select: 3900;
+
+$z-index-modal: 4000;
+
 $z-index-stage-header: 5000;
 $z-index-stage-wrapper-overlay: 5000;
-
-/* Robbo floating palettes, search, settings — above stage header, below context menu */
-$z-index-robbo-overlay: 5500;
-$z-index-robbo-popup: 5500;
 
 /* in most interfaces, the context menu is always on top */
 $z-index-context-menu: 10000;

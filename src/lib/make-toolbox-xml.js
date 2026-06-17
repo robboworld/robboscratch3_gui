@@ -592,13 +592,13 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
           </value>
       </block>
 
-      <block type="copter_change_axis_by">
+      <block type="copter_move_axis_to">
           <value name="AXIS">
               <shadow type="copter_axes"/>
           </value>
-          <value name="DISTANCE_DELTA">
+          <value name="COORD">
               <shadow type="math_number">
-                  <field name="NUM">0.1</field>
+                  <field name="NUM">0</field>
               </shadow>
           </value>
       </block>
