@@ -342,6 +342,9 @@ class MenuBar extends React.Component {
                 {remixMessage}
             </Button>
         );
+        const locale = this.props.intl.locale;
+        const isRussianLocale = typeof locale === 'string' && locale.toLowerCase().indexOf('ru') === 0;
+        const logoWordmark = isRussianLocale ? 'РОББО' : 'ROBBO';
         return (
             <Box
                 id="rs3-menu-bar"
@@ -354,14 +357,14 @@ class MenuBar extends React.Component {
                     <div className={styles.fileGroup}>
                         <div className={classNames(styles.menuBarItem)}>
                             <span
-                                aria-label="РОББО"
+                                aria-label={logoWordmark}
                                 className={classNames(styles.robboLogo, {
                                     [styles.clickable]: typeof this.props.onClickLogo !== 'undefined'
                                 })}
                                 onClick={this.props.onClickLogo}
                             >
                                 <span className={styles.robboLogoWordmark} aria-hidden="true">
-                                    РОББО
+                                    {logoWordmark}
                                     <sup className={styles.robboLogoReg}>®</sup>
                                 </span>
                             </span>
