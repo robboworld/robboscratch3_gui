@@ -375,11 +375,10 @@ class Blocks extends React.Component {
      * @returns {object}
      */
     getVmLocaleMessages () {
-        const scratchMsgs = this.ScratchBlocks.ScratchMsgs.locales[this.props.locale];
-        if (!scratchMsgs) {
-            return this.props.messages;
-        }
-        return Object.assign({}, this.props.messages, scratchMsgs);
+        const ScratchMsgs = this.ScratchBlocks.ScratchMsgs;
+        const enScratchMsgs = ScratchMsgs.locales.en || {};
+        const localeScratchMsgs = ScratchMsgs.locales[this.props.locale] || {};
+        return Object.assign({}, this.props.messages, enScratchMsgs, localeScratchMsgs);
     }
     setLocale () {
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);

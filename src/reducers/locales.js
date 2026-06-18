@@ -9,11 +9,15 @@ addLocaleData(localeData);
 const UPDATE_LOCALES = 'scratch-gui/locales/UPDATE_LOCALES';
 const SELECT_LOCALE = 'scratch-gui/locales/SELECT_LOCALE';
 
+const mergeWithEnglishFallback = (messagesByLocale, locale) => (
+    Object.assign({}, messagesByLocale.en, messagesByLocale[locale])
+);
+
 const initialState = {
     isRtl: false,
     locale: 'ru',
     messagesByLocale: editorMessages,
-    messages: editorMessages.ru || editorMessages.en
+    messages: mergeWithEnglishFallback(editorMessages, 'ru')
 };
 
 const reducer = function (state, action) {
@@ -24,14 +28,14 @@ const reducer = function (state, action) {
             isRtl: isRtl(action.locale),
             locale: action.locale,
             messagesByLocale: state.messagesByLocale,
-            messages: state.messagesByLocale[action.locale]
+            messages: mergeWithEnglishFallback(state.messagesByLocale, action.locale)
         });
     case UPDATE_LOCALES:
         return Object.assign({}, state, {
             isRtl: state.isRtl,
             locale: state.locale,
             messagesByLocale: action.messagesByLocale,
-            messages: action.messagesByLocale[state.locale]
+            messages: mergeWithEnglishFallback(action.messagesByLocale, state.locale)
         });
     default:
         return state;
@@ -60,7 +64,7 @@ const initLocale = function (currentState, locale) {
                 isRtl: isRtl(locale),
                 locale: locale,
                 messagesByLocale: currentState.messagesByLocale,
-                messages: currentState.messagesByLocale[locale]
+                messages: mergeWithEnglishFallback(currentState.messagesByLocale, locale)
             }
         );
     }
