@@ -323,6 +323,35 @@ function getSystemInfoAsync() {
   return Promise.resolve(EMPTY_SYSTEM_INFO);
 }
 
+/**
+ * Opens a URL in the system browser (NW.js desktop) or a new tab (web).
+ * @param {string} url
+ * @returns {boolean} whether a handler was invoked
+ */
+function openExternalUrl(url) {
+  const safeUrl = normalizeString(url);
+  if (!safeUrl) return false;
+
+  if (typeof window !== 'undefined' && window.nw && typeof window.nw.require === 'function') {
+    try {
+      const shell = window.nw.require('nw.gui').Shell;
+      if (shell && typeof shell.openExternal === 'function') {
+        shell.openExternal(safeUrl);
+        return true;
+      }
+    } catch (_) {
+      // fall through to window.open
+    }
+  }
+
+  if (typeof window !== 'undefined' && typeof window.open === 'function') {
+    window.open(safeUrl, '_blank', 'noopener,noreferrer');
+    return true;
+  }
+
+  return false;
+}
+
 export {
   node_process,
   node_os,
@@ -330,5 +359,6 @@ export {
   isRobboAndroidAppContext,
   isRobboLinkMobileWebContext,
   getSystemInfoAsync,
-  formatArchitectureDisplay
+  formatArchitectureDisplay,
+  openExternalUrl
 };

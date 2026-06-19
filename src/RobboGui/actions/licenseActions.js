@@ -1,5 +1,5 @@
-import {postActivateDemo} from '../../lib/licensing/activationClient.js';
-import {verifyDemoActivationJwt} from '../../lib/licensing/verifyJwtRs256.js';
+import {postActivate, postDeactivateSeat} from '../../lib/licensing/activationClient.js';
+import {verifyActivationJwt} from '../../lib/licensing/verifyJwtRs256.js';
 import {loadPaidAddonFromManifestUrl, clearAddonCache} from '../../lib/licensing/loadPaidAddon.js';
 import paidAddonRegistry from '../../lib/licensing/paidAddonRegistry.js';
 import {computeDeviceFingerprint, getCachedDeviceFingerprint, LS_FP_CACHE} from '../../lib/licensing/deviceFingerprint.js';
@@ -9,20 +9,22 @@ import {
     LS_ACTIVATION_BASE,
     LS_TOKEN,
     LS_BOUND_FP,
-    LICENSE_DEMO_ACTIVATE_START,
-    LICENSE_DEMO_ACTIVATE_SUCCESS,
-    LICENSE_DEMO_ACTIVATE_FAILURE,
-    LICENSE_DEMO_ADDON_READY,
-    LICENSE_DEMO_ADDON_FAILURE,
-    LICENSE_DEMO_SET_ACTIVATION_BASE,
-    LICENSE_DEMO_HYDRATE,
-    LICENSE_DEMO_CLEAR,
-    LICENSE_DEMO_PREMIUM_CHECK_RESULT,
-    LICENSE_DEMO_UPDATE_PHASE,
-    LICENSE_DEMO_UPDATE_PROGRESS,
-    demoUpdateInitialState,
-    readPersistedActivationBase
-} from '../reducers/license_demo.js';
+    LICENSE_ACTIVATE_START,
+    LICENSE_ACTIVATE_SUCCESS,
+    LICENSE_ACTIVATE_FAILURE,
+    LICENSE_ADDON_READY,
+    LICENSE_ADDON_FAILURE,
+    LICENSE_SET_ACTIVATION_BASE,
+    LICENSE_HYDRATE,
+    LICENSE_CLEAR,
+    LICENSE_PREMIUM_CHECK_RESULT,
+    LICENSE_CHECK_STATUS,
+    LICENSE_UPDATE_PHASE,
+    LICENSE_UPDATE_PROGRESS,
+    licenseUpdateInitialState,
+    readPersistedActivationBase,
+    readPersistedToken
+} from '../reducers/license.js';
 
 function capabilitiesFromPayload (jwtPayload) {
     if (!jwtPayload || !Array.isArray(jwtPayload.capabilities)) {
@@ -65,11 +67,12 @@ function persistLicenseToStorage (activationBaseUrl, token, fingerprint) {
     } catch (e) { /* ignore */ }
 }
 
-export function removeDemoLicenseFromStorage () {
+export function removeLicenseFromStorage () {
     try {
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(LS_TOKEN);
             localStorage.removeItem(LS_BOUND_FP);
+            localStorage.removeItem('rs3_demo_signed_token');
         }
     } catch (e) { /* ignore */ }
     clearAddonCache();
@@ -89,11 +92,12 @@ function loadAddonDispatched (dispatch, manifestUrl, signedOfflineToken, license
         licenseContext
     })
         .then(() => {
-            dispatch({type: LICENSE_DEMO_ADDON_READY});
+            dispatch({type: LICENSE_ADDON_READY});
+            dispatch(premiumAutoUpdateCheckThunk());
         })
         .catch(err => {
             dispatch({
-                type: LICENSE_DEMO_ADDON_FAILURE,
+                type: LICENSE_ADDON_FAILURE,
                 payload: {message: err.message || String(err)}
             });
         });
@@ -104,11 +108,11 @@ function loadAddonDispatched (dispatch, manifestUrl, signedOfflineToken, license
  * @param {string} activationBaseUrl
  * @returns {function}
  */
-export function persistActivationBaseUrlDemoThunk (activationBaseUrl) {
+export function persistActivationBaseUrlThunk (activationBaseUrl) {
     return function (dispatch) {
         const t = (activationBaseUrl || '').trim();
         dispatch({
-            type: LICENSE_DEMO_SET_ACTIVATION_BASE,
+            type: LICENSE_SET_ACTIVATION_BASE,
             payload: t
         });
         try {
@@ -120,28 +124,28 @@ export function persistActivationBaseUrlDemoThunk (activationBaseUrl) {
 }
 
 /**
- * @param {string} licenseKeyTrimmed user-entered demo key
+ * @param {string} licenseKeyTrimmed user-entered license key
  * @returns {function}
  */
-export function activateLicenseDemoThunk (licenseKeyTrimmed) {
+export function activateLicenseThunk (licenseKeyTrimmed) {
     return function (dispatch, getState) {
         const state = getState();
-        const base = (state.scratchGui.license_demo.activationBaseUrl || '').trim();
+        const base = (state.scratchGui.license.activationBaseUrl || '').trim();
         if (!licenseKeyTrimmed || !licenseKeyTrimmed.trim()) {
             dispatch({
-                type: LICENSE_DEMO_ACTIVATE_FAILURE,
+                type: LICENSE_ACTIVATE_FAILURE,
                 payload: {message: 'empty_license_key'}
             });
             return Promise.resolve();
         }
-        dispatch({type: LICENSE_DEMO_ACTIVATE_START});
+        dispatch({type: LICENSE_ACTIVATE_START});
         const publicBaseForUrls = base.replace(/\/$/, '');
         return computeDeviceFingerprint()
-            .then(fingerprint => postActivateDemo(base, {
+            .then(fingerprint => postActivate(base, {
                 licenseKey: licenseKeyTrimmed.trim(),
                 deviceFingerprint: fingerprint,
                 publicBase: publicBaseForUrls
-            }).then(resp => verifyDemoActivationJwt(resp.signedOfflineToken).then(jwtPayload => ({
+            }).then(resp => verifyActivationJwt(resp.signedOfflineToken).then(jwtPayload => ({
                 resp,
                 jwtPayload,
                 fingerprint
@@ -163,7 +167,7 @@ export function activateLicenseDemoThunk (licenseKeyTrimmed) {
                 const licenseContext = licenseContextFromPayload(jwtPayload);
 
                 dispatch({
-                    type: LICENSE_DEMO_ACTIVATE_SUCCESS,
+                    type: LICENSE_ACTIVATE_SUCCESS,
                     payload: {
                         signedOfflineToken: resp.signedOfflineToken,
                         addonManifestUrl,
@@ -182,7 +186,7 @@ export function activateLicenseDemoThunk (licenseKeyTrimmed) {
             })
             .catch(err => {
                 dispatch({
-                    type: LICENSE_DEMO_ACTIVATE_FAILURE,
+                    type: LICENSE_ACTIVATE_FAILURE,
                     payload: {message: err.message || String(err)}
                 });
             });
@@ -193,23 +197,19 @@ export function activateLicenseDemoThunk (licenseKeyTrimmed) {
  * Restore JWT + optionally warm addon cache from persisted storage at app start.
  * @returns {function}
  */
-export function hydrateLicenseDemoThunk () {
+export function hydrateLicenseThunk () {
     return function (dispatch) {
         try {
             if (typeof localStorage !== 'undefined') {
-                const base = localStorage.getItem(LS_ACTIVATION_BASE) ||
-                    readPersistedActivationBase();
-                const token =
-                    typeof localStorage.getItem === 'function'
-                        ? localStorage.getItem(LS_TOKEN)
-                        : '';
+                const base = readPersistedActivationBase();
+                const token = readPersistedToken();
                 const storedFp = localStorage.getItem(LS_BOUND_FP) || '';
 
-                dispatch(persistActivationBaseUrlDemoThunk(base));
+                dispatch(persistActivationBaseUrlThunk(base));
 
                 if (!token || !token.trim()) {
                     dispatch({
-                        type: LICENSE_DEMO_CLEAR,
+                        type: LICENSE_CLEAR,
                         payload: {activationBaseUrl: base}
                     });
                     return Promise.resolve();
@@ -218,15 +218,15 @@ export function hydrateLicenseDemoThunk () {
                 return computeDeviceFingerprint()
                     .then(currentFp => {
                         if (storedFp && storedFp !== currentFp) {
-                            removeDemoLicenseFromStorage();
+                            removeLicenseFromStorage();
                             paidAddonRegistry.reset();
                             dispatch({
-                                type: LICENSE_DEMO_CLEAR,
+                                type: LICENSE_CLEAR,
                                 payload: {activationBaseUrl: base}
                             });
                             return null;
                         }
-                        return verifyDemoActivationJwt(token).then(jwtPayload => {
+                        return verifyActivationJwt(token).then(jwtPayload => {
                             const caps = capabilitiesFromPayload(jwtPayload);
                             if (caps.length === 0) {
                                 throw new Error('capability_denied');
@@ -237,7 +237,7 @@ export function hydrateLicenseDemoThunk () {
                             );
                             const licenseContext = licenseContextFromPayload(jwtPayload);
                             dispatch({
-                                type: LICENSE_DEMO_HYDRATE,
+                                type: LICENSE_HYDRATE,
                                 payload: {
                                     activationBaseUrl: base,
                                     signedOfflineToken: token,
@@ -260,10 +260,10 @@ export function hydrateLicenseDemoThunk () {
                         });
                     })
                     .catch(() => {
-                        removeDemoLicenseFromStorage();
+                        removeLicenseFromStorage();
                         paidAddonRegistry.reset();
                         dispatch({
-                            type: LICENSE_DEMO_CLEAR,
+                            type: LICENSE_CLEAR,
                             payload: {activationBaseUrl: base}
                         });
                     });
@@ -276,14 +276,14 @@ export function hydrateLicenseDemoThunk () {
 }
 
 /** @returns {function} */
-export function clearDemoLicenseThunk () {
+export function clearLicenseThunk () {
     return function (dispatch, getState) {
         const base =
-            typeof getState().scratchGui.license_demo !== 'undefined'
-                ? String(getState().scratchGui.license_demo.activationBaseUrl || '')
+            typeof getState().scratchGui.license !== 'undefined'
+                ? String(getState().scratchGui.license.activationBaseUrl || '')
                     .trim() || readPersistedActivationBase()
                 : readPersistedActivationBase();
-        removeDemoLicenseFromStorage();
+        removeLicenseFromStorage();
         paidAddonRegistry.reset();
         try {
             if (typeof localStorage !== 'undefined') {
@@ -291,7 +291,7 @@ export function clearDemoLicenseThunk () {
             }
         } catch (e) { /* ignore */ }
         dispatch({
-            type: LICENSE_DEMO_CLEAR,
+            type: LICENSE_CLEAR,
             payload: {activationBaseUrl: base}
         });
     };
@@ -301,8 +301,8 @@ export function clearDemoLicenseThunk () {
 export function premiumUpdateDismissThunk () {
     return function (dispatch) {
         dispatch({
-            type: LICENSE_DEMO_UPDATE_PHASE,
-            payload: demoUpdateInitialState()
+            type: LICENSE_UPDATE_PHASE,
+            payload: licenseUpdateInitialState()
         });
     };
 }
@@ -310,7 +310,7 @@ export function premiumUpdateDismissThunk () {
 /** @returns {function} */
 export function premiumUpdateConfirmThunk () {
     return function (dispatch, getState) {
-        const update = getState().scratchGui.license_demo.update;
+        const update = getState().scratchGui.license.update;
         return dispatch(premiumDownloadAndInstallThunk({
             downloadUrl: update.downloadUrl,
             latestVersion: update.latestVersion
@@ -330,22 +330,22 @@ function localizedPremiumError (errorCode) {
 }
 
 /** @returns {function} */
-export function premiumAutoUpdateDemoCheckThunk () {
+export function premiumAutoUpdateCheckThunk () {
     return function (dispatch, getState) {
-        const licenseState = getState().scratchGui.license_demo;
+        const licenseState = getState().scratchGui.license;
         const gate = assertPremiumAutoUpdateCapability(licenseState);
         if (!gate.ok) {
             const result = {
                 error: gate.code || 'CAPABILITY_DENIED'
             };
             dispatch({
-                type: LICENSE_DEMO_PREMIUM_CHECK_RESULT,
+                type: LICENSE_PREMIUM_CHECK_RESULT,
                 payload: result
             });
             dispatch({
-                type: LICENSE_DEMO_UPDATE_PHASE,
+                type: LICENSE_CHECK_STATUS,
                 payload: {
-                    phase: 'error',
+                    status: 'error',
                     errorCode: localizedPremiumError(result.error),
                     errorMessage: result.error
                 }
@@ -354,59 +354,65 @@ export function premiumAutoUpdateDemoCheckThunk () {
         }
 
         dispatch({
-            type: LICENSE_DEMO_UPDATE_PHASE,
-            payload: Object.assign({}, demoUpdateInitialState(), {phase: 'checking'})
+            type: LICENSE_CHECK_STATUS,
+            payload: Object.assign({}, {status: 'checking'}, {
+                latestVersion: '',
+                downloadUrl: '',
+                errorCode: '',
+                errorMessage: ''
+            })
         });
 
         return paidAddonRegistry.invokePremiumAutoUpdateCheck(
             licenseContextFromState(licenseState)
         ).then(result => {
             dispatch({
-                type: LICENSE_DEMO_PREMIUM_CHECK_RESULT,
+                type: LICENSE_PREMIUM_CHECK_RESULT,
                 payload: result
             });
 
             if (result.error) {
                 dispatch({
-                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    type: LICENSE_CHECK_STATUS,
                     payload: {
-                        phase: 'error',
+                        status: 'error',
                         errorCode: localizedPremiumError(result.error),
                         errorMessage: result.message || result.error
                     }
                 });
             } else if (result.updatesAvailable) {
                 dispatch({
-                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    type: LICENSE_CHECK_STATUS,
                     payload: {
-                        phase: 'confirm',
+                        status: 'available',
                         latestVersion: result.latestVersion || '',
                         currentVersion: result.currentVersion || '',
                         downloadUrl: result.downloadUrl || '',
-                        errorMessage: '',
-                        errorCode: ''
+                        errorCode: '',
+                        errorMessage: ''
                     }
                 });
             } else {
                 dispatch({
-                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    type: LICENSE_CHECK_STATUS,
                     payload: {
-                        phase: 'uptodate',
+                        status: 'uptodate',
                         currentVersion: result.currentVersion || APP_VERSION,
                         latestVersion: result.latestVersion || '',
-                        errorMessage: '',
-                        errorCode: ''
+                        downloadUrl: '',
+                        errorCode: '',
+                        errorMessage: ''
                     }
                 });
             }
 
-            console.info('[rs3-demo-license] Premium auto-update result:', result);
+            console.info('[rs3-license] Premium auto-update result:', result);
             return result;
         }).catch(err => {
             dispatch({
-                type: LICENSE_DEMO_UPDATE_PHASE,
+                type: LICENSE_CHECK_STATUS,
                 payload: {
-                    phase: 'error',
+                    status: 'error',
                     errorCode: 'CHECK_FAILED',
                     errorMessage: err.message || String(err)
                 }
@@ -416,17 +422,28 @@ export function premiumAutoUpdateDemoCheckThunk () {
     };
 }
 
+/** @returns {function} */
+export function premiumStartUpdateThunk () {
+    return function (dispatch, getState) {
+        const check = getState().scratchGui.license.check;
+        return dispatch(premiumDownloadAndInstallThunk({
+            downloadUrl: check.downloadUrl,
+            latestVersion: check.latestVersion
+        }));
+    };
+}
+
 /** @param {{ downloadUrl: string, latestVersion: string }} checkResult @returns {function} */
 export function premiumDownloadAndInstallThunk (checkResult) {
     return function (dispatch, getState) {
-        const licenseState = getState().scratchGui.license_demo;
+        const licenseState = getState().scratchGui.license;
         const gate = assertPremiumAutoUpdateCapability(licenseState);
         if (!gate.ok) {
             const result = {
                 error: gate.code || 'CAPABILITY_DENIED'
             };
             dispatch({
-                type: LICENSE_DEMO_UPDATE_PHASE,
+                type: LICENSE_UPDATE_PHASE,
                 payload: {
                     phase: 'error',
                     errorMessage: result.error
@@ -442,7 +459,7 @@ export function premiumDownloadAndInstallThunk (checkResult) {
                 error: 'MISSING_DOWNLOAD_INFO'
             };
             dispatch({
-                type: LICENSE_DEMO_UPDATE_PHASE,
+                type: LICENSE_UPDATE_PHASE,
                 payload: {
                     phase: 'error',
                     errorMessage: result.error
@@ -452,7 +469,7 @@ export function premiumDownloadAndInstallThunk (checkResult) {
         }
 
         dispatch({
-            type: LICENSE_DEMO_UPDATE_PHASE,
+            type: LICENSE_UPDATE_PHASE,
             payload: {
                 phase: 'downloading',
                 progress: 0,
@@ -469,12 +486,12 @@ export function premiumDownloadAndInstallThunk (checkResult) {
                 latestVersion,
                 onProgress (percent) {
                     dispatch({
-                        type: LICENSE_DEMO_UPDATE_PROGRESS,
+                        type: LICENSE_UPDATE_PROGRESS,
                         payload: percent
                     });
                     if (percent >= 100) {
                         dispatch({
-                            type: LICENSE_DEMO_UPDATE_PHASE,
+                            type: LICENSE_UPDATE_PHASE,
                             payload: {phase: 'installing'}
                         });
                     }
@@ -483,7 +500,7 @@ export function premiumDownloadAndInstallThunk (checkResult) {
         ).then(result => {
             if (result && result.error) {
                 dispatch({
-                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    type: LICENSE_UPDATE_PHASE,
                     payload: {
                         phase: 'error',
                         errorMessage: result.message || result.error
@@ -491,11 +508,11 @@ export function premiumDownloadAndInstallThunk (checkResult) {
                 });
             } else {
                 dispatch({
-                    type: LICENSE_DEMO_UPDATE_PHASE,
-                    payload: demoUpdateInitialState()
+                    type: LICENSE_UPDATE_PHASE,
+                    payload: licenseUpdateInitialState()
                 });
             }
-            console.info('[rs3-demo-license] Premium download/install result:', result);
+            console.info('[rs3-license] Premium download/install result:', result);
             return result;
         });
     };

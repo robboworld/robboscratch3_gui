@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
 
 import MenuBarDevicePreview from './MenuBarDevicePreview';
 import {ActionTriggerSensorsPalette} from './actions/sensor_actions';
-import {hydrateLicenseDemoThunk} from './actions/licenseDemoActions';
+import {hydrateLicenseThunk} from './actions/licenseActions';
 import {isDesktopWithBluetooth} from '../lib/platform';
 import {showSearchPanel} from './search-panel-visibility';
 import {
@@ -270,7 +270,7 @@ const mapDispatchToProps = dispatch => ({
         dispatch(ActionTriggerSensorsPalette());
     },
     onHydrateDemoLicense: () => {
-        dispatch(hydrateLicenseDemoThunk());
+        dispatch(hydrateLicenseThunk());
     }
 });
 

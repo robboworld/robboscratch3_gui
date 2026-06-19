@@ -13,6 +13,20 @@
     max-height: none;
 }
 
+.license_dev_notice {
+    box-sizing: border-box;
+    margin: 8px 10px 0;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid rgba(255, 152, 0, 0.35);
+    border-radius: $form-radius;
+    background-color: rgba(255, 152, 0, 0.1);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: $popup-font-size-sm;
+    line-height: 1.4;
+    color: $text-primary;
+    text-align: center;
+}
+
 .license_section {
     padding: 8px 10px;
 }

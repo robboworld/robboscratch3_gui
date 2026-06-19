@@ -1,5 +1,5 @@
 /**
- * Holds the paid-addon-registered Premium auto-update implementation (demo).
+ * Holds the paid-addon-registered Premium auto-update implementation.
  */
 let paidAutoUpdateService = null;
 let lastLicenseContext = null;
@@ -62,11 +62,6 @@ const paidAddonRegistry = {
             });
         }
         return paidAutoUpdateService.checkForUpdates(ctx);
-    },
-
-    /** @deprecated use invokePremiumAutoUpdateCheck */
-    invokePremiumAutoUpdateDemo (licenseContext) {
-        return paidAddonRegistry.invokePremiumAutoUpdateCheck(licenseContext);
     },
 
     /**

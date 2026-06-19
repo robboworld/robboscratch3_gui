@@ -20,7 +20,7 @@ import { applyRobboPopupZIndex } from '../lib/robbo-popup-z-index';
 import { resolveCf2FirmwareVersionLabel, parseCf2FlashToolLine } from '../lib/crazyflie-flash-ui';
 import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
 import {setFlashButtonVisualMode, setFlashLogStatusTone} from '../lib/device-status-dom';
-import {hydrateLicenseDemoThunk} from './actions/licenseDemoActions';
+import {hydrateLicenseThunk} from './actions/licenseActions';
 
 const messages = defineMessages({
 
@@ -2337,7 +2337,7 @@ const mapDispatchToProps = dispatch => ({
     },
 
     onHydrateDemoLicense: () => {
-        dispatch(hydrateLicenseDemoThunk());
+        dispatch(hydrateLicenseThunk());
     }
 
     // onDeviceFound: (device) => {

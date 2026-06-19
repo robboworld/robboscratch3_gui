@@ -8,18 +8,23 @@ import formStyles from './RobboPaletteForm.css';
 import styles from './LicenseWindowComponent.css';
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
 import {
-    activateLicenseDemoThunk,
-    persistActivationBaseUrlDemoThunk,
-    clearDemoLicenseThunk
-} from './actions/licenseDemoActions';
-import {CAPABILITY_PREMIUM_AUTO_UPDATE} from './reducers/license_demo';
+    activateLicenseThunk,
+    persistActivationBaseUrlThunk,
+    clearLicenseThunk
+} from './actions/licenseActions';
+import {CAPABILITY_PREMIUM_AUTO_UPDATE} from './reducers/license';
 import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
 
 const messages = defineMessages({
     title: {
         id: 'gui.licenseWindow.title',
-        description: 'Demo license window title',
-        defaultMessage: 'License (demo)'
+        description: 'License window title',
+        defaultMessage: 'License'
+    },
+    section_in_development: {
+        id: 'gui.licenseWindow.section_in_development',
+        description: 'License window under development notice',
+        defaultMessage: 'In development'
     },
     activation_url: {
         id: 'gui.licenseWindow.activation_url',
@@ -40,7 +45,12 @@ const messages = defineMessages({
     hint: {
         id: 'gui.licenseWindow.hint',
         defaultMessage:
-            '1) In rs3-paid-addon: npm run build. 2) In rs3-activation-mock: npm run sync-addon && npm start. Demo key: DEMO-LICENSE-VALID.'
+            'Enter your license key and click Activate. Contact support if you need help.'
+    },
+    hint_dev: {
+        id: 'gui.licenseWindow.hint_dev',
+        defaultMessage:
+            'Dev: rs3-paid-addon npm run build; rs3-activation-mock npm run sync-addon && npm start. Key: DEMO-LICENSE-VALID.'
     },
     status_valid: {
         id: 'gui.licenseWindow.status_valid',
@@ -52,7 +62,7 @@ const messages = defineMessages({
     },
     premium_autoupgrade_ready: {
         id: 'gui.licenseWindow.premium_ready',
-        defaultMessage: '{cap} granted — use «Premium auto-update (demo)» in the Robbo menu.'
+        defaultMessage: '{cap} granted — use «Check for updates» in the About window.'
     },
     addon_pending: {
         id: 'gui.licenseWindow.addon_pending',
@@ -112,12 +122,12 @@ class LicenseWindowComponent extends Component {
     }
 
     onActivateClick () {
-        this.props.onActivateDemo(this.state.licenseKeyDraft);
+        this.props.onActivate(this.state.licenseKeyDraft);
     }
 
     onClearClick () {
         this.setState({licenseKeyDraft: ''});
-        this.props.onClearDemoLicense();
+        this.props.onClearLicense();
     }
 
     resolveActivationError (code) {
@@ -131,7 +141,7 @@ class LicenseWindowComponent extends Component {
     }
 
     renderStatusLine () {
-        const ld = this.props.license_demo;
+        const ld = this.props.license;
         if (ld.activationError) {
             return this.props.intl.formatMessage(messages.status_error, {
                 message: this.resolveActivationError(ld.activationError)
@@ -156,7 +166,7 @@ class LicenseWindowComponent extends Component {
     }
 
     render () {
-        const ld = this.props.license_demo;
+        const ld = this.props.license;
         const hasPremium = hasPremiumAutoUpdateCapability(ld);
         const premiumHint =
             hasPremium && ld.addonReady
@@ -168,6 +178,9 @@ class LicenseWindowComponent extends Component {
                     : '';
         const statusIsError = Boolean(ld.activationError) ||
             Boolean(ld.addonError && ld.status === 'valid_offline');
+        const showDevHint = typeof process !== 'undefined' &&
+            process.env &&
+            process.env.NODE_ENV !== 'production';
 
         return (
             <div
@@ -192,16 +205,24 @@ class LicenseWindowComponent extends Component {
                         styles.license_content
                     )}
                 >
+                    <div
+                        id="license-window-dev-notice"
+                        className={styles.license_dev_notice}
+                        role="status"
+                    >
+                        {this.props.intl.formatMessage(messages.section_in_development)}
+                    </div>
+
                     <div className={classNames(formStyles.section, styles.license_section)}>
                         <div className={styles.license_field_row}>
                             <label
-                                htmlFor="license-demo-activation-base"
+                                htmlFor="license-activation-base"
                                 className={styles.license_field_label}
                             >
                                 {this.props.intl.formatMessage(messages.activation_url)}
                             </label>
                             <input
-                                id="license-demo-activation-base"
+                                id="license-activation-base"
                                 type="text"
                                 className={styles.license_text_input}
                                 value={ld.activationBaseUrl}
@@ -211,13 +232,13 @@ class LicenseWindowComponent extends Component {
 
                         <div className={styles.license_field_row}>
                             <label
-                                htmlFor="license-demo-key"
+                                htmlFor="license-key"
                                 className={styles.license_field_label}
                             >
                                 {this.props.intl.formatMessage(messages.license_key)}
                             </label>
                             <input
-                                id="license-demo-key"
+                                id="license-key"
                                 type="text"
                                 className={styles.license_text_input}
                                 autoComplete="off"
@@ -264,6 +285,12 @@ class LicenseWindowComponent extends Component {
                         <div className={styles.license_hint}>
                             {this.props.intl.formatMessage(messages.hint)}
                         </div>
+
+                        {showDevHint ? (
+                            <div className={styles.license_hint}>
+                                {this.props.intl.formatMessage(messages.hint_dev)}
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </div>
@@ -272,7 +299,7 @@ class LicenseWindowComponent extends Component {
 }
 
 const mapStateToProps = state => ({
-    license_demo: state.scratchGui.license_demo
+    license: state.scratchGui.license
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -280,13 +307,13 @@ const mapDispatchToProps = dispatch => ({
         dispatch(ActionTriggerNewDraggableWindow(windowId));
     },
     onPersistActivationBase: url => {
-        dispatch(persistActivationBaseUrlDemoThunk(url));
+        dispatch(persistActivationBaseUrlThunk(url));
     },
-    onActivateDemo: key => {
-        dispatch(activateLicenseDemoThunk(key));
+    onActivate: key => {
+        dispatch(activateLicenseThunk(key));
     },
-    onClearDemoLicense: () => {
-        dispatch(clearDemoLicenseThunk());
+    onClearLicense: () => {
+        dispatch(clearLicenseThunk());
     }
 });
 

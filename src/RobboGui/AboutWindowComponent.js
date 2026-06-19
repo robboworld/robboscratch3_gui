@@ -18,7 +18,8 @@ import {
   node_process,
   node_os,
   getSystemInfoAsync,
-  formatArchitectureDisplay
+  formatArchitectureDisplay,
+  openExternalUrl
 } from '../lib/platform';
 import {
   showTransientButtonFeedback,
@@ -26,11 +27,17 @@ import {
   isTransientButtonFeedbackActive,
   renderTransientActionLabel
 } from '../lib/transient-button-feedback';
+import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
+import {
+  premiumAutoUpdateCheckThunk,
+  premiumStartUpdateThunk
+} from './actions/licenseActions';
 
 const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
+const SUPPORT_URL = 'https://support.robbo.world/';
 
-const VERSION = 'Robbo Scratch v.3.125.0';
+const VERSION = 'Robbo Scratch v.3.126.0';
 export {VERSION};
 export const APP_VERSION = (VERSION.match(/v\.(.+)$/) || [])[1] || '';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
@@ -145,8 +152,76 @@ const messages = defineMessages({
     id: 'gui.RobboGui.about_system_section',
     description: 'About window system info block title',
     defaultMessage: 'System information'
+  },
+  check_for_updates: {
+    id: 'gui.RobboGui.check_for_updates',
+    description: 'About window check for updates tooltip',
+    defaultMessage: 'Check for updates'
+  },
+  update_available: {
+    id: 'gui.RobboGui.update_available',
+    description: 'About window update available button',
+    defaultMessage: 'Update to v{version}'
+  },
+  update_uptodate: {
+    id: 'gui.RobboGui.update_uptodate',
+    description: 'About window up to date tooltip',
+    defaultMessage: 'Up to date'
+  },
+  update_checking: {
+    id: 'gui.RobboGui.update_checking',
+    description: 'About window checking for updates',
+    defaultMessage: 'Checking for updates…'
+  },
+  update_error: {
+    id: 'gui.RobboGui.update_error',
+    description: 'About window update check failed',
+    defaultMessage: 'Update check failed'
+  },
+  update_preparing: {
+    id: 'gui.RobboGui.update_preparing',
+    description: 'About window preparing updates',
+    defaultMessage: 'Preparing updates…'
+  },
+  waiting_addon_tooltip: {
+    id: 'gui.RobboMenu.premium_waiting_addon_tooltip',
+    description: 'Tooltip while paid addon is loading',
+    defaultMessage: 'Paid addon is still loading from the activation server…'
+  },
+  premium_error_license_inactive: {
+    id: 'gui.licenseWindow.premium_error_license_inactive',
+    defaultMessage: 'Activate a valid license first.'
+  },
+  premium_error_device_mismatch: {
+    id: 'gui.licenseWindow.premium_error_device_mismatch',
+    defaultMessage: 'License is bound to another device.'
+  },
+  premium_error_capability_denied: {
+    id: 'gui.licenseWindow.premium_error_capability_denied',
+    defaultMessage: 'License does not include premium auto-update.'
+  },
+  premium_error_addon_not_loaded: {
+    id: 'gui.licenseWindow.premium_error_addon_not_loaded',
+    defaultMessage: 'Paid addon is not loaded yet.'
+  },
+  premium_update_desktop_only: {
+    id: 'gui.RobboMenu.premium_update_desktop_only',
+    defaultMessage: 'Premium auto-update is available only in the Desktop app.'
+  },
+  help: {
+    id: 'gui.RobboGui.help',
+    description: 'About window help button',
+    defaultMessage: 'Help'
   }
 });
+
+const UPDATE_ERROR_MESSAGES = {
+  LICENSE_INACTIVE: messages.premium_error_license_inactive,
+  DEVICE_BINDING_MISMATCH: messages.premium_error_device_mismatch,
+  CAPABILITY_DENIED: messages.premium_error_capability_denied,
+  ADDON_NOT_LOADED: messages.premium_error_addon_not_loaded,
+  DESKTOP_ONLY: messages.premium_update_desktop_only
+};
 
 class AboutWindowComponent extends Component {
   constructor (props) {
@@ -159,11 +234,155 @@ class AboutWindowComponent extends Component {
     };
     this.onThisWindowClose = this.onThisWindowClose.bind(this);
     this.toggleProfiling = this.toggleProfiling.bind(this);
+    this.onCheckForUpdatesClick = this.onCheckForUpdatesClick.bind(this);
+    this.onStartUpdateClick = this.onStartUpdateClick.bind(this);
+    this.onHelpClick = this.onHelpClick.bind(this);
   }
 
   onThisWindowClose () {
     console.log('aboutWindow close');
     this.props.onAboutWindowClose('about-window');
+  }
+
+  onCheckForUpdatesClick () {
+    if (this.props.license && hasPremiumAutoUpdateCapability(this.props.license)) {
+      this.props.onCheckForUpdates();
+    }
+  }
+
+  onStartUpdateClick () {
+    if (this.props.license && hasPremiumAutoUpdateCapability(this.props.license)) {
+      this.props.onStartUpdate();
+    }
+  }
+
+  onHelpClick () {
+    openExternalUrl(SUPPORT_URL);
+  }
+
+  resolveCheckErrorText (check) {
+    const intl = this.props.intl;
+    const code = check.errorCode || '';
+    if (UPDATE_ERROR_MESSAGES[code]) {
+      return intl.formatMessage(UPDATE_ERROR_MESSAGES[code]);
+    }
+    return check.errorMessage || code || intl.formatMessage(messages.update_error);
+  }
+
+  renderUpdateIndicator () {
+    const license = this.props.license;
+    const intl = this.props.intl;
+    if (!license || !hasPremiumAutoUpdateCapability(license)) {
+      return null;
+    }
+
+    if (!license.addonReady) {
+      return (
+        <div
+          className={styles.about_update_indicator}
+          title={intl.formatMessage(messages.update_preparing)}
+        >
+          <span
+            className={styles.about_update_spinner}
+            aria-hidden="true"
+          />
+          <span className={styles.about_update_status_text}>
+            {intl.formatMessage(messages.update_preparing)}
+          </span>
+        </div>
+      );
+    }
+
+    const check = license.check || {};
+    const status = check.status || 'unknown';
+
+    if (status === 'checking') {
+      return (
+        <div
+          className={styles.about_update_indicator}
+          title={intl.formatMessage(messages.update_checking)}
+        >
+          <span
+            className={styles.about_update_spinner}
+            aria-hidden="true"
+          />
+          <span className={styles.about_update_status_text}>
+            {intl.formatMessage(messages.update_checking)}
+          </span>
+        </div>
+      );
+    }
+
+    if (status === 'uptodate') {
+      return (
+        <button
+          type="button"
+          id="about-window-update-uptodate"
+          className={classNames(styles.about_update_indicator, styles.about_update_icon_button)}
+          title={intl.formatMessage(messages.update_uptodate)}
+          aria-label={intl.formatMessage(messages.update_uptodate)}
+          onClick={this.onCheckForUpdatesClick}
+        >
+          <span
+            className={classNames(styles.about_update_icon, styles.about_update_icon_success)}
+            aria-hidden="true"
+          />
+        </button>
+      );
+    }
+
+    if (status === 'available') {
+      return (
+        <button
+          type="button"
+          id="about-window-update-available"
+          className={classNames(
+            formStyles.action_button,
+            styles.about_update_button
+          )}
+          onClick={this.onStartUpdateClick}
+        >
+          {intl.formatMessage(messages.update_available, {
+            version: check.latestVersion || ''
+          })}
+        </button>
+      );
+    }
+
+    if (status === 'error') {
+      const errorText = this.resolveCheckErrorText(check);
+      return (
+        <button
+          type="button"
+          id="about-window-update-error"
+          className={classNames(styles.about_update_indicator, styles.about_update_icon_button)}
+          title={errorText}
+          aria-label={errorText}
+          onClick={this.onCheckForUpdatesClick}
+        >
+          <span
+            className={classNames(styles.about_update_icon, styles.about_update_icon_error)}
+            aria-hidden="true"
+          />
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        id="about-window-update-unknown"
+        className={classNames(styles.about_update_indicator, styles.about_update_icon_button)}
+        title={intl.formatMessage(messages.check_for_updates)}
+        aria-label={intl.formatMessage(messages.check_for_updates)}
+        onClick={this.onCheckForUpdatesClick}
+      >
+        <span
+          className={classNames(styles.about_update_icon, styles.about_update_icon_refresh)}
+          aria-hidden="true"
+        />
+      </button>
+    );
   }
 
   componentDidMount() {
@@ -469,6 +688,7 @@ class AboutWindowComponent extends Component {
       COPY_BUTTON_FEEDBACK_KEY,
       COPY_FEEDBACK_TOKEN
     );
+    const updateIndicator = this.renderUpdateIndicator();
     return (
       <div id="about-window" className={classNames(sharedStyles.palette, styles.about_window)}>
         <div
@@ -499,11 +719,14 @@ class AboutWindowComponent extends Component {
             className={classNames(formStyles.section, styles.about_section)}
           >
             <div className={styles.about_version_block}>
-              <div
-                id="raw-1-about-window-content-column-1"
-                className={formStyles.version_label}
-              >
-                {DISPLAY_VERSION}
+              <div className={styles.about_version_row}>
+                <div
+                  id="raw-1-about-window-content-column-1"
+                  className={formStyles.version_label}
+                >
+                  {DISPLAY_VERSION}
+                </div>
+                {updateIndicator}
               </div>
               <button
                 type="button"
@@ -624,16 +847,51 @@ class AboutWindowComponent extends Component {
             </div>
           ) : null}
         </div>
+
+        <div
+          id="about-window-footer"
+          className={classNames(formStyles.footer, styles.about_footer, styles.about_footer_outside)}
+        >
+          <div className={classNames(formStyles.footer_actions, styles.about_footer_actions)}>
+            <button
+              type="button"
+              id="about-window-help"
+              className={classNames(
+                formStyles.action_button,
+                styles.about_help_button
+              )}
+              onClick={this.onHelpClick}
+            >
+              <span
+                className={styles.about_help_icon}
+                aria-hidden="true"
+              />
+              <span className={formStyles.action_button_label}>
+                {intl.formatMessage(messages.help)}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 }
 
-const mapStateToProps = state => ({});
+const mapStateToProps = state => ({
+  license: state.scratchGui.license
+});
 
 const mapDispatchToProps = dispatch => ({
   onAboutWindowClose: window_id => {
     dispatch(ActionTriggerNewDraggableWindow(window_id));
+  },
+
+  onCheckForUpdates: () => {
+    dispatch(premiumAutoUpdateCheckThunk());
+  },
+
+  onStartUpdate: () => {
+    dispatch(premiumStartUpdateThunk());
   },
 
   createWindow: (top, left, window_id) => {

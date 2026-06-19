@@ -1,9 +1,9 @@
-import {CAPABILITY_PREMIUM_AUTO_UPDATE} from '../../RobboGui/reducers/license_demo';
+import {CAPABILITY_PREMIUM_AUTO_UPDATE} from '../../RobboGui/reducers/license';
 
 /**
  * Single gateway for premium.auto_update capability (UI + services).
  *
- * @param {object|null|undefined} licenseState Redux license_demo slice
+ * @param {object|null|undefined} licenseState Redux license slice
  * @returns {boolean}
  */
 export function hasPremiumAutoUpdateCapability (licenseState) {

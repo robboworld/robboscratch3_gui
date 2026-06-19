@@ -14,8 +14,6 @@ import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
-import {premiumAutoUpdateDemoCheckThunk} from './actions/licenseDemoActions';
-import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 import {
@@ -111,12 +109,7 @@ const messages = defineMessages({
     trigger_license_window: {
         id: 'gui.RobboMenu.trigger_license_window',
         description: ' ',
-        defaultMessage: 'License (demo)'
-    },
-    premium_auto_update_demo: {
-        id: 'gui.RobboMenu.premium_auto_update_demo',
-        description: ' ',
-        defaultMessage: 'Premium auto-update (demo)'
+        defaultMessage: 'License'
     },
     premium_waiting_addon_tooltip: {
         id: 'gui.RobboMenu.premium_waiting_addon_tooltip',
@@ -412,12 +405,6 @@ class RobboMenu extends Component {
 
   triggerLicenseWindow () {
       this.props.onTriggerLicenseWindow('license-window');
-  }
-
-  premiumAutoUpdateDemoMenuClick () {
-      if (this.props.licenseDemo && hasPremiumAutoUpdateCapability(this.props.licenseDemo)) {
-          this.props.onPremiumAutoUpdateDemoCheck();
-      }
   }
 
   triggerIotConnectionWindow() {
@@ -725,24 +712,6 @@ class RobboMenu extends Component {
 
                       )}>{this.props.intl.formatMessage(messages.trigger_about_window)} </div>
 
-              {hasPremiumAutoUpdateCapability(this.props.licenseDemo) ? (
-                  <div
-                      id="trigger-premium-auto-update-demo"
-                      onClick={this.premiumAutoUpdateDemoMenuClick.bind(this)}
-                      className={classNames({[styles.robbo_menu_item]: true})}
-                      style={{
-                          opacity: this.props.licenseDemo.addonReady ? 1 : 0.55
-                      }}
-                      title={
-                          this.props.licenseDemo.addonReady
-                              ? ''
-                              : this.props.intl.formatMessage(messages.premium_waiting_addon_tooltip)
-                      }
-                      role="presentation"
-                  >{this.props.intl.formatMessage(messages.premium_auto_update_demo)}{' '}
-                  </div>
-                   ) : null}
-
 
       </div>
       </RobboPopupTransition>
@@ -761,8 +730,7 @@ const mapStateToProps =  state => ({
     robbo_menu:state.scratchGui.robbo_menu,
     robot_sensors:state.scratchGui.robot_sensors,
     settings:state.scratchGui.settings,
-    extension_pack:state.scratchGui.extension_pack,
-    licenseDemo:state.scratchGui.license_demo
+    extension_pack:state.scratchGui.extension_pack
 
 
   });
@@ -812,7 +780,6 @@ const mapDispatchToProps = dispatch => ({
 
         dispatch(ActionTriggerNewDraggableWindow(windowId));
       },
-    onPremiumAutoUpdateDemoCheck: () => dispatch(premiumAutoUpdateDemoCheckThunk()),
     onTriggerRobboMenu: () => {
 
       dispatch(ActionTriggerRobboMenu());

@@ -82,7 +82,7 @@ function verifyDeviceBinding (payload) {
  * @param {string} token JWT compact form
  * @returns {Promise<object>} Parsed payload object
  */
-export function verifyDemoActivationJwt (token) {
+export function verifyActivationJwt (token) {
     try {
         if (typeof token !== 'string' || !token || token.split('.').length !== 3) {
             return Promise.reject(new Error('invalid_token_shape'));
@@ -125,5 +125,3 @@ export function verifyDemoActivationJwt (token) {
         return Promise.reject(e);
     }
 }
-
-export {verifyDemoActivationJwt as verifyActivationJwt};

@@ -46,6 +46,100 @@
     line-height: 1.45;
 }
 
+.about_version_row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.about_version_row .version_label {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: 0.75rem;
+}
+
+.about_update_indicator {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.about_update_indicator > * + * {
+    margin-left: 0.5rem;
+}
+
+.about_update_icon_button {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    line-height: 0;
+}
+
+.about_update_icon_button:focus {
+    outline: none;
+}
+
+.about_update_icon {
+    display: inline-block;
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 50%;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 0.875rem;
+}
+
+.about_update_icon_success {
+    background-color: rgba(0, 175, 65, 0.14);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+}
+
+.about_update_icon_error {
+    background-color: rgba(255, 102, 26, 0.12);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff661a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
+}
+
+.about_update_icon_refresh {
+    background-color: rgba(0, 175, 65, 0.12);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='23 4 23 10 17 10'/%3E%3Cpath d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10'/%3E%3C/svg%3E");
+}
+
+.about_update_spinner {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(0, 175, 65, 0.2);
+    border-top-color: $motion-primary;
+    border-radius: 50%;
+    animation: about-update-spin 0.75s linear infinite;
+}
+
+.about_update_status_text {
+    flex: 0 1 auto;
+    font-size: $popup-font-size-sm;
+    line-height: 1.35;
+    color: $text-primary-transparent;
+    white-space: nowrap;
+}
+
+.about_update_button {
+    flex: 0 0 auto;
+    width: auto;
+    box-sizing: border-box;
+    padding: 0.25rem 0.625rem;
+    white-space: nowrap;
+    font-size: $popup-font-size-sm;
+    line-height: 1.35;
+    background-color: rgba(0, 175, 65, 0.18);
+    border-color: rgba(0, 175, 65, 0.75);
+}
+
 .about_button {
     width: 100%;
     box-sizing: border-box;
@@ -58,6 +152,51 @@
 .about_button_active {
     background-color: rgba(0, 175, 65, 0.18);
     border-color: rgba(0, 175, 65, 0.7);
+}
+
+.about_footer {
+    margin-top: 14px;
+    justify-content: center;
+}
+
+.about_footer_outside {
+    box-sizing: border-box;
+    margin-top: 0;
+    padding: 0 12px 12px;
+}
+
+.about_footer_actions {
+    justify-content: center;
+}
+
+.about_help_button {
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.375rem 0.875rem;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1.45;
+}
+
+.about_help_button > * + * {
+    margin-left: 0.5rem;
+}
+
+.about_help_icon {
+    flex: 0 0 auto;
+    display: inline-block;
+    width: 1.125rem;
+    height: 1.125rem;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
 }
 
 .about_info_list,
@@ -147,4 +286,10 @@
     text-align: right;
     overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+@keyframes about-update-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }

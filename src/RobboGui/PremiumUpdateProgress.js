@@ -9,7 +9,7 @@ import formStyles from './RobboPaletteForm.css';
 import {
     premiumUpdateConfirmThunk,
     premiumUpdateDismissThunk
-} from './actions/licenseDemoActions';
+} from './actions/licenseActions';
 
 const messages = defineMessages({
     title: {
@@ -305,7 +305,7 @@ PremiumUpdateProgress.propTypes = {
 };
 
 const mapStateToProps = state => ({
-    update: state.scratchGui.license_demo.update
+    update: state.scratchGui.license.update
 });
 
 const mapDispatchToProps = dispatch => ({

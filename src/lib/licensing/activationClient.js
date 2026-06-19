@@ -6,7 +6,7 @@
  * @param {string} body.publicBase same origin as activation for addon URLs
  * @returns {Promise<{signedOfflineToken: string, addonManifestUrl: string}>}
  */
-export function postActivateDemo (activationBaseUrl, body) {
+export function postActivate (activationBaseUrl, body) {
     const base = activationBaseUrl.replace(/\/$/, '');
     return fetch(`${base}/v1/activate`, {
         method: 'POST',
@@ -45,7 +45,7 @@ export function postActivateDemo (activationBaseUrl, body) {
  * @param {string} body.deviceFingerprint
  * @returns {Promise<object>}
  */
-export function postDeactivateSeatDemo (activationBaseUrl, body) {
+export function postDeactivateSeat (activationBaseUrl, body) {
     const base = activationBaseUrl.replace(/\/$/, '');
     return fetch(`${base}/v1/seats/deactivate`, {
         method: 'POST',
