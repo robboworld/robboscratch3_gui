@@ -1,6 +1,10 @@
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {defineMessages, injectIntl} from 'react-intl';
+import classNames from 'classnames';
+
+import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
 import styles from './LicenseWindowComponent.css';
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
 import {
@@ -118,83 +122,104 @@ class LicenseWindowComponent extends Component {
                 : hasPremium && !ld.addonReady
                     ? this.props.intl.formatMessage(messages.addon_pending)
                     : '';
+        const statusIsError = Boolean(ld.activationError) ||
+            Boolean(ld.addonError && ld.status === 'valid_offline');
 
         return (
-            <div id="license-window" className={styles.license_window}>
-                <div
-                    id="license-window-title"
-                    className={styles.license_window_tittle}
-                >
-                    <span>{this.props.intl.formatMessage(messages.title)} </span>
-
-                    <div
-                        role="presentation"
-                        className={styles.close_icon}
-                        onMouseDown={() => {}}
+            <div
+                id="license-window"
+                className={classNames(sharedStyles.palette, styles.license_window)}
+            >
+                <div id="license-window-title" className={sharedStyles.header}>
+                    <span className={sharedStyles.headerTitle}>
+                        {this.props.intl.formatMessage(messages.title)}
+                    </span>
+                    <button
+                        type="button"
+                        className={sharedStyles.closeButton}
+                        aria-label="Close"
                         onClick={this.close}
-                    >
-                        {' '}
-                    </div>
+                    />
                 </div>
 
-                <div className={styles.license_window_content}>
-                    <div className={styles.license_row}>
-                        <label
-                            htmlFor="license-demo-activation-base"
-                            className={styles.license_label}
-                        >
-                            {this.props.intl.formatMessage(messages.activation_url)}
-                        </label>
-                        <input
-                            id="license-demo-activation-base"
-                            type="text"
-                            className={styles.license_input}
-                            value={ld.activationBaseUrl}
-                            onChange={this.handleBaseChange}
-                        />
-                    </div>
+                <div
+                    className={classNames(
+                        sharedStyles.body,
+                        styles.license_content
+                    )}
+                >
+                    <div className={classNames(formStyles.section, styles.license_section)}>
+                        <div className={styles.license_field_row}>
+                            <label
+                                htmlFor="license-demo-activation-base"
+                                className={styles.license_field_label}
+                            >
+                                {this.props.intl.formatMessage(messages.activation_url)}
+                            </label>
+                            <input
+                                id="license-demo-activation-base"
+                                type="text"
+                                className={styles.license_text_input}
+                                value={ld.activationBaseUrl}
+                                onChange={this.handleBaseChange}
+                            />
+                        </div>
 
-                    <div className={styles.license_row}>
-                        <label
-                            htmlFor="license-demo-key"
-                            className={styles.license_label}
-                        >
-                            {this.props.intl.formatMessage(messages.license_key)}
-                        </label>
-                        <input
-                            id="license-demo-key"
-                            type="text"
-                            className={styles.license_input}
-                            autoComplete="off"
-                            value={this.state.licenseKeyDraft}
-                            onChange={this.handleKeyChange}
-                        />
-                    </div>
+                        <div className={styles.license_field_row}>
+                            <label
+                                htmlFor="license-demo-key"
+                                className={styles.license_field_label}
+                            >
+                                {this.props.intl.formatMessage(messages.license_key)}
+                            </label>
+                            <input
+                                id="license-demo-key"
+                                type="text"
+                                className={styles.license_text_input}
+                                autoComplete="off"
+                                value={this.state.licenseKeyDraft}
+                                onChange={this.handleKeyChange}
+                            />
+                        </div>
 
-                    <div className={styles.license_actions}>
-                        <button
-                            type="button"
-                            className={styles.license_btn}
-                            disabled={ld.isActivating}
-                            onClick={this.onActivateClick}
-                        >
-                            {this.props.intl.formatMessage(messages.activate)}
-                        </button>
-                        <button
-                            type="button"
-                            className={`${styles.license_btn} ${styles.license_btn_secondary}`}
-                            onClick={this.onClearClick}
-                        >
-                            {this.props.intl.formatMessage(messages.clear_license)}
-                        </button>
-                    </div>
+                        <div className={classNames(formStyles.footer, styles.license_actions)}>
+                            <div className={formStyles.button_group}>
+                                <button
+                                    type="button"
+                                    className={formStyles.action_button}
+                                    disabled={ld.isActivating}
+                                    onClick={this.onActivateClick}
+                                >
+                                    {this.props.intl.formatMessage(messages.activate)}
+                                </button>
+                                <button
+                                    type="button"
+                                    className={classNames(
+                                        formStyles.action_button,
+                                        styles.license_button_secondary
+                                    )}
+                                    onClick={this.onClearClick}
+                                >
+                                    {this.props.intl.formatMessage(messages.clear_license)}
+                                </button>
+                            </div>
+                        </div>
 
-                    <div className={styles.license_status}>{this.renderStatusLine()}</div>
-                    {premiumHint ? (
-                        <div className={styles.license_hint}>{premiumHint}</div>
-                    ) : null}
-                    <div className={styles.license_hint}>
-                        {this.props.intl.formatMessage(messages.hint)}
+                        <div
+                            className={classNames(styles.license_status, {
+                                [styles.license_status_error]: statusIsError
+                            })}
+                        >
+                            {this.renderStatusLine()}
+                        </div>
+
+                        {premiumHint ? (
+                            <div className={styles.license_hint}>{premiumHint}</div>
+                        ) : null}
+
+                        <div className={styles.license_hint}>
+                            {this.props.intl.formatMessage(messages.hint)}
+                        </div>
                     </div>
                 </div>
             </div>
