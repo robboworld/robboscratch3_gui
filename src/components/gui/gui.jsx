@@ -170,6 +170,7 @@ const GUIComponent = props => {
         isCreating,
         isFullScreen,
         isPlayerOnly,
+        embedMode,
         isRtl,
         isShared,
         loading,
@@ -249,6 +250,7 @@ const GUIComponent = props => {
 
         return isPlayerOnly ? (
             <StageWrapper
+                isEmbedPlayer={embedMode}
                 isFullScreen={isFullScreen}
                 isRendererSupported={isRendererSupported}
                 isRtl={isRtl}
@@ -562,6 +564,7 @@ GUIComponent.propTypes = {
     isCreating: PropTypes.bool,
     isFullScreen: PropTypes.bool,
     isPlayerOnly: PropTypes.bool,
+    embedMode: PropTypes.bool,
     isRightPanelHidden: PropTypes.bool,
     isBlocksPaletteCollapsed: PropTypes.bool,
     blocksPaletteFlyoutWidth: PropTypes.number,

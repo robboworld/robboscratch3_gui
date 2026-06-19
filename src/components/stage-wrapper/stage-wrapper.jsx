@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
+import classNames from 'classnames';
 import VM from 'scratch-vm';
 
 import Box from '../box/box.jsx';
@@ -11,6 +12,7 @@ import styles from './stage-wrapper.css';
 
 const StageWrapperComponent = function (props) {
     const {
+        isEmbedPlayer,
         isFullScreen,
         isRtl,
         isRendererSupported,
@@ -21,13 +23,16 @@ const StageWrapperComponent = function (props) {
 
     return (
         <Box
-            className={styles.stageWrapper}
+            className={classNames(styles.stageWrapper, {
+                [styles.stageWrapperEmbed]: isEmbedPlayer
+            })}
             dir={isRtl ? 'rtl' : 'ltr'}
         >
             <Box className={styles.stageCanvasWrapper}>
                 {
                     isRendererSupported ?
                         <Stage
+                            isEmbedPlayer={isEmbedPlayer}
                             stageSize={stageSize}
                             vm={vm}
                         /> :
@@ -42,6 +47,7 @@ const StageWrapperComponent = function (props) {
 };
 
 StageWrapperComponent.propTypes = {
+    isEmbedPlayer: PropTypes.bool,
     isFullScreen: PropTypes.bool,
     isRendererSupported: PropTypes.bool.isRequired,
     isRtl: PropTypes.bool.isRequired,

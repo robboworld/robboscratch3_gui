@@ -21,6 +21,7 @@ const StageComponent = props => {
         sensorDebugRef,
         isColorPicking,
         isFullScreen,
+        isEmbedPlayer,
         isStarted,
         colorInfo,
         micIndicator,
@@ -33,7 +34,7 @@ const StageComponent = props => {
         ...boxProps
     } = props;
 
-    const stageDimensions = getStageDimensions(stageSize, isFullScreen);
+    const stageDimensions = getStageDimensions(stageSize, isFullScreen, isEmbedPlayer);
 
     return (
         <div>
@@ -146,6 +147,7 @@ StageComponent.propTypes = {
     sensorDebugRef: PropTypes.func,
     isColorPicking: PropTypes.bool,
     isFullScreen: PropTypes.bool.isRequired,
+    isEmbedPlayer: PropTypes.bool,
     isStarted: PropTypes.bool,
     micIndicator: PropTypes.bool,
     onDeactivateColorPicker: PropTypes.func,
@@ -157,6 +159,7 @@ StageComponent.propTypes = {
 };
 StageComponent.defaultProps = {
     dragRef: () => {},
-    sensorDebugRef: () => {}
+    sensorDebugRef: () => {},
+    isEmbedPlayer: false
 };
 export default StageComponent;

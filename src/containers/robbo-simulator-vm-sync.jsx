@@ -10,7 +10,14 @@ import {getDefaultSimulationCopterSpriteJson} from '../lib/robbo-simulation-copt
 /**
  * Registers Robbo SB3 save context, simulation sprite provider, and WebGL/load policy on the VM.
  * Must not be mounted as a child of GUIComponent when children is set (would hide Stage).
+ * VM hooks are optional: stock scratch-vm in Docker may not include Robbo patches.
  */
+const callVmHook = (vm, method, ...args) => {
+    if (vm && typeof vm[method] === 'function') {
+        vm[method](...args);
+    }
+};
+
 const RobboSimulatorVmSync = props => {
     const {vm, robotSensors, isSimActivated, extensionPackActivated, isCopterSimActivated} = props;
 
@@ -21,24 +28,24 @@ const RobboSimulatorVmSync = props => {
             copterSimEnabled: isCopterSimActivated,
             sensors: robotSensors
         });
-        vm.setRobboSimulatorSaveContextGetter(getter);
-        return () => vm.setRobboSimulatorSaveContextGetter(null);
+        callVmHook(vm, 'setRobboSimulatorSaveContextGetter', getter);
+        return () => callVmHook(vm, 'setRobboSimulatorSaveContextGetter', null);
     }, [vm, robotSensors, isSimActivated, extensionPackActivated, isCopterSimActivated]);
 
     useEffect(() => {
-        vm.setRobboSimulationSpriteJsonProvider(getDefaultSimulationRobotSpriteJson);
-        return () => vm.setRobboSimulationSpriteJsonProvider(null);
+        callVmHook(vm, 'setRobboSimulationSpriteJsonProvider', getDefaultSimulationRobotSpriteJson);
+        return () => callVmHook(vm, 'setRobboSimulationSpriteJsonProvider', null);
     }, [vm]);
 
     useEffect(() => {
-        vm.setCopterSimulationSpriteJsonProvider(getDefaultSimulationCopterSpriteJson);
-        return () => vm.setCopterSimulationSpriteJsonProvider(null);
+        callVmHook(vm, 'setCopterSimulationSpriteJsonProvider', getDefaultSimulationCopterSpriteJson);
+        return () => callVmHook(vm, 'setCopterSimulationSpriteJsonProvider', null);
     }, [vm]);
 
     useEffect(() => {
         const supported = Renderer.isSupported();
-        vm.setAllowProjectLoadWithoutRenderer(!supported);
-        return () => vm.setAllowProjectLoadWithoutRenderer(false);
+        callVmHook(vm, 'setAllowProjectLoadWithoutRenderer', !supported);
+        return () => callVmHook(vm, 'setAllowProjectLoadWithoutRenderer', false);
     }, [vm]);
 
     return null;
