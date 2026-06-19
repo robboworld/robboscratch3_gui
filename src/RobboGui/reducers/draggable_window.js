@@ -91,8 +91,8 @@ switch (action.type) {
 
               draggable_windows[draggable_window_id]= {
 
-                     position_top:400,
-                     position_left: 400,
+                     position_top: action.payload.position_top,
+                     position_left: action.payload.position_left,
                      isShowing: false
 
 

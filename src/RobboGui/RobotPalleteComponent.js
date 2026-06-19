@@ -1,8 +1,16 @@
+import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import styles from  './RobotPalleteComponent.css';
-import SensorDataBlockComponent  from './SensorDataBlockComponent';
+import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
+import rowStyles from './DevicePaletteRows.css';
+import SensorDataBlockComponent from './SensorDataBlockComponent';
 import SensorComponent from './SensorComponent';
+import {
+  getPaletteSensorValueNode,
+  setPaletteSensorColorValue,
+  setPaletteSensorTextValue
+} from './sensor-palette-dom';
 
 import {ActionRobotGetDataStart} from  './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
@@ -25,19 +33,19 @@ const messages = defineMessages({
     path_left: {
         id: 'gui.RobboGui.RobotPalette.path_left',
         description: ' ',
-        defaultMessage: 'Path left: '
+        defaultMessage: 'Path left'
     },
 
     path_right: {
         id: 'gui.RobboGui.RobotPalette.path_right',
         description: ' ',
-        defaultMessage: 'Path right: '
+        defaultMessage: 'Path right'
     },
 
     start_button_pushed: {
         id: 'gui.RobboGui.RobotPalette.start_button_pushed',
         description: ' ',
-        defaultMessage: 'Start button pushed: '
+        defaultMessage: 'Start button pushed'
     },
     robot: {
         id: 'gui.RobboGui.RobotPalette.robot',
@@ -67,6 +75,13 @@ class RobotPalleteComponent extends Component {
      this.getDataInterval = null;
   }
 
+  componentWillUnmount () {
+    if (this.getDataInterval) {
+      clearInterval(this.getDataInterval);
+      this.getDataInterval = null;
+    }
+  }
+
 
 
   startGetDataLoop(){
@@ -77,13 +92,33 @@ class RobotPalleteComponent extends Component {
 
   }
 
-  shouldComponentUpdate (nextProps, nextState) {
-      return (
+  isRobotSimulationActive (props = this.props) {
+    return Boolean(
+      props.is_sim_activated ||
+      (props.VM && props.VM.runtime && props.VM.runtime.sim_ac)
+    );
+  }
 
-        this.props.draggable_window[1].isShowing !== false
-
-
-      );
+  shouldComponentUpdate (nextProps) {
+    if (nextProps.draggable_window[1].isShowing === false) {
+      return false;
+    }
+    if (this.props.draggable_window[1].isShowing !== nextProps.draggable_window[1].isShowing) {
+      return true;
+    }
+    if (this.isRobotSimulationActive(this.props) !== this.isRobotSimulationActive(nextProps)) {
+      return true;
+    }
+    if (this.props.is_sim_activated !== nextProps.is_sim_activated) {
+      return true;
+    }
+    if (this.props.robot_sensors !== nextProps.robot_sensors) {
+      return true;
+    }
+    if (this.props.robot_special_sensors !== nextProps.robot_special_sensors) {
+      return true;
+    }
+    return false;
   }
 
   componentDidMount(){
@@ -111,25 +146,20 @@ componentDidUpdate(){
 
   sensor = document.getElementById(`${this.props.robot_special_sensors[0].sensor_device_name}_sensor-data-block-${this.props.robot_special_sensors[0].sensor_id}_type-${this.props.robot_special_sensors[0].sensor_type}`);
 
-  this.sensors_values_field_list[0] = sensor.children[0].children[1].children[0];
+  this.sensors_values_field_list[0] = getPaletteSensorValueNode(sensor);
 
+  sensor = document.getElementById(`${this.props.robot_special_sensors[1].sensor_device_name}_sensor-data-block-${this.props.robot_special_sensors[1].sensor_id}_type-${this.props.robot_special_sensors[1].sensor_type}`);
 
- sensor = document.getElementById(`${this.props.robot_special_sensors[1].sensor_device_name}_sensor-data-block-${this.props.robot_special_sensors[1].sensor_id}_type-${this.props.robot_special_sensors[1].sensor_type}`);
-
-  this.sensors_values_field_list[1] = sensor.children[0].children[1].children[0];
-
+  this.sensors_values_field_list[1] = getPaletteSensorValueNode(sensor);
 
   sensor = document.getElementById(`${this.props.robot_special_sensors[2].sensor_device_name}_sensor-data-block-${this.props.robot_special_sensors[2].sensor_id}_type-${this.props.robot_special_sensors[2].sensor_type}`);
 
-  this.sensors_values_field_list[2] = sensor.children[0].children[1].children[0];
+  this.sensors_values_field_list[2] = getPaletteSensorValueNode(sensor);
 
-
-  for (let index = 0; index < this.props.robot_sensors.length; index++ ){
-
+  for (let index = 0; index < this.props.robot_sensors.length; index++) {
     sensor = document.getElementById(`${this.props.robot_sensors[index].sensor_device_name}_sensor-${this.props.robot_sensors[index].sensor_id}_type-${this.props.robot_sensors[index].sensor_type}`);
 
-    this.sensors_values_field_list[3+ index] = sensor.children[0].children[0].children[1].children[0];
-
+    this.sensors_values_field_list[3 + index] = getPaletteSensorValueNode(sensor);
   }
 
 }
@@ -149,6 +179,11 @@ componentDidUpdate(){
 
           const isSimulation = Boolean(this.props.VM && this.props.VM.runtime && this.props.VM.runtime.sim_ac);
           const primitives = isSimulation ? this.props.VM.runtime._primitives : null;
+          const hasLiveSensorData = Boolean(
+            this.props.RCA &&
+            typeof this.props.RCA.getSensorsData === 'function' &&
+            this.props.RCA.getSensorsData() != null
+          );
 
           if (!isSimulation) {
             sensors_values_field_list[0].innerHTML = this.props.RCA.getLeftPath();
@@ -163,64 +198,54 @@ componentDidUpdate(){
           }
 
 
-          for (let index = 0; index < this.props.robot_sensors.length; index++ ){
+          const colorValueClass = rowStyles.telemetry_value_color;
 
+          for (let index = 0; index < this.props.robot_sensors.length; index++) {
+            const valueCell = sensors_values_field_list[3 + index];
+            if (!valueCell) {
+              continue;
+            }
 
-              if (this.props.robot_sensors[index].sensor_active){
+            if (!this.props.robot_sensors[index].sensor_active) {
+              setPaletteSensorTextValue(valueCell, '---', colorValueClass);
+              continue;
+            }
 
-                let sensor_data;
+            let sensor_data;
 
-
-                if (this.props.robot_sensors[index].sensor_name == "color"){
-
-
-                      if (isSimulation && primitives && primitives.getSensorDataFromLastUtil){
-                        sensor_data = primitives.getSensorDataFromLastUtil(index);
-                      } else {
-                        sensor_data = this.props.RCA.colorFilter(index);
-                      }
-
-                      if (sensor_data[0] == -1){
-
-                        sensors_values_field_list[3+index].innerHTML = "---";
-                        sensors_values_field_list[3+index].style.backgroundColor =  `rgb(255,255,255)`;
-                        sensors_values_field_list[3+index].style.minWidth = `0px`;
-                        sensors_values_field_list[3+index].style.minHeight = `0px`;
-                        sensors_values_field_list[3+index].style.border = '0px';
-
-                      }else{
-
-                        sensors_values_field_list[3+index].style.backgroundColor =  `rgb(${sensor_data[0]},${sensor_data[1]},${sensor_data[2]})`;
-                        sensors_values_field_list[3+index].style.minWidth = `15px`;
-                        sensors_values_field_list[3+index].style.minHeight = `15px`;
-                        sensors_values_field_list[3+index].style.border = '2px solid';
-                        sensors_values_field_list[3+index].innerHTML = "";
-
-                      }
-
-                }else{
-
-                      if (isSimulation && primitives && primitives.getSensorDataFromLastUtil){
-                        sensor_data = primitives.getSensorDataFromLastUtil(index);
-                      } else {
-                        sensor_data = this.props.RCA.getSensorData(index);
-                      }
-
-                      const valueCell = sensors_values_field_list[3+index];
-                      valueCell.style.removeProperty('border');
-                      valueCell.style.removeProperty('background-color');
-                      valueCell.style.removeProperty('min-width');
-                      valueCell.style.removeProperty('min-height');
-
-                      if (typeof(sensor_data) !== 'undefined' && !isNaN(sensor_data)){
-                        valueCell.innerHTML = sensor_data;
-                      }
-
-                }
-
+            if (this.props.robot_sensors[index].sensor_name === 'color') {
+              if (isSimulation && primitives && primitives.getSensorDataFromLastUtil) {
+                sensor_data = primitives.getSensorDataFromLastUtil(index);
+              } else {
+                sensor_data = this.props.RCA.colorFilter(index);
               }
 
+              if (sensor_data && sensor_data[0] !== -1) {
+                setPaletteSensorColorValue(
+                  valueCell,
+                  sensor_data[0],
+                  sensor_data[1],
+                  sensor_data[2],
+                  colorValueClass
+                );
+              } else {
+                setPaletteSensorTextValue(valueCell, '---', colorValueClass);
+              }
+            } else {
+              if (isSimulation && primitives && primitives.getSensorDataFromLastUtil) {
+                sensor_data = primitives.getSensorDataFromLastUtil(index);
+              } else if (hasLiveSensorData) {
+                sensor_data = this.props.RCA.getSensorData(index);
+              } else {
+                sensor_data = undefined;
+              }
 
+              if (typeof sensor_data !== 'undefined' && !isNaN(sensor_data)) {
+                setPaletteSensorTextValue(valueCell, sensor_data, colorValueClass);
+              } else {
+                setPaletteSensorTextValue(valueCell, '---', colorValueClass);
+              }
+            }
           }
 
 
@@ -238,25 +263,20 @@ componentDidUpdate(){
 
     sensor = document.getElementById(`${this.props.robot_special_sensors[0].sensor_device_name}_sensor-data-block-${this.props.robot_special_sensors[0].sensor_id}_type-${this.props.robot_special_sensors[0].sensor_type}`);
 
-    this.sensors_values_field_list[0] = sensor.children[0].children[1].children[0];
+    this.sensors_values_field_list[0] = getPaletteSensorValueNode(sensor);
 
+    sensor = document.getElementById(`${this.props.robot_special_sensors[1].sensor_device_name}_sensor-data-block-${this.props.robot_special_sensors[1].sensor_id}_type-${this.props.robot_special_sensors[1].sensor_type}`);
 
-  sensor = document.getElementById(`${this.props.robot_special_sensors[1].sensor_device_name}_sensor-data-block-${this.props.robot_special_sensors[1].sensor_id}_type-${this.props.robot_special_sensors[1].sensor_type}`);
-
-    this.sensors_values_field_list[1] = sensor.children[0].children[1].children[0];
-
+    this.sensors_values_field_list[1] = getPaletteSensorValueNode(sensor);
 
     sensor = document.getElementById(`${this.props.robot_special_sensors[2].sensor_device_name}_sensor-data-block-${this.props.robot_special_sensors[2].sensor_id}_type-${this.props.robot_special_sensors[2].sensor_type}`);
 
-    this.sensors_values_field_list[2] = sensor.children[0].children[1].children[0];
+    this.sensors_values_field_list[2] = getPaletteSensorValueNode(sensor);
 
-
-    for (let index = 0; index < this.props.robot_sensors.length; index++ ){
-
+    for (let index = 0; index < this.props.robot_sensors.length; index++) {
       sensor = document.getElementById(`${this.props.robot_sensors[index].sensor_device_name}_sensor-${this.props.robot_sensors[index].sensor_id}_type-${this.props.robot_sensors[index].sensor_type}`);
 
-      this.sensors_values_field_list[3+ index] = sensor.children[0].children[0].children[1].children[0];
-
+      this.sensors_values_field_list[3 + index] = getPaletteSensorValueNode(sensor);
     }
 
      this.getDataInterval =  setInterval(() => {
@@ -292,20 +312,22 @@ componentDidUpdate(){
 
 
 
-      <div id="robot-1" className={styles.robot_palette}>
+      <div id="robot-1" className={classNames(sharedStyles.palette, sharedStyles.device_palette)}>
 
 
-            <div id="robot-tittle" className={styles.robot_panel_tittle}>
-
-              {this.props.intl.formatMessage(messages.robot)}
-
-              <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-
-              </div>
-
+            <div id="robot-tittle" className={sharedStyles.header}>
+                <span className={sharedStyles.headerTitle}>
+                    {this.props.intl.formatMessage(messages.robot)}
+                </span>
+                <button
+                    type="button"
+                    className={sharedStyles.closeButton}
+                    aria-label="Close"
+                    onClick={this.onThisWindowClose.bind(this)}
+                />
             </div>
-
+            <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
+            <div className={rowStyles.palette_device_list}>
             <SensorDataBlockComponent key={this.props.robot_special_sensors[0].sensor_id} sensorId={this.props.robot_special_sensors[0].sensor_id}
                                deviceName={this.props.robot_special_sensors[0].sensor_device_name} sensorType={this.props.robot_special_sensors[0].sensor_type}
                                sensorFieldText={this.props.intl.formatMessage(messages.path_left)}
@@ -321,28 +343,26 @@ componentDidUpdate(){
         {
 
 
-              this.props.robot_sensors.map((sensor, index) =>
+              this.props.robot_sensors.map((sensor, index) => {
+                   const sensorPictureUrl = `./static/robbo_assets/16/${sensor.sensor_device_name}_sensor_${sensor.sensor_name}.png`;
+                   const field_text = `${this.props.intl.formatMessage(messages.sensor)} ${index + 1}`;
+                   const useExtendedSensorUi = sensor.is_sensor_version_new || this.isRobotSimulationActive();
 
-                 {
-
-                   let sensorPictureUrl = `./static/robbo_assets/16/${sensor.sensor_device_name}_sensor_${sensor.sensor_name}.png`;
-
-                    let field_text  = this.props.intl.formatMessage(messages.sensor) + " "  + (index + 1).toString() + ": ";
-
-                   return   <SensorComponent key={index} index={index} sensorId={sensor.sensor_id} isSensorVersionNew={sensor.is_sensor_version_new}
-                               sensorPictureUrl={sensorPictureUrl}
-                               deviceName={sensor.sensor_device_name} sensorType={sensor.sensor_type}
-                               sensorFieldText={field_text} sensorName={sensor.sensor_name}
-                               sensorData={sensor.sensor_data} />
-
-
-
-                 }
-
-             )
-
-
-
+                   return (
+                     <SensorComponent
+                       key={index}
+                       index={index}
+                       sensorId={sensor.sensor_id}
+                       isSensorVersionNew={useExtendedSensorUi}
+                       sensorPictureUrl={sensorPictureUrl}
+                       deviceName={sensor.sensor_device_name}
+                       sensorType={sensor.sensor_type}
+                       sensorFieldText={field_text}
+                       sensorName={sensor.sensor_name}
+                       sensorData={sensor.sensor_data}
+                     />
+                   );
+              })
 
         }
 
@@ -352,7 +372,8 @@ componentDidUpdate(){
                            sensorFieldText={this.props.intl.formatMessage(messages.start_button_pushed)}
                            sensorName={this.props.robot_special_sensors[2].sensor_name}
                            sensorData={sensor_data} />
-
+            </div>
+            </div>
       </div>
 
 
@@ -368,9 +389,10 @@ componentDidUpdate(){
 const mapStateToProps =  state => ({
 
 
-  robot_sensors:state.scratchGui.robot_sensors,
-  robot_special_sensors:state.scratchGui.robot_special_sensors,
-  draggable_window:state.scratchGui.draggable_window
+  robot_sensors: state.scratchGui.robot_sensors,
+  robot_special_sensors: state.scratchGui.robot_special_sensors,
+  draggable_window: state.scratchGui.draggable_window,
+  is_sim_activated: state.scratchGui.settings.is_sim_activated === true
 
   });
 

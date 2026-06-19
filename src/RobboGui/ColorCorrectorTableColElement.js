@@ -2,7 +2,8 @@ import classNames from 'classnames';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import { connect } from 'react-redux';
-import styles from  './ColorCorrectorTableComponent.css'
+import formStyles from './RobboPaletteForm.css';
+import styles from './ColorCorrectorTableComponent.css';
 
 
 
@@ -34,10 +35,8 @@ class ColorCorrectorTableColElement extends Component {
 
           )} >
               <input id={`color-${color_name}-corrector-${corrector_name}`} className={classNames(
-
-                  {[styles.correctors_inputs]: true}
-
-
+                  formStyles.text_input,
+                  styles.correctors_inputs
                   )}
 
               type="text" defaultValue={value}>

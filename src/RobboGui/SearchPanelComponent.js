@@ -1,12 +1,16 @@
 
 import classNames from 'classnames';
 import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
-import { connect } from 'react-redux';
-
-
+import RobboPopupTransition from './RobboPopupTransition';
 import styles from './SearchPanelComponent.css';
-import { ActionAddNewFoundDevice } from './actions/sensor_actions';
+import SearchPanelStatusBlock from './SearchPanelStatusBlock';
+import {getMenuBarDropdownTopPx} from '../lib/menu-bar-dropdown-anchor';
+import {
+    hideSearchPanel,
+    showSearchPanel,
+    subscribeSearchPanelVisibility
+} from './search-panel-visibility';
+import {notifySearchIdle} from './search-button-feedback';
 
 import FirmwareFlasherFlashingStatusComponent from './FirmwareFlasherFlashingStatusComponent';
 import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
@@ -14,7 +18,19 @@ import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
-import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext } from '../lib/platform';
+import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext, node_process } from '../lib/platform';
+import {
+    ROBBO_POPUP_Z_INDEX_BASE,
+    raiseRobboPopupZIndex
+} from '../lib/robbo-popup-z-index';
+
+/** Same gate as RobboGui.searchDevices → searchQuadcopterDevices() */
+function shouldProbeQuadcopterOnDeviceSearch(QCA) {
+  return isDesktopWithBluetooth() && !!QCA;
+}
+
+/** DCA device states while port open / identify / flash — search button stays busy until settled */
+const USB_SEARCH_CONNECTING_STATES = [0, 2, 3, 9, 10];
 
 const messages = defineMessages({
 
@@ -24,11 +40,21 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'No devices available for connection.'
   },
-  bluetooth_searching: {
+  devices_searching: {
 
-    id: 'gui.RobboGui.bluetooth_searching',
-    description: ' ',
-    defaultMessage: 'Searching for Bluetooth devices'
+    id: 'gui.RobboGui.devices_searching',
+    description: 'Shown while USB and/or Bluetooth device scan is in progress',
+    defaultMessage: 'Searching…'
+  },
+  search_panel_title: {
+    id: 'gui.RobboGui.search_panel_title',
+    description: 'Title for device search popup window',
+    defaultMessage: 'Device search'
+  },
+  devices_not_found_hint: {
+    id: 'gui.RobboGui.devices_not_found_hint',
+    description: 'Secondary hint when no devices were found during search',
+    defaultMessage: 'Check that the device is powered on and connected, then search again.'
   },
   robbo_android_searching: {
     id: 'gui.RobboGui.robbo_android_searching',
@@ -62,20 +88,111 @@ class SearchPanelComponent extends Component {
 
     super();
     this.state = {
-      devices: []
+      devices: [],
+      /** Bumps when instance fields used in render change without device list updates */
+      uiRev: 0,
+      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE,
+      searchEpoch: 0,
+      isShowing: false,
+      anchorStyle: {}
     };
+
+    this._panelRef = null;
+    this._handleSearchPanelShow = this._handleSearchPanelShow.bind(this);
+    this._handleSearchPanelHide = this._handleSearchPanelHide.bind(this);
+    this._handleWindowResize = this._handleWindowResize.bind(this);
+    this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
+    this.onThisWindowClose = this.onThisWindowClose.bind(this);
 
     this.device_list = [];
 
     this.bluetooth_devices_state = "idle";
     this.usb_search_finished = true;
     this.bluetooth_search_finished = true;
+    /** True until Crazyflie session emits searching — avoids «no devices» flash before dongle probe starts */
+    this._quadcopterAwaitingFirstSearchingEmit = false;
+    this._lastQuadcopterSearchPanelSig = null;
+    /** Keep Quadcopter row while cf2tool/cfloader temporarily release the radio (dongleAvailable flickers). */
+    this._quadcopterRowPinnedForSession = false;
+
+    this.handleSearchPanelMouseDown = this.handleSearchPanelMouseDown.bind(this);
 
   }
 
 
+  handleSearchPanelMouseDown () {
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
+  }
+
+  _getSearchPanelAnchorElement () {
+    return document.getElementById('robbo_search_devices');
+  }
+
+  updateAnchorPosition () {
+    const anchor = this._getSearchPanelAnchorElement();
+    if (!anchor || typeof window === 'undefined') {
+      return {};
+    }
+    const rect = anchor.getBoundingClientRect();
+    const margin = 8;
+    const panelWidth = (this._panelRef && this._panelRef.offsetWidth) || 220;
+    const panelHeight = (this._panelRef && this._panelRef.offsetHeight) || 200;
+    const menuBarTop = getMenuBarDropdownTopPx();
+    let top = menuBarTop != null ? menuBarTop : rect.bottom;
+    let left = rect.left;
+    left = Math.max(margin, Math.min(left, window.innerWidth - panelWidth - margin));
+    top = Math.max(margin, Math.min(top, window.innerHeight - panelHeight - margin));
+    return {
+      top: `${top}px`,
+      left: `${left}px`
+    };
+  }
+
+  _handleSearchPanelShow () {
+    const anchorStyle = this.updateAnchorPosition();
+    this.setState({isShowing: true, anchorStyle}, () => {
+      requestAnimationFrame(() => {
+        if (this._isMounted && this.state.isShowing) {
+          this.setState({anchorStyle: this.updateAnchorPosition()});
+        }
+      });
+    });
+    if (typeof window !== 'undefined' && !this._resizeListenerAttached) {
+      window.addEventListener('resize', this._handleWindowResize);
+      this._resizeListenerAttached = true;
+    }
+  }
+
+  _handleSearchPanelHide () {
+    if (typeof window !== 'undefined' && this._resizeListenerAttached) {
+      window.removeEventListener('resize', this._handleWindowResize);
+      this._resizeListenerAttached = false;
+    }
+    this.setState({isShowing: false});
+  }
+
+  _handleWindowResize () {
+    if (this.state.isShowing) {
+      this.setState({anchorStyle: this.updateAnchorPosition()});
+    }
+  }
+
+  _handleTransitionEntered () {
+    this.setState({
+      popupZIndex: raiseRobboPopupZIndex(),
+      anchorStyle: this.updateAnchorPosition()
+    });
+  }
+
   componentDidMount() {
     this._isMounted = true;
+    this._unsubscribeSearchPanelVisibility = subscribeSearchPanelVisibility(showing => {
+      if (showing) {
+        this._handleSearchPanelShow();
+      } else {
+        this._handleSearchPanelHide();
+      }
+    });
 
     // this.DCA =  this.props.deviceControlInterfaces.DCA;
     // this.RCA =  this.props.deviceControlInterfaces.RCA;
@@ -102,27 +219,61 @@ class SearchPanelComponent extends Component {
     });
 
     this.DCA.registerDevicesStartSearchingCallback(() => {
-
-
-      this.bluetooth_devices_state = "searching";
+      this._quadcopterAwaitingFirstSearchingEmit = shouldProbeQuadcopterOnDeviceSearch(this.QCA);
+      this._quadcopterRowPinnedForSession = false;
+      if (this.QCA && typeof this.QCA.resetFirmwareSessionOnDeviceSearch === 'function') {
+        this.QCA.resetFirmwareSessionOnDeviceSearch();
+      }
       this.usb_search_finished = false;
-      this.bluetooth_search_finished = !(typeof this.DCA.isBluetoothSearchEnabled === 'function' && this.DCA.isBluetoothSearchEnabled());
-
+      // Same condition as DeviceControlAPI.searchAllDevices — Chrome Bluetooth scan only on Win/Linux desktop
+      const useChromeBluetooth = typeof node_process !== 'undefined' &&
+        (node_process.platform === 'win32' || node_process.platform === 'linux');
+      const willRunBtScan = useChromeBluetooth &&
+        typeof this.DCA.isBluetoothSearchEnabled === 'function' &&
+        this.DCA.isBluetoothSearchEnabled();
+      if (willRunBtScan) {
+        this.bluetooth_devices_state = 'searching';
+        this.bluetooth_search_finished = false;
+      } else {
+        this.bluetooth_devices_state = 'idle';
+        this.bluetooth_search_finished = true;
+      }
+      if (this._isMounted) {
+        this.setState(prev => ({ uiRev: Date.now(), searchEpoch: prev.searchEpoch + 1 }));
+      }
+      showSearchPanel();
     });
 
     this.DCA.registerDevicesNotFoundCallback(() => {
       this.usb_search_finished = true;
+      // Do not clear _quadcopterAwaitingFirstSearchingEmit here when USB finishes first:
+      // Crazyflie search() emits searching:true only after async link teardown.
+      if (this._quadcopterAwaitingFirstSearchingEmit && !shouldProbeQuadcopterOnDeviceSearch(this.QCA)) {
+        this._quadcopterAwaitingFirstSearchingEmit = false;
+      } else if (this._quadcopterAwaitingFirstSearchingEmit && this.QCA && !this.QCA.crazyflieSession) {
+        this._quadcopterAwaitingFirstSearchingEmit = false;
+      }
       let search_device_button = document.getElementById(`robbo_search_devices`);
       if (search_device_button) {
-        search_device_button.style.pointerEvents = "auto";
+        // Toggle inline style so MenuBarDeviceControls MutationObserver always fires (repeat search).
+        search_device_button.style.pointerEvents = 'none';
+        search_device_button.style.pointerEvents = 'auto';
+        search_device_button.removeAttribute('disabled');
       }
+      notifySearchIdle();
       this._refreshDeviceList();
+      if (this._isMounted) {
+        this.setState({ uiRev: Date.now() });
+      }
     });
 
     this.DCA.registerBluetoothDevicesNotFoundCallback(() => {
       this.bluetooth_devices_state = "not_found";
       this.bluetooth_search_finished = true;
       this._refreshDeviceList();
+      if (this._isMounted) {
+        this.setState({ uiRev: Date.now() });
+      }
     });
 
 
@@ -130,23 +281,38 @@ class SearchPanelComponent extends Component {
     this.DCA.registerDeviceFoundCallback(() => {
       this.is_bluetooth_devices_not_found = false;
       this.usb_search_finished = true;
-      let search_device_button = document.getElementById(`robbo_search_devices`);
-      if (search_device_button) {
-        search_device_button.style.pointerEvents = "auto";
-        search_device_button.removeAttribute("disabled");
-      }
       this._refreshDeviceList();
+      this._maybeNotifySearchIdleWhenSettled();
     });
 
     if (this.QCA) {
-      this._wasDongleAvailable = false;
-      this.QCA.registerQuadcopterStatusChangeCallback(() => {
-        let now = typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable();
-        if (now !== this._wasDongleAvailable) {
-          this._wasDongleAvailable = now;
-          this._refreshDeviceList();
+      this._quadcopterStatusCallback = (state, searching, snapshot) => {
+        const snap = snapshot || {};
+        const dongleNow = typeof snap.dongleAvailable === 'boolean'
+          ? snap.dongleAvailable
+          : (typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable());
+        const searchingNow = snap.searching === true;
+        const panelSig = `${dongleNow}|${searchingNow}`;
+        if (panelSig === this._lastQuadcopterSearchPanelSig) {
+          return;
         }
-      });
+        this._lastQuadcopterSearchPanelSig = panelSig;
+        if (searchingNow) {
+          this._quadcopterAwaitingFirstSearchingEmit = false;
+        }
+        const qcaFirmwareBusy = this.QCA && (
+          this.QCA._firmwareFlashInProgress === true ||
+          this.QCA._firmwareVersionProbeInProgress === true
+        );
+        if (!dongleNow && !searchingNow && !qcaFirmwareBusy) {
+          this._quadcopterRowPinnedForSession = false;
+        }
+        this._refreshDeviceList();
+        if (this._isMounted) {
+          this.setState({ uiRev: Date.now() });
+        }
+      };
+      this.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
     }
 
 
@@ -155,6 +321,30 @@ class SearchPanelComponent extends Component {
 
 
 
+  }
+
+  /**
+   * Web Serial: cancel or re-select an already-connected port does not emit a new state-6
+   * transition, so the menu-bar search spinner must be cleared explicitly when no device
+   * is still connecting.
+   */
+  _maybeNotifySearchIdleWhenSettled() {
+    if (!this.DCA || typeof this.DCA.getDevices !== 'function') {
+      return;
+    }
+    const allDevices = this.DCA.getDevices();
+    if (!allDevices || allDevices.length === 0) {
+      return;
+    }
+    const anyConnecting = allDevices.some(dev => {
+      if (!dev || typeof dev.getState !== 'function') {
+        return false;
+      }
+      return USB_SEARCH_CONNECTING_STATES.indexOf(dev.getState()) !== -1;
+    });
+    if (!anyConnecting) {
+      notifySearchIdle();
+    }
   }
 
   _refreshDeviceList() {
@@ -167,7 +357,21 @@ class SearchPanelComponent extends Component {
         isMacBluetooth: false
       });
     }
-    if (this.QCA && typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable()) {
+    const qcaDongleAvailable = this.QCA && typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable();
+    const qcaFirmwareBusy = this.QCA && (
+      this.QCA._firmwareFlashInProgress === true ||
+      this.QCA._firmwareVersionProbeInProgress === true
+    );
+    if (qcaDongleAvailable) {
+      this._quadcopterRowPinnedForSession = true;
+    }
+    /** Do not show the row while radio search runs before the dongle is detected (searching + !dongle). */
+    const showQuadcopterRow = this.QCA && (
+      qcaDongleAvailable ||
+      this._quadcopterRowPinnedForSession ||
+      qcaFirmwareBusy
+    );
+    if (showQuadcopterRow) {
       newList.push({
         devicePort: 'Quadcopter',
         isBluetooth: false,
@@ -187,10 +391,20 @@ class SearchPanelComponent extends Component {
 
   componentWillUnmount() {
     this._isMounted = false;
+    if (this._unsubscribeSearchPanelVisibility) {
+      this._unsubscribeSearchPanelVisibility();
+      this._unsubscribeSearchPanelVisibility = null;
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this._handleWindowResize);
+    }
+    if (this.QCA && this._quadcopterStatusCallback && typeof this.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
+      this.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
+    }
   }
 
-  onThisWindowClose() {
-    ReactDOM.findDOMNode(this).style.display = "none";
+  onThisWindowClose () {
+    hideSearchPanel();
   }
 
   render() {
@@ -199,96 +413,143 @@ class SearchPanelComponent extends Component {
     const showFirmwareUi = !isMobileBridgeContext;
     const bluetoothSearchEnabled = this.DCA && typeof this.DCA.isBluetoothSearchEnabled === 'function' ? this.DCA.isBluetoothSearchEnabled() : true;
     const supportsBluetoothSearchUi = isDesktopWithBluetooth() || isMobileBridgeContext;
-    const showBluetoothSearching = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "searching";
+    const showBluetoothPhaseSearching = supportsBluetoothSearchUi && bluetoothSearchEnabled &&
+      this.bluetooth_devices_state === 'searching' && this.usb_search_finished;
     const showBluetoothNotFound = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "not_found";
     const shouldDelayNoDevicesMessage = bluetoothSearchEnabled && !this.bluetooth_search_finished;
-    const showDevicesNotFound = this.state.devices.length === 0 && this.usb_search_finished && !shouldDelayNoDevicesMessage;
+    const qcaSearchingNow = this.QCA &&
+      typeof this.QCA.isQuadcopterSearching === 'function' &&
+      this.QCA.isQuadcopterSearching() === true;
+    const quadcopterProbePending = shouldProbeQuadcopterOnDeviceSearch(this.QCA) &&
+      this._quadcopterAwaitingFirstSearchingEmit &&
+      this.usb_search_finished &&
+      this.state.devices.length === 0;
+    const quadcopterSearchActive = qcaSearchingNow;
+    const showDevicesSearching = this.state.devices.length === 0 &&
+      (!this.usb_search_finished || showBluetoothPhaseSearching ||
+        quadcopterSearchActive || quadcopterProbePending);
+    const showDevicesNotFound = this.state.devices.length === 0 && this.usb_search_finished &&
+      !showDevicesSearching && !shouldDelayNoDevicesMessage &&
+      !this._quadcopterAwaitingFirstSearchingEmit && !qcaSearchingNow;
+
+    void this.state.uiRev;
+
+    const firmwareFlashWindows = showFirmwareUi ? this.state.devices.map((device, index) => (
+      <DraggableWindowComponent key={index + 'devices-list-draggable'} draggableWindowId={7 + index}>
+        <FirmwareFlasherFlashingStatusComponent
+          key={index + 'devices-list-status'}
+          componentId={index}
+          draggableWindowId={7 + index}
+          DCA={this.DCA}
+          RCA={this.RCA}
+          LCA={this.LCA}
+          QCA={this.QCA}
+          OCA={this.OCA}
+          ACA={this.ACA}
+        />
+      </DraggableWindowComponent>
+    )) : null;
+
+    const panelStyle = {
+      zIndex: this.state.popupZIndex,
+      ...this.state.anchorStyle
+    };
 
     return (
-
-
-      <div id="SearchPanelComponent" className={styles.search_panel}>
-
-
-        <div id="SearchPanelComponent-tittle" className={styles.search_panel_tittle}>
-
-
-          <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-
+      <React.Fragment>
+      <RobboPopupTransition
+          in={this.state.isShowing}
+          onEntered={this._handleTransitionEntered}
+      >
+        <div
+            ref={el => {
+              this._panelRef = el;
+            }}
+            id="SearchPanelComponent"
+            className={styles.search_panel}
+            style={panelStyle}
+            aria-hidden={!this.state.isShowing}
+            onMouseDown={this.handleSearchPanelMouseDown}
+        >
+          <div className={styles.search_panel_header}>
+            <span className={styles.search_panel_header_title}>
+              {this.props.intl.formatMessage(messages.search_panel_title)}
+            </span>
+            <button
+                type="button"
+                className={styles.search_panel_close}
+                aria-label="Close"
+                onClick={this.onThisWindowClose}
+            />
           </div>
+          <div id="SearchPanelComponent-body" className={styles.search_panel_body}>
 
-        </div>
+            <div id="SearchPanelComponent-devices-list">
 
-        <div id="SearchPanelComponent-body" className={styles.search_panel_body}>
-
-          <div id="SearchPanelComponent-devices-list">
-
-            {
-
-
-              this.state.devices.map((device, index) => {
-
-
-
-
-
-                return <SearchPanelDeviceComponent Id={index} flashingStatusComponentId={index} draggableWindowId={7 + index} key={device.devicePort + "-search-panel-devices-list"} devicePort={device.devicePort} isBluetooth={device.isBluetooth} isMacBluetooth={device.isMacBluetooth} isQuadcopter={device.isQuadcopter} disableFirmwareUi={!showFirmwareUi} VM={this.VM} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
-
-
-
+              {
+                this.state.devices.map((device, index) => (
+                  <SearchPanelDeviceComponent
+                      Id={index}
+                      flashingStatusComponentId={index}
+                      draggableWindowId={7 + index}
+                      key={device.devicePort + '-search-panel-devices-list'}
+                      devicePort={device.devicePort}
+                      isBluetooth={device.isBluetooth}
+                      isMacBluetooth={device.isMacBluetooth}
+                      isQuadcopter={device.isQuadcopter}
+                      disableFirmwareUi={!showFirmwareUi}
+                      VM={this.VM}
+                      DCA={this.DCA}
+                      RCA={this.RCA}
+                      LCA={this.LCA}
+                      QCA={this.QCA}
+                      OCA={this.OCA}
+                      ACA={this.ACA}
+                      searchEpoch={this.state.searchEpoch}
+                  />
+                ))
               }
 
-              )
+              {
+                showDevicesSearching ? (
+                  <SearchPanelStatusBlock
+                      variant="searching"
+                      title={this.props.intl.formatMessage(messages.devices_searching)}
+                  />
+                ) : null
+              }
 
-            }
+              {
+                showDevicesNotFound ? (
+                  <SearchPanelStatusBlock
+                      variant="empty"
+                      title={this.props.intl.formatMessage(messages.devices_not_found)}
+                      hint={this.props.intl.formatMessage(messages.devices_not_found_hint)}
+                  />
+                ) : null
+              }
 
+              {
+                showBluetoothNotFound && isMobileBridgeContext ? (
+                  <SearchPanelStatusBlock
+                      variant="info"
+                      title={this.props.intl.formatMessage(
+                        isEmbeddedAndroidApp ?
+                          messages.robbo_android_devices_not_found :
+                          messages.robbolink_mobile_devices_not_found
+                      )}
+                  />
+                ) : null
+              }
 
-            {showFirmwareUi && this.state.devices.map((device, index) => {
-              return <DraggableWindowComponent key={index + "devices-list-draggable"} draggableWindowId={7 + index}>
-
-                <FirmwareFlasherFlashingStatusComponent key={index + "devices-list-status"} componentId={index} draggableWindowId={7 + index} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
-
-              </DraggableWindowComponent>
-
-
-
-
-            })}
-
-            {
-
-              showDevicesNotFound ? <div className={styles.devices_not_found}>{this.props.intl.formatMessage(messages.devices_not_found)}</div> : ""
-
-            }
-
-            {
-
-              showBluetoothSearching ? <div className={styles.bluetooth_devices_not_found}>{this.props.intl.formatMessage(messages.bluetooth_searching)}</div> : ""
-
-            }
-
-
-
-            {
-              showBluetoothNotFound && isMobileBridgeContext ? (
-                <div className={styles.bluetooth_devices_not_found}>
-                  {this.props.intl.formatMessage(
-                    isEmbeddedAndroidApp ? messages.robbo_android_devices_not_found : messages.robbolink_mobile_devices_not_found
-                  )}
-                </div>
-              ) : ""
-
-            }
-
+            </div>
 
           </div>
 
-
         </div>
-
-      </div>
-
+      </RobboPopupTransition>
+      {firmwareFlashWindows}
+      </React.Fragment>
     )
   };
 

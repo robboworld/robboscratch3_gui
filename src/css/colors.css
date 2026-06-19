@@ -16,8 +16,15 @@ $text-primary-transparent: hsla(225, 15%, 40%, 0.75);
 
 $motion-primary: rgb(0,175,65); /* #4C97FF */ /*  hsla(215, 100%, 65%, 1) */
 $motion-tertiary: rgb(0,175,65); /* #3373CC */ /*  hsla(215, 100%, 65%, 1) */
-$motion-transparent: hsla(215, 100%, 65%, 0.35); /* 35% transparent version of motion-primary */
-$motion-light-transparent: hsla(215, 100%, 65%, 0.15); /* 15% transparent version of motion-primary */
+$motion-selected-bg: rgba(0, 175, 65, 0.15); /* light green tint for selected icon toggles */
+$motion-transparent: rgba(0, 175, 65, 0.35); /* 35% transparent version of motion-primary */
+$motion-light-transparent: rgba(0, 175, 65, 0.15); /* 15% transparent version of motion-primary */
+
+/* Direction picker / looks UI (scratch-gui purple → RS green) */
+$looks-secondary: rgb(0, 175, 65);
+$looks-secondary-dark: rgb(0, 154, 58);
+$looks-transparent: rgba(0, 175, 65, 0.35);
+$looks-light-transparent: rgba(0, 175, 65, 0.15);
 
 $red-primary: hsla(20, 100%, 55%, 1); /* #FF661A */
 $red-tertiary: hsla(20, 100%, 45%, 1); /* #E64D00 */

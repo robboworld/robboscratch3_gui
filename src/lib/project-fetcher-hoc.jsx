@@ -20,10 +20,12 @@ import {
     BLOCKS_TAB_INDEX
 } from '../reducers/editor-tab';
 import {setProjectTitle} from '../reducers/project-title';
+import {hydrateLayoutVisibility} from '../reducers/layout-visibility';
 
 import {
     restoreValidSnapshot
 } from './project-session-store';
+import {readPersistedLayoutVisibility} from './layout-visibility-persistence';
 import storage from './storage';
 import validate from 'scratch-parser';
 const isDefaultProjectId = projectId => projectId === null || typeof projectId === 'undefined' ||
@@ -137,6 +139,16 @@ const ProjectFetcherHOC = function (WrappedComponent) {
                         if (restoredSnapshot.metadata && restoredSnapshot.metadata.title) {
                             this.props.onRestoreProjectTitle(restoredSnapshot.metadata.title);
                         }
+                        if (restoredSnapshot.metadata && restoredSnapshot.metadata.layout) {
+                            const persisted = readPersistedLayoutVisibility();
+                            const layout = Object.assign({}, restoredSnapshot.metadata.layout);
+                            if (persisted) {
+                                layout.isBlocksPaletteCollapsed = persisted.isBlocksPaletteCollapsed;
+                                layout.blocksPaletteFlyoutWidth = persisted.blocksPaletteFlyoutWidth;
+                                layout.isRobboUiHidden = persisted.isRobboUiHidden;
+                            }
+                            this.props.onRestoreLayoutVisibility(layout);
+                        }
                         this.props.onFetchedProjectData(restoredSnapshot.projectData, loadingState);
                         return;
                     }
@@ -156,6 +168,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
                 onFetchedProjectData: onFetchedProjectDataProp,
                 onProjectUnchanged,
                 onRestoreProjectTitle: onRestoreProjectTitleProp,
+                onRestoreLayoutVisibility: onRestoreLayoutVisibilityProp,
                 projectHost,
                 projectId,
                 reduxProjectId,
@@ -184,6 +197,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         onFetchedProjectData: PropTypes.func,
         onProjectUnchanged: PropTypes.func,
         onRestoreProjectTitle: PropTypes.func,
+        onRestoreLayoutVisibility: PropTypes.func,
         projectHost: PropTypes.string,
         projectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         reduxProjectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
@@ -208,6 +222,7 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         onFetchedProjectData: (projectData, loadingState) =>
             dispatch(onFetchedProjectData(projectData, loadingState)),
         onRestoreProjectTitle: title => dispatch(setProjectTitle(title)),
+        onRestoreLayoutVisibility: layout => dispatch(hydrateLayoutVisibility(layout)),
         setProjectId: projectId => dispatch(setProjectId(projectId)),
         onProjectUnchanged: () => dispatch(setProjectUnchanged())
     });

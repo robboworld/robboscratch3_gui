@@ -1,11 +1,31 @@
-.sensor_choose_window_component_element{
+@import "../css/colors.css";
 
-      display: inline-block;
-
+.sensor_choose_window_component_element {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0;
+    border: 1px solid rgba(0, 175, 65, 0.45);
+    border-radius: 2px;
+    background-color: rgba(0, 175, 65, 0.1);
+    cursor: pointer;
+    line-height: 0;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.sensor_choose_window_component_element:hover{
+.sensor_choose_window_component_element:hover {
+    border-color: rgba(0, 175, 65, 0.65);
+    background-color: rgba(0, 175, 65, 0.18);
+}
 
-    border:1px outset #CCCCCC;
-    /*background-color: #CCCCCC;*/
+.sensor_choose_window_component_element:active {
+    border-color: $motion-primary;
+    background-color: rgba(0, 175, 65, 0.24);
+}
+
+.sensor_choose_window_component_element img {
+    display: block;
+    width: 2rem;
+    height: 2rem;
 }

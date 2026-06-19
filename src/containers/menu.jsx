@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import MenuComponent from '../components/menu/menu.jsx';
+import RobboPopupTransition from '../RobboGui/RobboPopupTransition';
+import '../RobboGui/robbo-popup-transition.css';
 
 class Menu extends React.Component {
     constructor (props) {
@@ -44,14 +46,15 @@ class Menu extends React.Component {
             children,
             ...props
         } = this.props;
-        if (!open) return null;
         return (
-            <MenuComponent
-                componentRef={this.ref}
-                {...props}
-            >
-                {children}
-            </MenuComponent>
+            <RobboPopupTransition in={open}>
+                <MenuComponent
+                    componentRef={this.ref}
+                    {...props}
+                >
+                    {children}
+                </MenuComponent>
+            </RobboPopupTransition>
         );
     }
 }

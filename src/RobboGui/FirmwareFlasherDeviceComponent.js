@@ -7,6 +7,9 @@ import { ActionCreateDraggableWindow } from './actions/sensor_actions';
 import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
 
 import { createDiv } from './lib/lib.js';
+import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
+import {setFlashLogStatusTone} from '../lib/device-status-dom';
+import './RobboDeviceStatus.css';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 import { isRobboLinkMobileWebContext } from '../lib/platform';
@@ -29,7 +32,7 @@ const messages = defineMessages({
   device_otto: {
     id: 'gui.FirmwareFlasherDeviceComponent.device_otto',
     description: ' ',
-    defaultMessage: 'Otto'
+    defaultMessage: 'Dancing robot'
   },
   device_unknown: {
     id: 'gui.FirmwareFlasherDeviceComponent.device_unknown',
@@ -83,10 +86,7 @@ class FirmwareFlasherDeviceComponent extends Component {
 
     var cId = this.props.flashingStatusComponentId;
 
-    var firmwareFlasherFlashingStatusComponent = document.getElementById(`firmware-flasher-flashing-status-component-${cId}`);
-
-    var flashingStatusComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[1] ? firmwareFlasherFlashingStatusComponent.children[1] : null;
-    var flashingLogComponent = firmwareFlasherFlashingStatusComponent && firmwareFlasherFlashingStatusComponent.children && firmwareFlasherFlashingStatusComponent.children[2] ? firmwareFlasherFlashingStatusComponent.children[2] : null;
+    const {statusEl: flashingStatusComponent, logEl: flashingLogComponent} = getFirmwareFlashLogElements(cId);
 
     var block_ids_component = null;
 
@@ -186,18 +186,18 @@ class FirmwareFlasherDeviceComponent extends Component {
 
         if ((status.indexOf("Port closed") !== -1)) {
 
-          if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "green";
+          setFlashLogStatusTone(flashingStatusComponent, 'success');
 
           if (search_device_button) search_device_button.removeAttribute("disabled");
 
         } else if ((status.indexOf("Error") !== -1)) {
 
-          if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "red";
+          setFlashLogStatusTone(flashingStatusComponent, 'error');
           if (search_device_button) search_device_button.removeAttribute("disabled");
 
         } else {
 
-          if (flashingStatusComponent) flashingStatusComponent.style.backgroundColor = "#FFFF99"; //Light yellow2
+          setFlashLogStatusTone(flashingStatusComponent, 'pending');
 
         }
 

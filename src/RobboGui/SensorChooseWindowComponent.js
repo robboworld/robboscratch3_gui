@@ -4,25 +4,39 @@ import { Component } from 'react';
 import { connect } from 'react-redux';
 import  SensorChooseWindowComponentElement from './SensorChooseWindowComponentElement'
 import  styles from './SensorChooseWindowComponent.css';
+import sharedStyles from './DevicePaletteShared.css';
 
 import PropTypes from 'prop-types';
 import { ItemTypes } from './drag_constants';
 import { DragSource } from 'react-dnd';
+import {
+    ROBBO_POPUP_Z_INDEX_BASE,
+    raiseRobboPopupZIndex
+} from '../lib/robbo-popup-z-index';
+import RobboPopupTransition from './RobboPopupTransition';
+import {
+    attachEmptyDragPreview,
+    collectPopupDragSource,
+    createPopupDragFollowState,
+    handlePopupDragFollowLifecycle,
+    resolvePopupDragTopLeft,
+    stopPopupDragFollow,
+    wrapPopupDragSource
+} from '../lib/robbo-popup-drag-position';
 
-const SensorChooseWindowSource = {
-  beginDrag(props) {
-    return {
+const SensorChooseWindowSource = wrapPopupDragSource({
+    beginDrag () {
+        return {
+            element_type: ItemTypes.SENSOR_CHOOSE_WINDOW
+        };
+    }
+}, props => ({
+    top: props.top,
+    left: props.left
+}));
 
-          element_type: ItemTypes.SENSOR_CHOOSE_WINDOW
-    };
-  }
-};
-
-function collect(connect, monitor) {
-  return {
-    connectDragSource: connect.dragSource(),
-    isDragging: monitor.isDragging()
-  }
+function collect (connect, monitor) {
+    return collectPopupDragSource(connect, monitor);
 }
 
 
@@ -30,13 +44,49 @@ function collect(connect, monitor) {
 
 class SensorChooseWindowComponent extends Component {
 
+  constructor (props) {
+    super(props);
+    this.state = {
+      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE,
+      ...createPopupDragFollowState()
+    };
+    this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
+    this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
+  }
 
+  _handleTransitionEntered () {
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
+  }
 
+  componentDidMount () {
+    attachEmptyDragPreview(this.props.connectDragPreview);
+  }
 
+  componentDidUpdate (prevProps) {
+    if (!prevProps.isShowing && this.props.isShowing) {
+      this.setState({popupZIndex: raiseRobboPopupZIndex()});
+    }
+    handlePopupDragFollowLifecycle(this, prevProps, this.props.isDragging);
+  }
+
+  componentWillUnmount () {
+    stopPopupDragFollow(this);
+  }
+
+  handlePopupMouseDown () {
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
+  }
 
   render() {
 
-    const { connectDragSource, isDragging, isShowing,top,left,CallerSensorId,SensorCallerDeviceName,CallerSensorType } = this.props;
+    const { connectDragSource, isDragging, isShowing, top, left, CallerSensorId, SensorCallerDeviceName, CallerSensorType } = this.props;
+    const position = resolvePopupDragTopLeft(
+      top,
+      left,
+      isDragging,
+      this.state.dragFollowTop,
+      this.state.dragFollowLeft
+    );
 
     //let showing_state = isShowing? styles.sensor_choose_window.window_show: styles.sensor_choose_window.window_hide;
   //  let final_state = isDragging? styles.sensor_choose_window.window_show.window_drag:showing_state;
@@ -44,32 +94,31 @@ class SensorChooseWindowComponent extends Component {
 
 
 
-             return connectDragSource(
-
-                <div    className={classNames(
-
-                              {[styles.sensor_choose_window]: true},
-                              {[styles.window_show]: isShowing},
-                              {[styles.window_hide]: !isShowing},
-                              {[styles.window_drag]: isDragging}
-
-                              )}
-
+             return (
+                <RobboPopupTransition
+                    in={isShowing}
+                    onEntered={this._handleTransitionEntered}
+                >
+                {connectDragSource(
+                <div
+                        className={classNames(sharedStyles.palette, styles.sensor_choose_window)}
                         style={{
+                              position: 'fixed',
+                              top: `${position.top}px`,
+                              left: `${position.left}px`,
+                              zIndex: isShowing ? this.state.popupZIndex : undefined
+                              }}
+                        aria-hidden={!isShowing}
+                        onMouseDown={isShowing ? this.handlePopupMouseDown : undefined}
+                >
 
-                              position: 'absolute',
-                              top: `${top}px`,
-                              left: `${left}px`,
-                              }}>
-
-
-                  <div className={styles.sensor_choose_window_tittle}>
-
-                      Sensor type
-
+                  <div className={sharedStyles.header}>
+                      <span className={sharedStyles.headerTitle}>
+                          Sensor type
+                      </span>
                   </div>
 
-                  <div className={styles.sensor_choose_window_components_block}>
+                  <div className={classNames(sharedStyles.body, styles.sensor_choose_window_components_block)}>
 
                     {
 
@@ -131,7 +180,8 @@ class SensorChooseWindowComponent extends Component {
 
 
                 </div>
-
+                )}
+                </RobboPopupTransition>
             );
 
 

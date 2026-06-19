@@ -1,80 +1,150 @@
-.about_window_tittle{
+@import "../css/colors.css";
+@import "../css/units.css";
 
+.about_window {
+    box-sizing: border-box;
+    width: $popup-about-width;
+    max-width: 96vw;
+    pointer-events: auto;
+}
 
+/* NW.js 69 / старый Chromium: flex gap не работает — только margin */
+.about_content > * + * {
+    margin-top: 0.5rem;
+}
 
-    height: 30px;
+.about_content > .about_section + .about_section {
+    margin-top: 14px;
+}
 
+.about_section {
+    padding: 10px 12px;
+}
+
+.about_section > * + * {
+    margin-top: 10px;
+}
+
+.about_section_title {
+    padding-bottom: 0.375rem;
+    line-height: 1.45;
+}
+
+.about_version_block {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.about_version_block > * + * {
+    margin-top: 0.5rem;
+}
+
+.about_version_block .version_label {
+    margin: 0;
+    font-size: $popup-font-size;
+    line-height: 1.45;
+}
+
+.about_button {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem 0.75rem;
+    white-space: normal;
     text-align: center;
-
-    background-color: #00af41;
-    color: white;
-    font-family: "Proxima Nova Regular",Helvetica,Arial, sans-serif;
-    /* vertical-align: middle; */
-    padding-top: 3px;
-
+    line-height: 1.45;
 }
 
-.close_icon{
-
-    float:right;
-    background-image: url('../../static/robbo_assets/icon_close_window.png');
-    width: 27px;
-    height: 27px;
-
-    cursor: pointer;
-
+.about_button_active {
+    background-color: rgba(0, 175, 65, 0.18);
+    border-color: rgba(0, 175, 65, 0.7);
 }
 
-.about_window{
-
-    display: inline-block;
-    margin-left: 5%;
-
-    border: 1px solid #00af41;
-
-    
-
-   height:100%;
-
-   min-width: 800px; /*650*/
-
-   vertical-align: top;
-
-   background-color: white;
-
+.about_info_list,
+.about_metrics {
+    display: flex;
+    flex-direction: column;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: 0;
 }
 
-.about_window_content{
-
-
-
+.about_section > .about_info_list,
+.about_section > .about_metrics {
+    margin-top: 10px;
 }
 
-.about_window_content_raw{
-
-    margin: 15px 10px;
-
+.about_info_list > * + *,
+.about_metrics > * + * {
+    margin-top: 0.5rem;
 }
 
-.about_window_content_column{
-
-    display: inline-block;
-    margin-left: 10px;
-    margin-right: 10px;
-    min-width: 200px;
-    vertical-align: top;
-
+/* Измерение производительности: подпись растягивается, число — по ширине контента */
+.about_metric_row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    box-sizing: border-box;
+    margin: 0;
 }
 
-.about_window_value_column{
-
-    display: inline-block;
-    margin-left:10px;
-    margin-right: 10px;
-    min-width: 310px;
-    max-width: 520px;
+.about_metric_label {
+    composes: field_label from './RobboPaletteForm.css';
+    flex: 1 1 auto;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-right: 0.75rem;
     overflow-wrap: anywhere;
     word-break: break-word;
-    vertical-align: top;
+}
 
+.about_metric_value {
+    composes: field_value from './RobboPaletteForm.css';
+    flex: 0 0 auto;
+    width: max-content;
+    min-width: 2.75rem;
+    box-sizing: border-box;
+    margin-left: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.375rem;
+    white-space: nowrap;
+}
+
+.about_metric_value:empty {
+    display: none;
+}
+
+/* Сведения о системе: подпись слева (50%), значение справа до края (50%) */
+.about_info_row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.about_info_label {
+    composes: field_label from './RobboPaletteForm.css';
+    flex: 0 0 50%;
+    width: 50%;
+    max-width: 50%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-right: 12px;
+    text-align: left;
+}
+
+.about_info_value {
+    composes: field_value from './RobboPaletteForm.css';
+    flex: 0 0 50%;
+    width: 50%;
+    max-width: 50%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin-left: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }

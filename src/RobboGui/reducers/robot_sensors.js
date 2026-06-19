@@ -21,7 +21,7 @@ function init_state(){
             sensor_active: false,
             sensor_data:[],
             sensor_device_name:"robot",
-            sensor_field_text:`Сенсор ${i + 1} :`
+            sensor_field_text: `Сенсор ${i + 1}`
 
       }
 
@@ -275,23 +275,22 @@ const handler_trigger_sensor_name = function (initial_sensors_state,payload){
     return sensors_state;
 }
 
-const handler_trigger_extension_pack = function (initial_sensors_state,payload){
-
-    let sensors_state = initial_sensors_state;
+const handler_trigger_extension_pack = function (initial_sensors_state, payload) {
+    const sensors_state = initial_sensors_state;
+    const rca = payload && payload.RCA;
 
     sensors_state.map((sensor, index) => {
-
         sensors_state[index].is_sensor_version_new = !sensors_state[index].is_sensor_version_new;
         sensors_state[index].sensor_active = false;
         sensors_state[index].sensor_name = 'nosensor';
 
-        payload.RCA.setRobotSensor(0,index,'nosensor');
-
-
+        if (rca && typeof rca.setRobotSensor === 'function') {
+            rca.setRobotSensor(0, index, 'nosensor');
+        }
     });
 
-  return sensors_state;
-}
+    return sensors_state;
+};
 
 
 export {

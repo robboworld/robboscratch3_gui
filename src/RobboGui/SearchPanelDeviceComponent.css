@@ -1,30 +1,105 @@
+@import "../css/colors.css";
+@import "../css/units.css";
+@import "./RobboDeviceStatus.css";
 
 .search_panel_device_component{
-
-
-
+    color: $text-primary;
 }
 
-.device_flash_button{
+/* Quadcopter: статус в первой строке; подсказка — отдельным блоком на всю ширину */
 
+/* NW.js 69: flex gap не работает — margin через соседние селекторы */
+.quadcopter_device_root {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.quadcopter_device_root > * + * {
+  margin-top: 6px;
+}
+
+.search_panel_device_primary_row {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+}
+
+.search_panel_device_primary_row > * {
+  margin-right: 6px;
+  margin-bottom: 2px;
+}
+
+.quadcopter_info_row {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.quadcopter_panel_hint {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-size: $popup-font-size-sm;
+  line-height: 1.45;
+  font-weight: normal;
+  color: #a40018;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 0 0;
+  margin: 0;
+}
+
+.quadcopter_panel_hint_info {
+  color: #333;
+}
+
+
+.device_flash_button {
   min-height: 30px;
-
- min-width: 130px;
- /*text-align: left;*/
-
-    background-color: #00af41;
-    background-image: -webkit-linear-gradient(top,#00af41,#008a00);
-
-    border-radius: 7px;
-
-    color:white;
-
-    display: none;
-
+  min-width: 130px;
+  background-color: #00af41;
+  background-image: -webkit-linear-gradient(top, #00af41, #008a00);
+  background-image: linear-gradient(to bottom, #00af41, #008a00);
+  border: none;
+  border-radius: 7px;
+  color: white;
+  display: none;
+  cursor: pointer;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: $popup-font-size;
+  font-weight: bold;
 }
 
-.search_panel_device_status_icon{
+.device_flash_button:focus,
+.device_flash_button:focus,
+.device_flash_button:focus-visible {
+  outline: 2px solid rgba(0, 175, 65, 0.65);
+  outline-offset: 1px;
+}
 
+.device_flash_button_busy {
+  background-image: url(../../static/robbo_assets/searching.gif);
+  background-color: rgba(255, 193, 7, 0.35);
+  background-repeat: no-repeat;
+  background-position: center;
+  color: $text-primary;
+}
+
+.device_flash_button_error {
+  background-color: #ff0000;
+  background-image: -webkit-linear-gradient(top, #ff0000, #ff0000);
+  background-image: linear-gradient(to bottom, #ff0000, #ff0000);
+  color: white;
+}
+
+.search_panel_device_status_icon {
     display: inline-block;
     min-width: 30px;
     padding-left: 3px;
@@ -33,9 +108,7 @@
     margin-top: 7px;
 }
 
-.search_panel_flashing_show_details{
-
-      /*display: inline-block;*/
+.search_panel_flashing_show_details {
       display: none;
       padding-left: 5px;
       padding-right: 5px;
@@ -47,58 +120,40 @@
       background-repeat: no-repeat;
       position: relative;
       top: 20px;
+}
 
+.search_panel_flashing_status {
+    display: none;
+    padding-left: 5px;
+    padding-right: 5px;
+    margin-bottom: 7px;
+    margin-top: 7px;
+    min-width: 30px;
+    min-height: 30px;
 }
 
 @media (max-height:900px) {
 
-  .search_panel_device_element{
-
+  .search_panel_device_element {
       display: inline-block;
       padding-left: 3px;
       padding-right: 3px;
       margin-bottom: 7px;
       margin-top: 7px;
       min-width: 90px;
-
+      color: $text-primary;
   }
-
-  .search_panel_flashing_status{
-
-      display: none;
-      padding-left: 5px;
-      padding-right: 5px;
-      margin-bottom: 7px;
-      margin-top: 7px;
-      min-width: 30px;
-      min-height: 30px;
-
-  }
-
 }
 
 @media (min-height:901px) {
 
-  .search_panel_device_element{
-
+  .search_panel_device_element {
       display: inline-block;
       padding-left: 5px;
       padding-right: 5px;
       margin-bottom: 7px;
       margin-top: 7px;
       min-width: 90px;
-
-  }
-
-  .search_panel_flashing_status{
-
-      display: none;
-      padding-left: 5px;
-      padding-right: 5px;
-      margin-bottom: 7px;
-      margin-top: 7px;
-      min-width: 30px;
-      min-height: 30px;
-
+      color: $text-primary;
   }
 }

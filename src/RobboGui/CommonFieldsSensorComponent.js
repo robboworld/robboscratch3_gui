@@ -1,110 +1,80 @@
+import classNames from 'classnames';
 import React, { Component } from 'react';
-import { connect } from 'react-redux';
-import styles from  './SensorComponent.css';
-
+import rowStyles from './DevicePaletteRows.css';
+import {getTelemetryValueVariantClassNames} from './telemetry-value-variant';
 
 class CommonFieldsSensorComponent extends Component {
+  formatDisplayValue (rawValue) {
+    if (
+      rawValue == null ||
+      rawValue === '' ||
+      (typeof rawValue === 'number' && isNaN(rawValue))
+    ) {
+      return '---';
+    }
+    return rawValue;
+  }
 
-  //Sensors from extension pack
+  renderValue () {
+    const sensors_data = this.props.sensorData;
+    const sensorName = this.props.sensorName;
 
+    if (
+      sensorName === 'nosensor' ||
+      typeof sensorName === 'undefined' ||
+      sensors_data == null ||
+      typeof sensors_data === 'undefined'
+    ) {
+      return '---';
+    }
 
-  render() {
+    if (sensorName === 'color') {
+      return '---';
+    }
 
-    var sensors_data = this.props.sensorData;
+    if (Array.isArray(sensors_data)) {
+      return this.formatDisplayValue(sensors_data[3]);
+    }
 
-      return  (
+    return this.formatDisplayValue(sensors_data);
+  }
 
-        <div className={styles.sensor_block_field}  >
-            <div className={styles.sensor_block_field}>
+  render () {
+    const valueContent = this.renderValue();
+    const hasControl = Boolean(this.props.control);
+    const variant = this.props.valueVariant || 'small';
+    const variantClassNames = getTelemetryValueVariantClassNames(variant, rowStyles);
 
-                  {`${this.props.NameFieldText} `}
-
-            </div>
-            <div className={styles.sensor_block_field}>
-
-                  {
-                      (() => {
-
-                            if ((this.props.sensorName  == "nosensor") || (typeof(this.props.sensorName)  == "undefined") || (typeof(sensors_data)  == "undefined") ){
-
-                                return (
-
-                                     <div>
-
-                                        {"---"}
-
-                                     </div>
-                                )
-
-
-                            }else if (this.props.sensorName  == "color"){
-
-
-                              if (sensors_data[0] == -1){
-
-                                return (
-
-                                     <div>
-
-                                        {"---"}
-
-                                     </div>
-                                )
-
-                              }else{
-
-                              return (
-
-                                 <div style={{
-
-                                       backgroundColor: `rgb(${sensors_data[0]},${sensors_data[1]},${sensors_data[2]})`,
-                                       minWidth: `10px`,
-                                       minHeight: `10px`
-
-                                       }}>
-
-
-
-                                 </div>
-                              )
-
-                            }
-
-
-                            }else if (Array.isArray(sensors_data) ){
-
-
-
-
-                               return (   <div>
-
-                                                {sensors_data[3]}
-
-                                          </div>)
-                            }else{
-
-
-                              return (   <div>
-
-                                               {sensors_data}
-
-                                         </div>)
-
-                            }
-
-
-                        })()
-
-
-                  }
-
-            </div>
+    return (
+      <div
+        className={classNames(
+          rowStyles.telemetry_row,
+          variantClassNames.rowClassName,
+          hasControl && rowStyles.telemetry_row_with_control
+        )}
+      >
+        {hasControl ? (
+          <div className={rowStyles.telemetry_control_leading}>
+            {this.props.control}
+          </div>
+        ) : null}
+        <div className={rowStyles.telemetry_label}>
+          {this.props.NameFieldText}
         </div>
-                );
+        <div className={rowStyles.telemetry_value_group}>
+          <span
+            className={classNames(
+              rowStyles.telemetry_value,
+              variantClassNames.valueClassName,
+              this.props.sensorValueClassName
+            )}
+          >
+            {valueContent}
+          </span>
+        </div>
+      </div>
+    );
+  }
 }
-
-}
-
-
 
 export default CommonFieldsSensorComponent;

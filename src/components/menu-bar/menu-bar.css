@@ -42,28 +42,73 @@
     flex-grow: 1;
 }
 
-.scratch-logo {
-    height:  1.6rem;
+/* LMS header wordmark: themes/robbo-theme/lms/static/sass/extra/_header.scss */
+.robbo-logo {
+    display: inline-flex;
+    align-items: center;
+    color: #fff;
+    user-select: none;
     vertical-align: middle;
 }
 
-.scratch-logo.clickable {
-    /*cursor: pointer;*/
+.robbo-logo.clickable {
+    cursor: pointer;
 }
 
-.language-icon {
-    height:  1.5rem;
-    vertical-align: middle;
+.robbo-logo-wordmark {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
 
-.language-caret {
-    margin: 0 .125rem;
+.robbo-logo-reg {
+    font-size: 0.45em;
+    font-weight: 700;
+    margin-left: 0.06em;
+    vertical-align: super;
+}
+
+/* Stock menu items: icon + label + dropdown caret (File, Edit, language) */
+.menu-bar-item-content {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.menu-bar-item-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    display: block;
+}
+
+[dir="ltr"] .menu-bar-item-icon {
+    margin-right: 0.375rem;
+}
+
+[dir="rtl"] .menu-bar-item-icon {
+    margin-left: 0.375rem;
+}
+
+.menu-bar-item-label {
+    line-height: 1;
 }
 
 .language-menu {
     box-sizing: border-box;
     display: inline-flex;
-    width: $language-selector-width;
+    align-items: center;
+    position: relative;
+    min-width: 3.25rem;
+    padding: 0 0.5rem;
+}
+
+.menu-bar-item.language-menu {
+    padding: 0 0.5rem;
 }
 
 .menu-bar-item {
@@ -89,6 +134,11 @@
     background-color: $ui-black-transparent;
 }
 
+.menu-bar-item.hoverable:focus-visible {
+    outline: 2px solid white;
+    outline-offset: -2px;
+}
+
 .menu-bar-item.growable {
     max-width: $menu-bar-item-max-width;
     flex: 1;
@@ -105,16 +155,20 @@
     align-items: center;
 }
 
+/* NW.js: flex gap не поддерживается — отступы между пунктами через margin */
+.file-group > .menu-bar-item + .menu-bar-item {
+    margin-left: 0.125rem;
+}
+
 .file-group .menu-bar-item {
     padding: 0 0.75rem;
 }
 
-.menu-bar-item.language-menu {
-    padding: 0 0.5rem;
-}
-
 .menu-bar-menu {
-    margin-top: $menu-bar-height;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0;
     z-index: $z-index-menu-bar;
 }
 
@@ -188,15 +242,16 @@
 
 .dropdown-caret-icon {
     width: 0.5rem;
-    height: 0.5rem;
+    height: 0.3125rem;
+    flex-shrink: 0;
 }
 
 [dir="ltr"] .dropdown-caret-icon {
-    margin-left: .5rem;
+    margin-left: 0.375rem;
 }
 
 [dir="rtl"] .dropdown-caret-icon {
-    margin-right: .5rem;
+    margin-right: 0.375rem;
 }
 
 .disabled {
@@ -222,23 +277,97 @@
   background-image: url("/images/mystuff.png");
 }
 
-.trigger_robbo_menu{
-    font-weight: bold;
-    font-size: 12px;
-    cursor: pointer;
-    align-items: center;
-    min-width: 100px;
-    height: $menu-bar-height;
-    padding-left: 11px;
-    padding-right: 11px;
+.robboMenuGroup {
     display: flex;
-    position: relative;
-    margin-left: 0.5rem;
-
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    flex-shrink: 0;
+    height: calc($menu-bar-height - 0.375rem);
+    margin-left: 0.375rem;
+    padding: 0 0.25rem;
+    border-radius: calc($form-radius + 2px);
+    background-color: rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
-.trigger_robbo_menu:hover{
+.robboMenuGroup > * + * {
+    margin-left: 0.25rem;
+}
 
+.trigger_robbo_menu {
+    font-weight: bold;
+    font-size: $menu-bar-standard-font-size;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    min-width: 6.25rem;
+    height: 100%;
+    padding: 0 0.75rem;
+    display: flex;
+    position: relative;
+    margin: 0;
+    white-space: nowrap;
+    user-select: none;
+    outline: none;
+    border: none;
+    border-radius: $form-radius;
+    color: white;
+    background: transparent;
+    transition: background-color 0.2s ease;
+}
+
+.trigger_robbo_menu:hover {
     background-color: $ui-black-transparent;
+}
 
+.trigger_robbo_menu:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+/* Same block height as .robbo-menu-group */
+.toggle_robbo_ui {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    height: calc($menu-bar-height - 0.375rem);
+    margin-left: 0.375rem;
+    padding: 0.1875rem 0.375rem;
+    border: none;
+    border-radius: calc($form-radius + 2px);
+    cursor: pointer;
+    background: transparent;
+    outline: none;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toggle_robbo_ui:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.toggle_robbo_ui:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+.toggle_robbo_ui_icon {
+    display: block;
+    height: calc($menu-bar-height - 0.75rem);
+    width: calc($menu-bar-height - 0.75rem);
+    object-fit: contain;
+    border-radius: $form-radius;
+    filter: grayscale(1);
+    opacity: 0.55;
+}
+
+.toggle_robbo_ui_icon_active {
+    filter: none;
+    opacity: 1;
+}
+
+.toggle_robbo_ui_active {
+    background-color: rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }

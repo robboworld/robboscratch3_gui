@@ -14,17 +14,53 @@ var postcssImport = require('postcss-import');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.BUILD_MODE === 'dist';
 const shouldBuildLibraryDist = process.env.BUILD_MODE === 'dist';
+const isAppBuild = process.env.BUILD_MODE === 'app';
+
+const useBabelCache = !isProduction;
+
+const babelLoaderOptions = {
+    babelrc: false,
+    plugins: [
+        '@babel/plugin-syntax-dynamic-import',
+        '@babel/plugin-transform-async-to-generator',
+        '@babel/plugin-proposal-object-rest-spread',
+        ['react-intl', {
+            messagesDir: './translations/messages/'
+        }]
+    ],
+    presets: [
+        ['@babel/preset-env', {targets: {browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']}}],
+        '@babel/preset-react'
+    ]
+};
+
+const babelRule = {
+    test: /\.jsx?$/,
+    include: [path.resolve(__dirname, 'src'), /node_modules[\\/]scratch-[^\\/]+[\\/]src/],
+    use: useBabelCache ? [
+        {
+            loader: 'cache-loader',
+            options: {
+                cacheDirectory: path.resolve(__dirname, 'node_modules/.cache/babel-loader')
+            }
+        },
+        {
+            loader: 'babel-loader',
+            options: babelLoaderOptions
+        }
+    ] : {
+        loader: 'babel-loader',
+        options: babelLoaderOptions
+    }
+};
 
 const base = {
     mode: isProduction ? 'production' : 'development',
     devtool: isProduction ? false : 'cheap-module-source-map',
     devServer: {
         contentBase: path.resolve(__dirname, 'build'),
-        host: '127.0.0.1',
-        port: process.env.PORT || 8601,
-        headers: {
-            'Permissions-Policy': 'unload=(self)'
-        }
+        host: '0.0.0.0',
+        port: process.env.PORT || 8601
     },
     output: {
         library: 'GUI',
@@ -35,45 +71,10 @@ const base = {
         ReactDOM: 'react-dom'
     },
     resolve: {
-        symlinks: false,
-        alias: {
-            'scratch-render$': 'scratch-render/dist/web/scratch-render.js',
-            'scratch-vm$': 'scratch-vm/dist/web/scratch-vm.js',
-            'scratch-audio$': 'scratch-audio/dist.js'
-        }
+        symlinks: false
     },
-    node: {
-        fs: 'empty',
-        path: 'empty',
-        os: 'empty',
-        crypto: 'empty',
-        stream: 'empty',
-        net: 'empty',
-        tls: 'empty'
-    },
-    target: 'web', // Явно указываем веб-таргет
     module: {
-        rules: [{
-            test: /\.jsx?$/,
-            loader: 'babel-loader',
-            include: [path.resolve(__dirname, 'src'), /node_modules[\\/]scratch-[^\\/]+[\\/]src/],
-            options: {
-                // Explicitly disable babelrc so we don't catch various config
-                // in much lower dependencies.
-                babelrc: false,
-                plugins: [
-                    '@babel/plugin-syntax-dynamic-import',
-                    '@babel/plugin-transform-async-to-generator',
-                    '@babel/plugin-proposal-object-rest-spread',
-                    ['react-intl', {
-                        messagesDir: './translations/messages/'
-                    }]],
-                presets: [
-                    ['@babel/preset-env', {useBuiltIns: 'entry'}],
-                    '@babel/preset-react'
-                ]
-            }
-        },
+        rules: [babelRule,
         {
             test: /\.css$/,
             use: [{
@@ -94,7 +95,9 @@ const base = {
                         return [
                             postcssImport,
                             postcssVars,
-                	    autoprefixer()
+                            autoprefixer({
+                                browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']
+                            })
                         ];
                     }
                 }
@@ -114,7 +117,10 @@ const base = {
 module.exports = [
     // to run editor examples
     defaultsDeep({}, base, {
-        entry: {
+        entry: isAppBuild ? {
+            'lib.min': ['react', 'react-dom'],
+            'gui': './src/playground/index.jsx'
+        } : {
             'lib.min': ['react', 'react-dom'],
             'gui': './src/playground/index.jsx',
             'blocksonly': './src/playground/blocks-only.jsx',
@@ -149,55 +155,62 @@ module.exports = [
                 name: 'lib.min'
             }
         },
-        plugins: base.plugins.concat([
-            new webpack.DefinePlugin({
-                'process.env.NODE_ENV': '"' + process.env.NODE_ENV + '"',
-                'process.env.DEBUG': Boolean(process.env.DEBUG),
-                'process.env.GA_ID': '"' + (process.env.GA_ID || 'UA-000000-01') + '"',
-                'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"'
-            }),
-            new HtmlWebpackPlugin({
-                chunks: ['lib.min', 'gui'],
-                template: 'src/playground/index.ejs',
-                title: 'Robbo Scratch',
-                sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null
-            }),
-            new HtmlWebpackPlugin({
-                chunks: ['lib.min', 'blocksonly'],
-                template: 'src/playground/index.ejs',
-                filename: 'blocks-only.html',
-                title: 'Scratch 3.0 GUI: Blocks Only Example'
-            }),
-            new HtmlWebpackPlugin({
-                chunks: ['lib.min', 'compatibilitytesting'],
-                template: 'src/playground/index.ejs',
-                filename: 'compatibility-testing.html',
-                title: 'Scratch 3.0 GUI: Compatibility Testing'
-            }),
-            new HtmlWebpackPlugin({
-                chunks: ['lib.min', 'player'],
-                template: 'src/playground/index.ejs',
-                filename: 'player.html',
-                title: 'Scratch 3.0 GUI: Player Example'
-            }),
-            new CopyWebpackPlugin([{
-                from: 'static',
-                to: 'static'
-            }]),
-            new CopyWebpackPlugin([{
-                from: 'node_modules/scratch-blocks/media',
-                to: 'static/blocks-media'
-            }]),
-            new CopyWebpackPlugin([{
-                from: 'extensions/**',
-                to: 'static',
-                context: 'src/examples'
-            }]),
-            new CopyWebpackPlugin([{
-                from: isProduction ? 'extension-worker.js' : 'extension-worker.{js,js.map}',
-                context: 'node_modules/scratch-vm/dist/web'
-            }])
-        ])
+        plugins: base.plugins.concat(
+            [
+                new webpack.DefinePlugin({
+                    'process.env.NODE_ENV': '"' + (process.env.NODE_ENV || 'development') + '"',
+                    'process.env.DEBUG': Boolean(process.env.DEBUG),
+                    'process.env.GA_ID': '"' + (process.env.GA_ID || 'UA-000000-01') + '"',
+                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '""'
+                }),
+                new HtmlWebpackPlugin({
+                    chunks: ['lib.min', 'gui'],
+                    template: 'src/playground/index.ejs',
+                    title: 'Robbo Scratch',
+                    favicon: path.resolve(__dirname, 'static/favicon.png'),
+                    sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null
+                })
+            ],
+            isAppBuild ? [] : [
+                new HtmlWebpackPlugin({
+                    chunks: ['lib.min', 'blocksonly'],
+                    template: 'src/playground/index.ejs',
+                    filename: 'blocks-only.html',
+                    title: 'Scratch 3.0 GUI: Blocks Only Example'
+                }),
+                new HtmlWebpackPlugin({
+                    chunks: ['lib.min', 'compatibilitytesting'],
+                    template: 'src/playground/index.ejs',
+                    filename: 'compatibility-testing.html',
+                    title: 'Scratch 3.0 GUI: Compatibility Testing'
+                }),
+                new HtmlWebpackPlugin({
+                    chunks: ['lib.min', 'player'],
+                    template: 'src/playground/index.ejs',
+                    filename: 'player.html',
+                    title: 'Scratch 3.0 GUI: Player Example'
+                })
+            ],
+            [
+                new CopyWebpackPlugin([{
+                    from: 'static',
+                    to: 'static'
+                }]),
+                new CopyWebpackPlugin([{
+                    from: 'node_modules/scratch-blocks/media',
+                    to: 'static/blocks-media'
+                }]),
+                new CopyWebpackPlugin([{
+                    from: 'extensions/**',
+                    to: 'static',
+                    context: 'src/examples'
+                }]),
+                new CopyWebpackPlugin([{
+                    from: isProduction ? 'extension-worker.js' : 'extension-worker.{js,js.map}',
+                    context: 'node_modules/scratch-vm/dist/web'
+                }])
+            ]
+        )
     })
 ].concat(
     shouldBuildLibraryDist ? (
@@ -229,7 +242,7 @@ module.exports = [
             },
             plugins: base.plugins.concat([
                 new webpack.DefinePlugin({
-                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"'
+                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '""'
                 }),
                 new CopyWebpackPlugin([{
                     from: 'node_modules/scratch-blocks/media',

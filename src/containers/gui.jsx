@@ -79,6 +79,7 @@ class GUI extends React.Component {
         this.projectChangeToken = 0;
         this.lastAutoSavedChangeToken = 0;
         this.didClearBrokenSnapshot = false;
+        this.lastAutoSavedLayout = null;
         this.scheduleDebouncedAutoSave = debounce(
             () => this.autoSaveProject(),
             AUTOSAVE_DEBOUNCE_MS,
@@ -108,6 +109,13 @@ class GUI extends React.Component {
         }
         if (this.props.projectTitle !== prevProps.projectTitle) {
             this.setReduxTitle(this.props.projectTitle);
+        }
+        if (this.props.isShowingProject &&
+            (this.props.isRightPanelHidden !== prevProps.isRightPanelHidden ||
+                this.props.isBlocksPaletteCollapsed !== prevProps.isBlocksPaletteCollapsed ||
+                this.props.blocksPaletteFlyoutWidth !== prevProps.blocksPaletteFlyoutWidth ||
+                this.props.isRobboUiHidden !== prevProps.isRobboUiHidden)) {
+            this.scheduleDebouncedAutoSave();
         }
         if (this.props.isShowingProject && !prevProps.isShowingProject) {
             // this only notifies container when a project changes from not yet loaded to loaded
@@ -157,7 +165,8 @@ class GUI extends React.Component {
         }
 
         const hasPendingVmChanges = nextChangeToken > this.lastAutoSavedChangeToken;
-        if (!force && !hasPendingVmChanges) {
+        const hasPendingLayoutChanges = this.hasLayoutChangedSinceLastSave();
+        if (!force && !hasPendingVmChanges && !hasPendingLayoutChanges) {
             return Promise.resolve(false);
         }
 
@@ -168,11 +177,23 @@ class GUI extends React.Component {
             .then(blob => saveSessionSnapshot({
                 blob,
                 metadata: {
-                    title: this.props.projectTitle
+                    title: this.props.projectTitle,
+                    layout: {
+                        isRightPanelHidden: this.props.isRightPanelHidden,
+                        isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed,
+                        blocksPaletteFlyoutWidth: this.props.blocksPaletteFlyoutWidth,
+                        isRobboUiHidden: this.props.isRobboUiHidden
+                    }
                 }
             }))
             .then(() => {
                 this.lastAutoSavedChangeToken = savedUpToToken;
+                this.lastAutoSavedLayout = {
+                    isRightPanelHidden: this.props.isRightPanelHidden,
+                    isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed,
+                    blocksPaletteFlyoutWidth: this.props.blocksPaletteFlyoutWidth,
+                    isRobboUiHidden: this.props.isRobboUiHidden
+                };
                 return true;
             })
             .catch(() => false)
@@ -180,11 +201,22 @@ class GUI extends React.Component {
                 this.isAutoSaving = false;
                 if (result &&
                     this.props.isShowingProject &&
-                    this.projectChangeToken > this.lastAutoSavedChangeToken) {
+                    (this.projectChangeToken > this.lastAutoSavedChangeToken ||
+                        this.hasLayoutChangedSinceLastSave())) {
                     return this.autoSaveProject();
                 }
                 return result;
             });
+    }
+    hasLayoutChangedSinceLastSave () {
+        const saved = this.lastAutoSavedLayout;
+        if (!saved) {
+            return true;
+        }
+        return saved.isRightPanelHidden !== this.props.isRightPanelHidden ||
+            saved.isBlocksPaletteCollapsed !== this.props.isBlocksPaletteCollapsed ||
+            saved.blocksPaletteFlyoutWidth !== this.props.blocksPaletteFlyoutWidth ||
+            saved.isRobboUiHidden !== this.props.isRobboUiHidden;
     }
     startProjectAutosaving () {
         // Session snapshot is driven by PROJECT_CHANGED + debounce (see handleVmProjectChanged).
@@ -239,13 +271,14 @@ class GUI extends React.Component {
             children,
             fetchingProject,
             isLoading,
+            isBlocksWorkspaceLayoutPending,
             loadingStateVisible,
             ...componentProps
         } = this.props;
         return (
             <React.Fragment>
                 <GUIComponent
-                    loading={fetchingProject || isLoading || loadingStateVisible}
+                    loading={fetchingProject || isLoading || loadingStateVisible || isBlocksWorkspaceLayoutPending}
                     {...componentProps}
                 >
                     {children}
@@ -266,8 +299,13 @@ GUI.propTypes = {
     intl: intlShape,
     isError: PropTypes.bool,
     isLoading: PropTypes.bool,
+    isBlocksWorkspaceLayoutPending: PropTypes.bool,
     isScratchDesktop: PropTypes.bool,
     isShowingProject: PropTypes.bool,
+    isRightPanelHidden: PropTypes.bool,
+    isBlocksPaletteCollapsed: PropTypes.bool,
+    blocksPaletteFlyoutWidth: PropTypes.number,
+    isRobboUiHidden: PropTypes.bool,
     loadingStateVisible: PropTypes.bool,
     onProjectLoaded: PropTypes.func,
     onSeeCommunity: PropTypes.func,
@@ -307,6 +345,11 @@ const mapStateToProps = state => {
         isError: getIsError(loadingState),
         isFullScreen: state.scratchGui.mode.isFullScreen,
         isPlayerOnly: state.scratchGui.mode.isPlayerOnly,
+        isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
+        isBlocksPaletteCollapsed: state.scratchGui.layoutVisibility.isBlocksPaletteCollapsed,
+        blocksPaletteFlyoutWidth: state.scratchGui.layoutVisibility.blocksPaletteFlyoutWidth,
+        isRobboUiHidden: state.scratchGui.layoutVisibility.isRobboUiHidden,
+        isBlocksWorkspaceLayoutPending: state.scratchGui.layoutVisibility.isBlocksWorkspaceLayoutPending,
         isRtl: state.locales.isRtl,
         projectChanged: state.scratchGui.projectChanged,
         isShowingProject: getIsShowingProject(loadingState),

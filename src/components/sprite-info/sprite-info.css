@@ -58,11 +58,12 @@
 }
 
 .radio {
-    filter: saturate(0);
+    filter: grayscale(1);
     cursor: pointer;
 }
 .radio.is-active {
     filter: none;
+    background-color: $motion-selected-bg;
 }
 .radio.is-disabled {
     cursor: default;

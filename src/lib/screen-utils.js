@@ -15,7 +15,7 @@ const STAGE_DIMENSION_DEFAULTS = {
     //   2 * $full-screen-border-width
     fullScreenSpacingBorderAdjustment: 12,
     // referencing css/units.css,
-    // menuHeightAdjustment = $stage-menu-height
+    // menuHeightAdjustment = $stage-menu-height (fullscreen covers menu-bar)
     menuHeightAdjustment: 44
 };
 

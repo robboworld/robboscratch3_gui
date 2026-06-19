@@ -5,54 +5,57 @@ import styles from './QuadcopterPreviewComponent.css'
 import { ActionTriggerDraggableWindow } from './actions/sensor_actions'
 
 class QuadcopterPreviewComponent extends Component {
-  onQuadcopterStatusChange(quadcopter_state, quadcopter_is_searching) {
-    quadcopter_is_searching = false;
-    const el = document.getElementById(`quadcopter-preview-${this.props.quadcopterIndex}`);
-    if (!el) return;
-    if (quadcopter_is_searching) {
-      el.style.backgroundImage = " url(./static/robbo_assets/searching.gif)";
-      el.style.backgroundRepeat = "no-repeat";
-      el.style.backgroundPosition = "center";
-    } else {
-      el.style.backgroundImage = "";
-    }
-    if (quadcopter_state == "connected") {
-      el.classList.remove(styles.quadcopter_status_connected);
-      el.classList.remove(styles.quadcopter_status_disconnected);
-      el.classList.add(styles.quadcopter_status_connected);
-    } else {
-      el.classList.remove(styles.quadcopter_status_disconnected);
-      el.classList.remove(styles.quadcopter_status_connected);
-      el.classList.add(styles.quadcopter_status_disconnected);
-    }
+  constructor (props) {
+    super(props);
+    this.state = {
+      quadcopterState: 'disconnected',
+      quadcopterSearching: false,
+      quadcopterUiConnected: false
+    };
+  }
+
+  onQuadcopterStatusChange(quadcopter_state, quadcopter_is_searching, statusSnapshot) {
+    const snapshot = statusSnapshot || {};
+    const st = snapshot.state || quadcopter_state || 'disconnected';
+    const isSearching = snapshot.searching === true || quadcopter_is_searching === true;
+    const uiConnected = !isSearching &&
+      (snapshot.connected === true || st === 'connected' || st === 'landing');
+    this.setState({
+      quadcopterState: st,
+      quadcopterSearching: isSearching,
+      quadcopterUiConnected: uiConnected
+    });
+  }
+
+  isConnectedLikeState () {
+    return this.state.quadcopterUiConnected === true;
   }
   componentDidMount() {
-    this.isQuadcopterConnected = false;
-    this.quadcopter_is_searching = false;
-    //  this.startQuadcopterConnectionStatusCheck();
-    this.props.QCA.registerQuadcopterStatusChangeCallback(this.onQuadcopterStatusChange.bind(this));
+    this._quadcopterStatusCallback = this.onQuadcopterStatusChange.bind(this);
+    this.props.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
+  }
+  componentWillUnmount() {
+    if (this.props.QCA && this._quadcopterStatusCallback &&
+      typeof this.props.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
+      this.props.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
+    }
   }
   render() {
+    const isConnected = this.isConnectedLikeState();
     return (
       <div id={`quadcopter-preview-${this.props.quadcopterIndex}`}
         className={classNames(
           { [styles.quadcopterPreview]: true },
-          { [styles.quadcopter_status_connected]: this.isQuadcopterConnected },
-          { [styles.quadcopter_status_disconnected]: !this.isQuadcopterConnected }
+          { [styles.quadcopter_status_connected]: isConnected },
+          { [styles.quadcopter_status_disconnected]: !isConnected }
         )}
         onClick={this.props.onTriggerQuadcopterPallete}>
         <div id={`quadcopter-${this.props.quadcopterIndex}-preview-pic`} className={styles.quadcopterPreviewPic} >
         </div>
-        <div id={`quadcopter-${this.props.quadcopterIndex}-searching-icon`} className={classNames(
-          { [styles.quadcopter_loading_icon]: true },
-          { [styles.quadcopter_loading_icon_hidden]: (/*(this.props.robots[0].robot_connected) || */(!this.quadcopter_is_searching)) },
-          { [styles.quadcopter_loading_icon_showing]: ((this.quadcopter_is_searching) /*&& (!this.props.robots[0].robot_connected)*/) }
-        )}>
-        </div>
         <div id={`quadcopter-${this.props.quadcopterIndex}-connection-status`} className={classNames(
           { [styles.quadcopter_connection_status]: true },
-          { [styles.quadcopter_status_connected]: this.isQuadcopterConnected },
-          { [styles.quadcopter_status_disconnected]: !this.isQuadcopterConnected }
+          { [styles.quadcopter_status_connected]: isConnected },
+          { [styles.quadcopter_status_disconnected]: !isConnected }
         )} >
         </div>
       </div>

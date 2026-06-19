@@ -1,24 +1,13 @@
-import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import styles from './SensorPallete.css';
-import SensorComponent from './SensorComponent';
-import SensorDataBlockComponent  from './SensorDataBlockComponent'
-import SensorChooseWindowComponent from './SensorChooseWindowComponent';
-
-import QuadcopterPreviewComponent from './QuadcopterPreviewComponent';
 import QuadcopterPalleteComponent from './QuadcopterPalleteComponent';
 
-import RobotPreviewComponent from './RobotPreviewComponent';
 import RobotPalleteComponent from './RobotPalleteComponent';
 
-import LaboratoryPreviewComponent from './LaboratoryPreviewComponent';
 import LaboratoryPalleteComponent from './LaboratoryPalleteComponent';
 
-import OttoPreviewComponent from './OttoPreviewComponent';
 import OttoPalleteComponent from './OttoPalleteComponent';
 
-import ArduinoPreviewComponent from './ArduinoPreviewComponent';
 import ArduinoPalleteComponent from './ArduinoPalleteComponent';
 
 import DraggableWindowComponent from './DraggableWindowComponent';
@@ -80,7 +69,6 @@ class SensorPallete extends Component {
   }
 
   render() {
-//  console.log(this.props.tracks);
 const showQuadcopterUi = isDesktopWithBluetooth() || this.props.is_copter_sim_activated;
 
  var initial_coords_robot = [200,200];
@@ -90,22 +78,7 @@ const showQuadcopterUi = isDesktopWithBluetooth() || this.props.is_copter_sim_ac
  var initial_coords_arduino = [900,200];
 
   return (
-
-      <div id={styles.sensor_pallete}>
-
-
-        <RobotPreviewComponent RCA={this.props.RCA} robotIndex={0} />
-
-         <LaboratoryPreviewComponent LCA={this.props.LCA} labIndex={0} />
-
-        {showQuadcopterUi && (
-          <QuadcopterPreviewComponent QCA={this.props.QCA} quadcopterIndex={0} />
-        )}
-
-        <OttoPreviewComponent OCA={this.props.OCA} ottoIndex={0} />  
-
-        <ArduinoPreviewComponent ACA={this.props.ACA} arduinoIndex={0}/> 
-
+      <React.Fragment>
 
        {showQuadcopterUi && (
          <DraggableWindowComponent draggableWindowId={0} initialCoords={initial_coords_quadcopter}>
@@ -142,10 +115,7 @@ const showQuadcopterUi = isDesktopWithBluetooth() || this.props.is_copter_sim_ac
 
         </DraggableWindowComponent> 
 
-
-
-
-      </div>
+      </React.Fragment>
   );
 }
 
@@ -153,14 +123,6 @@ const showQuadcopterUi = isDesktopWithBluetooth() || this.props.is_copter_sim_ac
 
 const mapStateToProps =  state => ({
 
-      // robot_sensors:state.scratchGui.robot_sensors,
-      // lab_external_sensors:state.scratchGui.lab_external_sensors,
-      // robot_special_sensors:state.scratchGui.robot_special_sensors,
-      // lab_special_sensors:state.scratchGui.lab_special_sensors,
-      // sensors_choose_window:state.scratchGui.sensors_choose_window,
-      // robots:state.scratchGui.robots,
-      // laboratories:state.scratchGui.laboratories,
-      // settings:state.scratchGui.settings
       is_copter_sim_activated: state.scratchGui.settings.is_copter_sim_activated === true
   });
 

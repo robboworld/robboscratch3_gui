@@ -1,0 +1,165 @@
+@import "../css/colors.css";
+@import "../css/units.css";
+
+/* Connected: более заметный зелёный */
+$device-connected-bg: #16c04f;
+$device-connected-border: #3dd96a;
+$device-connected-glow: rgba(22, 192, 79, 0.55);
+$device-disconnected-border: rgba(185, 192, 202, 0.9);
+$device-disconnected-border-hover: rgba(198, 205, 214, 1);
+
+.previewButton {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
+    padding: 0;
+    border: 2px solid $device-disconnected-border;
+    border-radius: $form-radius;
+    cursor: pointer;
+    color: white;
+    outline: none;
+    background-color: transparent;
+    transition:
+        background-color 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+.previewButton:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+/* NW.js / старый Chromium: flex gap может не работать — отступ через margin */
+.previewButton+.previewButton {
+    margin-left: 0.375rem;
+}
+
+/* Не подключено: как фон .robboMenuGroup (прозрачно — виден фон панели) */
+.previewButton.disconnected {
+    border: 2px solid $device-disconnected-border;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.previewButton.disconnected:hover {
+    border-color: $device-disconnected-border-hover;
+    background-color: $ui-black-transparent;
+    box-shadow: inset 0 0 0 1px rgba(198, 205, 214, 0.22);
+}
+
+.previewButton.disconnected .previewIcon {
+    opacity: 0.78;
+    filter: brightness(0) invert(1);
+}
+
+/* Подключено: ярко-зелёная заливка + белая иконка + лёгкий glow */
+.previewButton.connected {
+    border-color: $device-connected-border;
+    background-color: $device-connected-bg;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.2),
+        0 0 10px $device-connected-glow;
+}
+
+.previewButton.connected:hover {
+    border-color: #5ee687;
+    background-color: #1ad458;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.28),
+        0 0 12px $device-connected-glow;
+}
+
+.previewButton.connected .previewIcon {
+    opacity: 1;
+    filter: brightness(0) invert(1) drop-shadow(0 0 3px rgba(255, 255, 255, 0.65));
+}
+
+/* Поиск: нейтральный pulse, без зелёного (не путать с connected) */
+.previewButton.searching {
+    border-color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(255, 255, 255, 0.18);
+    box-shadow: none;
+    animation: menu-bar-device-pulse 1.2s ease-in-out infinite;
+}
+
+.previewButton.searching:hover {
+    background-color: rgba(255, 255, 255, 0.24);
+}
+
+/* Поиск важнее connected, если оба класса активны */
+.previewButton.searching.connected {
+    border-color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(255, 255, 255, 0.18);
+    box-shadow: none;
+}
+
+.previewButton.searching .previewIcon {
+    opacity: 0.92;
+    filter: brightness(0) invert(1);
+}
+
+.previewIcon {
+    display: block;
+    flex-shrink: 0;
+    /* без height:% (в NW.js flex → 0px); ~100% кнопки + крупнее фон */
+    width: 1.7rem;
+    height: 1.7rem;
+    max-width: 100%;
+    max-height: 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 110%;
+    filter: brightness(0) invert(1);
+    pointer-events: none;
+    user-select: none;
+    transition:
+        opacity 0.25s ease,
+        filter 0.25s ease;
+}
+
+/* Робот: крупнее остальных; силуэт выше геом. центра viewBox — чуть вниз */
+.previewButton.device_robot .previewIcon {
+    width: 2rem;
+    height: 2rem;
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_robot.svg);
+    background-position: 50% 42%;
+    background-size: 120%;
+}
+
+.device_lab .previewIcon {
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_lab.svg);
+}
+
+.device_quadcopter .previewIcon {
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_quadcopter.svg);
+}
+
+.device_otto .previewIcon {
+    width: 1.85rem;
+    height: 1.85rem;
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_otto.svg);
+    background-size: 115%;
+}
+
+.device_arduino .previewIcon {
+    background-image: url(../../static/robbo_assets/device_icons/menu_icon_arduino.svg);
+}
+
+@keyframes menu-bar-device-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.35);
+    }
+
+    50% {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
+    }
+}

@@ -1,10 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html<% if (htmlWebpackPlugin.options.seo && htmlWebpackPlugin.options.seo.enabled) { %> lang="ru"<% } %>>
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="google" value="notranslate">
     <title><%= htmlWebpackPlugin.options.title %></title>
+    <% if (htmlWebpackPlugin.options.seo && htmlWebpackPlugin.options.seo.enabled) { %>
+    <% var seo = htmlWebpackPlugin.options.seo; %>
+    <meta name="description" content="<%= seo.description %>">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="<%= seo.canonical %>">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="<%= seo.siteName %>">
+    <meta property="og:title" content="<%= htmlWebpackPlugin.options.title %>">
+    <meta property="og:description" content="<%= seo.description %>">
+    <meta property="og:url" content="<%= seo.canonical %>">
+    <meta property="og:image" content="<%= seo.ogImage %>">
+    <meta property="og:locale" content="<%= seo.locale %>">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="<%= htmlWebpackPlugin.options.title %>">
+    <meta name="twitter:description" content="<%= seo.description %>">
+    <meta name="twitter:image" content="<%= seo.ogImage %>">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "name": "<%= seo.siteName %>",
+          "url": "<%= seo.siteUrl %>/",
+          "inLanguage": "ru",
+          "description": "<%= seo.description %>"
+        },
+        {
+          "@type": "WebApplication",
+          "name": "<%= seo.siteName %>",
+          "url": "<%= seo.siteUrl %>/",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "ru",
+          "description": "<%= seo.description %>",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "RUB"
+          }
+        },
+        {
+          "@type": "Organization",
+          "name": "<%= seo.organizationName %>",
+          "url": "<%= seo.organizationUrl %>"
+        }
+      ]
+    }
+    </script>
+    <% } %>
     <% if (htmlWebpackPlugin.options.sentryConfig) { %>
         <!-- Sentry error logging to help with finding bugs -->
         <script src="https://cdn.ravenjs.com/3.22.1/raven.min.js" crossorigin="anonymous"></script>
@@ -13,7 +63,29 @@
         </script>
         <!-- /Sentry -->
     <% } %>
+    <% if (htmlWebpackPlugin.options.yandexMetrika) { %>
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+       (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+       m[i].l=1*new Date();
+       for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+       k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+       (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+       ym(<%= htmlWebpackPlugin.options.yandexMetrika %>, "init", {clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true});
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/<%= htmlWebpackPlugin.options.yandexMetrika %>" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <!-- /Yandex.Metrika counter -->
+    <% } %>
   </head>
   <body>
+    <% if (htmlWebpackPlugin.options.seo && htmlWebpackPlugin.options.seo.enabled) { %>
+    <% var seoBody = htmlWebpackPlugin.options.seo; %>
+    <noscript>
+      <h1><%= seoBody.siteName %></h1>
+      <p><%= seoBody.description %></p>
+      <p>Визуальное программирование для детей и школ: создавайте игры и анимации, подключайте роботов РОББО и управляйте ими прямо из браузера.</p>
+      <p>Для работы редактора включите JavaScript в браузере.</p>
+    </noscript>
+    <% } %>
   </body>
 </html>

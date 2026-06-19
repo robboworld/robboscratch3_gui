@@ -570,11 +570,10 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
 
       </block>
 
-      <block type="copter_status">
-
-      </block>
-
       <block type="copter_fly_distance">
+          <value name="DIRECTION">
+              <shadow type="copter_directions"/>
+          </value>
           <value name="METERS">
               <shadow type="math_number">
                   <field name="NUM">0.4</field>
@@ -583,6 +582,9 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
       </block>
 
       <block type="copter_fly_time">
+          <value name="DIRECTION">
+              <shadow type="copter_directions"/>
+          </value>
           <value name="SECONDS">
               <shadow type="math_number">
                   <field name="NUM">1</field>
@@ -590,32 +592,27 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
           </value>
       </block>
 
-
-
-
-
-      <block type="copter_change_x_by">
-          <value name="DISTANCE_DELTA">
+      <block type="copter_move_axis_to">
+          <value name="AXIS">
+              <shadow type="copter_axes"/>
+          </value>
+          <value name="COORD">
               <shadow type="math_number">
-                  <field name="NUM">0.1</field>
+                  <field name="NUM">0</field>
               </shadow>
           </value>
       </block>
 
-      <block type="copter_change_y_by">
-          <value name="DISTANCE_DELTA">
+      <block type="copter_set_speed">
+          <value name="SPEED">
               <shadow type="math_number">
-                  <field name="NUM">0.1</field>
+                  <field name="NUM">0.5</field>
               </shadow>
           </value>
       </block>
 
-      <block type="copter_change_z_by">
-          <value name="DISTANCE_DELTA">
-              <shadow type="math_number">
-                  <field name="NUM">0.1</field>
-              </shadow>
-          </value>
+      <block type="copter_speed">
+
       </block>
 
       <block type="copter_x_coord">
@@ -634,7 +631,13 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
 
       </block>
 
+      <block type="copter_battery">
 
+      </block>
+
+      <block type="copter_is_flying">
+
+      </block>
 
       <block type="copter_fly_to_coords">
         <value name="X_COORD">
@@ -655,22 +658,14 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
       </block>
 
       <block type="copter_rotate">
+          <value name="SIDE">
+              <shadow type="copter_turn_sides"/>
+          </value>
         <value name="DEGREES">
               <shadow type="math_number">
                   <field name="NUM">45</field>
               </shadow>
           </value>
-
-      </block>
-
-      <block type="copter_set_direction">
-      <value name="DIRECTION">
-          <shadow type="copter_directions"/>
-      </value>
-
-      </block>
-
-      <block type="copter_direction">
 
       </block>
 
@@ -1753,6 +1748,7 @@ const makeToolboxXML = function (isStage, targetId,config, categoriesXML,
   var  isExtensionPackActivated   = false;
   var  robot_is_scratchduino      = false;
   var  is_sim_activated           = false;
+  var  robbo_ui_hidden            = false;
 
 
 
@@ -1763,19 +1759,24 @@ const makeToolboxXML = function (isStage, targetId,config, categoriesXML,
       isExtensionPackActivated   = config.isExtensionPackActivated;
       robot_is_scratchduino      = config.robot_is_scratchduino;
       is_sim_activated           = config.is_sim_activated;
+      robbo_ui_hidden            = config.robbo_ui_hidden === true;
 
 
     }
 
-    const everything = [
-        xmlOpen,
-
+    const robboCategories = robbo_ui_hidden ? [] : [
         robot(false, targetId,isExtensionPackActivated,is_sim_activated,robot_is_scratchduino),gap, //modified_by_Yaroslav //toolbox generator main
         laboratory(false, targetId,isExternalSensorsActivated),gap, //modified_by_Yaroslav
         ...(showQuadcopterInUi ? [quadcopter(isStage, targetId), gap] : []), //modified_by_Yaroslav
         otto(false, targetId), gap,
-        newcat(false),gap,
+        newcat(false),gap
        // iotBlocks(isStage, targetId),
+    ];
+
+    const everything = [
+        xmlOpen,
+
+        ...robboCategories,
         motion(isStage, targetId), gap,
         looks(isStage, targetId, costumeName, backdropName), gap,
         sound(isStage, targetId, soundName), gap,

@@ -5,6 +5,11 @@ var robot_get_data_order = true;
 
 var mqtt = require('../../../../robboscratch3_vm/node_modules/mqtt');
 
+const {
+  getViewportCenteredCoords,
+  ROBBO_POPUP_SIZE_FLASH_LOG
+} = require('../../lib/robbo-popup-position');
+
 
 const ActionTriggerSim = function () {
   return {
@@ -40,37 +45,31 @@ const ActionSetCopterSimState = function (copterSimEnabled) {
   };
 };
 
-const ActionTriggerExtensionPack = function(){
-
-
+const ActionTriggerExtensionPack = function (RCA) {
+  const rca = RCA || RCA_local;
+  if (rca) {
+    RCA_local = rca;
+  }
   return {
     type: 'TRIGGER_EXTENSION_PACK',
-    payload:{
-
-
-        RCA:RCA_local
+    payload: {
+      RCA: rca
     }
   };
+};
 
-
-}
-
-const ActionTriggerLabExtSensors = function(){
-
-
+const ActionTriggerLabExtSensors = function (LCA) {
+  const lca = LCA || LCA_local;
+  if (lca) {
+    LCA_local = lca;
+  }
   return {
-
     type: 'TRIGGER_LAB_EXT_SENSORS',
-
-    payload:{
-
-
-        LCA:LCA_local
+    payload: {
+      LCA: lca
     }
   };
-
-
-}
+};
 
 const ActionTriggerSensorChooseWindow = function(payload){
 
@@ -564,21 +563,21 @@ const ActionTriggerDraggableWindow = function(draggable_window_id){
 
 }
 
-const ActionCreateDraggableWindow = function(draggable_window_id){
-
+const ActionCreateDraggableWindow = function (draggable_window_id, top, left) {
+  const centered = getViewportCenteredCoords(
+    ROBBO_POPUP_SIZE_FLASH_LOG.width,
+    ROBBO_POPUP_SIZE_FLASH_LOG.height
+  );
 
   return {
     type: 'DRAGGABLE_WINDOW_CREATE',
-    payload:{
-
-
-        draggable_window_id: draggable_window_id
-
+    payload: {
+      draggable_window_id: draggable_window_id,
+      position_top: top != null ? top : centered.top,
+      position_left: left != null ? left : centered.left
     }
   };
-
-
-}
+};
 
 const ActionTriggerRobboMenu = function(){
 

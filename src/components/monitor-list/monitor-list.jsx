@@ -8,7 +8,53 @@ import {stageSizeToTransform} from '../../lib/screen-utils';
 
 import styles from './monitor-list.css';
 
-const MonitorList = props => (
+const isVariableMonitor = monitorData => (
+    monitorData.opcode === 'data_variable' ||
+    monitorData.opcode === 'data_listcontents'
+);
+
+const MonitorList = props => {
+    const isCornerLayout = props.layout === 'corner';
+    const visibleMonitors = props.monitors.valueSeq().filter(m => m.visible);
+    const monitorsToShow = isCornerLayout ?
+        visibleMonitors.filter(isVariableMonitor) :
+        visibleMonitors;
+
+    if (isCornerLayout) {
+        return (
+            <Box
+                className={classNames(
+                    styles.monitorList,
+                    styles.monitorListCorner,
+                    'monitor-overlay'
+                )}
+            >
+                {monitorsToShow.map(monitorData => (
+                    <Monitor
+                        draggable={false}
+                        height={monitorData.height}
+                        id={monitorData.id}
+                        key={monitorData.id}
+                        layout="corner"
+                        max={monitorData.sliderMax}
+                        min={monitorData.sliderMin}
+                        mode={monitorData.mode}
+                        opcode={monitorData.opcode}
+                        params={monitorData.params}
+                        spriteName={monitorData.spriteName}
+                        targetId={monitorData.targetId}
+                        value={monitorData.value}
+                        width={monitorData.width}
+                        x={monitorData.x}
+                        y={monitorData.y}
+                        onDragEnd={props.onMonitorChange}
+                    />
+                ))}
+            </Box>
+        );
+    }
+
+    return (
     <Box
         // Use static `monitor-overlay` class for bounds of draggables
         className={classNames(styles.monitorList, 'monitor-overlay')}
@@ -21,8 +67,7 @@ const MonitorList = props => (
             className={styles.monitorListScaler}
             style={stageSizeToTransform(props.stageSize)}
         >
-            {props.monitors.valueSeq().filter(m => m.visible)
-                .map(monitorData => (
+            {monitorsToShow.map(monitorData => (
                     <Monitor
                         draggable={props.draggable}
                         height={monitorData.height}
@@ -44,11 +89,21 @@ const MonitorList = props => (
                 ))}
         </Box>
     </Box>
-);
+    );
+};
 
 MonitorList.propTypes = {
+    layout: PropTypes.oneOf(['stage', 'corner']),
     draggable: PropTypes.bool.isRequired,
-    monitors: PropTypes.instanceOf(OrderedMap),
+    monitors: (props, propName, componentName) => {
+        const value = props[propName];
+        if (value != null && !OrderedMap.isOrderedMap(value)) {
+            return new Error(
+                `Invalid prop \`${propName}\` supplied to \`${componentName}\`, expected OrderedMap.`
+            );
+        }
+        return null;
+    },
     onMonitorChange: PropTypes.func.isRequired,
     stageSize: PropTypes.shape({
         width: PropTypes.number,

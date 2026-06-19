@@ -18,7 +18,7 @@ function init_state(){
             sensor_active: true,
             sensor_data:[],
             sensor_device_name:"lab",
-            sensor_field_text:`Кнопка ${i + 1} :`
+            sensor_field_text: `Кнопка ${i + 1}`
 
       }
 
@@ -34,7 +34,7 @@ function init_state(){
         sensor_active: true,
         sensor_data:[],
         sensor_device_name:"lab",
-        sensor_field_text:`Свет :`
+        sensor_field_text: `Свет`
 
   }
 
@@ -47,7 +47,7 @@ function init_state(){
         sensor_active: true,
         sensor_data:[],
         sensor_device_name:"lab",
-        sensor_field_text:`Звук :`
+        sensor_field_text: `Звук`
 
   }
 
@@ -60,7 +60,7 @@ function init_state(){
         sensor_active: true,
         sensor_data:[],
         sensor_device_name:"lab",
-        sensor_field_text:`Ползунок:`
+        sensor_field_text: `Ползунок`
 
   }
 

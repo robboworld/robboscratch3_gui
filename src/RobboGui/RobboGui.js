@@ -1,9 +1,7 @@
-import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import SensorPallete from './SensorPallete';
 import ColorCorrectorTableComponent from './ColorCorrectorTableComponent';
-import SensorPaletteCollapsed from './SensorPaletteCollapsed';
 import { ItemTypes } from './drag_constants';
 import { DropTarget } from 'react-dnd';
 import SensorChooseWindowComponent from './SensorChooseWindowComponent';
@@ -11,7 +9,11 @@ import {ActionSearchRobotDevices} from './actions/sensor_actions';
 import {ActionSearchLaboratoryDevices} from './actions/sensor_actions';
 import {ActionRobotStopSearchProcess} from './actions/sensor_actions';
 import {ActionRobotStopDataRecievingProcess}  from './actions/sensor_actions';
-import {ActionTriggerExtensionPack} from './actions/sensor_actions';
+import {
+  ActionSetLCALocal,
+  ActionSetRCALocal,
+  ActionTriggerExtensionPack
+} from './actions/sensor_actions';
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 //import {ActionTriggerNeedLanguageReload} from './actions/sensor_actions';
 
@@ -28,6 +30,11 @@ import LicenseWindowComponent from './LicenseWindowComponent';
 
 import NewDraggableWindowComponent from './NewDraggableWindowComponent';
 import ProfilerWindowComponent from './ProfilerWindowComponent';
+import {
+  ROBBO_POPUP_SIZE_ABOUT,
+  ROBBO_POPUP_SIZE_FIRMWARE,
+  ROBBO_POPUP_SIZE_SETTINGS
+} from '../lib/robbo-popup-position';
 
 import IotConnectionComponent from './IotConnectionComponent';
 import {
@@ -37,21 +44,13 @@ import {
   normalizeFullscreenRenderQuality,
   applySimulationStepMsToRuntime
 } from '../lib/settingsLoader';
-import { isDesktopWithBluetooth, isRobboLinkMobileWebContext } from '../lib/platform';
+import { isRobboLinkMobileWebContext } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
 
 import { withAlert } from 'react-alert';
-import {hydrateLicenseDemoThunk} from './actions/licenseDemoActions';
-
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 
 const messages = defineMessages({
-    search_devices: {
-
-        id: 'gui.RobboGui.search_devices',
-        description: ' ',
-        defaultMessage: 'Search devices'
-    },
     update_firm_msg: {
 
         id: 'gui.RobboGui.update_firm_msg',
@@ -115,6 +114,14 @@ class RobboGui extends Component {
 
   componentDidMount(){
       if (this.props.vm) {
+        const RCA = this.props.vm.getRCA();
+        const LCA = this.props.vm.getLCA();
+        if (RCA) {
+          this.props.onSetRCALocal(RCA);
+        }
+        if (LCA) {
+          this.props.onSetLCALocal(LCA);
+        }
         getSettingsFromStorage().then((r) => {
           let firmwareSettingsApplied = false;
           let fullscreenRenderQuality = normalizeFullscreenRenderQuality();
@@ -217,38 +224,6 @@ class RobboGui extends Component {
   }
 
 
-
-  searchDevices(){
-
-    console.log("searchDevices");
-
-    let search_panel = document.getElementById(`SearchPanelComponent`);
-
-    search_panel.style.display = "block";
-
-    let search_device_button =  document.getElementById(`robbo_search_devices`);
-    search_device_button.style.pointerEvents = "none";
-
-    
-
-   this.props.vm.getDCA().searchAllDevices();
-
-   //  this.props.searchRobotDevices(this.props.vm.getRCA());
-   // this.props.searchLaboratoryDevices(this.props.vm.getLCA());
-
-   this.props.vm.getRCA().searchRobotDevices();
-   this.props.vm.getLCA().searchLaboratoryDevices();
-   this.OCA.searchOttoDevices();
-   this.ACA.searchArduinoDevices();
-
-   if (isDesktopWithBluetooth()) {
-     this.QCA.searchQuadcopterDevices();
-   }
-
-   this.props.onHydrateDemoLicense();
-
-  }
-
   stopSearchProcess(){
 
     console.log("stopSearchProcess");
@@ -306,11 +281,8 @@ class RobboGui extends Component {
 
   this.IOT = this.props.vm.getIOT();
   const isMobileBridgeContext = isRobboLinkMobileWebContext();
-  const searchButtonLabel = this.props.intl.formatMessage(messages.search_devices);
 
   var initial_coords_profiler = [300,300];
-
-  var initial_coords_about = [350,350];
 
   var initial_coords_license = [380, 320];
 
@@ -318,33 +290,33 @@ class RobboGui extends Component {
 
   return (
 
-    <div className={classNames(
-
-                  {[styles.robbo_gui]: true},
-                  {[styles.content_collapsed]: this.props.sensorsPalette.sensors_pallete_collapsed},
-                  {[styles.content_expand]:    !this.props.sensorsPalette.sensors_pallete_collapsed}
-
-
-                  )}>
+    <div
+      className={styles.robbo_gui}
+      style={{display: this.props.isRobboUiHidden ? 'none' : undefined}}
+    >
 
 
           <div className={styles.version}> </div>
 
-         {
-              (!this.props.sensorsPalette.sensors_pallete_collapsed)?  <SensorPallete RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} VM={this.props.vm} />: <SensorPaletteCollapsed />
-
-
-         }
+         <SensorPallete RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} VM={this.props.vm} />
 
          {!isMobileBridgeContext ? (
-           <DraggableWindowComponent draggableWindowId={3}>
+           <DraggableWindowComponent
+             draggableWindowId={3}
+             centerOnCreate
+             estimatedPopupSize={ROBBO_POPUP_SIZE_FIRMWARE}
+           >
 
               <FirmwareFlasherComponent DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
             </DraggableWindowComponent>
          ) : null}
 
-        <DraggableWindowComponent draggableWindowId={4}>
+        <DraggableWindowComponent
+          draggableWindowId={4}
+          centerOnCreate
+          estimatedPopupSize={ROBBO_POPUP_SIZE_SETTINGS}
+        >
 
           <SettingsWindowComponent VM={this.props.vm} />
 
@@ -373,7 +345,11 @@ class RobboGui extends Component {
 
          
 
-         <NewDraggableWindowComponent draggableWindowId={"about-window"} initialCoords={initial_coords_about}>
+         <NewDraggableWindowComponent
+           draggableWindowId={"about-window"}
+           centerOnCreate
+           estimatedPopupSize={ROBBO_POPUP_SIZE_ABOUT}
+         >
 
             <AboutWindowComponent VM={this.props.vm} RCA={this.RCA} DCA={this.DCA}/>
 
@@ -393,10 +369,6 @@ class RobboGui extends Component {
           </NewDraggableWindowComponent>  */}
         
 
-       {/* <button id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{this.props.intl.formatMessage(messages.search_devices)} </button>*/}
-
-          <div id={`robbo_search_devices`} className={styles.robbo_search_devices} onClick={this.searchDevices.bind(this)}>{searchButtonLabel}</div>
-
     </div>
   );
 //  );
@@ -410,8 +382,7 @@ const mapStateToProps =  state => ({
 
 
   sensorsChooseWindow:state.scratchGui.sensors_choose_window,
-  sensorsPalette:state.scratchGui.sensors_palette
-
+  isRobboUiHidden: state.scratchGui.layoutVisibility.isRobboUiHidden
 
   });
 
@@ -440,9 +411,14 @@ const mapDispatchToProps = dispatch => ({
             dispatch(ActionRobotStopDataRecievingProcess(RCA));
 
     },
-    onTriggerExtensionPack: () => {
-
-        dispatch(ActionTriggerExtensionPack());
+    onTriggerExtensionPack: RCA => {
+        dispatch(ActionTriggerExtensionPack(RCA));
+      },
+    onSetRCALocal: RCA => {
+        dispatch(ActionSetRCALocal(RCA));
+      },
+    onSetLCALocal: LCA => {
+        dispatch(ActionSetLCALocal(LCA));
       },
 
 
@@ -452,10 +428,6 @@ const mapDispatchToProps = dispatch => ({
         },
       onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
         dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
-      },
-
-    onHydrateDemoLicense: () => {
-        dispatch(hydrateLicenseDemoThunk());
       }
 
         // onTriggerNeedLanguageReload:  () => {

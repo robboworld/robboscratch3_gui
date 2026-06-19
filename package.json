@@ -4,7 +4,9 @@
   "description": "GraphicaL User Interface for creating and running Scratch 3.0 projects",
   "main": "./dist/scratch-gui.js",
   "scripts": {
-    "build": "npm run clean && webpack --progress --colors --bail",
+    "build": "npm run build:dev",
+    "build:dev": "webpack --progress --colors --bail",
+    "build:release": "npm run clean && webpack --progress --colors --bail",
     "clean": "rimraf ./build && mkdirp build && rimraf ./dist && mkdirp dist",
     "deploy": "touch build/.nojekyll && gh-pages -t -d build -m \"Build for $(git log --pretty=format:%H -n1)\"",
     "prune": "./prune-gh-pages.sh",
@@ -45,6 +47,7 @@
     "babel-plugin-react-intl": "^5.1.2",
     "base64-loader": "1.0.0",
     "bowser": "1.9.4",
+    "cache-loader": "^4.1.0",
     "chromedriver": "2.44.1",
     "classnames": "2.2.6",
     "computed-style-to-inline-style": "3.0.0",
@@ -140,7 +143,7 @@
     }
   },
   "dependencies": {
-    "react-alert": "^5.0.1",
+    "react-alert": "5.0.1",
     "react-alert-template-basic": "^1.0.0",
     "react-dnd": "^7.0.2",
     "react-dnd-html5-backend": "^7.0.2",

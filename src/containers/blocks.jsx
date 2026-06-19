@@ -29,6 +29,23 @@ import {
     activateTab,
     SOUNDS_TAB_INDEX
 } from '../reducers/editor-tab';
+import {getIsShowingProject} from '../reducers/project-state';
+import {
+    BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
+    clampFlyoutWidth,
+    setBlocksWorkspaceLayoutPending
+} from '../reducers/layout-visibility';
+import {getEventXY} from '../lib/touch-utils';
+
+/** Category column width; flyout is separate (see toolbox.js / flyout_vertical.js). */
+const CATEGORY_MENU_WIDTH = 60;
+const PALETTE_ANIMATION_MS = 400;
+const DEFAULT_FLYOUT_WIDTH = BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT;
+const WORKSPACE_LAYOUT_PENDING_TIMEOUT_MS = 5000;
+
+const easeInOutCubic = t => (t < 0.5 ?
+    4 * t * t * t :
+    1 - Math.pow(-2 * t + 2, 3) / 2);
 
 const addFunctionListener = (object, property, callback) => {
     const oldFn = object[property];
@@ -71,15 +88,57 @@ class Blocks extends React.Component {
             'onWorkspaceUpdate',
             'onWorkspaceMetricsChange',
             'setBlocks',
-            'setLocale'
+            'setLocale',
+            'updatePaletteVisibility',
+            'setFlyoutDomVisible',
+            'handleTogglePalette',
+            'getInjectionRoot',
+            'clearPaletteAnimation',
+            'getToolboxFlyout',
+            'runPaletteAnimation',
+            'expandPaletteThen',
+            'installToolboxPaletteInterceptor',
+            'cancelFlyoutSlideAnimation',
+            'parseFlyoutTranslate',
+            'setFlyoutSlideTransform',
+            'animateFlyoutSlide',
+            'applyPaletteFlyoutWidth',
+            'handlePaletteResizePointerDown',
+            'setToolboxLayoutWidth',
+            'compensateWorkspaceScrollForToolboxWidthChange',
+            'setFlyoutScrollbarVisible',
+            'syncPaletteChromeFlyoutWidth',
+            'ensureFlyoutBlocksLayoutAtFullWidth',
+            'ensureFlyoutBlocksLayoutThenCollapse',
+            'repairFlyoutBlockLayout',
+            'rerenderFlyoutBlocksAtFullWidth',
+            'scheduleFlyoutLayoutRepair',
+            'centerWorkspaceView',
+            'tryCenterWorkspaceView',
+            'runInitialWorkspaceCenter',
+            'beginInitialWorkspaceLayout',
+            'finishInitialWorkspaceLayout',
+            'scheduleWorkspaceScrollCenter',
+            'beginHiddenFlyoutRepair',
+            'endHiddenFlyoutRepair'
         ]);
+        this._flyoutLayoutRepairFrame = null;
+        this._flyoutRepairFinishOuterFrame = null;
+        this._flyoutRepairFinishInnerFrame = null;
+        this._flyoutRepairGeneration = 0;
+        this._workspaceScrollCenterFrame = null;
+        this._pendingInitialWorkspaceCenter = true;
+        this._paletteCollapsed = false;
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
         this.ScratchBlocks.recordSoundCallback = this.handleOpenSoundRecorder;
 
         this.state = {
             workspaceMetrics: {},
-            prompt: null
+            prompt: null,
+            paletteAnimating: false,
+            paletteResizing: false,
+            blocksLayoutPending: false
         };
         this.onTargetsUpdate = debounce(this.onTargetsUpdate, 100);
         this.toolboxUpdateQueue = [];
@@ -95,6 +154,32 @@ class Blocks extends React.Component {
             {rtl: this.props.isRtl, toolbox: this.props.toolboxXML}
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
+        this.installToolboxPaletteInterceptor();
+
+        if (this.props.paletteCollapsed) {
+            const toolbox = this.workspace.toolbox_;
+            const flyout = this.getToolboxFlyout();
+            const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+            this._savedFlyoutWidth = flyoutWidth;
+            this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+            this._paletteCollapsed = true;
+            if (toolbox) {
+                this.setToolboxLayoutWidth(toolbox, CATEGORY_MENU_WIDTH, {skipScrollCompensation: true});
+            }
+            if (flyout) {
+                flyout.DEFAULT_WIDTH = flyoutWidth;
+                flyout.setContainerVisible(false);
+                if (!this._flyoutPositionPatched) {
+                    this._originalFlyoutPosition = flyout.position.bind(flyout);
+                    flyout.position = () => {};
+                    this._flyoutPositionPatched = true;
+                }
+            }
+            this.setFlyoutDomVisible(false);
+            if (this.blocks) {
+                this.blocks.style.setProperty('--blocks-flyout-width', '0px');
+            }
+        }
 
         // Store the xml of the toolbox that is actually rendered.
         // This is used in componentDidUpdate instead of prevProps, because
@@ -119,6 +204,14 @@ class Blocks extends React.Component {
         if (this.props.isVisible) {
             this.setLocale();
         }
+        if (this.props.paletteCollapsed) {
+            this.ensureFlyoutBlocksLayoutThenCollapse();
+        } else {
+            this.applyPaletteFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        }
+        if (this.props.isShowingProject && this._pendingInitialWorkspaceCenter) {
+            this.beginInitialWorkspaceLayout();
+        }
     }
     shouldComponentUpdate (nextProps, nextState) {
         return (
@@ -134,7 +227,14 @@ class Blocks extends React.Component {
             this.props.robbo_settings.is_lab_ext_enabled !==  nextProps.robbo_settings.is_lab_ext_enabled ||  //not original
             this.props.robbo_settings.robot_is_scratchduino !==  nextProps.robbo_settings.robot_is_scratchduino || //not original
             this.props.robbo_settings.is_sim_activated !== nextProps.robbo_settings.is_sim_activated ||
-            this.props.robbo_settings.is_copter_sim_activated !== nextProps.robbo_settings.is_copter_sim_activated
+            this.props.robbo_settings.is_copter_sim_activated !== nextProps.robbo_settings.is_copter_sim_activated ||
+            this.props.isRobboUiHidden !== nextProps.isRobboUiHidden ||
+            this.props.paletteCollapsed !== nextProps.paletteCollapsed ||
+            this.props.blocksPaletteFlyoutWidth !== nextProps.blocksPaletteFlyoutWidth ||
+            this.props.isBlocksWorkspaceLayoutPending !== nextProps.isBlocksWorkspaceLayoutPending ||
+            this.state.paletteAnimating !== nextState.paletteAnimating ||
+            this.state.paletteResizing !== nextState.paletteResizing ||
+            this.state.blocksLayoutPending !== nextState.blocksLayoutPending
         );
     }
     componentDidUpdate (prevProps) {
@@ -154,7 +254,8 @@ class Blocks extends React.Component {
         if ((this.props.extension_pack.is_extension_pack_activated !== prevProps.extension_pack.is_extension_pack_activated) || (this.props.robbo_settings.is_lab_ext_enabled !== prevProps.robbo_settings.is_lab_ext_enabled)
           || (this.props.robbo_settings.robot_is_scratchduino !== prevProps.robbo_settings.robot_is_scratchduino)
           || (this.props.robbo_settings.is_sim_activated !== prevProps.robbo_settings.is_sim_activated)
-          || (this.props.robbo_settings.is_copter_sim_activated !== prevProps.robbo_settings.is_copter_sim_activated)   ){
+          || (this.props.robbo_settings.is_copter_sim_activated !== prevProps.robbo_settings.is_copter_sim_activated)
+          || (this.props.isRobboUiHidden !== prevProps.isRobboUiHidden)   ){
 
           const dynamicBlocksXML = this.props.vm.runtime.getBlocksXML();
           const target = this.props.vm.editingTarget;
@@ -165,6 +266,7 @@ class Blocks extends React.Component {
           config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
           config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
           config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
+          config.robbo_ui_hidden            = this.props.isRobboUiHidden;
           config.locale = this.props.locale;
           config.messages = this.props.messages;
           const toolboxXML = makeToolboxXML(target.isStage, target.id, config, dynamicBlocksXML);
@@ -173,10 +275,49 @@ class Blocks extends React.Component {
 
         }
 
+        if (!this.props.isShowingProject && prevProps.isShowingProject) {
+            this._pendingInitialWorkspaceCenter = true;
+        }
+
+        if (this.props.isShowingProject && !prevProps.isShowingProject) {
+            this.setState({workspaceMetrics: {}});
+            if (this._pendingInitialWorkspaceCenter) {
+                this.beginInitialWorkspaceLayout();
+            }
+        }
+
+        if (this.props.isShowingProject && !prevProps.isShowingProject &&
+            this.props.paletteCollapsed) {
+            this.ensureFlyoutBlocksLayoutThenCollapse();
+        }
+
+        if (this.props.paletteCollapsed !== prevProps.paletteCollapsed &&
+            !this.state.paletteAnimating) {
+            if (this.props.paletteCollapsed && !prevProps.paletteCollapsed) {
+                // After animated collapse _paletteCollapsed is already true; running
+                // ensureFlyoutBlocksLayoutThenCollapse would open the flyout and skip hide.
+                if (!this._paletteCollapsed) {
+                    this.ensureFlyoutBlocksLayoutThenCollapse();
+                }
+            } else {
+                this.updatePaletteVisibility(this.props.paletteCollapsed);
+            }
+        }
+
+        if (this.props.blocksPaletteFlyoutWidth !== prevProps.blocksPaletteFlyoutWidth &&
+            !this.state.paletteAnimating &&
+            !this._paletteResizing) {
+            this.applyPaletteFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        }
+
         if (this.props.isVisible === prevProps.isVisible) {
-            if (this.props.stageSize !== prevProps.stageSize) {
-                // force workspace to redraw for the new stage size
+            if (this.props.stageSize !== prevProps.stageSize ||
+                this.props.isRightPanelHidden !== prevProps.isRightPanelHidden) {
+                // force workspace to redraw for the new stage size / right panel width
                 window.dispatchEvent(new Event('resize'));
+                if (this.props.paletteCollapsed) {
+                    this.scheduleFlyoutLayoutRepair();
+                }
             }
             return;
         }
@@ -192,15 +333,39 @@ class Blocks extends React.Component {
                 this.props.vm.refreshWorkspace();
             }
 
-            window.dispatchEvent(new Event('resize'));
+            if (this.props.paletteCollapsed) {
+                this.scheduleFlyoutLayoutRepair();
+            } else {
+                window.dispatchEvent(new Event('resize'));
+            }
         } else {
             this.workspace.setVisible(false);
         }
     }
     componentWillUnmount () {
         this.detachVM();
-        this.workspace.dispose();
+        if (this.workspace) {
+            this.workspace.dispose();
+            this.workspace = null;
+        }
         clearTimeout(this.toolboxUpdateTimeout);
+        clearTimeout(this._paletteAnimationTimer);
+        clearTimeout(this._workspaceLayoutPendingTimeout);
+        if (this._flyoutLayoutRepairFrame) {
+            cancelAnimationFrame(this._flyoutLayoutRepairFrame);
+            this._flyoutLayoutRepairFrame = null;
+        }
+        this.cancelPendingFlyoutRepairFinish();
+        if (this._workspaceScrollCenterFrame) {
+            cancelAnimationFrame(this._workspaceScrollCenterFrame);
+            this._workspaceScrollCenterFrame = null;
+        }
+        this.cancelFlyoutSlideAnimation();
+        this._paletteResizing = false;
+        const root = this.getInjectionRoot();
+        if (root) {
+            root.classList.remove('flyout-animating-out', 'flyout-animating-in');
+        }
     }
     requestToolboxUpdate () {
         clearTimeout(this.toolboxUpdateTimeout);
@@ -208,9 +373,19 @@ class Blocks extends React.Component {
             this.updateToolbox();
         }, 0);
     }
+    /**
+     * VM formatMessage uses scratch-l10n; Robbo block/reporter strings live in ScratchMsgs.
+     * @returns {object}
+     */
+    getVmLocaleMessages () {
+        const ScratchMsgs = this.ScratchBlocks.ScratchMsgs;
+        const enScratchMsgs = ScratchMsgs.locales.en || {};
+        const localeScratchMsgs = ScratchMsgs.locales[this.props.locale] || {};
+        return Object.assign({}, this.props.messages, enScratchMsgs, localeScratchMsgs);
+    }
     setLocale () {
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
-        this.props.vm.setLocale(this.props.locale, this.props.messages)
+        this.props.vm.setLocale(this.props.locale, this.getVmLocaleMessages())
             .then(() => {
                 const flyout = this.workspace.getFlyout();
                 if (flyout) flyout.setRecyclingEnabled(false);
@@ -230,6 +405,10 @@ class Blocks extends React.Component {
 
         const categoryId = this.workspace.toolbox_.getSelectedCategoryId();
         const offset = this.workspace.toolbox_.getCategoryScrollOffset();
+        if (this.props.paletteCollapsed) {
+            this.prepareHiddenFlyoutForToolboxPopulate();
+        }
+
         this.workspace.updateToolbox(this.props.toolboxXML);
         this._renderedToolboxXML = this.props.toolboxXML;
 
@@ -244,6 +423,10 @@ class Blocks extends React.Component {
             this.workspace.toolbox_.setFlyoutScrollPos(currentCategoryPos + offset);
         } else {
             this.workspace.toolbox_.setFlyoutScrollPos(currentCategoryPos);
+        }
+
+        if (this.props.paletteCollapsed) {
+            this.repairFlyoutBlockLayout(true);
         }
 
         const queue = this.toolboxUpdateQueue;
@@ -361,6 +544,7 @@ class Blocks extends React.Component {
             config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
             config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
             config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
+            config.robbo_ui_hidden            = this.props.isRobboUiHidden;
             config.locale = this.props.locale;
             config.messages = this.props.messages;
 
@@ -374,15 +558,18 @@ class Blocks extends React.Component {
         }
     }
     onWorkspaceUpdate (data) {
+        if (this._pendingInitialWorkspaceCenter) {
+            this.beginInitialWorkspaceLayout();
+        }
+
         // When we change sprites, update the toolbox to have the new sprite's blocks
         const toolboxXML = this.getToolboxXML();
         if (toolboxXML) {
             this.props.updateToolboxState(toolboxXML);
         }
 
-        if (this.props.vm.editingTarget && !this.state.workspaceMetrics[this.props.vm.editingTarget.id]) {
-            this.onWorkspaceMetricsChange();
-        }
+        const targetId = this.props.vm.editingTarget && this.props.vm.editingTarget.id;
+        const savedMetrics = targetId ? this.state.workspaceMetrics[targetId] : null;
 
         // Remove and reattach the workspace listener (but allow flyout events)
         this.workspace.removeChangeListener(this.props.vm.blockListener);
@@ -406,12 +593,24 @@ class Blocks extends React.Component {
         }
         this.workspace.addChangeListener(this.props.vm.blockListener);
 
-        if (this.props.vm.editingTarget && this.state.workspaceMetrics[this.props.vm.editingTarget.id]) {
-            const {scrollX, scrollY, scale} = this.state.workspaceMetrics[this.props.vm.editingTarget.id];
+        if (savedMetrics) {
+            const {scrollX, scrollY, scale} = savedMetrics;
             this.workspace.scrollX = scrollX;
             this.workspace.scrollY = scrollY;
             this.workspace.scale = scale;
             this.workspace.resize();
+            if (this._pendingInitialWorkspaceCenter) {
+                this.finishInitialWorkspaceLayout();
+            }
+        } else {
+            this.workspace.resize();
+            if (this._pendingInitialWorkspaceCenter) {
+                if (!this.props.paletteCollapsed) {
+                    this.runInitialWorkspaceCenter();
+                }
+            } else {
+                this.tryCenterWorkspaceView();
+            }
         }
 
         // Clear the undo state of the workspace since this is a
@@ -435,17 +634,777 @@ class Blocks extends React.Component {
         this.handleExtensionAdded(blocksInfo);
     }
     handleCategorySelected (categoryId) {
-        const extension = extensionData.find(ext => ext.extensionId === categoryId);
-        if (extension && extension.launchPeripheralConnectionFlow) {
-            this.handleConnectionModalStart(categoryId);
+        const selectCategory = () => {
+            const extension = extensionData.find(ext => ext.extensionId === categoryId);
+            if (extension && extension.launchPeripheralConnectionFlow) {
+                this.handleConnectionModalStart(categoryId);
+            }
+
+            this.withToolboxUpdates(() => {
+                this.workspace.toolbox_.setSelectedCategoryById(categoryId);
+            });
+        };
+
+        if (this._paletteCollapsed) {
+            this.expandPaletteThen(selectCategory);
+            return;
+        }
+        selectCategory();
+    }
+    installToolboxPaletteInterceptor () {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        if (!toolbox || toolbox._paletteExpandInterceptorInstalled) {
+            return;
         }
 
-        this.withToolboxUpdates(() => {
-            this.workspace.toolbox_.setSelectedCategoryById(categoryId);
+        const blocks = this;
+        const originalSetSelectedItem = toolbox.setSelectedItem.bind(toolbox);
+        toolbox.setSelectedItem = (item, opt_shouldScroll) => {
+            if (item && blocks._paletteCollapsed) {
+                // populate_ / updateToolbox call setSelectedItem(..., false) — not a user click
+                const shouldExpandPalette = opt_shouldScroll !== false;
+                if (shouldExpandPalette) {
+                    blocks.expandPaletteThen(() => {
+                        originalSetSelectedItem(item, opt_shouldScroll);
+                    });
+                    return;
+                }
+                originalSetSelectedItem(item, opt_shouldScroll);
+                return;
+            }
+            originalSetSelectedItem(item, opt_shouldScroll);
+        };
+
+        const originalSetSelectedCategoryById = toolbox.setSelectedCategoryById.bind(toolbox);
+        toolbox.setSelectedCategoryById = id => {
+            if (blocks._paletteCollapsed && blocks.props.paletteCollapsed &&
+                !blocks.state.paletteAnimating) {
+                originalSetSelectedCategoryById(id);
+                return;
+            }
+            if (blocks._paletteCollapsed) {
+                blocks.expandPaletteThen(() => {
+                    originalSetSelectedCategoryById(id);
+                });
+                return;
+            }
+            originalSetSelectedCategoryById(id);
+        };
+
+        toolbox._paletteExpandInterceptorInstalled = true;
+    }
+    expandPaletteThen (then) {
+        if (!this._paletteCollapsed) {
+            if (then) {
+                then();
+            }
+            return;
+        }
+        if (this.state.paletteAnimating) {
+            this._pendingPaletteExpand = then;
+            return;
+        }
+
+        this.setPaletteAnimating(true);
+        this.runPaletteAnimation(false, () => {
+            if (this.props.onTogglePalette && this.props.paletteCollapsed) {
+                this.props.onTogglePalette(false);
+            }
+            if (then) {
+                then();
+            }
+            const pending = this._pendingPaletteExpand;
+            this._pendingPaletteExpand = null;
+            if (pending) {
+                pending();
+            }
         });
     }
     setBlocks (blocks) {
         this.blocks = blocks;
+    }
+    getInjectionRoot () {
+        if (!this.blocks) {
+            return null;
+        }
+        return this.blocks.querySelector('.injectionDiv') || this.blocks;
+    }
+    getToolboxFlyout () {
+        if (!this.workspace) {
+            return null;
+        }
+        if (this.workspace.toolbox_ && this.workspace.toolbox_.flyout_) {
+            return this.workspace.toolbox_.flyout_;
+        }
+        return this.workspace.flyout_ || null;
+    }
+    clearPaletteAnimation () {
+        clearTimeout(this._paletteAnimationTimer);
+        this._paletteAnimationTimer = null;
+        this.cancelFlyoutSlideAnimation();
+        const root = this.getInjectionRoot();
+        if (root) {
+            root.classList.remove('flyout-animating-out', 'flyout-animating-in');
+        }
+        this.setState({paletteAnimating: false});
+        this.setFlyoutScrollbarVisible(!this._paletteCollapsed);
+    }
+    cancelFlyoutSlideAnimation () {
+        if (this._flyoutAnimationFrame) {
+            cancelAnimationFrame(this._flyoutAnimationFrame);
+            this._flyoutAnimationFrame = null;
+        }
+    }
+    parseFlyoutTranslate (flyout) {
+        if (!flyout || !flyout.svgGroup_) {
+            return {x: CATEGORY_MENU_WIDTH, y: 0};
+        }
+        const transform = flyout.svgGroup_.style.transform || '';
+        const match = transform.match(/translate\(\s*([-\d.]+)px,\s*([-\d.]+)px\)/);
+        if (match) {
+            return {x: parseFloat(match[1]), y: parseFloat(match[2])};
+        }
+        return {x: CATEGORY_MENU_WIDTH, y: 0};
+    }
+    setFlyoutSlideTransform (flyout, x, y) {
+        if (!flyout || !flyout.svgGroup_) {
+            return;
+        }
+        const group = flyout.svgGroup_;
+        group.style.transform = `translate(${x}px, ${y}px)`;
+        group.style.webkitTransform = group.style.transform;
+    }
+    syncFlyoutSlideBackground (flyout, x, y) {
+        if (!flyout || !flyout.svgBackground_) {
+            return;
+        }
+        flyout.svgBackground_.style.transform = `translate(${x}px, ${y}px)`;
+        flyout.svgBackground_.style.webkitTransform = flyout.svgBackground_.style.transform;
+    }
+    syncPaletteChromeFlyoutWidth (flyoutX) {
+        const flyout = this.getToolboxFlyout();
+        const flyoutWidth = this._savedFlyoutWidth ||
+            (flyout && flyout.getWidth()) ||
+            DEFAULT_FLYOUT_WIDTH;
+        const displayWidth = Math.max(0, Math.round(flyoutX + flyoutWidth - CATEGORY_MENU_WIDTH));
+        if (this.blocks) {
+            this.blocks.style.setProperty('--blocks-flyout-width', `${displayWidth}px`);
+        }
+        return displayWidth;
+    }
+    animateFlyoutSlide (flyout, fromX, toX, onComplete) {
+        if (!flyout || !flyout.svgGroup_) {
+            if (onComplete) {
+                onComplete();
+            }
+            return;
+        }
+
+        this.cancelFlyoutSlideAnimation();
+
+        flyout.setContainerVisible(true);
+        flyout.svgGroup_.style.display = 'block';
+        if (flyout.svgBackground_) {
+            flyout.svgBackground_.style.display = 'block';
+        }
+
+        const {y} = this.parseFlyoutTranslate(flyout);
+        const startTime = performance.now();
+
+        const step = now => {
+            const t = Math.min(1, (now - startTime) / PALETTE_ANIMATION_MS);
+            const eased = easeInOutCubic(t);
+            const x = fromX + ((toX - fromX) * eased);
+            this.setFlyoutSlideTransform(flyout, x, y);
+            this.syncFlyoutSlideBackground(flyout, x, y);
+            this.syncPaletteChromeFlyoutWidth(x);
+
+            if (t < 1) {
+                this._flyoutAnimationFrame = requestAnimationFrame(step);
+            } else {
+                this._flyoutAnimationFrame = null;
+                if (onComplete) {
+                    onComplete();
+                }
+            }
+        };
+
+        this.setFlyoutSlideTransform(flyout, fromX, y);
+        this.syncFlyoutSlideBackground(flyout, fromX, y);
+        this.syncPaletteChromeFlyoutWidth(fromX);
+        this._flyoutAnimationFrame = requestAnimationFrame(step);
+    }
+    clearFlyoutSlideStyles (flyout) {
+        if (!flyout || !flyout.svgGroup_) {
+            return;
+        }
+        flyout.svgGroup_.style.transition = '';
+        flyout.svgGroup_.style.opacity = '';
+        flyout.svgGroup_.style.transform = '';
+        flyout.svgGroup_.style.webkitTransform = '';
+        if (flyout.svgBackground_) {
+            flyout.svgBackground_.style.transition = '';
+            flyout.svgBackground_.style.transform = '';
+            flyout.svgBackground_.style.webkitTransform = '';
+            flyout.svgBackground_.style.opacity = '';
+        }
+    }
+    setPaletteAnimating (animating) {
+        this.setState({paletteAnimating: animating});
+    }
+    setFlyoutScrollbarVisible (visible) {
+        const flyout = this.getToolboxFlyout();
+        if (flyout && flyout.scrollbar_ && flyout.scrollbar_.outerSvg_) {
+            flyout.scrollbar_.outerSvg_.setAttribute('display', visible ? 'block' : 'none');
+        }
+    }
+    setFlyoutDomVisible (visible) {
+        const flyout = this.getToolboxFlyout();
+        const root = this.getInjectionRoot();
+        if (flyout && flyout.svgGroup_) {
+            const display = visible ? '' : 'none';
+            flyout.svgGroup_.style.display = display;
+            if (flyout.svgBackground_) {
+                flyout.svgBackground_.style.display = display;
+            }
+        }
+        if (!root) {
+            return;
+        }
+        if (visible) {
+            root.classList.remove('flyout-palette-collapsed');
+        } else {
+            root.classList.add('flyout-palette-collapsed');
+        }
+    }
+    cancelPendingFlyoutRepairFinish () {
+        if (this._flyoutRepairFinishOuterFrame) {
+            cancelAnimationFrame(this._flyoutRepairFinishOuterFrame);
+            this._flyoutRepairFinishOuterFrame = null;
+        }
+        if (this._flyoutRepairFinishInnerFrame) {
+            cancelAnimationFrame(this._flyoutRepairFinishInnerFrame);
+            this._flyoutRepairFinishInnerFrame = null;
+        }
+    }
+    prepareHiddenFlyoutForToolboxPopulate () {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        const root = this.getInjectionRoot();
+        if (!toolbox || !flyout) {
+            return;
+        }
+        if (this._flyoutPositionPatched && this._originalFlyoutPosition) {
+            flyout.position = this._originalFlyoutPosition;
+        }
+        const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        this._savedFlyoutWidth = flyoutWidth;
+        this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+        flyout.DEFAULT_WIDTH = flyoutWidth;
+        this.setToolboxLayoutWidth(toolbox, this._savedToolboxWidth, {skipScrollCompensation: true});
+        this.clearFlyoutSlideStyles(flyout);
+        flyout.setContainerVisible(true);
+        flyout.setVisible(true);
+        this.beginHiddenFlyoutRepair(root, flyout);
+        toolbox.position();
+    }
+    beginHiddenFlyoutRepair (root, flyout) {
+        if (root) {
+            root.classList.add('flyout-palette-repairing');
+            root.classList.remove('flyout-palette-collapsed');
+        }
+        if (flyout && flyout.svgGroup_) {
+            flyout.svgGroup_.style.display = 'block';
+        }
+        if (flyout && flyout.svgBackground_) {
+            flyout.svgBackground_.style.display = 'block';
+        }
+        this.setFlyoutScrollbarVisible(false);
+    }
+    endHiddenFlyoutRepair (root) {
+        if (root) {
+            root.classList.remove('flyout-palette-repairing');
+        }
+    }
+    compensateWorkspaceScrollForToolboxWidthChange (prevWidth, nextWidth, options) {
+        if (!this.workspace || prevWidth === nextWidth) {
+            return;
+        }
+        // Keep blocks at the same on-screen position when toolbox/flyout width changes.
+        this.workspace.scrollX -= (nextWidth - prevWidth);
+        if (!(options && options.skipMetricsUpdate)) {
+            this.onWorkspaceMetricsChange();
+        }
+    }
+    setToolboxLayoutWidth (toolbox, nextWidth, options) {
+        if (!toolbox) {
+            return nextWidth;
+        }
+        const prevWidth = toolbox.width;
+        if (prevWidth === nextWidth) {
+            return prevWidth;
+        }
+        toolbox.width = nextWidth;
+        if (!(options && options.skipScrollCompensation)) {
+            this.compensateWorkspaceScrollForToolboxWidthChange(prevWidth, nextWidth, options);
+        }
+        return prevWidth;
+    }
+    syncBlocklyAfterPaletteLayoutChange (fullSvgResize) {
+        if (!this.workspace) {
+            return;
+        }
+        if (fullSvgResize) {
+            this.ScratchBlocks.svgResize(this.workspace);
+        } else {
+            this.workspace.resize();
+        }
+    }
+    applyPaletteFlyoutWidth (flyoutWidth, options) {
+        const fullSvgResize = !(options && options.fullSvgResize === false);
+        const width = clampFlyoutWidth(flyoutWidth);
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        if (!toolbox || !flyout) {
+            return width;
+        }
+
+        this._savedFlyoutWidth = width;
+        this._savedToolboxWidth = CATEGORY_MENU_WIDTH + width;
+
+        if (this.blocks) {
+            const displayWidth = this._paletteCollapsed ? 0 : width;
+            this.blocks.style.setProperty('--blocks-flyout-width', `${displayWidth}px`);
+        }
+
+        if (!this._paletteCollapsed) {
+            flyout.DEFAULT_WIDTH = width;
+            this.setToolboxLayoutWidth(toolbox, this._savedToolboxWidth);
+            toolbox.position();
+            this.syncBlocklyAfterPaletteLayoutChange(fullSvgResize);
+        }
+
+        return width;
+    }
+    handlePaletteResizePointerDown (e) {
+        if (this.props.paletteCollapsed || this.state.paletteAnimating) {
+            return;
+        }
+        e.preventDefault();
+        const handle = e.currentTarget;
+        if (handle.setPointerCapture) {
+            handle.setPointerCapture(e.pointerId);
+        }
+
+        this._paletteResizing = true;
+        this._paletteResizeStartX = getEventXY(e).x;
+        this._paletteResizeStartWidth = this._savedFlyoutWidth ||
+            clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        this.setState({paletteResizing: true});
+
+        const bodyStyle = document.body.style;
+        const prevCursor = bodyStyle.cursor;
+        const prevUserSelect = bodyStyle.userSelect;
+        bodyStyle.cursor = 'ew-resize';
+        bodyStyle.userSelect = 'none';
+
+        const onPointerMove = ev => {
+            const {x} = getEventXY(ev);
+            const dx = x - this._paletteResizeStartX;
+            const delta = this.props.isRtl ? -dx : dx;
+            this.applyPaletteFlyoutWidth(this._paletteResizeStartWidth + delta, {
+                fullSvgResize: false,
+                skipMetricsUpdate: true
+            });
+        };
+
+        const onPointerUp = ev => {
+            onPointerMove(ev);
+            if (handle.releasePointerCapture) {
+                try {
+                    handle.releasePointerCapture(e.pointerId);
+                } catch (releaseError) {
+                    // Pointer may already be released.
+                }
+            }
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+            bodyStyle.cursor = prevCursor;
+            bodyStyle.userSelect = prevUserSelect;
+            this._paletteResizing = false;
+            this.setState({paletteResizing: false});
+            this.ScratchBlocks.svgResize(this.workspace);
+            this.onWorkspaceMetricsChange();
+
+            const finalWidth = this._savedFlyoutWidth ||
+                clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+            if (this.props.onSetBlocksPaletteFlyoutWidth) {
+                this.props.onSetBlocksPaletteFlyoutWidth(finalWidth);
+            }
+        };
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
+    }
+    updatePaletteVisibility (collapsed, options) {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        if (!this.workspace || !toolbox || !flyout) {
+            return;
+        }
+        if (collapsed === this._paletteCollapsed) {
+            return;
+        }
+        this._paletteCollapsed = collapsed;
+
+        if (this._savedToolboxWidth === undefined) {
+            const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+            this._savedFlyoutWidth = flyoutWidth;
+            this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+        }
+
+        if (collapsed) {
+            flyout.setContainerVisible(false);
+
+            if (!this._flyoutPositionPatched) {
+                this._originalFlyoutPosition = flyout.position.bind(flyout);
+                flyout.position = () => {};
+                this._flyoutPositionPatched = true;
+            }
+
+            this.setFlyoutDomVisible(false);
+            this.setToolboxLayoutWidth(toolbox, CATEGORY_MENU_WIDTH, options);
+        } else {
+            this.restorePaletteFlyoutLayout(toolbox, flyout);
+        }
+
+        toolbox.position();
+        this.syncBlocklyAfterPaletteLayoutChange(false);
+    }
+    ensureFlyoutBlocksLayoutAtFullWidth () {
+        this.repairFlyoutBlockLayout(false);
+    }
+    ensureFlyoutBlocksLayoutThenCollapse () {
+        this.repairFlyoutBlockLayout(true);
+    }
+    scheduleFlyoutLayoutRepair () {
+        if (this._flyoutLayoutRepairFrame) {
+            cancelAnimationFrame(this._flyoutLayoutRepairFrame);
+        }
+        this._flyoutLayoutRepairFrame = requestAnimationFrame(() => {
+            this._flyoutLayoutRepairFrame = null;
+            if (this.props.paletteCollapsed) {
+                this.ensureFlyoutBlocksLayoutThenCollapse();
+            } else {
+                this.ensureFlyoutBlocksLayoutAtFullWidth();
+            }
+        });
+    }
+    beginInitialWorkspaceLayout () {
+        if (!this._pendingInitialWorkspaceCenter) {
+            return;
+        }
+        if (!this.state.blocksLayoutPending) {
+            this.setState({blocksLayoutPending: true});
+        }
+        const root = this.getInjectionRoot();
+        if (root) {
+            root.style.visibility = 'hidden';
+            this._workspaceLayoutHidden = true;
+        }
+        if (this.props.onBlocksWorkspaceLayoutPending) {
+            this.props.onBlocksWorkspaceLayoutPending(true);
+        }
+        clearTimeout(this._workspaceLayoutPendingTimeout);
+        this._workspaceLayoutPendingTimeout = setTimeout(() => {
+            this.finishInitialWorkspaceLayout();
+        }, WORKSPACE_LAYOUT_PENDING_TIMEOUT_MS);
+    }
+    finishInitialWorkspaceLayout () {
+        if (!this._pendingInitialWorkspaceCenter) {
+            return;
+        }
+        this._pendingInitialWorkspaceCenter = false;
+        clearTimeout(this._workspaceLayoutPendingTimeout);
+        this._workspaceLayoutPendingTimeout = null;
+        if (this.state.blocksLayoutPending) {
+            this.setState({blocksLayoutPending: false});
+        }
+        const root = this.getInjectionRoot();
+        if (root && this._workspaceLayoutHidden) {
+            root.style.visibility = '';
+            this._workspaceLayoutHidden = false;
+        }
+        if (this.props.onBlocksWorkspaceLayoutReady) {
+            this.props.onBlocksWorkspaceLayoutReady();
+        }
+    }
+    tryCenterWorkspaceView () {
+        if (!this.workspace || !this.workspace.scrollbar) {
+            return false;
+        }
+        this.workspace.resize();
+        this.workspace.scrollCenter();
+        this.onWorkspaceMetricsChange();
+        return true;
+    }
+    runInitialWorkspaceCenter () {
+        const finishPending = () => {
+            if (this._pendingInitialWorkspaceCenter) {
+                this.finishInitialWorkspaceLayout();
+            }
+        };
+
+        if (this.tryCenterWorkspaceView()) {
+            finishPending();
+            return;
+        }
+        this.scheduleWorkspaceScrollCenter(finishPending);
+    }
+    centerWorkspaceView () {
+        this.tryCenterWorkspaceView();
+    }
+    scheduleWorkspaceScrollCenter (onComplete) {
+        if (this._workspaceScrollCenterFrame) {
+            cancelAnimationFrame(this._workspaceScrollCenterFrame);
+        }
+        let attempts = 0;
+        const tryCenter = () => {
+            attempts++;
+            if (this.tryCenterWorkspaceView() || attempts >= 5) {
+                this._workspaceScrollCenterFrame = null;
+                if (onComplete) {
+                    onComplete();
+                }
+                return;
+            }
+            this._workspaceScrollCenterFrame = requestAnimationFrame(tryCenter);
+        };
+        this._workspaceScrollCenterFrame = requestAnimationFrame(tryCenter);
+    }
+    rerenderFlyoutBlocksAtFullWidth (flyoutWorkspace) {
+        if (!flyoutWorkspace || typeof flyoutWorkspace.getTopBlocks !== 'function') {
+            return;
+        }
+        const Field = this.ScratchBlocks.Field;
+        if (Field) {
+            Field.cacheWidths_ = null;
+            Field.cacheReference_ = 0;
+        }
+        flyoutWorkspace.getTopBlocks(false).forEach(block => {
+            if (block && block.rendered && typeof block.render === 'function') {
+                block.renderingMetrics_ = null;
+                block.render(true);
+            }
+        });
+    }
+    repairFlyoutBlockLayout (rehideIfCollapsed) {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        if (!toolbox || !flyout) {
+            return;
+        }
+
+        this.cancelPendingFlyoutRepairFinish();
+        const repairGeneration = ++this._flyoutRepairGeneration;
+
+        const hiddenRepair = rehideIfCollapsed && this.props.paletteCollapsed;
+        const root = this.getInjectionRoot();
+
+        if (this._flyoutPositionPatched && this._originalFlyoutPosition) {
+            flyout.position = this._originalFlyoutPosition;
+            if (!hiddenRepair) {
+                this._flyoutPositionPatched = false;
+            }
+        }
+
+        const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        this._savedFlyoutWidth = flyoutWidth;
+        this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+        flyout.DEFAULT_WIDTH = flyoutWidth;
+
+        // Hidden repair must lay out at full flyout width so populate_/rerender measure
+        // fields correctly; palette is re-collapsed in finishBlockLayout below.
+        this.setToolboxLayoutWidth(toolbox, this._savedToolboxWidth, {skipScrollCompensation: true});
+        if (!hiddenRepair && root) {
+            root.classList.remove('flyout-palette-collapsed');
+        }
+
+        this.clearFlyoutSlideStyles(flyout);
+        flyout.setContainerVisible(true);
+        flyout.setVisible(true);
+
+        if (hiddenRepair) {
+            this.beginHiddenFlyoutRepair(root, flyout);
+        } else {
+            if (flyout.svgGroup_) {
+                flyout.svgGroup_.style.display = 'block';
+            }
+            if (flyout.svgBackground_) {
+                flyout.svgBackground_.style.display = 'block';
+            }
+            this.setFlyoutScrollbarVisible(true);
+        }
+
+        toolbox.position();
+
+        const flyoutWorkspace = typeof flyout.getWorkspace === 'function' ?
+            flyout.getWorkspace() : null;
+
+        const finishBlockLayout = () => {
+            if (repairGeneration !== this._flyoutRepairGeneration) {
+                return;
+            }
+            this.rerenderFlyoutBlocksAtFullWidth(flyoutWorkspace);
+            if (typeof flyout.reflow === 'function') {
+                flyout.reflow();
+            }
+            if (flyout.scrollbar_ && typeof flyout.scrollbar_.resize === 'function') {
+                flyout.scrollbar_.resize();
+            }
+            this.ScratchBlocks.svgResize(this.workspace);
+
+            if (hiddenRepair) {
+                this.endHiddenFlyoutRepair(root);
+                if (this._flyoutPositionPatched && this._originalFlyoutPosition) {
+                    flyout.position = () => {};
+                }
+                this._paletteCollapsed = false;
+                this.updatePaletteVisibility(true, {skipScrollCompensation: true});
+                if (this.blocks) {
+                    this.blocks.style.setProperty('--blocks-flyout-width', '0px');
+                }
+                if (this._pendingInitialWorkspaceCenter) {
+                    this.runInitialWorkspaceCenter();
+                }
+            }
+        };
+
+        // Dropdown fields cache text widths while the flyout may be display:none or
+        // at category-only toolbox width; re-measure after the flyout is in DOM (opacity 0).
+        this._flyoutRepairFinishOuterFrame = requestAnimationFrame(() => {
+            this._flyoutRepairFinishOuterFrame = null;
+            this._flyoutRepairFinishInnerFrame = requestAnimationFrame(() => {
+                this._flyoutRepairFinishInnerFrame = null;
+                finishBlockLayout();
+            });
+        });
+    }
+    restorePaletteFlyoutLayout (toolbox, flyout) {
+        const restoredWidth = this._savedFlyoutWidth ||
+            clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+        this._savedFlyoutWidth = restoredWidth;
+        this._savedToolboxWidth = CATEGORY_MENU_WIDTH + restoredWidth;
+        this.setToolboxLayoutWidth(toolbox, this._savedToolboxWidth);
+        flyout.DEFAULT_WIDTH = restoredWidth;
+        if (this.blocks) {
+            this.blocks.style.setProperty('--blocks-flyout-width', `${restoredWidth}px`);
+        }
+
+        if (this._flyoutPositionPatched) {
+            flyout.position = this._originalFlyoutPosition;
+            this._flyoutPositionPatched = false;
+        }
+
+        flyout.setContainerVisible(true);
+        flyout.setVisible(true);
+        flyout.svgGroup_.style.display = 'block';
+        if (flyout.svgBackground_) {
+            flyout.svgBackground_.style.display = 'block';
+        }
+
+        const root = this.getInjectionRoot();
+        if (root) {
+            root.classList.remove('flyout-palette-collapsed');
+        }
+    }
+    preparePaletteForExpandAnimation (toolbox, flyout) {
+        if (this._savedToolboxWidth === undefined) {
+            const flyoutWidth = clampFlyoutWidth(this.props.blocksPaletteFlyoutWidth);
+            this._savedFlyoutWidth = flyoutWidth;
+            this._savedToolboxWidth = CATEGORY_MENU_WIDTH + flyoutWidth;
+        }
+
+        this._paletteCollapsed = false;
+        this.restorePaletteFlyoutLayout(toolbox, flyout);
+        this.setFlyoutScrollbarVisible(false);
+        toolbox.position();
+    }
+    finalizePaletteExpand (toolbox, flyout) {
+        this.repairFlyoutBlockLayout(false);
+        if (flyout.scrollbar_ && typeof flyout.scrollbar_.resize === 'function') {
+            flyout.scrollbar_.resize();
+        }
+    }
+    runPaletteAnimation (collapsed, onComplete) {
+        const toolbox = this.workspace && this.workspace.toolbox_;
+        const flyout = this.getToolboxFlyout();
+        const finish = () => {
+            this.setPaletteAnimating(false);
+            const chromeWidth = this._paletteCollapsed ?
+                0 :
+                (this._savedFlyoutWidth || DEFAULT_FLYOUT_WIDTH);
+            if (this.blocks) {
+                this.blocks.style.setProperty('--blocks-flyout-width', `${chromeWidth}px`);
+            }
+            this.setFlyoutScrollbarVisible(!this._paletteCollapsed);
+            if (onComplete) {
+                onComplete();
+            }
+        };
+
+        if (!toolbox || !flyout) {
+            this.updatePaletteVisibility(collapsed);
+            finish();
+            return;
+        }
+
+        this.setFlyoutScrollbarVisible(false);
+
+        toolbox.position();
+        const {x: startX} = this.parseFlyoutTranslate(flyout);
+        const flyoutWidth = this._savedFlyoutWidth || flyout.getWidth() || DEFAULT_FLYOUT_WIDTH;
+        const isRtl = this.props.isRtl;
+        const slideOffset = isRtl ? flyoutWidth : -flyoutWidth;
+
+        if (collapsed) {
+            this.syncPaletteChromeFlyoutWidth(startX);
+            this.animateFlyoutSlide(flyout, startX, startX + slideOffset, () => {
+                this.clearFlyoutSlideStyles(flyout);
+                this.updatePaletteVisibility(true);
+                finish();
+            });
+            return;
+        }
+
+        this.preparePaletteForExpandAnimation(toolbox, flyout);
+        const {x: targetX, y: targetY} = this.parseFlyoutTranslate(flyout);
+        const fromX = targetX + slideOffset;
+
+        this.syncPaletteChromeFlyoutWidth(fromX);
+        this.setFlyoutSlideTransform(flyout, fromX, targetY);
+        this.syncFlyoutSlideBackground(flyout, fromX, targetY);
+        requestAnimationFrame(() => {
+            this.animateFlyoutSlide(flyout, fromX, targetX, () => {
+                this.finalizePaletteExpand(toolbox, flyout);
+                finish();
+            });
+        });
+    }
+    handleTogglePalette () {
+        if (this.state.paletteAnimating) {
+            return;
+        }
+        const nextCollapsed = !this.props.paletteCollapsed;
+
+        this.setPaletteAnimating(true);
+        this.runPaletteAnimation(nextCollapsed, () => {
+            if (this.props.onTogglePalette) {
+                this.props.onTogglePalette(nextCollapsed);
+            }
+        });
     }
     handlePromptStart (message, defaultValue, callback, optTitle, optVarType) {
         const p = {prompt: {callback, message, defaultValue}};
@@ -512,6 +1471,21 @@ class Blocks extends React.Component {
             vm,
             isRtl,
             isVisible,
+            paletteCollapsed,
+            paletteToggleTitle,
+            onTogglePalette,
+            blocksPaletteFlyoutWidth,
+            onSetBlocksPaletteFlyoutWidth,
+            isRightPanelHidden,
+            isRobboUiHidden,
+            isBlocksWorkspaceLayoutPending,
+            isShowingProject,
+            onBlocksWorkspaceLayoutPending,
+            onBlocksWorkspaceLayoutReady,
+            locale,
+            messages,
+            extension_pack,
+            robbo_settings,
             onActivateColorPicker,
             onOpenConnectionModal,
             onOpenSoundRecorder,
@@ -528,6 +1502,14 @@ class Blocks extends React.Component {
                 <DroppableBlocks
                     componentRef={this.setBlocks}
                     onDrop={this.handleDrop}
+                    layoutPending={isBlocksWorkspaceLayoutPending || this.state.blocksLayoutPending}
+                    paletteCollapsed={paletteCollapsed}
+                    paletteAnimating={this.state.paletteAnimating}
+                    paletteResizing={this.state.paletteResizing}
+                    paletteResizeDisabled={paletteCollapsed || this.state.paletteAnimating}
+                    paletteToggleTitle={paletteToggleTitle}
+                    onTogglePalette={this.handleTogglePalette}
+                    onPaletteResizePointerDown={this.handlePaletteResizePointerDown}
                     {...props}
                 />
                 {this.state.prompt ? (
@@ -570,6 +1552,14 @@ Blocks.propTypes = {
     extensionLibraryVisible: PropTypes.bool,
     isRtl: PropTypes.bool,
     isVisible: PropTypes.bool,
+    paletteCollapsed: PropTypes.bool,
+    isShowingProject: PropTypes.bool,
+    paletteToggleTitle: PropTypes.string,
+    onTogglePalette: PropTypes.func, // (collapsed: boolean) => void
+    blocksPaletteFlyoutWidth: PropTypes.number,
+    onSetBlocksPaletteFlyoutWidth: PropTypes.func,
+    onBlocksWorkspaceLayoutPending: PropTypes.func,
+    onBlocksWorkspaceLayoutReady: PropTypes.func,
     locale: PropTypes.string.isRequired,
     messages: PropTypes.objectOf(PropTypes.string),
     onActivateColorPicker: PropTypes.func,
@@ -636,10 +1626,17 @@ Blocks.defaultOptions = {
 
 Blocks.defaultProps = {
     isVisible: true,
+    paletteCollapsed: false,
+    blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
     options: Blocks.defaultOptions
 };
 
 const mapStateToProps = state => ({
+    isShowingProject: getIsShowingProject(state.scratchGui.projectState.loadingState),
+    isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
+    isRobboUiHidden: state.scratchGui.layoutVisibility.isRobboUiHidden,
+    isBlocksWorkspaceLayoutPending: state.scratchGui.layoutVisibility.isBlocksWorkspaceLayoutPending,
+    blocksPaletteFlyoutWidth: state.scratchGui.layoutVisibility.blocksPaletteFlyoutWidth,
     anyModalVisible: (
         Object.keys(state.scratchGui.modals).some(key => state.scratchGui.modals[key]) ||
         state.scratchGui.mode.isFullScreen
@@ -673,6 +1670,12 @@ const mapDispatchToProps = dispatch => ({
     },
     updateToolboxState: toolboxXML => {
         dispatch(updateToolbox(toolboxXML));
+    },
+    onBlocksWorkspaceLayoutPending: isPending => {
+        dispatch(setBlocksWorkspaceLayoutPending(isPending));
+    },
+    onBlocksWorkspaceLayoutReady: () => {
+        dispatch(setBlocksWorkspaceLayoutPending(false));
     }
 });
 

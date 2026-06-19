@@ -1,124 +1,83 @@
 import classNames from 'classnames';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
+import React, {Component} from 'react';
+import {connect} from 'react-redux';
+import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
 import styles from './FirmwareFlasherFlashingStatusComponent.css';
+import './RobboDeviceStatus.css';
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 
+import {defineMessages, injectIntl} from 'react-intl';
 
-
-
-import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
-
-
-
-
-  const messages = defineMessages({
-
-    close_window: {
-        id: 'gui.FirmwareFlasherFlashingStatusComponent.close_window',
-        description: ' ',
-        defaultMessage: 'Close window'
-    },
+const messages = defineMessages({
     flashing_status: {
         id: 'gui.FirmwareFlasherFlashingStatusComponent.flashing_status',
         description: ' ',
         defaultMessage: 'Firmware process log'
     }
-
-  });
+});
 
 class FirmwareFlasherFlashingStatusComponent extends Component {
 
-
-
-  componentDidMount () {
-
-    this.DCA =  this.props.DCA;
-    // this.RCA =  this.props.RCA;
-    // this.LCA =  this.props.LCA;
-    // this.QCA =  this.props.QCA;
-
-
-  }
-
-  closeWindow(){
-
-      this.props.onWindowClose(this.props.draggableWindowId);
-
-  }
-
-  flashDevice(){
-
-
-
-  }
-
-
-
-
-  render() {
-
-
-
-  return (
-
-          <div id={`firmware-flasher-flashing-status-component-${this.props.componentId}`} className={styles.firmware_flasher_flashing_status_component}>
-
-          <div id={`firmware-flasher-flashing-status-component-${this.props.componentId}-tittle`} className={styles.firmware_flasher_flashing_status_component_tittle}>
-
-              {this.props.intl.formatMessage(messages.flashing_status)}
-
-              <div className={styles.close_icon} onClick={this.closeWindow.bind(this)}>
-
-
-              </div>
-
-          </div>
-
-
-
-          <div id={`firmware-flasher-flashing-status-component-${this.props.componentId}-log-status`} className={styles.firmware_flasher_flashing_status_component_log_status}>
-
-
-
-          </div>
-
-
-          <div id={`firmware-flasher-flashing-status-component-${this.props.componentId}-log-content`} className={styles.firmware_flasher_flashing_status_component_log_content}>
-
-
-
-          </div>
-
-
-          </div>
-
-
-
-  );
-}
-
-}
-
-const mapStateToProps =  state => ({
-
-    
-
-  });
-
-const mapDispatchToProps = dispatch => ({
-
-  onWindowClose: (draggable_window_id) => {
-
-      dispatch(ActionTriggerDraggableWindow(draggable_window_id));
+    componentDidMount () {
+        this.DCA = this.props.DCA;
     }
 
+    closeWindow () {
+        this.props.onWindowClose(this.props.draggableWindowId);
+    }
 
+    render () {
+        const componentId = this.props.componentId;
 
+        return (
+            <div
+                id={`firmware-flasher-flashing-status-component-${componentId}`}
+                className={classNames(sharedStyles.palette, styles.flashing_status_window)}
+            >
+                <div
+                    id={`firmware-flasher-flashing-status-component-${componentId}-tittle`}
+                    className={sharedStyles.header}
+                >
+                    <span className={sharedStyles.headerTitle}>
+                        {this.props.intl.formatMessage(messages.flashing_status)}
+                    </span>
+                    <button
+                        type="button"
+                        className={sharedStyles.closeButton}
+                        aria-label="Close"
+                        onClick={this.closeWindow.bind(this)}
+                    />
+                </div>
+
+                <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
+                    <div className={formStyles.section}>
+                    <div
+                        id={`firmware-flasher-flashing-status-component-${componentId}-log-status`}
+                        className={styles.flashing_status_log_status}
+                    />
+
+                    <div
+                        id={`firmware-flasher-flashing-status-component-${componentId}-log-content`}
+                        className={formStyles.log_panel}
+                    />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+const mapStateToProps = () => ({});
+
+const mapDispatchToProps = dispatch => ({
+    onWindowClose: draggable_window_id => {
+        dispatch(ActionTriggerDraggableWindow(draggable_window_id));
+    }
 });
 
 export default injectIntl(connect(
-  mapStateToProps,
-  mapDispatchToProps
+    mapStateToProps,
+    mapDispatchToProps
 )(FirmwareFlasherFlashingStatusComponent));

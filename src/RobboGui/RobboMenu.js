@@ -18,6 +18,12 @@ import {premiumAutoUpdateDemoCheckThunk} from './actions/licenseDemoActions';
 import {CAPABILITY_PREMIUM_AUTO_UPDATE} from './reducers/license_demo';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import {
+    ROBBO_POPUP_Z_INDEX_BASE,
+    raiseRobboPopupZIndex
+} from '../lib/robbo-popup-z-index';
+import RobboPopupTransition from './RobboPopupTransition';
+import {getMenuBarDropdownTopPx} from '../lib/menu-bar-dropdown-anchor';
 
 import {createDiv,createDivShort} from './lib/lib.js';
 
@@ -167,11 +173,19 @@ class RobboMenu extends Component {
 
     this.is_lab_ext_enabled = false;
     this.state = {
-      menuCoords: null
+      menuCoords: null,
+      popupZIndex: ROBBO_POPUP_Z_INDEX_BASE
     };
     this.boundCloseRobboMenu = this.closeRobboMenu.bind(this);
     this.boundUpdateMenuCoords = this.updateMenuCoords.bind(this);
+    this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
+    this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
 
+  }
+
+  _handleTransitionEntered () {
+    this.updateMenuCoords();
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
   }
 
   componentDidMount(){
@@ -184,7 +198,12 @@ class RobboMenu extends Component {
   componentDidUpdate(prevProps){
     if (!prevProps.robbo_menu.isShowing && this.props.robbo_menu.isShowing) {
       this.updateMenuCoords();
+      this.setState({popupZIndex: raiseRobboPopupZIndex()});
     }
+  }
+
+  handlePopupMouseDown () {
+    this.setState({popupZIndex: raiseRobboPopupZIndex()});
   }
 
   componentWillUnmount(){
@@ -196,9 +215,10 @@ class RobboMenu extends Component {
     const triggerMenu = document.getElementById('trigger-robbo-menu');
     if (!triggerMenu) return;
     const rect = triggerMenu.getBoundingClientRect();
+    const top = getMenuBarDropdownTopPx();
     this.setState({
       menuCoords: {
-        top: rect.bottom,
+        top: top != null ? top : rect.bottom,
         left: rect.left
       }
     });
@@ -309,17 +329,20 @@ class RobboMenu extends Component {
     this.props.onSetCopterSimState(runtime.sim_copter_ac === true);
   }
 
-  triggerExtensionPack(){
-
-    console.log("triggerExtensionPack");
-    this.props.onTriggerExtensionPack();
-
+  triggerExtensionPack (e) {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    const RCA = this.props.VM && this.props.VM.getRCA();
+    this.props.onTriggerExtensionPack(RCA);
   }
 
-  triggerLabExtSensors(){
-
-    console.log("triggerLabExtSensors");
-    this.props.onTriggerLabExtSensors();
+  triggerLabExtSensors (e) {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    const LCA = this.props.VM && this.props.VM.getLCA();
+    this.props.onTriggerLabExtSensors(LCA);
 
     this.is_lab_ext_enabled = !this.is_lab_ext_enabled;
 
@@ -535,18 +558,24 @@ class RobboMenu extends Component {
   const runtime = this.props.VM && this.props.VM.runtime;
   const isRobotSimActive = runtime ? runtime.sim_ac === true : this.props.settings.is_sim_activated;
   const isCopterSimActive = runtime ? runtime.sim_copter_ac === true : this.props.settings.is_copter_sim_activated;
+  const isExtensionPackActivated = this.props.extension_pack.is_extension_pack_activated === true;
+  const isMenuShowing = this.props.robbo_menu.isShowing;
+
   return (
-
-
-      <div id="robbo-menu" className={classNames(
-
-                    {[styles.robbo_menu]: true},
-                    {[styles.robbo_menu_show]:   this.props.robbo_menu.isShowing},
-                    {[styles.robbo_menu_hidden]: !this.props.robbo_menu.isShowing}
-
-
-                    )}
-           style={this.state.menuCoords || undefined}>
+      <RobboPopupTransition
+          in={isMenuShowing}
+          onEntered={this._handleTransitionEntered}
+      >
+      <div
+           id="robbo-menu"
+           className={styles.robbo_menu}
+           style={{
+             ...(this.state.menuCoords || {}),
+             zIndex: isMenuShowing ? this.state.popupZIndex : undefined
+           }}
+           aria-hidden={!isMenuShowing}
+           onMouseDown={isMenuShowing ? this.handlePopupMouseDown : undefined}
+      >
 
           <div id="trigger-sim-en" onClick={this.triggerSimEn.bind(this)} className={classNames(
                         {[styles.robbo_menu_item]: true}
@@ -555,6 +584,8 @@ class RobboMenu extends Component {
           <div id="trigger-copter-sim-en" onClick={this.triggerCopterSimEn.bind(this)} className={classNames(
                         {[styles.robbo_menu_item]: true}
                       )}>{isCopterSimActive ? this.props.intl.formatMessage(messages.copter_sim_disable) : this.props.intl.formatMessage(messages.copter_sim_enable)}</div>
+
+          <hr className={styles.hrDevider}/>
 
           <div id="trigger-extension-pack" onClick={this.triggerExtensionPack.bind(this)} className={classNames(
 
@@ -583,6 +614,8 @@ class RobboMenu extends Component {
 
 
 
+          {isExtensionPackActivated ? (
+            <React.Fragment>
                   <hr className={styles.hrDevider}/>
 
           <div id="trigger-color-corrector-table-0" onClick={this.triggerColorCorrectorTable.bind(this,0)} className={classNames(
@@ -614,6 +647,8 @@ class RobboMenu extends Component {
                         {[styles.robbo_menu_item]: true}
 
                       )}>{this.props.intl.formatMessage(messages.color_sensor_correction5)} </div>
+            </React.Fragment>
+          ) : null}
 
           <hr className={styles.hrDevider}/>    
 
@@ -685,9 +720,7 @@ class RobboMenu extends Component {
 
 
       </div>
-
-
-
+      </RobboPopupTransition>
   );
 
 
@@ -717,14 +750,12 @@ const mapDispatchToProps = dispatch => ({
     onSetCopterSimState: isEnabled => {
       dispatch(ActionSetCopterSimState(isEnabled));
     },
-    onTriggerExtensionPack: () => {
-
-        dispatch(ActionTriggerExtensionPack());
+    onTriggerExtensionPack: RCA => {
+        dispatch(ActionTriggerExtensionPack(RCA));
       },
 
-    onTriggerLabExtSensors: () => {
-
-          dispatch(ActionTriggerLabExtSensors());
+    onTriggerLabExtSensors: LCA => {
+          dispatch(ActionTriggerLabExtSensors(LCA));
         },
 
 

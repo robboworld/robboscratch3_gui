@@ -1,65 +1,28 @@
 import React, { Component } from 'react';
-import { connect } from 'react-redux';
 import CommonFieldsSensorComponent from './CommonFieldsSensorComponent';
-import styles from  './SensorComponent.css'
-
-
+import {resolveTelemetryValueVariant} from './telemetry-value-variant';
 
 class SensorDataBlockComponent extends Component {
-
-
-
-
-  render() {
-
-  //  let sensorPictureUrl = `/assets/16/sensor_${this.props.sensors[this.props.sensorId].sensor_name}.png`;
+  render () {
+    const valueVariant = this.props.valueVariant || resolveTelemetryValueVariant({
+      deviceName: this.props.deviceName,
+      sensorName: this.props.sensorName,
+      sensorType: this.props.sensorType
+    });
 
     return (
-            <div  className={styles.sensor} id={`${this.props.deviceName}_sensor-data-block-${this.props.sensorId}_type-${this.props.sensorType}`} >
-
-          {
-
-
-
-
-                  <CommonFieldsSensorComponent NameFieldText={`${this.props.sensorFieldText}`} sensorId={this.props.sensorId}
-                    sensorName={this.props.sensorName} sensorData={this.props.sensorData}/>
-
-
-
-
-
-            }
-
-
-              </div>
-
-            );
-
-
-
-
-
-    };
-
-
-
-
+      <div id={`${this.props.deviceName}_sensor-data-block-${this.props.sensorId}_type-${this.props.sensorType}`}>
+        <CommonFieldsSensorComponent
+          NameFieldText={`${this.props.sensorFieldText}`}
+          sensorId={this.props.sensorId}
+          sensorName={this.props.sensorName}
+          sensorData={this.props.sensorData}
+          sensorValueClassName={this.props.sensorValueClassName}
+          valueVariant={valueVariant}
+        />
+      </div>
+    );
   }
+}
 
-
-
-
-
-  // const mapStateToProps =  state => ({
-  //
-  //       sensors:state.scratchGui.sensors,
-  //
-  //   });
-  //
-  // const mapDispatchToProps = dispatch => ({
-  //
-  //
-  // });
-
-  export default SensorDataBlockComponent;
+export default SensorDataBlockComponent;

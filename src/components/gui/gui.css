@@ -17,6 +17,7 @@
 
 .flex-wrapper {
     display: flex;
+    position: relative;
 
     /*
         Make 2 columns:
@@ -30,6 +31,7 @@
         Stop scrollbar popping in and out from scratch-blocks border issue
         https://github.com/LLK/scratch-gui/issues/318
     */
+    overflow-x: hidden;
     overflow-y: hidden;
 }
 
@@ -37,6 +39,8 @@
     flex-basis: 600px;
     flex-grow: 1;
     flex-shrink: 0;
+    min-width: 0;
+    overflow: hidden;
     position: relative;
 
     display: flex;
@@ -45,7 +49,7 @@
 
 .tab-list {
     height: $stage-menu-height;
-    width: 250px; /* Match width of the toolbox */
+    width: 250px; /* Fixed: not tied to resizable blocks flyout */
     display: flex;
     align-items: flex-end;
     flex-shrink: 0;
@@ -109,7 +113,12 @@
 }
 
 .tab:hover {
-  background-color: $ui-primary;
+    background-color: $ui-primary;
+}
+
+.tab:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: -2px;
 }
 
 .tab.is-selected {
@@ -181,6 +190,7 @@
 .blocks-wrapper {
     flex-grow: 1;
     position: relative;
+    overflow: hidden;
 }
 
 .stage-and-target-wrapper {
@@ -194,24 +204,115 @@
     */
     display: flex;
     flex-direction: column;
+    /* Keep stage column width stable when the blocks palette toggles or resizes. */
+    flex-basis: 0;
+    flex-grow: 0;
+    flex-shrink: 0;
     /* pad entire wrapper to the left and right; allow children to fill width */
     padding-left: $space;
     padding-right: $space;
 }
 
 .stage-and-target-wrapper.large {
-    /* Fix the max width to max large stage size (defined in layout_constants.js) + gutter size */
+    /* Fixed width: max large stage size (layout_constants.js) + horizontal gutter */
+    width: calc(480px + calc($space * 2));
+    min-width: calc(480px + calc($space * 2));
     max-width: calc(480px + calc($space * 2));
 }
 
 .stage-and-target-wrapper.large-constrained {
-    /* Fix the max width to max largeConstrained stage size (defined in layout_constants.js) + gutter size */
+    width: calc(408px + calc($space * 2));
+    min-width: calc(408px + calc($space * 2));
     max-width: calc(408px + calc($space * 2));
 }
 
 .stage-and-target-wrapper.small {
-    /* Fix the max width to max small stage size (defined in layout_constants.js) + gutter size */
+    width: calc(240px + calc($space * 2));
+    min-width: calc(240px + calc($space * 2));
     max-width: calc(240px + calc($space * 2));
+}
+
+.stage-header-dock {
+    flex-shrink: 0;
+}
+
+.stage-controls-overlay {
+    position: absolute;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    max-width: min(100%, 24rem);
+    pointer-events: none;
+    z-index: $z-index-stage-header;
+}
+
+[dir="ltr"] .stage-controls-overlay {
+    right: $space;
+}
+
+[dir="rtl"] .stage-controls-overlay {
+    left: $space;
+}
+
+.stage-controls-overlay > * {
+    pointer-events: auto;
+}
+
+.collapsed-panel-monitors {
+    padding-top: $space;
+    pointer-events: none;
+}
+
+.collapsed-panel-monitors > * {
+    pointer-events: auto;
+}
+
+/*
+    Robbo device palettes and search stay above the blocks workspace when the
+    right panel is hidden; pointer-events pass through empty overlay areas.
+*/
+.robbo-gui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: $z-index-robbo-overlay;
+    overflow: visible;
+}
+
+/*
+    Stage for fullscreen when the right panel is collapsed.
+    position:fixed on the stage overlay is viewport-relative; this wrapper must not take flex width.
+*/
+/*
+    Hidden stage mount while the right panel is collapsed and a project is loading.
+    Scratch VM needs a renderer (created in Stage) before loadProject can finish.
+*/
+.stage-load-mount {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    flex: 0 0 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.stage-fullscreen-mount {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: visible;
+    flex: 0 0 0;
+    pointer-events: none;
+}
+
+.stage-fullscreen-mount > * {
+    pointer-events: auto;
 }
 
 .target-wrapper {
@@ -299,6 +400,24 @@ $fade-out-distance: 15px;
 .menu-bar-position {
     position: relative;
     z-index: $z-index-menu-bar;
+}
+
+/*
+    Fullscreen stage overlays (z-index-stage-header) cover the viewport from top: 0.
+    Remove menu-bar from layout (not visibility:hidden — that still reserves 3rem and causes scroll).
+*/
+.page-wrapper-full-screen {
+    overflow: hidden;
+    height: 100%;
+}
+
+.page-wrapper-full-screen .menu-bar-position {
+    display: none;
+}
+
+.page-wrapper-full-screen .body-wrapper {
+    height: 100%;
+    overflow: hidden;
 }
 /* Alerts */
 

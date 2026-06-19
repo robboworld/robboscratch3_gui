@@ -1,77 +1,23 @@
-.settings_window_tittle{
+@import "../css/units.css";
 
-   background-color: #00af41;
-    color: white;
-    font-family: "Proxima Nova Regular",Helvetica,Arial, sans-serif;
-   
-    padding-top: 3px;
-
-
-height: 30px;
-
-text-align: center;
-
+.settings_window {
+    box-sizing: border-box;
+    width: $popup-settings-width;
+    max-width: 96vw;
+    pointer-events: auto;
 }
 
-.close_icon{
-
-     float:right;
-    background-image: url('../../static/robbo_assets/icon_close_window.png');
-    width: 27px;
-    height: 27px;
-
-    cursor: pointer;
-
+.settings_content > .settings_section + .settings_section {
+    margin-top: 14px;
 }
 
-.settings_window{
-
-    display: inline-block;
-    margin-left: 5%;
-
-    border: 1px solid #00af41;
-
-   height:100%;
-
-   min-width: 520px;
-
-   vertical-align: top;
-
-   background-color: white;
-
+.settings_footer {
+    margin-top: 14px;
 }
 
-.settings_window_content{
-
-
-
-}
-
-.settings_window_content_raw{
-
-    margin: 10px 10px;
-
-}
-
-.settings_window_content_column{
-
-    display: inline-block;
-    margin-left: 10px;
-    margin-right: 10px;
-   /* min-width: 400px;*/
-
-}
-
-.settings_window_content_column select{
-
-    min-width: 180px;
-
-}
-
-.settings_window_hint{
-
-    color: #666;
-    font-size: 12px;
-    margin-top: 4px;
-
+/* Save button stays visible; scroll only the form sections (desktop has more fields) */
+.settings_footer_outside {
+    box-sizing: border-box;
+    margin-top: 0;
+    padding: 0 12px 12px;
 }

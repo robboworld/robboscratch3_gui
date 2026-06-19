@@ -5,6 +5,7 @@ import VM from 'scratch-vm';
 import {STAGE_SIZE_MODES} from '../lib/layout-constants';
 import {setStageSize} from '../reducers/stage-size';
 import {setFullScreen} from '../reducers/mode';
+import {setRightPanelHidden} from '../reducers/layout-visibility';
 
 import {connect} from 'react-redux';
 
@@ -45,6 +46,8 @@ class StageHeader extends React.Component {
 StageHeader.propTypes = {
     isFullScreen: PropTypes.bool,
     isPlayerOnly: PropTypes.bool,
+    isRightPanelHidden: PropTypes.bool,
+    onSetRightPanelHidden: PropTypes.func.isRequired,
     onSetStageUnFull: PropTypes.func.isRequired,
     showBranding: PropTypes.bool,
     stageSizeMode: PropTypes.oneOf(Object.keys(STAGE_SIZE_MODES)),
@@ -55,18 +58,34 @@ const mapStateToProps = state => ({
     stageSizeMode: state.scratchGui.stageSize.stageSize,
     showBranding: state.scratchGui.mode.showBranding,
     isFullScreen: state.scratchGui.mode.isFullScreen,
-    isPlayerOnly: state.scratchGui.mode.isPlayerOnly
+    isPlayerOnly: state.scratchGui.mode.isPlayerOnly,
+    isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
+    stage: state.scratchGui.targets.stage,
+    editingTarget: state.scratchGui.targets.editingTarget
 });
 
 const mapDispatchToProps = dispatch => ({
-    onSetStageLarge: () => dispatch(setStageSize(STAGE_SIZE_MODES.large)),
-    onSetStageSmall: () => dispatch(setStageSize(STAGE_SIZE_MODES.small)),
+    onSetStageLarge: () => {
+        dispatch(setStageSize(STAGE_SIZE_MODES.large));
+        dispatch(setRightPanelHidden(false));
+        window.dispatchEvent(new Event('resize'));
+    },
+    onSetStageSmall: () => {
+        dispatch(setStageSize(STAGE_SIZE_MODES.small));
+        dispatch(setRightPanelHidden(false));
+        window.dispatchEvent(new Event('resize'));
+    },
     onSetStageFull: () => {
 
         dispatch(setFullScreen(true))
     },
 
     onSetStageUnFull: () => dispatch(setFullScreen(false))
+    ,
+    onSetRightPanelHidden: isHidden => {
+        dispatch(setRightPanelHidden(isHidden));
+        window.dispatchEvent(new Event('resize'));
+    }
 });
 
 export default connect(

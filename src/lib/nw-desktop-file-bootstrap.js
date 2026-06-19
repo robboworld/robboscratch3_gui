@@ -2,6 +2,15 @@
  * NW.js desktop: detect .sb3/.sb2/.sb in command line; subscribe to second-instance open (file association).
  * Must run before React. Sets window.__ROBBO_NW_PENDING_PROJECT__ = { data: ArrayBuffer, title: string }.
  */
+import {
+    collectNwArgv,
+    findProjectPathInArgv,
+    isScratchProjectPath,
+    normalizeNwPath,
+    parseProjectPathFromCmdline,
+    readProjectFromAbsolutePath
+} from './nw-open-project-utils';
+
 export default function initNwDesktopFileBootstrap () {
     try {
         const nw = typeof window !== 'undefined' && window.nw;
@@ -25,84 +34,50 @@ export default function initNwDesktopFileBootstrap () {
         window.__ROBBO_NW_DEBUG_LOG__ = debugLog;
         debugLog('init', {});
 
-        const normalizeCandidatePath = candidate => {
-            if (!candidate || typeof candidate !== 'string') {
-                return null;
-            }
-            let normalized = candidate.trim();
-            if (!normalized) {
-                return null;
-            }
-            if ((normalized[0] === '"' && normalized[normalized.length - 1] === '"') ||
-                (normalized[0] === '\'' && normalized[normalized.length - 1] === '\'')) {
-                normalized = normalized.slice(1, -1).trim();
-            }
-            if (/^file:\/\//i.test(normalized)) {
-                try {
-                    normalized = decodeURIComponent(normalized.replace(/^file:\/\/\/?/i, ''));
-                    if (/^\/[A-Za-z]:\//.test(normalized)) {
-                        normalized = normalized.slice(1);
-                    }
-                } catch (e) {
-                    return null;
-                }
-            }
-            if (/^[A-Za-z]:\//.test(normalized)) {
-                normalized = normalized.replace(/\//g, '\\');
-            }
-            return normalized;
-        };
-
         const consumePath = filePath => {
-            const normalizedPath = normalizeCandidatePath(filePath);
+            const normalizedPath = normalizeNwPath(filePath);
             debugLog('consumePath:candidate', {filePath, normalizedPath});
-            if (!normalizedPath) {
+            if (!normalizedPath || !isScratchProjectPath(normalizedPath)) {
+                debugLog('consumePath:skip-extension', {normalizedPath});
                 return;
             }
-            const ext = pathMod.extname(normalizedPath).toLowerCase();
-            if (ext !== '.sb3' && ext !== '.sb2' && ext !== '.sb') {
-                debugLog('consumePath:skip-extension', {normalizedPath, ext});
+            const read = readProjectFromAbsolutePath(normalizedPath);
+            if (!read) {
+                debugLog('consumePath:read-failed', {normalizedPath});
                 return;
             }
-            const buf = fs.readFileSync(normalizedPath);
-            const data = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-            window.__ROBBO_NW_PENDING_PROJECT__ = {
-                data,
-                title: pathMod.basename(normalizedPath, ext)
-            };
+            window.__ROBBO_NW_PENDING_PROJECT__ = read;
             debugLog('consumePath:pending-set', {
                 normalizedPath,
-                title: window.__ROBBO_NW_PENDING_PROJECT__.title,
-                byteLength: buf.byteLength
+                title: read.title,
+                byteLength: read.data && read.data.byteLength
             });
         };
 
-        const argv = (nwGui.App.fullArgv && nwGui.App.fullArgv.length) ?
-            nwGui.App.fullArgv : (nwGui.App.argv || []);
+        const argv = collectNwArgv(nwGui.App);
         debugLog('argv-detected', {argvLength: argv.length, argv});
-        for (let i = 0; i < argv.length; i++) {
-            const arg = argv[i];
-            if (!arg || arg[0] === '-') {
-                continue;
-            }
-            consumePath(arg);
-            if (window.__ROBBO_NW_PENDING_PROJECT__) {
-                break;
-            }
+        const argvPath = findProjectPathInArgv(argv);
+        if (argvPath) {
+            consumePath(argvPath);
         }
 
         nwGui.App.on('open', cmdline => {
             debugLog('app-open:event', {cmdline});
-            if (!cmdline || typeof cmdline !== 'string') {
+            const filePath = parseProjectPathFromCmdline(cmdline);
+            debugLog('app-open:parsed', {filePath});
+            if (!filePath) {
                 return;
             }
-            const re = /"([^"]+\.(?:sb3|sb2|sb))"|(\S+\.(?:sb3|sb2|sb))\b/i;
-            const m = cmdline.match(re);
-            const filePath = m ? (m[1] || m[2]) : null;
-            debugLog('app-open:parsed', {filePath});
-            if (filePath) {
-                window.dispatchEvent(new CustomEvent('robboNwOpenProject', {detail: {path: filePath}}));
-                debugLog('app-open:dispatched', {filePath});
+            consumePath(filePath);
+            window.dispatchEvent(new CustomEvent('robboNwOpenProject', {detail: {path: filePath}}));
+            debugLog('app-open:dispatched', {filePath});
+            try {
+                const win = nwGui.Window.get();
+                if (win && typeof win.focus === 'function') {
+                    win.focus();
+                }
+            } catch (e) {
+                // no-op
             }
         });
     } catch (e) {

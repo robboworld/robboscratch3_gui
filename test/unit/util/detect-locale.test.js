@@ -1,4 +1,5 @@
-import {detectLocale} from '../../../src/lib/detect-locale.js';
+import {detectLocale, resolveStartupLocale} from '../../../src/lib/detect-locale.js';
+import {STORAGE_KEY} from '../../../src/lib/layout-visibility-persistence.js';
 
 const supportedLocales = ['en', 'es', 'pt-br', 'de', 'it', 'ru'];
 
@@ -65,7 +66,7 @@ describe('detectLocale', () => {
             'language',
             {value: 'da'}
         );
-        expect(detectLocale(supportedLocales)).toEqual('ru');
+        expect(detectLocale(supportedLocales)).toEqual('en');
     });
 
     test('works with an empty locale', () => {
@@ -86,5 +87,62 @@ describe('detectLocale', () => {
             {value: '?locale=de&locale=en'}
         );
         expect(detectLocale(supportedLocales)).toEqual('de');
+    });
+});
+
+describe('resolveStartupLocale', () => {
+    let storage;
+
+    beforeEach(() => {
+        storage = {};
+        window.localStorage = {
+            getItem: key => (Object.prototype.hasOwnProperty.call(storage, key) ? storage[key] : null),
+            setItem: (key, value) => {
+                storage[key] = String(value);
+            },
+            removeItem: key => {
+                delete storage[key];
+            }
+        };
+        Object.defineProperty(window.location,
+            'search',
+            {value: '?name=val', configurable: true}
+        );
+        Object.defineProperty(window.navigator,
+            'language',
+            {value: 'en-US', configurable: true}
+        );
+    });
+
+    test('uses persisted locale when URL has no override', () => {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            isRightPanelHidden: false,
+            isBlocksPaletteCollapsed: false,
+            blocksPaletteFlyoutWidth: 250,
+            locale: 'de'
+        }));
+        expect(resolveStartupLocale(supportedLocales)).toEqual('de');
+    });
+
+    test('URL overrides persisted locale', () => {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            isRightPanelHidden: false,
+            isBlocksPaletteCollapsed: false,
+            blocksPaletteFlyoutWidth: 250,
+            locale: 'de'
+        }));
+        Object.defineProperty(window.location,
+            'search',
+            {value: '?locale=it', configurable: true}
+        );
+        expect(resolveStartupLocale(supportedLocales)).toEqual('it');
+    });
+
+    test('falls back to browser when storage has no locale', () => {
+        Object.defineProperty(window.navigator,
+            'language',
+            {value: 'pt-BR', configurable: true}
+        );
+        expect(resolveStartupLocale(supportedLocales)).toEqual('pt-br');
     });
 });

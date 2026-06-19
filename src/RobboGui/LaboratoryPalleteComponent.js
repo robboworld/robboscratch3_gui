@@ -1,10 +1,13 @@
+import classNames from 'classnames';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import styles from  './LaboratoryPalleteComponent.css';
-import SensorDataBlockComponent  from './SensorDataBlockComponent';
+import sharedStyles from './DevicePaletteShared.css';
+import formStyles from './RobboPaletteForm.css';
+import rowStyles from './DevicePaletteRows.css';
+import SensorDataBlockComponent from './SensorDataBlockComponent';
 import SensorComponent from './SensorComponent';
-
-import {ActionLaboratoryGetDataStart} from  './actions/sensor_actions';
+import { getPaletteSensorValueNode } from './sensor-palette-dom';
+import {ActionLaboratoryGetDataStart} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionSetLCALocal}  from './actions/sensor_actions';
 
@@ -23,19 +26,19 @@ const messages = defineMessages({
     light: {
         id: 'gui.RobboGui.LaboratoryPalette.light',
         description: ' ',
-        defaultMessage: 'Light: '
+        defaultMessage: 'Light'
     },
 
     sound: {
         id: 'gui.RobboGui.LaboratoryPalette.sound',
         description: ' ',
-        defaultMessage: 'Sound: '
+        defaultMessage: 'Sound'
     },
 
     slider: {
         id: 'gui.RobboGui.LaboratoryPalette.slider',
         description: ' ',
-        defaultMessage: 'Slider: '
+        defaultMessage: 'Slider'
     },
     analog: {
         id: 'gui.RobboGui.LaboratoryPalette.analog',
@@ -45,7 +48,7 @@ const messages = defineMessages({
     digital: {
         id: 'gui.RobboGui.LaboratoryPalette.digital',
         description: ' ',
-        defaultMessage: 'Digital: '
+        defaultMessage: 'Digital'
     },
     laboratory: {
         id: 'gui.RobboGui.LaboratoryPalette.laboratory',
@@ -171,7 +174,7 @@ class LaboratoryPalleteComponent extends Component {
 
       sensor = document.getElementById(`${this.props.lab_special_sensors[index].sensor_device_name}_sensor-data-block-${this.props.lab_special_sensors[index].sensor_id}_type-${this.props.lab_special_sensors[index].sensor_type}`);
 
-      this.sensors_values_field_list[index] =  sensor.children[0].children[1].children[0];
+      this.sensors_values_field_list[index] = getPaletteSensorValueNode(sensor);
 
     }
 
@@ -197,7 +200,7 @@ class LaboratoryPalleteComponent extends Component {
 
       sensor = document.getElementById(`${this.props.lab_special_sensors[index].sensor_device_name}_sensor-data-block-${this.props.lab_special_sensors[index].sensor_id}_type-${this.props.lab_special_sensors[index].sensor_type}`);
 
-      this.sensors_values_field_list[index] =  sensor.children[0].children[1].children[0];
+      this.sensors_values_field_list[index] = getPaletteSensorValueNode(sensor);
 
     }
 
@@ -207,7 +210,7 @@ class LaboratoryPalleteComponent extends Component {
 
           sensor = document.getElementById(`${this.props.lab_external_sensors[index].sensor_device_name}_sensor-${this.props.lab_external_sensors[index].sensor_id}_type-${this.props.lab_external_sensors[index].sensor_type}`);
 
-          this.sensors_values_field_list[index + this.props.lab_special_sensors.length] = sensor.children[0].children[0].children[1].children[0];
+          this.sensors_values_field_list[index + this.props.lab_special_sensors.length] = getPaletteSensorValueNode(sensor);
 
         }
 
@@ -244,19 +247,22 @@ class LaboratoryPalleteComponent extends Component {
 
 
 
-      <div id="lab-1" className={styles.lab_palette}>
+      <div id="lab-1" className={classNames(sharedStyles.palette, sharedStyles.device_palette)}>
 
 
-            <div id="lab-tittle" className={styles.lab_panel_tittle}>
-
-                {this.props.intl.formatMessage(messages.laboratory)}
-
-                  <div className={styles.close_icon} onClick={this.onThisWindowClose.bind(this)}>
-
-                  </div>
-
+            <div id="lab-tittle" className={sharedStyles.header}>
+                <span className={sharedStyles.headerTitle}>
+                    {this.props.intl.formatMessage(messages.laboratory)}
+                </span>
+                <button
+                    type="button"
+                    className={sharedStyles.closeButton}
+                    aria-label="Close"
+                    onClick={this.onThisWindowClose.bind(this)}
+                />
             </div>
-
+            <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
+            <div className={rowStyles.palette_device_list}>
             {
 
 
@@ -289,7 +295,7 @@ class LaboratoryPalleteComponent extends Component {
 
                                                       if (index < 5){
 
-                                                          field_text  = this.props.intl.formatMessage(messages.button) + " "  + (index + 1).toString() + ": ";
+                                                          field_text = `${this.props.intl.formatMessage(messages.button)} ${index + 1}`;
 
                                                       }
 
@@ -348,7 +354,7 @@ class LaboratoryPalleteComponent extends Component {
 
                                                if (index < 2){
 
-                                                   field_text  = this.props.intl.formatMessage(messages.analog) + " "  + (index).toString() + ": ";
+                                                   field_text = `${this.props.intl.formatMessage(messages.analog)} ${index}`;
 
                                                }
 
@@ -395,7 +401,8 @@ class LaboratoryPalleteComponent extends Component {
 
 
             }
-
+            </div>
+            </div>
           </div>
 
     );

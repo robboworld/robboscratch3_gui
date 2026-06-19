@@ -15,6 +15,10 @@
     overflow: hidden;
 }
 
+.monitor-container.monitor-container-corner {
+    position: relative;
+}
+
 .monitor:hover {
     cursor: pointer;
 }

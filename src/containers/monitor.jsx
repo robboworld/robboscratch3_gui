@@ -48,6 +48,10 @@ class Monitor extends React.Component {
         ]);
     }
     componentDidMount () {
+        if (this.props.layout === 'corner') {
+            return;
+        }
+
         let rect;
 
         const isNum = num => typeof num === 'number' && !isNaN(num);
@@ -89,9 +93,15 @@ class Monitor extends React.Component {
         return false;
     }
     componentDidUpdate () {
+        if (this.props.layout === 'corner') {
+            return;
+        }
         this.props.resizeMonitorRect(this.props.id, this.element.offsetWidth, this.element.offsetHeight);
     }
     componentWillUnmount () {
+        if (this.props.layout === 'corner') {
+            return;
+        }
         this.props.removeMonitorRect(this.props.id);
     }
     handleDragEnd (e, {x, y}) {
@@ -168,6 +178,7 @@ class Monitor extends React.Component {
                 componentRef={this.setElement}
                 {...monitorProps}
                 draggable={this.props.draggable}
+                layout={this.props.layout}
                 height={this.props.height}
                 max={this.props.max}
                 min={this.props.min}
@@ -190,6 +201,7 @@ Monitor.propTypes = {
     addMonitorRect: PropTypes.func.isRequired,
     draggable: PropTypes.bool,
     height: PropTypes.number,
+    layout: PropTypes.oneOf(['stage', 'corner']),
     id: PropTypes.string.isRequired,
     intl: intlShape,
     max: PropTypes.number,

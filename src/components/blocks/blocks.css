@@ -3,7 +3,27 @@
 @import "../../css/z-index.css";
 
 .blocks {
+    /*
+        scratch-blocks: category menu 60px + flyout 250px;
+        toolbox.width (310) = category + flyout for Blockly layout.
+    */
+    --blocks-category-width: 60px;
+    --blocks-flyout-width: 250px;
+    --blocks-palette-toggle-width: 1.25rem;
+    /* Blockly.Colours toolbox / flyout */
+    --blocks-toolbox-bg: #ffffff;
+    --blocks-flyout-bg: #f9f9f9;
+
     height: 100%;
+    position: relative;
+}
+
+.palette-collapsed {
+    --blocks-flyout-width: 0px;
+}
+
+.layout-pending :global(.injectionDiv) {
+    visibility: hidden;
 }
 
 .drag-over:after {
@@ -96,4 +116,271 @@
 .blocks :global(.blocklyMinimalBody) {
     min-width: auto;
     min-height: auto;
+}
+
+.blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyout),
+.blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyoutBackground),
+.blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyout),
+.blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyoutBackground) {
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+}
+
+[dir="ltr"] .blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyout),
+[dir="ltr"] .blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyoutBackground) {
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+[dir="rtl"] .blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyout),
+[dir="rtl"] .blocks :global(.injectionDiv.flyout-animating-out) :global(.blocklyFlyoutBackground) {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+[dir="ltr"] .blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyout),
+[dir="ltr"] .blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyoutBackground) {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+
+[dir="rtl"] .blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyout),
+[dir="rtl"] .blocks :global(.injectionDiv.flyout-animating-in) :global(.blocklyFlyoutBackground) {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+.blocks :global(.flyout-palette-collapsed) :global(.blocklyFlyout),
+.blocks :global(.flyout-palette-collapsed) :global(.blocklyFlyoutBackground),
+.blocks :global(.flyout-palette-collapsed) :global(.blocklyFlyoutScrollbar) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* Invisible flyout relayout while palette stays collapsed (no flash on reload). */
+.blocks :global(.injectionDiv.flyout-palette-repairing) {
+    overflow: hidden;
+}
+
+.blocks :global(.injectionDiv.flyout-palette-repairing) :global(.blocklyFlyout),
+.blocks :global(.injectionDiv.flyout-palette-repairing) :global(.blocklyFlyoutBackground) {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.blocks :global(.injectionDiv.flyout-palette-repairing) :global(.blocklyFlyoutScrollbar) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.palette-animating :global(.blocklyFlyoutScrollbar) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.palette-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 49;
+    width: 6px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: ew-resize;
+    touch-action: none;
+}
+
+.palette-resize-handle-disabled {
+    pointer-events: none;
+    cursor: default;
+}
+
+[dir="ltr"] .palette-resize-handle {
+    left: calc(var(--blocks-category-width) + var(--blocks-flyout-width) - 3px);
+    right: auto;
+}
+
+[dir="rtl"] .palette-resize-handle {
+    right: calc(var(--blocks-category-width) + var(--blocks-flyout-width) - 3px);
+    left: auto;
+}
+
+.palette-toggle {
+    position: absolute;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--blocks-palette-toggle-width);
+    height: 3rem;
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    border-radius: 0;
+    background: var(--blocks-flyout-bg);
+    color: $motion-primary;
+    box-shadow: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+    transition:
+        left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        right 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        background-color 0.2s ease;
+}
+
+/* Instant follow during flyout width drag or collapse/expand animation. */
+.palette-resizing .palette-toggle,
+.palette-animating .palette-toggle {
+    transition: background-color 0.2s ease;
+}
+
+.palette-toggle::before,
+.palette-toggle::after {
+    content: '';
+    position: absolute;
+    height: 1px;
+    background-color: $ui-black-transparent;
+    pointer-events: none;
+}
+
+.palette-toggle::before {
+    top: 0;
+}
+
+.palette-toggle::after {
+    bottom: 0;
+}
+
+[dir="ltr"] .palette-toggle::before,
+[dir="ltr"] .palette-toggle::after {
+    left: 0;
+    right: 0;
+}
+
+[dir="rtl"] .palette-toggle::before,
+[dir="rtl"] .palette-toggle::after {
+    left: 0;
+    right: 0;
+}
+
+[dir="ltr"] .palette-toggle {
+    left: calc(var(--blocks-category-width) + var(--blocks-flyout-width) + 1px);
+    right: auto;
+    border-right: 1px solid $ui-black-transparent;
+    border-radius: 0 $form-radius $form-radius 0;
+    background-color: var(--blocks-flyout-bg);
+    background-image: linear-gradient(var(--blocks-flyout-bg), var(--blocks-flyout-bg));
+    background-repeat: no-repeat;
+    background-size: 2px calc(100% - 1px);
+    background-position: 0 1px;
+}
+
+[dir="rtl"] .palette-toggle {
+    right: calc(var(--blocks-category-width) + var(--blocks-flyout-width) - 1px);
+    left: auto;
+    border-left: 1px solid $ui-black-transparent;
+    border-radius: $form-radius 0 0 $form-radius;
+    background-color: var(--blocks-flyout-bg);
+    background-image: linear-gradient(var(--blocks-flyout-bg), var(--blocks-flyout-bg));
+    background-repeat: no-repeat;
+    background-size: 2px calc(100% - 1px);
+    background-position: 100% 1px;
+}
+
+.palette-toggle-collapsed {
+    background: var(--blocks-toolbox-bg);
+}
+
+[dir="ltr"] .palette-toggle-collapsed {
+    background-color: var(--blocks-toolbox-bg);
+    background-image: linear-gradient(var(--blocks-toolbox-bg), var(--blocks-toolbox-bg));
+}
+
+[dir="rtl"] .palette-toggle-collapsed {
+    background-color: var(--blocks-toolbox-bg);
+    background-image: linear-gradient(var(--blocks-toolbox-bg), var(--blocks-toolbox-bg));
+}
+
+[dir="ltr"] .palette-toggle:focus,
+[dir="ltr"] .palette-toggle:focus-visible,
+[dir="ltr"] .palette-toggle:active {
+    border-right: 1px solid $ui-black-transparent;
+}
+
+[dir="rtl"] .palette-toggle:focus,
+[dir="rtl"] .palette-toggle:focus-visible,
+[dir="rtl"] .palette-toggle:active {
+    border-left: 1px solid $ui-black-transparent;
+}
+
+.palette-toggle:hover {
+    background-color: #e9eef2;
+}
+
+[dir="ltr"] .palette-toggle:hover {
+    background-image: linear-gradient(#e9eef2, #e9eef2);
+}
+
+[dir="rtl"] .palette-toggle:hover {
+    background-image: linear-gradient(#e9eef2, #e9eef2);
+}
+
+.palette-toggle:disabled {
+    cursor: wait;
+    opacity: 0.85;
+}
+
+.palette-toggle::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+}
+
+.palette-toggle:focus,
+.palette-toggle:focus-visible,
+.palette-toggle:active {
+    outline: none;
+    box-shadow: none;
+}
+
+.palette-toggle-icon {
+    display: block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-top: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    transition: transform 0.25s ease;
+}
+
+[dir="ltr"] .palette-toggle-icon {
+    transform: rotate(-135deg);
+    margin-left: 0.125rem;
+}
+
+[dir="rtl"] .palette-toggle-icon {
+    transform: rotate(45deg);
+    margin-right: 0.125rem;
+}
+
+[dir="ltr"] .palette-toggle-collapsed .palette-toggle-icon {
+    transform: rotate(45deg);
+    margin-left: 0;
+    margin-right: 0.125rem;
+}
+
+[dir="rtl"] .palette-toggle-collapsed .palette-toggle-icon {
+    transform: rotate(-135deg);
+    margin-right: 0;
+    margin-left: 0.125rem;
 }

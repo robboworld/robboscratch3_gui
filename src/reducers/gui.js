@@ -25,6 +25,9 @@ import timeoutReducer, {timeoutInitialState} from './timeout';
 import toolboxReducer, {toolboxInitialState} from './toolbox';
 import vmReducer, {vmInitialState} from './vm';
 import vmStatusReducer, {vmStatusInitialState} from './vm-status';
+import layoutVisibilityReducer from './layout-visibility';
+import {getLayoutVisibilityInitialState} from '../lib/layout-visibility-persistence';
+import {layoutVisibilityPersistenceMiddleware} from '../lib/layout-visibility-persistence';
 import throttle from 'redux-throttle';
 
 import decks from '../lib/libraries/decks/index.jsx';
@@ -51,7 +54,11 @@ import license_demo,{license_demo_InitialState} from '../RobboGui/reducers/licen
 
 import thunk from 'redux-thunk';
 
-const guiMiddleware = compose(applyMiddleware(throttle(300, {leading: true, trailing: true}),thunk));
+const guiMiddleware = compose(applyMiddleware(
+    throttle(300, {leading: true, trailing: true}),
+    layoutVisibilityPersistenceMiddleware,
+    thunk
+));
 
 const guiInitialState = {
     alerts: alertsInitialState,
@@ -80,6 +87,7 @@ const guiInitialState = {
     toolbox: toolboxInitialState,
     vm: vmInitialState,
     vmStatus: vmStatusInitialState,
+    layoutVisibility: getLayoutVisibilityInitialState(),
 
     robot_sensors:robot_sensors_InitialState,
   lab_external_sensors:lab_external_sensors_InitialState,
@@ -207,6 +215,7 @@ const guiReducer = combineReducers({
     toolbox: toolboxReducer,
     vm: vmReducer,
     vmStatus: vmStatusReducer,
+    layoutVisibility: layoutVisibilityReducer,
 
     robot_sensors:robot_sensors,
   lab_external_sensors:lab_external_sensors,
