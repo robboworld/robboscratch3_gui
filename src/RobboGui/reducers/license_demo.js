@@ -4,6 +4,7 @@ export const CAPABILITY_PREMIUM_AUTO_UPDATE = 'premium.auto_update';
 
 export const LS_ACTIVATION_BASE = 'rs3_demo_activation_base_url';
 export const LS_TOKEN = 'rs3_demo_signed_token';
+export const LS_BOUND_FP = 'rs3_license_bound_fingerprint';
 
 export const LICENSE_DEMO_SET_ACTIVATION_BASE = 'LICENSE_DEMO_SET_ACTIVATION_BASE';
 export const LICENSE_DEMO_ACTIVATE_START = 'LICENSE_DEMO_ACTIVATE_START';
@@ -35,6 +36,9 @@ export function demoLicenseInitialState () {
         capabilities: [],
         signedOfflineToken: '',
         addonManifestUrl: '',
+        licenseId: '',
+        seatId: '',
+        deviceBindingValid: false,
         addonReady: false,
         addonError: '',
         activationError: '',
@@ -72,6 +76,9 @@ export default function reducer (state, action) {
         next.signedOfflineToken = action.payload.signedOfflineToken;
         next.addonManifestUrl = action.payload.addonManifestUrl;
         next.capabilities = action.payload.capabilities.slice();
+        next.licenseId = action.payload.licenseId || '';
+        next.seatId = action.payload.seatId || '';
+        next.deviceBindingValid = action.payload.deviceBindingValid !== false;
         next.status = 'valid_offline';
         next.activationError = '';
         next.addonReady = false;
@@ -107,6 +114,9 @@ export default function reducer (state, action) {
         next.capabilities = Array.isArray(action.payload.capabilities)
             ? action.payload.capabilities.slice()
             : [];
+        next.licenseId = action.payload.licenseId || '';
+        next.seatId = action.payload.seatId || '';
+        next.deviceBindingValid = action.payload.deviceBindingValid !== false;
         next.status =
             typeof action.payload.status === 'string'
                 ? action.payload.status

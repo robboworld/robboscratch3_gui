@@ -1,4 +1,5 @@
-import DEMO_PUBLIC_KEY_PEM from './demoPublicKeyPem';
+import {getTrustRootPemForKid} from './licenseTrustRoots';
+import {computeDeviceFingerprint} from './deviceFingerprint';
 
 /**
  * @param {string} b64url
@@ -57,7 +58,26 @@ function importRsaPublicFromPem (pem) {
 }
 
 /**
- * Decode RS256 JWT and verify signature (demo key).
+ * @param {object} payload decoded JWT payload
+ * @returns {Promise<object>} payload with deviceBindingValid flag
+ */
+function verifyDeviceBinding (payload) {
+    const binding = payload.deviceBinding;
+    if (!binding || typeof binding !== 'string') {
+        return Promise.reject(new Error('device_binding_missing'));
+    }
+    return computeDeviceFingerprint().then(fp => {
+        if (fp !== binding) {
+            const err = new Error('device_binding_mismatch');
+            err.code = 'DEVICE_BINDING_MISMATCH';
+            throw err;
+        }
+        return Object.assign({}, payload, {deviceBindingValid: true});
+    });
+}
+
+/**
+ * Decode RS256 JWT, verify signature (trust root by kid) and device binding.
  *
  * @param {string} token JWT compact form
  * @returns {Promise<object>} Parsed payload object
@@ -72,11 +92,16 @@ export function verifyDemoActivationJwt (token) {
         if (!algHeader || algHeader.alg !== 'RS256') {
             return Promise.reject(new Error('unsupported_jwt_alg'));
         }
+        const kid = algHeader.kid;
+        const pem = getTrustRootPemForKid(kid);
+        if (!pem) {
+            return Promise.reject(new Error('untrusted_jwt_kid'));
+        }
         const subtle = typeof crypto !== 'undefined' && crypto.subtle;
         if (!subtle) {
             return Promise.reject(new Error('crypto_subtle_missing'));
         }
-        return importRsaPublicFromPem(DEMO_PUBLIC_KEY_PEM)
+        return importRsaPublicFromPem(pem)
             .then(pk => {
                 const data = new TextEncoder().encode(`${h64}.${pl64}`);
                 const sig = base64UrlToUint8Array(sig64);
@@ -91,9 +116,14 @@ export function verifyDemoActivationJwt (token) {
                 if (payload.exp != null && now >= payload.exp) {
                     throw new Error('license_expired');
                 }
-                return payload;
+                if (payload.nbf != null && now < payload.nbf) {
+                    throw new Error('license_not_yet_valid');
+                }
+                return verifyDeviceBinding(payload);
             });
     } catch (e) {
         return Promise.reject(e);
     }
 }
+
+export {verifyDemoActivationJwt as verifyActivationJwt};

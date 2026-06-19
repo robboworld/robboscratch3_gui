@@ -15,7 +15,7 @@ import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
 import {premiumAutoUpdateDemoCheckThunk} from './actions/licenseDemoActions';
-import {CAPABILITY_PREMIUM_AUTO_UPDATE} from './reducers/license_demo';
+import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 import {
@@ -387,7 +387,7 @@ class RobboMenu extends Component {
   }
 
   premiumAutoUpdateDemoMenuClick () {
-      if (this.props.licenseDemo && this.props.licenseDemo.addonReady) {
+      if (this.props.licenseDemo && hasPremiumAutoUpdateCapability(this.props.licenseDemo)) {
           this.props.onPremiumAutoUpdateDemoCheck();
       }
   }
@@ -697,10 +697,7 @@ class RobboMenu extends Component {
 
                       )}>{this.props.intl.formatMessage(messages.trigger_about_window)} </div>
 
-              {(this.props.licenseDemo &&
-                      this.props.licenseDemo.status === 'valid_offline' &&
-                      Array.isArray(this.props.licenseDemo.capabilities) &&
-                      this.props.licenseDemo.capabilities.indexOf(CAPABILITY_PREMIUM_AUTO_UPDATE) >= 0) ? (
+              {hasPremiumAutoUpdateCapability(this.props.licenseDemo) ? (
                   <div
                       id="trigger-premium-auto-update-demo"
                       onClick={this.premiumAutoUpdateDemoMenuClick.bind(this)}

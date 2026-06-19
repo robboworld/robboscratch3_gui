@@ -13,6 +13,7 @@ import {
     clearDemoLicenseThunk
 } from './actions/licenseDemoActions';
 import {CAPABILITY_PREMIUM_AUTO_UPDATE} from './reducers/license_demo';
+import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
 
 const messages = defineMessages({
     title: {
@@ -111,9 +112,7 @@ class LicenseWindowComponent extends Component {
 
     render () {
         const ld = this.props.license_demo;
-        const hasPremium =
-            ld.status === 'valid_offline' &&
-            ld.capabilities.indexOf(CAPABILITY_PREMIUM_AUTO_UPDATE) >= 0;
+        const hasPremium = hasPremiumAutoUpdateCapability(ld);
         const premiumHint =
             hasPremium && ld.addonReady
                 ? this.props.intl.formatMessage(messages.premium_autoupgrade_ready, {

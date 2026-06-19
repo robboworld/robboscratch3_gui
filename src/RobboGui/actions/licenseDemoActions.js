@@ -1,10 +1,13 @@
 import {postActivateDemo} from '../../lib/licensing/activationClient.js';
 import {verifyDemoActivationJwt} from '../../lib/licensing/verifyJwtRs256.js';
-import {loadPaidAddonFromManifestUrl} from '../../lib/licensing/loadPaidAddon.js';
+import {loadPaidAddonFromManifestUrl, clearAddonCache} from '../../lib/licensing/loadPaidAddon.js';
 import paidAddonRegistry from '../../lib/licensing/paidAddonRegistry.js';
+import {computeDeviceFingerprint, getCachedDeviceFingerprint, LS_FP_CACHE} from '../../lib/licensing/deviceFingerprint.js';
+import {assertPremiumAutoUpdateCapability} from '../../lib/licensing/capabilityGateway.js';
 import {
     LS_ACTIVATION_BASE,
     LS_TOKEN,
+    LS_BOUND_FP,
     LICENSE_DEMO_ACTIVATE_START,
     LICENSE_DEMO_ACTIVATE_SUCCESS,
     LICENSE_DEMO_ACTIVATE_FAILURE,
@@ -14,39 +17,35 @@ import {
     LICENSE_DEMO_HYDRATE,
     LICENSE_DEMO_CLEAR,
     LICENSE_DEMO_PREMIUM_CHECK_RESULT,
-    CAPABILITY_PREMIUM_AUTO_UPDATE,
     readPersistedActivationBase
 } from '../reducers/license_demo.js';
 
-const LS_DEVICE = 'rs3_demo_device_id';
-const LS_ADDON_CACHE_MANIFEST = 'rs3_demo_addon_manifest_url';
-const LS_ADDON_CACHE_BUNDLE = 'rs3_demo_addon_bundle';
-
-function getOrCreateDemoDeviceId () {
-    try {
-        if (typeof localStorage !== 'undefined') {
-            let id = localStorage.getItem(LS_DEVICE);
-            if (!id) {
-                id =
-                    typeof crypto !== 'undefined' &&
-                    crypto.randomUUID
-                        ? crypto.randomUUID()
-                        : `dev-${Date.now()}-${Math.random()
-                            .toString(36)
-                            .slice(2)}`;
-                localStorage.setItem(LS_DEVICE, id);
-            }
-            return id;
-        }
-    } catch (e) { /* ignore */ }
-    return 'dev-fallback';
+function capabilitiesFromPayload (jwtPayload) {
+    if (!jwtPayload || !Array.isArray(jwtPayload.capabilities)) {
+        return [];
+    }
+    return jwtPayload.capabilities.slice();
 }
 
-function persistLicenseToStorage (activationBaseUrl, token) {
+function licenseContextFromPayload (jwtPayload) {
+    return {
+        licenseId: jwtPayload.licenseId || jwtPayload.sub || '',
+        seatId: jwtPayload.seatId || '',
+        capabilities: capabilitiesFromPayload(jwtPayload),
+        expiresAt: jwtPayload.exp || null,
+        deviceBindingValid: jwtPayload.deviceBindingValid !== false
+    };
+}
+
+function persistLicenseToStorage (activationBaseUrl, token, fingerprint) {
     try {
         if (typeof localStorage !== 'undefined') {
             localStorage.setItem(LS_ACTIVATION_BASE, activationBaseUrl);
             localStorage.setItem(LS_TOKEN, token);
+            if (fingerprint) {
+                localStorage.setItem(LS_BOUND_FP, fingerprint);
+                localStorage.setItem(LS_FP_CACHE, fingerprint);
+            }
         }
     } catch (e) { /* ignore */ }
 }
@@ -55,10 +54,10 @@ export function removeDemoLicenseFromStorage () {
     try {
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(LS_TOKEN);
-            localStorage.removeItem(LS_ADDON_CACHE_MANIFEST);
-            localStorage.removeItem(LS_ADDON_CACHE_BUNDLE);
+            localStorage.removeItem(LS_BOUND_FP);
         }
     } catch (e) { /* ignore */ }
+    clearAddonCache();
 }
 
 export function manifestUrlFromJwtOrBase (jwtPayload, activationBaseUrlTrimmed) {
@@ -69,8 +68,11 @@ export function manifestUrlFromJwtOrBase (jwtPayload, activationBaseUrlTrimmed) 
     return `${base}/addon/manifest.json`;
 }
 
-function loadAddonDispatched (dispatch, manifestUrl) {
-    return loadPaidAddonFromManifestUrl(manifestUrl)
+function loadAddonDispatched (dispatch, manifestUrl, signedOfflineToken, licenseContext) {
+    return loadPaidAddonFromManifestUrl(manifestUrl, {
+        signedOfflineToken,
+        licenseContext
+    })
         .then(() => {
             dispatch({type: LICENSE_DEMO_ADDON_READY});
         })
@@ -119,22 +121,21 @@ export function activateLicenseDemoThunk (licenseKeyTrimmed) {
         }
         dispatch({type: LICENSE_DEMO_ACTIVATE_START});
         const publicBaseForUrls = base.replace(/\/$/, '');
-        return postActivateDemo(base, {
-            licenseKey: licenseKeyTrimmed.trim(),
-            deviceId: getOrCreateDemoDeviceId(),
-            publicBase: publicBaseForUrls
-        })
-            .then(resp => verifyDemoActivationJwt(resp.signedOfflineToken).then(jwtPayload => ({
+        return computeDeviceFingerprint()
+            .then(fingerprint => postActivateDemo(base, {
+                licenseKey: licenseKeyTrimmed.trim(),
+                deviceFingerprint: fingerprint,
+                publicBase: publicBaseForUrls
+            }).then(resp => verifyDemoActivationJwt(resp.signedOfflineToken).then(jwtPayload => ({
                 resp,
-                jwtPayload
-            })))
-            .then(({resp, jwtPayload}) => {
-                const capList = Array.isArray(jwtPayload.capabilities) &&
-                    jwtPayload.capabilities.length > 0
-                    ? jwtPayload.capabilities.slice()
-                    : jwtPayload.demo === true
-                        ? [CAPABILITY_PREMIUM_AUTO_UPDATE]
-                        : [];
+                jwtPayload,
+                fingerprint
+            }))))
+            .then(({resp, jwtPayload, fingerprint}) => {
+                const capList = capabilitiesFromPayload(jwtPayload);
+                if (capList.length === 0) {
+                    throw new Error('capability_denied');
+                }
 
                 const addonManifestUrl =
                     typeof resp.addonManifestUrl === 'string' &&
@@ -142,19 +143,27 @@ export function activateLicenseDemoThunk (licenseKeyTrimmed) {
                         ? resp.addonManifestUrl.trim()
                         : manifestUrlFromJwtOrBase(jwtPayload, publicBaseForUrls);
 
-                persistLicenseToStorage(base, resp.signedOfflineToken);
+                persistLicenseToStorage(base, resp.signedOfflineToken, fingerprint);
+
+                const licenseContext = licenseContextFromPayload(jwtPayload);
 
                 dispatch({
                     type: LICENSE_DEMO_ACTIVATE_SUCCESS,
                     payload: {
                         signedOfflineToken: resp.signedOfflineToken,
                         addonManifestUrl,
-                        capabilities: capList.length > 0
-                            ? capList
-                            : [CAPABILITY_PREMIUM_AUTO_UPDATE]
+                        capabilities: capList,
+                        licenseId: licenseContext.licenseId,
+                        seatId: licenseContext.seatId,
+                        deviceBindingValid: true
                     }
                 });
-                return loadAddonDispatched(dispatch, addonManifestUrl);
+                return loadAddonDispatched(
+                    dispatch,
+                    addonManifestUrl,
+                    resp.signedOfflineToken,
+                    licenseContext
+                );
             })
             .catch(err => {
                 dispatch({
@@ -179,6 +188,7 @@ export function hydrateLicenseDemoThunk () {
                     typeof localStorage.getItem === 'function'
                         ? localStorage.getItem(LS_TOKEN)
                         : '';
+                const storedFp = localStorage.getItem(LS_BOUND_FP) || '';
 
                 dispatch(persistActivationBaseUrlDemoThunk(base));
 
@@ -190,36 +200,49 @@ export function hydrateLicenseDemoThunk () {
                     return Promise.resolve();
                 }
 
-                return verifyDemoActivationJwt(token)
-                    .then(jwtPayload => {
-                        let caps =
-                            Array.isArray(jwtPayload.capabilities) &&
-                            jwtPayload.capabilities.length > 0
-                                ? jwtPayload.capabilities.slice()
-                                : jwtPayload.demo
-                                    ? [CAPABILITY_PREMIUM_AUTO_UPDATE]
-                                    : [];
-                        const manifestUrl = manifestUrlFromJwtOrBase(
-                            jwtPayload,
-                            base.replace(/\/$/, '')
-                        );
-                        dispatch({
-                            type: LICENSE_DEMO_HYDRATE,
-                            payload: {
-                                activationBaseUrl: base,
-                                signedOfflineToken: token,
-                                capabilities: caps,
-                                addonManifestUrl: manifestUrl,
-                                status: 'valid_offline',
-                                addonReady: false,
-                                addonError: ''
+                return computeDeviceFingerprint()
+                    .then(currentFp => {
+                        if (storedFp && storedFp !== currentFp) {
+                            removeDemoLicenseFromStorage();
+                            paidAddonRegistry.reset();
+                            dispatch({
+                                type: LICENSE_DEMO_CLEAR,
+                                payload: {activationBaseUrl: base}
+                            });
+                            return null;
+                        }
+                        return verifyDemoActivationJwt(token).then(jwtPayload => {
+                            const caps = capabilitiesFromPayload(jwtPayload);
+                            if (caps.length === 0) {
+                                throw new Error('capability_denied');
                             }
+                            const manifestUrl = manifestUrlFromJwtOrBase(
+                                jwtPayload,
+                                base.replace(/\/$/, '')
+                            );
+                            const licenseContext = licenseContextFromPayload(jwtPayload);
+                            dispatch({
+                                type: LICENSE_DEMO_HYDRATE,
+                                payload: {
+                                    activationBaseUrl: base,
+                                    signedOfflineToken: token,
+                                    capabilities: caps,
+                                    addonManifestUrl: manifestUrl,
+                                    licenseId: licenseContext.licenseId,
+                                    seatId: licenseContext.seatId,
+                                    deviceBindingValid: true,
+                                    status: 'valid_offline',
+                                    addonReady: false,
+                                    addonError: ''
+                                }
+                            });
+                            return loadAddonDispatched(
+                                dispatch,
+                                manifestUrl,
+                                token,
+                                licenseContext
+                            );
                         });
-
-                        /**
-                         * If cached bundle hits, addon load works offline.
-                         */
-                        return loadAddonDispatched(dispatch, manifestUrl);
                     })
                     .catch(() => {
                         removeDemoLicenseFromStorage();
@@ -262,8 +285,28 @@ export function clearDemoLicenseThunk () {
 /** @returns {function} */
 export function premiumAutoUpdateDemoCheckThunk () {
     return function (dispatch, getState) {
-        void getState();
-        return paidAddonRegistry.invokePremiumAutoUpdateDemo().then(result => {
+        const licenseState = getState().scratchGui.license_demo;
+        const gate = assertPremiumAutoUpdateCapability(licenseState);
+        if (!gate.ok) {
+            const result = {
+                error: gate.code || 'CAPABILITY_DENIED',
+                message: 'Premium auto-update is not available for this device or license.'
+            };
+            dispatch({
+                type: LICENSE_DEMO_PREMIUM_CHECK_RESULT,
+                payload: result
+            });
+            if (typeof window !== 'undefined' && window.alert) {
+                window.alert(result.message);
+            }
+            return Promise.resolve(result);
+        }
+        return paidAddonRegistry.invokePremiumAutoUpdateDemo(licenseContextFromPayload({
+            licenseId: licenseState.licenseId,
+            seatId: licenseState.seatId,
+            capabilities: licenseState.capabilities,
+            deviceBindingValid: licenseState.deviceBindingValid
+        })).then(result => {
             dispatch({
                 type: LICENSE_DEMO_PREMIUM_CHECK_RESULT,
                 payload: result
@@ -280,3 +323,5 @@ export function premiumAutoUpdateDemoCheckThunk () {
         });
     };
 }
+
+export {getCachedDeviceFingerprint};
