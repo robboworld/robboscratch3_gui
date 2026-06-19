@@ -289,16 +289,12 @@ export function premiumAutoUpdateDemoCheckThunk () {
         const gate = assertPremiumAutoUpdateCapability(licenseState);
         if (!gate.ok) {
             const result = {
-                error: gate.code || 'CAPABILITY_DENIED',
-                message: 'Premium auto-update is not available for this device or license.'
+                error: gate.code || 'CAPABILITY_DENIED'
             };
             dispatch({
                 type: LICENSE_DEMO_PREMIUM_CHECK_RESULT,
                 payload: result
             });
-            if (typeof window !== 'undefined' && window.alert) {
-                window.alert(result.message);
-            }
             return Promise.resolve(result);
         }
         return paidAddonRegistry.invokePremiumAutoUpdateDemo(licenseContextFromPayload({
@@ -313,12 +309,6 @@ export function premiumAutoUpdateDemoCheckThunk () {
             });
 
             console.info('[rs3-demo-license] Premium auto-update result:', result);
-            if (typeof window !== 'undefined' && window.alert) {
-                const text = result.error
-                    ? `${result.error}\n${result.message || ''}`
-                    : (result.message || JSON.stringify(result, null, 2));
-                window.alert(text);
-            }
             return result;
         });
     };

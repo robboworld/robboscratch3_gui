@@ -57,6 +57,34 @@ const messages = defineMessages({
     addon_pending: {
         id: 'gui.licenseWindow.addon_pending',
         defaultMessage: 'Fetching paid addon bundle from server…'
+    },
+    status_error: {
+        id: 'gui.licenseWindow.status_error',
+        defaultMessage: 'Error: {message}'
+    },
+    status_addon_issue: {
+        id: 'gui.licenseWindow.status_addon_issue',
+        defaultMessage: 'Activation OK — addon issue: {error}'
+    },
+    error_empty_license_key: {
+        id: 'gui.licenseWindow.error_empty_license_key',
+        defaultMessage: 'Enter a license key.'
+    },
+    error_capability_denied: {
+        id: 'gui.licenseWindow.error_capability_denied',
+        defaultMessage: 'License has no premium capabilities.'
+    },
+    capabilities_none: {
+        id: 'gui.licenseWindow.capabilities_none',
+        defaultMessage: '(none)'
+    },
+    addon_yes: {
+        id: 'gui.licenseWindow.addon_yes',
+        defaultMessage: 'yes'
+    },
+    addon_pending_short: {
+        id: 'gui.licenseWindow.addon_pending_short',
+        defaultMessage: 'pending'
     }
 });
 
@@ -92,19 +120,36 @@ class LicenseWindowComponent extends Component {
         this.props.onClearDemoLicense();
     }
 
+    resolveActivationError (code) {
+        if (code === 'empty_license_key') {
+            return this.props.intl.formatMessage(messages.error_empty_license_key);
+        }
+        if (code === 'capability_denied') {
+            return this.props.intl.formatMessage(messages.error_capability_denied);
+        }
+        return code;
+    }
+
     renderStatusLine () {
         const ld = this.props.license_demo;
         if (ld.activationError) {
-            return `Error: ${ld.activationError}`;
+            return this.props.intl.formatMessage(messages.status_error, {
+                message: this.resolveActivationError(ld.activationError)
+            });
         }
         if (ld.addonError && ld.status === 'valid_offline') {
-            return `Activation OK — addon issue: ${ld.addonError}`;
+            return this.props.intl.formatMessage(messages.status_addon_issue, {
+                error: ld.addonError
+            });
         }
         if (ld.status === 'valid_offline') {
-            const caps = ld.capabilities.join(', ');
+            const caps = ld.capabilities.join(', ') ||
+                this.props.intl.formatMessage(messages.capabilities_none);
             return this.props.intl.formatMessage(messages.status_valid, {
-                capabilities: caps || '(none)',
-                addon: ld.addonReady ? 'yes' : 'pending'
+                capabilities: caps,
+                addon: ld.addonReady
+                    ? this.props.intl.formatMessage(messages.addon_yes)
+                    : this.props.intl.formatMessage(messages.addon_pending_short)
             });
         }
         return this.props.intl.formatMessage(messages.status_inactive);

@@ -123,6 +123,22 @@ const messages = defineMessages({
         description: ' ',
         defaultMessage: 'Paid addon is still loading from the activation server…'
     },
+    premium_error_license_inactive: {
+        id: 'gui.licenseWindow.premium_error_license_inactive',
+        defaultMessage: 'Activate a valid license first.'
+    },
+    premium_error_device_mismatch: {
+        id: 'gui.licenseWindow.premium_error_device_mismatch',
+        defaultMessage: 'License is bound to another device.'
+    },
+    premium_error_capability_denied: {
+        id: 'gui.licenseWindow.premium_error_capability_denied',
+        defaultMessage: 'License does not include premium auto-update.'
+    },
+    premium_error_addon_not_loaded: {
+        id: 'gui.licenseWindow.premium_error_addon_not_loaded',
+        defaultMessage: 'Paid addon is not loaded yet.'
+    },
     color_sensor_correction1:{
 
       id: 'gui.RobboMenu.color_sensor_correction1',
@@ -388,7 +404,26 @@ class RobboMenu extends Component {
 
   premiumAutoUpdateDemoMenuClick () {
       if (this.props.licenseDemo && hasPremiumAutoUpdateCapability(this.props.licenseDemo)) {
-          this.props.onPremiumAutoUpdateDemoCheck();
+          this.props.onPremiumAutoUpdateDemoCheck().then(result => {
+              if (!result || typeof window === 'undefined' || !window.alert) {
+                  return;
+              }
+              const premiumErrorByCode = {
+                  LICENSE_INACTIVE: messages.premium_error_license_inactive,
+                  DEVICE_BINDING_MISMATCH: messages.premium_error_device_mismatch,
+                  CAPABILITY_DENIED: messages.premium_error_capability_denied,
+                  ADDON_NOT_LOADED: messages.premium_error_addon_not_loaded
+              };
+              let text;
+              if (result.error && premiumErrorByCode[result.error]) {
+                  text = this.props.intl.formatMessage(premiumErrorByCode[result.error]);
+              } else if (result.error) {
+                  text = `${result.error}\n${result.message || ''}`;
+              } else {
+                  text = result.message || JSON.stringify(result, null, 2);
+              }
+              window.alert(text);
+          });
       }
   }
 
@@ -784,10 +819,7 @@ const mapDispatchToProps = dispatch => ({
 
         dispatch(ActionTriggerNewDraggableWindow(windowId));
       },
-    onPremiumAutoUpdateDemoCheck: () => {
-
-        dispatch(premiumAutoUpdateDemoCheckThunk());
-      },
+    onPremiumAutoUpdateDemoCheck: () => dispatch(premiumAutoUpdateDemoCheckThunk()),
     onTriggerRobboMenu: () => {
 
       dispatch(ActionTriggerRobboMenu());
