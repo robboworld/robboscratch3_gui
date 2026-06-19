@@ -4,6 +4,7 @@ import {loadPaidAddonFromManifestUrl, clearAddonCache} from '../../lib/licensing
 import paidAddonRegistry from '../../lib/licensing/paidAddonRegistry.js';
 import {computeDeviceFingerprint, getCachedDeviceFingerprint, LS_FP_CACHE} from '../../lib/licensing/deviceFingerprint.js';
 import {assertPremiumAutoUpdateCapability} from '../../lib/licensing/capabilityGateway.js';
+import {APP_VERSION} from '../AboutWindowComponent.js';
 import {
     LS_ACTIVATION_BASE,
     LS_TOKEN,
@@ -17,6 +18,9 @@ import {
     LICENSE_DEMO_HYDRATE,
     LICENSE_DEMO_CLEAR,
     LICENSE_DEMO_PREMIUM_CHECK_RESULT,
+    LICENSE_DEMO_UPDATE_PHASE,
+    LICENSE_DEMO_UPDATE_PROGRESS,
+    demoUpdateInitialState,
     readPersistedActivationBase
 } from '../reducers/license_demo.js';
 
@@ -33,8 +37,19 @@ function licenseContextFromPayload (jwtPayload) {
         seatId: jwtPayload.seatId || '',
         capabilities: capabilitiesFromPayload(jwtPayload),
         expiresAt: jwtPayload.exp || null,
-        deviceBindingValid: jwtPayload.deviceBindingValid !== false
+        deviceBindingValid: jwtPayload.deviceBindingValid !== false,
+        currentAppVersion: APP_VERSION
     };
+}
+
+function licenseContextFromState (licenseState, extra) {
+    return Object.assign({
+        licenseId: licenseState.licenseId,
+        seatId: licenseState.seatId,
+        capabilities: licenseState.capabilities,
+        deviceBindingValid: licenseState.deviceBindingValid,
+        currentAppVersion: APP_VERSION
+    }, extra || {});
 }
 
 function persistLicenseToStorage (activationBaseUrl, token, fingerprint) {
@@ -283,6 +298,38 @@ export function clearDemoLicenseThunk () {
 }
 
 /** @returns {function} */
+export function premiumUpdateDismissThunk () {
+    return function (dispatch) {
+        dispatch({
+            type: LICENSE_DEMO_UPDATE_PHASE,
+            payload: demoUpdateInitialState()
+        });
+    };
+}
+
+/** @returns {function} */
+export function premiumUpdateConfirmThunk () {
+    return function (dispatch, getState) {
+        const update = getState().scratchGui.license_demo.update;
+        return dispatch(premiumDownloadAndInstallThunk({
+            downloadUrl: update.downloadUrl,
+            latestVersion: update.latestVersion
+        }));
+    };
+}
+
+function localizedPremiumError (errorCode) {
+    const codes = {
+        LICENSE_INACTIVE: 'LICENSE_INACTIVE',
+        DEVICE_BINDING_MISMATCH: 'DEVICE_BINDING_MISMATCH',
+        CAPABILITY_DENIED: 'CAPABILITY_DENIED',
+        ADDON_NOT_LOADED: 'ADDON_NOT_LOADED',
+        DESKTOP_ONLY: 'DESKTOP_ONLY'
+    };
+    return codes[errorCode] || errorCode || 'CHECK_FAILED';
+}
+
+/** @returns {function} */
 export function premiumAutoUpdateDemoCheckThunk () {
     return function (dispatch, getState) {
         const licenseState = getState().scratchGui.license_demo;
@@ -295,20 +342,160 @@ export function premiumAutoUpdateDemoCheckThunk () {
                 type: LICENSE_DEMO_PREMIUM_CHECK_RESULT,
                 payload: result
             });
+            dispatch({
+                type: LICENSE_DEMO_UPDATE_PHASE,
+                payload: {
+                    phase: 'error',
+                    errorCode: localizedPremiumError(result.error),
+                    errorMessage: result.error
+                }
+            });
             return Promise.resolve(result);
         }
-        return paidAddonRegistry.invokePremiumAutoUpdateDemo(licenseContextFromPayload({
-            licenseId: licenseState.licenseId,
-            seatId: licenseState.seatId,
-            capabilities: licenseState.capabilities,
-            deviceBindingValid: licenseState.deviceBindingValid
-        })).then(result => {
+
+        dispatch({
+            type: LICENSE_DEMO_UPDATE_PHASE,
+            payload: Object.assign({}, demoUpdateInitialState(), {phase: 'checking'})
+        });
+
+        return paidAddonRegistry.invokePremiumAutoUpdateCheck(
+            licenseContextFromState(licenseState)
+        ).then(result => {
             dispatch({
                 type: LICENSE_DEMO_PREMIUM_CHECK_RESULT,
                 payload: result
             });
 
+            if (result.error) {
+                dispatch({
+                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    payload: {
+                        phase: 'error',
+                        errorCode: localizedPremiumError(result.error),
+                        errorMessage: result.message || result.error
+                    }
+                });
+            } else if (result.updatesAvailable) {
+                dispatch({
+                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    payload: {
+                        phase: 'confirm',
+                        latestVersion: result.latestVersion || '',
+                        currentVersion: result.currentVersion || '',
+                        downloadUrl: result.downloadUrl || '',
+                        errorMessage: '',
+                        errorCode: ''
+                    }
+                });
+            } else {
+                dispatch({
+                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    payload: {
+                        phase: 'uptodate',
+                        currentVersion: result.currentVersion || APP_VERSION,
+                        latestVersion: result.latestVersion || '',
+                        errorMessage: '',
+                        errorCode: ''
+                    }
+                });
+            }
+
             console.info('[rs3-demo-license] Premium auto-update result:', result);
+            return result;
+        }).catch(err => {
+            dispatch({
+                type: LICENSE_DEMO_UPDATE_PHASE,
+                payload: {
+                    phase: 'error',
+                    errorCode: 'CHECK_FAILED',
+                    errorMessage: err.message || String(err)
+                }
+            });
+            throw err;
+        });
+    };
+}
+
+/** @param {{ downloadUrl: string, latestVersion: string }} checkResult @returns {function} */
+export function premiumDownloadAndInstallThunk (checkResult) {
+    return function (dispatch, getState) {
+        const licenseState = getState().scratchGui.license_demo;
+        const gate = assertPremiumAutoUpdateCapability(licenseState);
+        if (!gate.ok) {
+            const result = {
+                error: gate.code || 'CAPABILITY_DENIED'
+            };
+            dispatch({
+                type: LICENSE_DEMO_UPDATE_PHASE,
+                payload: {
+                    phase: 'error',
+                    errorMessage: result.error
+                }
+            });
+            return Promise.resolve(result);
+        }
+
+        const downloadUrl = checkResult && checkResult.downloadUrl;
+        const latestVersion = checkResult && checkResult.latestVersion;
+        if (!downloadUrl || !latestVersion) {
+            const result = {
+                error: 'MISSING_DOWNLOAD_INFO'
+            };
+            dispatch({
+                type: LICENSE_DEMO_UPDATE_PHASE,
+                payload: {
+                    phase: 'error',
+                    errorMessage: result.error
+                }
+            });
+            return Promise.resolve(result);
+        }
+
+        dispatch({
+            type: LICENSE_DEMO_UPDATE_PHASE,
+            payload: {
+                phase: 'downloading',
+                progress: 0,
+                latestVersion,
+                downloadUrl,
+                errorMessage: ''
+            }
+        });
+
+        return paidAddonRegistry.invokePremiumDownloadAndInstall(
+            licenseContextFromState(licenseState, {downloadUrl, latestVersion}),
+            {
+                downloadUrl,
+                latestVersion,
+                onProgress (percent) {
+                    dispatch({
+                        type: LICENSE_DEMO_UPDATE_PROGRESS,
+                        payload: percent
+                    });
+                    if (percent >= 100) {
+                        dispatch({
+                            type: LICENSE_DEMO_UPDATE_PHASE,
+                            payload: {phase: 'installing'}
+                        });
+                    }
+                }
+            }
+        ).then(result => {
+            if (result && result.error) {
+                dispatch({
+                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    payload: {
+                        phase: 'error',
+                        errorMessage: result.message || result.error
+                    }
+                });
+            } else {
+                dispatch({
+                    type: LICENSE_DEMO_UPDATE_PHASE,
+                    payload: demoUpdateInitialState()
+                });
+            }
+            console.info('[rs3-demo-license] Premium download/install result:', result);
             return result;
         });
     };

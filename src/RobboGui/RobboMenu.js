@@ -139,6 +139,18 @@ const messages = defineMessages({
         id: 'gui.licenseWindow.premium_error_addon_not_loaded',
         defaultMessage: 'Paid addon is not loaded yet.'
     },
+    premium_update_available: {
+        id: 'gui.RobboMenu.premium_update_available',
+        defaultMessage: 'Update available: version {version}. Update now?'
+    },
+    premium_update_none: {
+        id: 'gui.RobboMenu.premium_update_none',
+        defaultMessage: 'You have the latest version ({version}).'
+    },
+    premium_update_desktop_only: {
+        id: 'gui.RobboMenu.premium_update_desktop_only',
+        defaultMessage: 'Premium auto-update is available only in the Desktop app.'
+    },
     color_sensor_correction1:{
 
       id: 'gui.RobboMenu.color_sensor_correction1',
@@ -404,26 +416,7 @@ class RobboMenu extends Component {
 
   premiumAutoUpdateDemoMenuClick () {
       if (this.props.licenseDemo && hasPremiumAutoUpdateCapability(this.props.licenseDemo)) {
-          this.props.onPremiumAutoUpdateDemoCheck().then(result => {
-              if (!result || typeof window === 'undefined' || !window.alert) {
-                  return;
-              }
-              const premiumErrorByCode = {
-                  LICENSE_INACTIVE: messages.premium_error_license_inactive,
-                  DEVICE_BINDING_MISMATCH: messages.premium_error_device_mismatch,
-                  CAPABILITY_DENIED: messages.premium_error_capability_denied,
-                  ADDON_NOT_LOADED: messages.premium_error_addon_not_loaded
-              };
-              let text;
-              if (result.error && premiumErrorByCode[result.error]) {
-                  text = this.props.intl.formatMessage(premiumErrorByCode[result.error]);
-              } else if (result.error) {
-                  text = `${result.error}\n${result.message || ''}`;
-              } else {
-                  text = result.message || JSON.stringify(result, null, 2);
-              }
-              window.alert(text);
-          });
+          this.props.onPremiumAutoUpdateDemoCheck();
       }
   }
 

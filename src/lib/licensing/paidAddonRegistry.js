@@ -20,7 +20,7 @@ const paidAddonRegistry = {
     getHooksForBootstrap () {
         return {
             /**
-             * @param {{ checkForUpdates: function (): Promise<object> }} impl
+             * @param {{ checkForUpdates: function (): Promise<object>, downloadAndInstall?: function (): Promise<object> }} impl
              */
             registerPaidAutoUpdate (impl) {
                 paidAutoUpdateService = impl;
@@ -47,7 +47,7 @@ const paidAddonRegistry = {
     },
 
     /** @returns {Promise<object>} */
-    invokePremiumAutoUpdateDemo (licenseContext) {
+    invokePremiumAutoUpdateCheck (licenseContext) {
         const ctx = licenseContext || lastLicenseContext;
         if (!licenseContextAllowsPremium(ctx)) {
             return Promise.resolve({
@@ -62,6 +62,42 @@ const paidAddonRegistry = {
             });
         }
         return paidAutoUpdateService.checkForUpdates(ctx);
+    },
+
+    /** @deprecated use invokePremiumAutoUpdateCheck */
+    invokePremiumAutoUpdateDemo (licenseContext) {
+        return paidAddonRegistry.invokePremiumAutoUpdateCheck(licenseContext);
+    },
+
+    /**
+     * @param {object} licenseContext
+     * @param {{ onProgress?: function(number): void, downloadUrl?: string, latestVersion?: string }} callbacks
+     * @returns {Promise<object>}
+     */
+    invokePremiumDownloadAndInstall (licenseContext, callbacks) {
+        const ctx = licenseContext || lastLicenseContext;
+        const cb = callbacks || {};
+        if (!licenseContextAllowsPremium(ctx)) {
+            return Promise.resolve({
+                error: 'CAPABILITY_DENIED',
+                message: 'Paid addon rejected: license context invalid or capability missing.'
+            });
+        }
+        if (!paidAutoUpdateService || typeof paidAutoUpdateService.downloadAndInstall !== 'function') {
+            return Promise.resolve({
+                error: 'ADDON_NOT_LOADED',
+                message: 'Paid addon download service is not registered yet.'
+            });
+        }
+        const mergedCtx = Object.assign({}, ctx, {
+            downloadUrl: cb.downloadUrl || ctx.downloadUrl,
+            latestVersion: cb.latestVersion || ctx.latestVersion
+        });
+        return paidAutoUpdateService.downloadAndInstall(mergedCtx, {
+            onProgress: cb.onProgress,
+            downloadUrl: mergedCtx.downloadUrl,
+            latestVersion: mergedCtx.latestVersion
+        });
     }
 };
 

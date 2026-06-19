@@ -15,6 +15,20 @@ export const LICENSE_DEMO_ADDON_FAILURE = 'LICENSE_DEMO_ADDON_FAILURE';
 export const LICENSE_DEMO_HYDRATE = 'LICENSE_DEMO_HYDRATE';
 export const LICENSE_DEMO_CLEAR = 'LICENSE_DEMO_CLEAR';
 export const LICENSE_DEMO_PREMIUM_CHECK_RESULT = 'LICENSE_DEMO_PREMIUM_CHECK_RESULT';
+export const LICENSE_DEMO_UPDATE_PHASE = 'LICENSE_DEMO_UPDATE_PHASE';
+export const LICENSE_DEMO_UPDATE_PROGRESS = 'LICENSE_DEMO_UPDATE_PROGRESS';
+
+export function demoUpdateInitialState () {
+    return {
+        phase: 'idle',
+        progress: 0,
+        latestVersion: '',
+        currentVersion: '',
+        downloadUrl: '',
+        errorMessage: '',
+        errorCode: ''
+    };
+}
 
 export function readPersistedActivationBase () {
     try {
@@ -43,7 +57,8 @@ export function demoLicenseInitialState () {
         addonError: '',
         activationError: '',
         lastPremiumCheckResult: null,
-        isActivating: false
+        isActivating: false,
+        update: demoUpdateInitialState()
     };
 }
 
@@ -139,6 +154,18 @@ export default function reducer (state, action) {
     case LICENSE_DEMO_PREMIUM_CHECK_RESULT:
         next = immutable_copy(state);
         next.lastPremiumCheckResult = action.payload;
+        return next;
+
+    case LICENSE_DEMO_UPDATE_PHASE:
+        next = immutable_copy(state);
+        next.update = Object.assign({}, state.update, action.payload || {});
+        return next;
+
+    case LICENSE_DEMO_UPDATE_PROGRESS:
+        next = immutable_copy(state);
+        next.update = Object.assign({}, state.update, {
+            progress: typeof action.payload === 'number' ? action.payload : state.update.progress
+        });
         return next;
 
     default:
