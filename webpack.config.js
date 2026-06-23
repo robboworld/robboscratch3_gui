@@ -16,6 +16,18 @@ const isProduction = process.env.NODE_ENV === 'production' || process.env.BUILD_
 const shouldBuildLibraryDist = process.env.BUILD_MODE === 'dist';
 const isAppBuild = process.env.BUILD_MODE === 'app';
 
+const webSeo = {
+    enabled: true,
+    description: 'Robbo Scratch — онлайн-среда визуального программирования на Scratch для детей и школ. Создавайте анимации и 2D-игры и программируйте роботов РОББО в браузере.',
+    canonical: 'https://scratch.ru/',
+    siteUrl: 'https://scratch.ru',
+    siteName: 'Robbo Scratch',
+    locale: 'ru_RU',
+    ogImage: 'https://scratch.ru/static/favicon.png',
+    organizationName: 'ROBBO',
+    organizationUrl: 'https://robboclub.ru'
+};
+
 const useBabelCache = !isProduction;
 
 const babelLoaderOptions = {
@@ -29,7 +41,7 @@ const babelLoaderOptions = {
         }]
     ],
     presets: [
-        ['@babel/preset-env', {targets: {browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']}}],
+        ['@babel/preset-env', {useBuiltIns: 'entry'}],
         '@babel/preset-react'
     ]
 };
@@ -59,8 +71,11 @@ const base = {
     devtool: isProduction ? false : 'cheap-module-source-map',
     devServer: {
         contentBase: path.resolve(__dirname, 'build'),
-        host: '0.0.0.0',
-        port: process.env.PORT || 8601
+        host: '127.0.0.1',
+        port: process.env.PORT || 8601,
+        headers: {
+            'Permissions-Policy': 'unload=(self)'
+        }
     },
     output: {
         library: 'GUI',
@@ -71,8 +86,23 @@ const base = {
         ReactDOM: 'react-dom'
     },
     resolve: {
-        symlinks: false
+        symlinks: false,
+        alias: {
+            'scratch-render$': 'scratch-render/dist/web/scratch-render.js',
+            'scratch-vm$': 'scratch-vm/dist/web/scratch-vm.js',
+            'scratch-audio$': 'scratch-audio/dist.js'
+        }
     },
+    node: {
+        fs: 'empty',
+        path: 'empty',
+        os: 'empty',
+        crypto: 'empty',
+        stream: 'empty',
+        net: 'empty',
+        tls: 'empty'
+    },
+    target: 'web', // Явно указываем веб-таргет
     module: {
         rules: [babelRule,
         {
@@ -95,9 +125,7 @@ const base = {
                         return [
                             postcssImport,
                             postcssVars,
-                            autoprefixer({
-                                browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']
-                            })
+                	    autoprefixer()
                         ];
                     }
                 }
@@ -161,14 +189,16 @@ module.exports = [
                     'process.env.NODE_ENV': '"' + (process.env.NODE_ENV || 'development') + '"',
                     'process.env.DEBUG': Boolean(process.env.DEBUG),
                     'process.env.GA_ID': '"' + (process.env.GA_ID || 'UA-000000-01') + '"',
-                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '""'
+                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"'
                 }),
                 new HtmlWebpackPlugin({
                     chunks: ['lib.min', 'gui'],
                     template: 'src/playground/index.ejs',
-                    title: 'Robbo Scratch',
+                    title: 'Robbo Scratch | Роббо скретч — скретч онлайн для детей и школ, российская платформа для программирования',
                     favicon: path.resolve(__dirname, 'static/favicon.png'),
-                    sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null
+                    sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null,
+                    seo: webSeo,
+                    yandexMetrika: isProduction ? 93772324 : null
                 })
             ],
             isAppBuild ? [] : [
@@ -192,6 +222,14 @@ module.exports = [
                 })
             ],
             [
+                new CopyWebpackPlugin([{
+                    from: 'static/seo/robots.txt',
+                    to: 'robots.txt'
+                }]),
+                new CopyWebpackPlugin([{
+                    from: 'static/seo/sitemap.xml',
+                    to: 'sitemap.xml'
+                }]),
                 new CopyWebpackPlugin([{
                     from: 'static',
                     to: 'static'
@@ -242,7 +280,7 @@ module.exports = [
             },
             plugins: base.plugins.concat([
                 new webpack.DefinePlugin({
-                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '""'
+                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"'
                 }),
                 new CopyWebpackPlugin([{
                     from: 'node_modules/scratch-blocks/media',

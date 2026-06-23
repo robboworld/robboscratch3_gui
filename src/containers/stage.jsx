@@ -8,6 +8,7 @@ import { connect } from 'react-redux';
 import layout, { STAGE_DISPLAY_SIZES } from '../lib/layout-constants';
 import { getStageDimensions } from '../lib/screen-utils';
 import { getEventXY } from '../lib/touch-utils';
+import { layoutStagePointer } from '../lib/page-zoom-coords';
 import VideoProvider from '../lib/video/video-provider';
 import { SVGRenderer as V2SVGAdapter } from 'scratch-svg-renderer';
 import { BitmapAdapter as V2BitmapAdapter } from 'scratch-svg-renderer';
@@ -383,13 +384,15 @@ class Stage extends React.Component {
     positionDragCanvas(mouseX, mouseY) {
         // mouseX/Y are relative to stage top/left, and dragCanvas is already
         // positioned so that the pick location is at (0,0).
-        this.dragCanvas.style.transform = `translate(${mouseX}px, ${mouseY}px)`;
+        const layout = layoutStagePointer(mouseX, mouseY);
+        this.dragCanvas.style.transform = `translate(${layout.x}px, ${layout.y}px)`;
     }
     onStartDrag(x, y) {
         if (this.state.dragId) return;
-        const drawableId = this.renderer.pick(x, y);
+        const layout = layoutStagePointer(x, y);
+        const drawableId = this.renderer.pick(layout.x, layout.y);
         if (drawableId === null) return;
-        const drawableData = this.renderer.extractDrawable(drawableId, x, y);
+        const drawableData = this.renderer.extractDrawable(drawableId, layout.x, layout.y);
         const targetId = this.props.vm.getTargetIdForDrawableId(drawableId);
         if (targetId === null) return;
 

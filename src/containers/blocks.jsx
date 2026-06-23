@@ -154,6 +154,8 @@ class Blocks extends React.Component {
             {rtl: this.props.isRtl, toolbox: this.props.toolboxXML}
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
+        const {installPageZoomCoordPatches} = require('../lib/page-zoom-coords');
+        installPageZoomCoordPatches(this.ScratchBlocks);
         this.installToolboxPaletteInterceptor();
 
         if (this.props.paletteCollapsed) {

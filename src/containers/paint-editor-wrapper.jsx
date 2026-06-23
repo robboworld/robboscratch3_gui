@@ -4,6 +4,7 @@ import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
 import PaintEditor from 'scratch-paint';
 
+import {installPaintEditorPageZoomPatches, teardownPaintEditorPageZoomPatches, needsPageZoomCoordCompensation} from '../lib/page-zoom-coords';
 import {connect} from 'react-redux';
 
 class PaintEditorWrapper extends React.Component {
@@ -11,8 +12,64 @@ class PaintEditorWrapper extends React.Component {
         super(props);
         bindAll(this, [
             'handleUpdateImage',
-            'handleUpdateName'
+            'handleUpdateName',
+            'setRoot',
+            'schedulePaintPageZoomFix'
         ]);
+    }
+    componentDidMount () {
+        this._paintFixAttempts = 0;
+        this.onFitScale = () => {
+            if (!needsPageZoomCoordCompensation()) return;
+            if (this._paintZoomInstalled === this.props.imageId) {
+                this._paintZoomInstalled = null;
+                if (this.rootEl) {
+                    const canvas = this.rootEl.querySelector('canvas');
+                    if (canvas) {
+                        canvas.__rs3PaintClientPatched = false;
+                        canvas.__rs3PaintViewSized = false;
+                        delete canvas.__rs3PaintBaseline;
+                        delete canvas.__rs3PaintContainer;
+                    }
+                }
+            }
+            this._paintFixAttempts = 0;
+            this.schedulePaintPageZoomFix();
+        };
+        window.addEventListener('robboFitScaleApplied', this.onFitScale);
+        this.schedulePaintPageZoomFix();
+    }
+    componentDidUpdate (prevProps) {
+        if (prevProps.imageId !== this.props.imageId) {
+            this._paintZoomInstalled = null;
+            this._paintFixAttempts = 0;
+            this.schedulePaintPageZoomFix();
+        }
+    }
+    componentWillUnmount () {
+        window.removeEventListener('robboFitScaleApplied', this.onFitScale);
+        clearTimeout(this._paintFixTimer);
+        teardownPaintEditorPageZoomPatches(this.rootEl);
+    }
+    setRoot (el) {
+        this.rootEl = el;
+    }
+    schedulePaintPageZoomFix () {
+        if (!needsPageZoomCoordCompensation()) return;
+        if (this._paintZoomInstalled === this.props.imageId) return;
+        clearTimeout(this._paintFixTimer);
+        this._paintFixTimer = setTimeout(() => {
+            if (!this.rootEl || this._paintZoomInstalled === this.props.imageId) return;
+            const installed = installPaintEditorPageZoomPatches(this.rootEl, this.props.imageId);
+            if (installed) {
+                this._paintZoomInstalled = this.props.imageId;
+                return;
+            }
+            this._paintFixAttempts += 1;
+            if (this._paintFixAttempts < 8) {
+                this.schedulePaintPageZoomFix();
+            }
+        }, 250);
     }
     shouldComponentUpdate (nextProps) {
         return this.props.imageId !== nextProps.imageId ||
@@ -47,12 +104,23 @@ class PaintEditorWrapper extends React.Component {
         } = this.props;
 
         return (
-            <PaintEditor
-                {...componentProps}
-                image={vm.getCostume(selectedCostumeIndex)}
-                onUpdateImage={this.handleUpdateImage}
-                onUpdateName={this.handleUpdateName}
-            />
+            <div
+                ref={this.setRoot}
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flex: '1 1 auto',
+                    minHeight: 0,
+                    minWidth: 0
+                }}
+            >
+                <PaintEditor
+                    {...componentProps}
+                    image={vm.getCostume(selectedCostumeIndex)}
+                    onUpdateImage={this.handleUpdateImage}
+                    onUpdateName={this.handleUpdateName}
+                />
+            </div>
         );
     }
 }

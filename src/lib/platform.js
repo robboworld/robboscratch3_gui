@@ -43,6 +43,23 @@ function isRobboAndroidAppContext() {
 }
 
 /**
+ * True on Android phones (not tablets). Set by FitScalingWebView as __ROBBO_ANDROID_PHONE__;
+ * before that, uses smallest viewport edge as a fallback.
+ */
+function isRobboAndroidPhoneContext() {
+  if (!isRobboAndroidAppContext()) return false;
+  if (typeof window.__ROBBO_ANDROID_PHONE__ === 'boolean') {
+    return window.__ROBBO_ANDROID_PHONE__;
+  }
+  if (typeof window !== 'undefined') {
+    const vw = window.innerWidth || 0;
+    const vh = window.innerHeight || 0;
+    return Math.min(vw, vh) < 600;
+  }
+  return false;
+}
+
+/**
  * Mobile browser without Web Serial — RobboLink bridge (ws://127.0.0.1) is the intended transport.
  * Aligns with platforms/web/robbolink-transport.js (also ?robbolink=1 / __ROBBOLINK_FORCE__ there).
  */
@@ -357,6 +374,7 @@ export {
   node_os,
   isDesktopWithBluetooth,
   isRobboAndroidAppContext,
+  isRobboAndroidPhoneContext,
   isRobboLinkMobileWebContext,
   getSystemInfoAsync,
   formatArchitectureDisplay,
