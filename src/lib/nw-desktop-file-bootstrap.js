@@ -46,6 +46,15 @@ export default function initNwDesktopFileBootstrap () {
             consumePath(argvPath);
         }
 
+        try {
+            const win = nwGui.Window.get();
+            if (win && typeof win.maximize === 'function') {
+                win.maximize();
+            }
+        } catch (e) {
+            // no-op
+        }
+
         nwGui.App.on('open', cmdline => {
             const filePath = parseProjectPathFromCmdline(cmdline);
             if (!filePath) {
