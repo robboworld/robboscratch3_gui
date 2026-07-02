@@ -21,6 +21,10 @@ export default function initNwDesktopFileBootstrap () {
         const pathMod = nw.require('path');
         const fs = nw.require('fs');
         const os = nw.require('os');
+        window.__node_process__ = nw.require('process');
+        window.__node_os__ = os;
+        window.__node_path__ = pathMod;
+        window.__node_child_process__ = nw.require('child_process');
         const debugLogPath = pathMod.join(os.tmpdir(), 'robbo-nw-open-debug.log');
         const debugLog = (stage, payload) => {
             try {

@@ -1,7 +1,7 @@
 /**
  * Safe process-like object for both web and desktop builds.
  * In browser process is undefined; in Electron it exists.
- * In NW.js Desktop lib.min.js injects real process/os and exposes them as window.__node_process__/__node_os__ (loads first).
+ * In NW.js Desktop nw-desktop-file-bootstrap sets window.__node_process__/__node_os__ (before React).
  */
 const node_process = (typeof window !== 'undefined' && window.__node_process__)
   ? window.__node_process__
