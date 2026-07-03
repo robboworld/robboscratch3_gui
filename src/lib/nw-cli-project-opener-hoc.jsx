@@ -28,16 +28,6 @@ const messages = defineMessages({
     }
 });
 
-const debugNwOpen = (stage, payload) => {
-    try {
-        if (typeof window !== 'undefined' && typeof window.__ROBBO_NW_DEBUG_LOG__ === 'function') {
-            window.__ROBBO_NW_DEBUG_LOG__(`hoc:${stage}`, payload || {});
-        }
-    } catch (e) {
-        // no-op
-    }
-};
-
 const NW_CLI_PROP_KEYS = [
     'dispatchProjectUpload',
     'intl',
@@ -67,7 +57,6 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
             if (typeof window !== 'undefined') {
                 window.addEventListener('robboNwOpenProject', this.handleNwOpenEvent);
             }
-            debugNwOpen('componentDidMount', {hasVm: !!this.props.vm, loadingState: this.props.loadingState});
             this.tryConsumePending();
         }
         componentDidUpdate (prevProps) {
@@ -92,23 +81,19 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
                 return;
             }
             const p = ev.detail && ev.detail.path;
-            debugNwOpen('handleNwOpenEvent:received', {rawPath: p, hasVm: !!this.props.vm});
             if (!p) {
                 return;
             }
             try {
                 const read = readProjectFromAbsolutePath(p);
                 if (!read) {
-                    debugNwOpen('handleNwOpenEvent:read-null', {rawPath: p});
                     return;
                 }
                 window.__ROBBO_NW_PENDING_PROJECT__ = read;
-                debugNwOpen('handleNwOpenEvent:pending-set', {title: read.title, bytes: read.data && read.data.byteLength});
                 this._nwRetryCount = 0;
                 this.tryConsumePending();
             } catch (e) {
                 log.warn(e);
-                debugNwOpen('handleNwOpenEvent:error', {message: e && e.message});
             }
         }
         _canAcceptFileLoad (loadingState) {
@@ -118,12 +103,10 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
         }
         _scheduleRetry () {
             if (this._nwRetryCount > 60) {
-                debugNwOpen('scheduleRetry:drop-pending', {retryCount: this._nwRetryCount});
                 delete window.__ROBBO_NW_PENDING_PROJECT__;
                 return;
             }
             this._nwRetryCount++;
-            debugNwOpen('scheduleRetry', {retryCount: this._nwRetryCount, loadingState: this.props.loadingState});
             this._nwRetryTimer = setTimeout(() => {
                 this._nwRetryTimer = null;
                 this.tryConsumePending();
@@ -131,23 +114,12 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
         }
         tryConsumePending () {
             if (!isNwRuntime() || !this.props.vm) {
-                debugNwOpen('tryConsumePending:no-runtime-or-vm', {
-                    hasVm: !!this.props.vm,
-                    hasNw: isNwRuntime()
-                });
                 return;
             }
             const pending = window.__ROBBO_NW_PENDING_PROJECT__;
             if (!pending) {
-                debugNwOpen('tryConsumePending:no-pending', {});
                 return;
             }
-            debugNwOpen('tryConsumePending:start', {
-                loadingState: this.props.loadingState,
-                canAccept: this._canAcceptFileLoad(this.props.loadingState),
-                title: pending.title,
-                bytes: pending.data && pending.data.byteLength
-            });
             if (!this._canAcceptFileLoad(this.props.loadingState)) {
                 this._scheduleRetry();
                 return;
@@ -155,7 +127,6 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
             const before = this.props.loadingState;
             const action = requestProjectUploadAction(before);
             if (!action) {
-                debugNwOpen('tryConsumePending:no-action', {loadingState: before});
                 this._scheduleRetry();
                 return;
             }
@@ -166,10 +137,8 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
             this._nwRetryCount = 0;
             this.props.openLoadingProject();
             setTimeout(() => {
-                debugNwOpen('vm.loadProject:begin', {title, bytes: data && data.byteLength});
                 this.props.vm.loadProject(data)
                     .then(() => {
-                        debugNwOpen('vm.loadProject:success', {title});
                         if (title) {
                             this.props.onUpdateProjectTitle(title);
                             document.title = title;
@@ -180,11 +149,6 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
                     })
                     .catch(err => {
                         log.warn(err);
-                        debugNwOpen('vm.loadProject:error', {
-                            message: err && err.message,
-                            isArrayBuffer: data instanceof ArrayBuffer,
-                            isArrayBufferView: typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(data)
-                        });
                         alert(this.props.intl.formatMessage(messages.loadError)); // eslint-disable-line no-alert
                         this.props.onNwLoadFinished(LoadingState.LOADING_VM_FILE_UPLOAD, false);
                         window.__ROBBO_NW_LOADING_PROJECT__ = false;

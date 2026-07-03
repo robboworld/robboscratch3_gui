@@ -10,6 +10,7 @@ import {
     parseProjectPathFromCmdline,
     readProjectFromAbsolutePath
 } from './nw-open-project-utils';
+import {bridgeNwNodeModulesToWindow} from './nw-node-window-bridge';
 
 export default function initNwDesktopFileBootstrap () {
     try {
@@ -19,62 +20,39 @@ export default function initNwDesktopFileBootstrap () {
         }
         const nwGui = nw.require('nw.gui');
         const pathMod = nw.require('path');
-        const fs = nw.require('fs');
         const os = nw.require('os');
-        window.__node_process__ = nw.require('process');
-        window.__node_os__ = os;
-        window.__node_path__ = pathMod;
-        window.__node_child_process__ = nw.require('child_process');
-        const debugLogPath = pathMod.join(os.tmpdir(), 'robbo-nw-open-debug.log');
-        const debugLog = (stage, payload) => {
-            try {
-                const row = `[${new Date().toISOString()}] [bootstrap] ${stage} ${payload ? JSON.stringify(payload) : ''}\n`;
-                fs.appendFileSync(debugLogPath, row, 'utf8');
-            } catch (e) {
-                // no-op
-            }
-        };
-        window.__ROBBO_NW_DEBUG_LOG_PATH__ = debugLogPath;
-        window.__ROBBO_NW_DEBUG_LOG__ = debugLog;
-        debugLog('init', {});
+        bridgeNwNodeModulesToWindow({
+            process: nw.require('process'),
+            os,
+            path: pathMod,
+            child_process: nw.require('child_process')
+        });
 
         const consumePath = filePath => {
             const normalizedPath = normalizeNwPath(filePath);
-            debugLog('consumePath:candidate', {filePath, normalizedPath});
             if (!normalizedPath || !isScratchProjectPath(normalizedPath)) {
-                debugLog('consumePath:skip-extension', {normalizedPath});
                 return;
             }
             const read = readProjectFromAbsolutePath(normalizedPath);
             if (!read) {
-                debugLog('consumePath:read-failed', {normalizedPath});
                 return;
             }
             window.__ROBBO_NW_PENDING_PROJECT__ = read;
-            debugLog('consumePath:pending-set', {
-                normalizedPath,
-                title: read.title,
-                byteLength: read.data && read.data.byteLength
-            });
         };
 
         const argv = collectNwArgv(nwGui.App);
-        debugLog('argv-detected', {argvLength: argv.length, argv});
         const argvPath = findProjectPathInArgv(argv);
         if (argvPath) {
             consumePath(argvPath);
         }
 
         nwGui.App.on('open', cmdline => {
-            debugLog('app-open:event', {cmdline});
             const filePath = parseProjectPathFromCmdline(cmdline);
-            debugLog('app-open:parsed', {filePath});
             if (!filePath) {
                 return;
             }
             consumePath(filePath);
             window.dispatchEvent(new CustomEvent('robboNwOpenProject', {detail: {path: filePath}}));
-            debugLog('app-open:dispatched', {filePath});
             try {
                 const win = nwGui.Window.get();
                 if (win && typeof win.focus === 'function') {

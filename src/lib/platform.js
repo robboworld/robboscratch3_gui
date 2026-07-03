@@ -69,8 +69,8 @@ function normalizeString(value) {
 }
 
 function getNodeRequire() {
-  if (typeof window !== 'undefined' && typeof window.require === 'function') {
-    return window.require;
+  if (typeof window !== 'undefined' && window.nw && typeof window.nw.require === 'function') {
+    return window.nw.require.bind(window.nw);
   }
   if (typeof process !== 'undefined' && process.versions && process.versions.node &&
       typeof require === 'function') {
