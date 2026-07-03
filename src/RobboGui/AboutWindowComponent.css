@@ -8,21 +8,21 @@
     pointer-events: auto;
 }
 
-/* NW.js 69 / старый Chromium: flex gap не работает — только margin */
-.about_content > * + * {
-    margin-top: 0.5rem;
+.about_content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-.about_content > .about_section + .about_section {
-    margin-top: 14px;
+.about_section + .about_section {
+    margin-top: 6px;
 }
 
 .about_section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     padding: 10px 12px;
-}
-
-.about_section > * + * {
-    margin-top: 10px;
 }
 
 .about_section_title {
@@ -34,10 +34,7 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-}
-
-.about_version_block > * + * {
-    margin-top: 0.5rem;
+    gap: 0.5rem;
 }
 
 .about_version_block .version_label {
@@ -52,12 +49,12 @@
     flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
+    gap: 0.75rem;
 }
 
 .about_version_row .version_label {
     flex: 1 1 auto;
     min-width: 0;
-    margin-right: 0.75rem;
 }
 
 .about_update_indicator {
@@ -66,10 +63,7 @@
     flex-wrap: nowrap;
     align-items: center;
     flex: 0 0 auto;
-}
-
-.about_update_indicator > * + * {
-    margin-left: 0.5rem;
+    gap: 0.5rem;
 }
 
 .about_update_icon_button {
@@ -175,6 +169,7 @@
     flex-wrap: nowrap;
     align-items: center;
     justify-content: center;
+    gap: 0.5rem;
     width: auto;
     min-width: 0;
     box-sizing: border-box;
@@ -182,10 +177,6 @@
     white-space: nowrap;
     text-align: center;
     line-height: 1.45;
-}
-
-.about_help_button > * + * {
-    margin-left: 0.5rem;
 }
 
 .about_help_icon {
@@ -203,19 +194,10 @@
 .about_metrics {
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
     margin-left: 0;
     margin-right: 0;
     margin-bottom: 0;
-}
-
-.about_section > .about_info_list,
-.about_section > .about_metrics {
-    margin-top: 10px;
-}
-
-.about_info_list > * + *,
-.about_metrics > * + * {
-    margin-top: 0.5rem;
 }
 
 /* Измерение производительности: подпись растягивается, число — по ширине контента */

@@ -1,7 +1,7 @@
 @import "../css/colors.css";
 @import "../css/units.css";
 
-/* Shared popup shell (NW.js 69 / Chromium 69 safe — no clamp/min/gap in flex) */
+/* Shared popup shell */
 
 .popupShell {
     box-sizing: border-box;

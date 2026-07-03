@@ -191,8 +191,7 @@
 
 /* Bundled scenario picker: thumbnail left, title + description right; one cell in scenarios grid */
 .scenario-card {
-    /* Use float-based layout so description wraps around preview.
-       This also avoids relying on `aspect-ratio` (NW.js/old Chromium). */
+    /* Float layout: description wraps around the preview thumbnail. */
     display: block;
     flex-basis: auto;
     width: 100%;

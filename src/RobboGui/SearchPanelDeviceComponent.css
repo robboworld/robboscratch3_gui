@@ -8,28 +8,21 @@
 
 /* Quadcopter: статус в первой строке; подсказка — отдельным блоком на всю ширину */
 
-/* NW.js 69: flex gap не работает — margin через соседние селекторы */
 .quadcopter_device_root {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   width: 100%;
   box-sizing: border-box;
-}
-
-.quadcopter_device_root > * + * {
-  margin-top: 6px;
+  gap: 6px;
 }
 
 .search_panel_device_primary_row {
   display: flex;
   flex-flow: row wrap;
   align-items: center;
-}
-
-.search_panel_device_primary_row > * {
-  margin-right: 6px;
-  margin-bottom: 2px;
+  row-gap: 2px;
+  column-gap: 6px;
 }
 
 .quadcopter_info_row {

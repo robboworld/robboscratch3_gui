@@ -153,11 +153,7 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-}
-
-/* NW.js: flex gap не поддерживается — отступы между пунктами через margin */
-.file-group > .menu-bar-item + .menu-bar-item {
-    margin-left: 0.125rem;
+    gap: 0.125rem;
 }
 
 .file-group .menu-bar-item {
