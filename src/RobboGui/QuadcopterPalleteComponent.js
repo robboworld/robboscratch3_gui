@@ -115,9 +115,9 @@ class QuadcopterPalleteComponent extends Component {
     this.setState({
       batteryLevelText: `${telemetry.batteryPercent} %`,
       batteryWarningClassName: batteryWarningClassName,
-      xCoordText: `${Number(telemetry.x || 0).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
-      yCoordText: `${Number((telemetry.y || 0) * -1).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
-      zCoordText: `${Number(telemetry.z || 0).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
+      xCoordText: `${this.props.QCA.telemetry_palette_get_coord('X')} ${this.props.intl.formatMessage(messages.meters)}`,
+      yCoordText: `${this.props.QCA.telemetry_palette_get_coord('Y')} ${this.props.intl.formatMessage(messages.meters)}`,
+      zCoordText: `${this.props.QCA.telemetry_palette_get_coord('Z')} ${this.props.intl.formatMessage(messages.meters)}`,
       yawText: `${Number(telemetry.yawDeg || 0).toFixed(1)}°`
     });
   }

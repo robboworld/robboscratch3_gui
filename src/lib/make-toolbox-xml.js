@@ -631,6 +631,10 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
 
       </block>
 
+      <block type="copter_reset_local_position">
+
+      </block>
+
       <block type="copter_battery">
 
       </block>

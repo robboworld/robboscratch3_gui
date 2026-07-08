@@ -37,7 +37,7 @@ const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
 const SUPPORT_URL = 'https://support.robbo.world/';
 
-const VERSION = 'Robbo Scratch v.3.126.7';
+const VERSION = 'Robbo Scratch v.3.127.0';
 export {VERSION};
 export const APP_VERSION = (VERSION.match(/v\.(.+)$/) || [])[1] || '';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
