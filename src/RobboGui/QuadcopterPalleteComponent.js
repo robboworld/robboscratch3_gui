@@ -118,7 +118,7 @@ class QuadcopterPalleteComponent extends Component {
       xCoordText: `${Number(telemetry.x || 0).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
       yCoordText: `${Number((telemetry.y || 0) * -1).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
       zCoordText: `${Number(telemetry.z || 0).toFixed(2)} ${this.props.intl.formatMessage(messages.meters)}`,
-      yawText: `${Number(telemetry.yaw || 0).toFixed(1)}°`
+      yawText: `${Number(telemetry.yawDeg || 0).toFixed(1)}°`
     });
   }
 
