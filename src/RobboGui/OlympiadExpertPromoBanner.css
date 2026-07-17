@@ -1,0 +1,155 @@
+@import "../css/z-index.css";
+
+.overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: $z-index-modal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+    overflow: auto;
+    background: rgba(15, 24, 40, 0.55);
+    animation: olympiad-promo-overlay-in 0.22s ease-out;
+}
+
+.banner {
+    position: relative;
+    width: max-content;
+    max-width: none;
+    flex: 0 0 auto;
+    line-height: 0;
+    box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.35);
+    border-radius: 0.25rem;
+    overflow: hidden;
+    animation: olympiad-promo-banner-in 0.28s ease-out;
+}
+
+.image {
+    display: block;
+    /* Width/height set in JS: naturalSize / OS display scale */
+    max-width: none;
+    pointer-events: none;
+    user-select: none;
+}
+
+.hotspot {
+    position: absolute;
+    display: block;
+    /* Clickable URL/email zones over the banner artwork */
+    background: transparent;
+    cursor: pointer;
+    z-index: 1;
+    text-decoration: none;
+    color: inherit;
+    outline: none;
+}
+
+.hotspot:hover,
+.hotspot:focus,
+.hotspot:active {
+    background: transparent;
+    text-decoration: none;
+    color: inherit;
+    outline: none;
+}
+
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* robbo.ru/olymp/expert/ */
+.hotspotApply {
+    left: 64.5%;
+    top: 61.5%;
+    width: 26%;
+    height: 5.5%;
+}
+
+/* https://creativeprogramming.org/ */
+.hotspotInfo {
+    left: 64.5%;
+    top: 74.5%;
+    width: 30%;
+    height: 5.5%;
+}
+
+/* scratch@creativeprogramming.org */
+.hotspotMail {
+    left: 64.5%;
+    top: 85%;
+    width: 33%;
+    height: 5.5%;
+}
+
+.close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    z-index: 2;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close:hover,
+.close:focus {
+    background: rgba(0, 0, 0, 0.55);
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+@keyframes olympiad-promo-overlay-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes olympiad-promo-banner-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 40rem) {
+    .overlay {
+        align-items: flex-start;
+        padding: 0.5rem;
+    }
+
+    .banner {
+        margin: 2.5rem auto 1rem;
+    }
+
+    .close {
+        top: 0.25rem;
+        right: 0.25rem;
+    }
+}
