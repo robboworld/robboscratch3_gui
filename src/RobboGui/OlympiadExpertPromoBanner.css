@@ -25,7 +25,7 @@
     line-height: 0;
     box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.35);
     border-radius: 0.25rem;
-    overflow: hidden;
+    overflow: visible;
     animation: olympiad-promo-banner-in 0.28s ease-out;
 }
 
@@ -35,63 +35,169 @@
     max-width: none;
     pointer-events: none;
     user-select: none;
+    border-radius: 0.25rem;
 }
 
-.hotspot {
+/* CTA — Shared exp-03 layout on exp-02 background */
+.ctaColumn {
     position: absolute;
-    display: block;
-    /* Clickable URL/email zones over the banner artwork */
-    background: transparent;
+    left: 66.5%;
+    top: 53.5%;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.05em;
+    width: 29%;
+    line-height: normal;
+    font-size: clamp(0.82rem, 1.4vw, 1.18rem);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.ctaPrimary,
+.ctaSecondary {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    box-sizing: border-box;
+    text-decoration: none;
     cursor: pointer;
-    z-index: 1;
-    text-decoration: none;
     color: inherit;
-    outline: none;
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
 }
 
-.hotspot:hover,
-.hotspot:focus,
-.hotspot:active {
-    background: transparent;
-    text-decoration: none;
-    color: inherit;
-    outline: none;
+.ctaPrimary {
+    gap: 0.4em;
+    padding-right: 1.4em;
 }
 
-.srOnly {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+.ctaPrimaryBtn {
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 0.42em 0.85em;
+    border: 0.11em solid #ffb81c;
+    border-radius: 0.28em;
+    background: #0070b7;
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.05em;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
     white-space: nowrap;
-    border: 0;
+    animation: olympiad-cta-glow 3.2s ease-in-out infinite;
 }
 
-/* robbo.ru/olymp/expert/ */
-.hotspotApply {
-    left: 64.5%;
-    top: 61.5%;
-    width: 26%;
-    height: 5.5%;
+.ctaPrimaryUrl,
+.ctaSecondaryValue {
+    color: #fff;
+    font-weight: 500;
+    font-size: 0.98em;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    white-space: nowrap;
 }
 
-/* https://creativeprogramming.org/ */
-.hotspotInfo {
-    left: 64.5%;
-    top: 74.5%;
-    width: 30%;
-    height: 5.5%;
+.ctaSecondary {
+    gap: 0.22em;
 }
 
-/* scratch@creativeprogramming.org */
-.hotspotMail {
-    left: 64.5%;
-    top: 85%;
-    width: 33%;
-    height: 5.5%;
+.ctaSecondaryTitle {
+    color: #ffb81c;
+    font-weight: 700;
+    font-size: 1em;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    white-space: normal;
+}
+
+.ctaSecondaryValueRow {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding-right: 1.55em;
+}
+
+.ctaCursorArrow,
+.ctaCursorHand {
+    position: absolute;
+    display: flex;
+    pointer-events: none;
+    filter: drop-shadow(0 0.12em 0.18em rgba(8, 30, 60, 0.4));
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ctaCursorArrow {
+    right: 0;
+    top: -0.15em;
+}
+
+.ctaCursorHand {
+    right: -0.1em;
+    bottom: -0.25em;
+}
+
+.ctaPrimary:hover,
+.ctaSecondary:hover {
+    transform: translateY(-0.05em);
+    text-decoration: none;
+    opacity: 1;
+}
+
+.ctaPrimary:hover .ctaPrimaryBtn {
+    border-color: #ffc94a;
+    background: #0070b7;
+    background-color: #0070b7;
+}
+
+.ctaPrimary:hover .ctaCursorArrow,
+.ctaSecondary:hover .ctaCursorHand {
+    transform: translate(0.06em, 0.06em) scale(1.04);
+}
+
+.ctaPrimary:focus,
+.ctaSecondary:focus {
+    outline: none;
+    text-decoration: none;
+}
+
+.ctaPrimary:focus-visible .ctaPrimaryBtn {
+    background: #0070b7;
+    background-color: #0070b7;
+    box-shadow:
+        0 0 0 0.14em rgba(255, 255, 255, 0.85),
+        0 0 0.7em rgba(255, 196, 74, 0.65);
+}
+
+.ctaSecondary:focus-visible {
+    box-shadow: 0 0 0 0.14em rgba(255, 255, 255, 0.85);
+}
+
+.ctaPrimary:active,
+.ctaSecondary:active {
+    transform: translateY(0);
+}
+
+.ctaPrimary:active .ctaPrimaryBtn {
+    background: #0070b7;
+    background-color: #0070b7;
+}
+
+@keyframes olympiad-cta-glow {
+    0%,
+    100% {
+        box-shadow: 0 0 0.25em rgba(255, 184, 28, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 0.7em rgba(255, 196, 74, 0.65);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ctaPrimaryBtn {
+        animation: none;
+    }
 }
 
 .close {

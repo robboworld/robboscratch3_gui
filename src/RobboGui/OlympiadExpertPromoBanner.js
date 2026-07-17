@@ -1,11 +1,12 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import ReactDOM from 'react-dom';
-import classNames from 'classnames';
 import styles from './OlympiadExpertPromoBanner.css';
 import {node_process} from '../lib/platform';
 
 const STORAGE_KEY = 'rs3_promo_olympiad_expert_2026_dismissed';
-const BANNER_SRC = './static/promo/olympiad-expert-2026.jpg';
+const BANNER_SRC = './static/promo/olympiad-expert-2026.png';
+/** Dev/test: always show banner (ignore localStorage dismiss). Set false before release. */
+const FORCE_SHOW_PROMO = false;
 
 const LINK_APPLY = 'https://robbo.ru/olymp/expert/';
 const LINK_INFO = 'https://creativeprogramming.org/';
@@ -42,6 +43,9 @@ function isWebPromoHost () {
 }
 
 function wasDismissed () {
+    if (FORCE_SHOW_PROMO) {
+        return false;
+    }
     try {
         return window.localStorage.getItem(STORAGE_KEY) === '1';
     } catch (e) {
@@ -50,6 +54,9 @@ function wasDismissed () {
 }
 
 function markDismissed () {
+    if (FORCE_SHOW_PROMO) {
+        return;
+    }
     try {
         window.localStorage.setItem(STORAGE_KEY, '1');
     } catch (e) {
@@ -199,32 +206,80 @@ function OlympiadExpertPromoBanner () {
                         style={imgStyle || undefined}
                         onLoad={onImageLoad}
                     />
-                    <a
-                        className={classNames(styles.hotspot, styles.hotspotApply)}
-                        href={LINK_APPLY}
-                        aria-label="Подать заявку: robbo.ru/olymp/expert/"
-                        onClick={onLinkClick}
-                        {...EXTERNAL_LINK_PROPS}
-                    >
-                        <span className={styles.srOnly}>{LINK_APPLY}</span>
-                    </a>
-                    <a
-                        className={classNames(styles.hotspot, styles.hotspotInfo)}
-                        href={LINK_INFO}
-                        aria-label="Информация об олимпиаде: creativeprogramming.org"
-                        onClick={onLinkClick}
-                        {...EXTERNAL_LINK_PROPS}
-                    >
-                        <span className={styles.srOnly}>{LINK_INFO}</span>
-                    </a>
-                    <a
-                        className={classNames(styles.hotspot, styles.hotspotMail)}
-                        href={LINK_MAIL}
-                        aria-label="Контакты: scratch@creativeprogramming.org"
-                        onClick={onLinkClick}
-                    >
-                        <span className={styles.srOnly}>scratch@creativeprogramming.org</span>
-                    </a>
+                    <div className={styles.ctaColumn}>
+                        <a
+                            className={styles.ctaPrimary}
+                            href={LINK_APPLY}
+                            aria-label="Подать заявку: robbo.ru/olymp/expert/"
+                            onClick={onLinkClick}
+                            {...EXTERNAL_LINK_PROPS}
+                        >
+                            <span className={styles.ctaPrimaryBtn}>Подать заявку</span>
+                            <span className={styles.ctaPrimaryUrl}>robbo.ru/olymp/expert/</span>
+                            <span className={styles.ctaCursorArrow} aria-hidden="true">
+                                <svg viewBox="0 0 36 40" width="1.55em" height="1.7em" focusable="false">
+                                    <path
+                                        fill="#fff"
+                                        stroke="rgba(10, 40, 80, 0.28)"
+                                        strokeWidth="1.1"
+                                        d="M7 3v26.5l5.6-5.4 3.3 8.7 3.6-1.4-3.4-8.6H24z"
+                                    />
+                                    <path
+                                        fill="none"
+                                        stroke="#fff"
+                                        strokeWidth="1.8"
+                                        strokeLinecap="round"
+                                        d="M24.5 5.2l4.8-2.5M27 9.4l5.1.2M25.5 13.6l4.4 2.8"
+                                    />
+                                </svg>
+                            </span>
+                        </a>
+                        <a
+                            className={styles.ctaSecondary}
+                            href={LINK_INFO}
+                            aria-label="Вся информация о Международной Scratch-Олимпиаде: creativeprogramming.org"
+                            onClick={onLinkClick}
+                            {...EXTERNAL_LINK_PROPS}
+                        >
+                            <span className={styles.ctaSecondaryTitle}>
+                                Вся информация о Международной Scratch-Олимпиаде:
+                            </span>
+                            <span className={styles.ctaSecondaryValueRow}>
+                                <span className={styles.ctaSecondaryValue}>https://creativeprogramming.org/</span>
+                                <span className={styles.ctaCursorHand} aria-hidden="true">
+                                    <svg viewBox="0 0 28 32" width="1.35em" height="1.5em" focusable="false">
+                                        <path
+                                            fill="#fff"
+                                            stroke="rgba(10, 40, 80, 0.28)"
+                                            strokeWidth="1"
+                                            d="M11 2.5c.9 0 1.6.7 1.6 1.6V14l1.2-.4c.7-.2 1.5.2 1.7.9l.1.4 1.1-.2c.8-.1 1.5.4 1.6 1.2v.3l1 .1c.8 0 1.4.7 1.4 1.5v6.2c0 3.4-2.2 5.6-5.6 5.6H13c-2.6 0-4.2-1-5.4-2.7L4.2 20.3c-.5-.7-.3-1.7.5-2.1.7-.4 1.6-.1 2 .5l1.8 2.5V4.1c0-.9.7-1.6 1.6-1.6z"
+                                        />
+                                    </svg>
+                                </span>
+                            </span>
+                        </a>
+                        <a
+                            className={styles.ctaSecondary}
+                            href={LINK_MAIL}
+                            aria-label="Контакты оргкомитета: scratch@creativeprogramming.org"
+                            onClick={onLinkClick}
+                        >
+                            <span className={styles.ctaSecondaryTitle}>Контакты оргкомитета:</span>
+                            <span className={styles.ctaSecondaryValueRow}>
+                                <span className={styles.ctaSecondaryValue}>scratch@creativeprogramming.org</span>
+                                <span className={styles.ctaCursorHand} aria-hidden="true">
+                                    <svg viewBox="0 0 28 32" width="1.35em" height="1.5em" focusable="false">
+                                        <path
+                                            fill="#fff"
+                                            stroke="rgba(10, 40, 80, 0.28)"
+                                            strokeWidth="1"
+                                            d="M11 2.5c.9 0 1.6.7 1.6 1.6V14l1.2-.4c.7-.2 1.5.2 1.7.9l.1.4 1.1-.2c.8-.1 1.5.4 1.6 1.2v.3l1 .1c.8 0 1.4.7 1.4 1.5v6.2c0 3.4-2.2 5.6-5.6 5.6H13c-2.6 0-4.2-1-5.4-2.7L4.2 20.3c-.5-.7-.3-1.7.5-2.1.7-.4 1.6-.1 2 .5l1.8 2.5V4.1c0-.9.7-1.6 1.6-1.6z"
+                                        />
+                                    </svg>
+                                </span>
+                            </span>
+                        </a>
+                    </div>
                 </div>
             </div>
         ),
