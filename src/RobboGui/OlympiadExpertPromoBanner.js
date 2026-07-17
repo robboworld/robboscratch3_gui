@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import ReactDOM from 'react-dom';
 import styles from './OlympiadExpertPromoBanner.css';
 import {node_process} from '../lib/platform';
@@ -16,6 +16,41 @@ const EXTERNAL_LINK_PROPS = {
     target: '_blank',
     rel: 'noopener noreferrer'
 };
+
+/** Design size in CSS px at browser zoom 100%. */
+const BANNER_WIDTH_PX = 1280;
+const CTA_FONT_PX = BANNER_WIDTH_PX * 0.015;
+
+/**
+ * Browser page zoom (Ctrl+/-). Not OS scale / devicePixelRatio.
+ * outer/inner diverges when the page is zoomed; ~1 at 100%.
+ */
+function getPageZoom () {
+    if (typeof window === 'undefined') {
+        return 1;
+    }
+    const {innerWidth, outerWidth} = window;
+    if (!(innerWidth > 0) || !(outerWidth > 0)) {
+        return 1;
+    }
+    const zoom = outerWidth / innerWidth;
+    if (!Number.isFinite(zoom) || zoom < 0.5 || zoom > 4) {
+        return 1;
+    }
+    // Ignore scrollbar / chrome noise around 100%
+    if (Math.abs(zoom - 1) < 0.07) {
+        return 1;
+    }
+    return zoom;
+}
+
+function bannerSizeStyle () {
+    const zoom = getPageZoom();
+    return {
+        '--banner-w': `${BANNER_WIDTH_PX / zoom}px`,
+        '--cta-font': `${CTA_FONT_PX / zoom}px`
+    };
+}
 
 function getPromoHost () {
     if (typeof window === 'undefined') {
@@ -64,52 +99,9 @@ function markDismissed () {
     }
 }
 
-/**
- * OS display scale for "1 bitmap px ≈ 1 physical px".
- * Chrome on Linux with 150% fractional scaling often reports devicePixelRatio=2
- * while CSS pixels follow ~1.5× (2560 physical → ~1707 CSS).
- */
-function getDisplayScale () {
-    if (typeof window === 'undefined') {
-        return 1;
-    }
-    const dpr = window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
-    const isLinux = typeof navigator !== 'undefined' && (
-        /Linux/i.test(navigator.userAgent || '') ||
-        /Linux/i.test(navigator.platform || '')
-    );
-    // Chrome on 150% GNOME fractional scaling often reports dpr=2 at 100% zoom
-    // while CSS follows ~1.5×. Keep that 2→1.5 ratio when browser zoom changes dpr
-    // (e.g. dpr 2.2 → 1.65), otherwise the banner shrinks/grows incorrectly.
-    if (isLinux) {
-        return Math.max(1, 1.5 * (dpr / 2));
-    }
-    return dpr;
-}
-
-/** CSS size: natural / OS scale, then shrink to fit viewport (never upscale). */
-function cssSizeForDisplay (naturalWidth, naturalHeight) {
-    const scale = getDisplayScale();
-    let width = naturalWidth / scale;
-    let height = naturalHeight / scale;
-    if (typeof window !== 'undefined') {
-        const maxWidth = Math.max(0, window.innerWidth * 0.92);
-        const maxHeight = Math.max(0, window.innerHeight * 0.92);
-        const fit = Math.min(
-            1,
-            maxWidth > 0 ? maxWidth / width : 1,
-            maxHeight > 0 ? maxHeight / height : 1
-        );
-        width *= fit;
-        height *= fit;
-    }
-    return {width, height};
-}
-
 function OlympiadExpertPromoBanner () {
     const [visible, setVisible] = useState(false);
-    const [imgStyle, setImgStyle] = useState(null);
-    const imgRef = useRef(null);
+    const [sizeStyle, setSizeStyle] = useState(bannerSizeStyle);
 
     useEffect(() => {
         if (!isWebPromoHost()) {
@@ -121,62 +113,20 @@ function OlympiadExpertPromoBanner () {
         setVisible(true);
     }, []);
 
-    const applyImageSize = useCallback(img => {
-        if (!img || !img.naturalWidth) {
-            return;
+    useEffect(() => {
+        if (!visible) {
+            return undefined;
         }
-        const size = cssSizeForDisplay(img.naturalWidth, img.naturalHeight);
-        setImgStyle({
-            width: `${size.width}px`,
-            height: `${size.height}px`
-        });
-    }, []);
-
-    const setImageRef = useCallback(node => {
-        imgRef.current = node;
-        if (node && node.complete) {
-            applyImageSize(node);
-        }
-    }, [applyImageSize]);
-
-    const onImageLoad = useCallback(event => {
-        applyImageSize(event.currentTarget);
-    }, [applyImageSize]);
+        const syncSize = () => setSizeStyle(bannerSizeStyle());
+        syncSize();
+        window.addEventListener('resize', syncSize);
+        return () => window.removeEventListener('resize', syncSize);
+    }, [visible]);
 
     const dismiss = useCallback(() => {
         markDismissed();
         setVisible(false);
     }, []);
-
-    const onOverlayClick = useCallback(event => {
-        if (event.target === event.currentTarget) {
-            dismiss();
-        }
-    }, [dismiss]);
-
-    const onLinkClick = useCallback(() => {
-        markDismissed();
-        setVisible(false);
-    }, []);
-
-    useEffect(() => {
-        if (!visible) {
-            return undefined;
-        }
-        applyImageSize(imgRef.current);
-        const onKeyDown = event => {
-            if (event.key === 'Escape') {
-                dismiss();
-            }
-        };
-        const onResize = () => applyImageSize(imgRef.current);
-        window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('resize', onResize);
-        return () => {
-            window.removeEventListener('keydown', onKeyDown);
-            window.removeEventListener('resize', onResize);
-        };
-    }, [visible, dismiss, applyImageSize]);
 
     if (!visible) {
         return null;
@@ -189,9 +139,8 @@ function OlympiadExpertPromoBanner () {
                 role="dialog"
                 aria-modal="true"
                 aria-label="Scratch Olympiad 2026"
-                onClick={onOverlayClick}
             >
-                <div className={styles.banner}>
+                <div className={styles.banner} style={sizeStyle}>
                     <button
                         type="button"
                         className={styles.close}
@@ -199,25 +148,21 @@ function OlympiadExpertPromoBanner () {
                         onClick={dismiss}
                     />
                     <img
-                        ref={setImageRef}
                         className={styles.image}
                         src={BANNER_SRC}
                         alt="Приглашаем стать экспертом Scratch Olympiad 2026"
-                        style={imgStyle || undefined}
-                        onLoad={onImageLoad}
                     />
                     <div className={styles.ctaColumn}>
                         <a
                             className={styles.ctaPrimary}
                             href={LINK_APPLY}
                             aria-label="Подать заявку: robbo.ru/olymp/expert/"
-                            onClick={onLinkClick}
                             {...EXTERNAL_LINK_PROPS}
                         >
                             <span className={styles.ctaPrimaryBtn}>Подать заявку</span>
                             <span className={styles.ctaPrimaryUrl}>robbo.ru/olymp/expert/</span>
                             <span className={styles.ctaCursorArrow} aria-hidden="true">
-                                <svg viewBox="0 0 36 40" width="1.55em" height="1.7em" focusable="false">
+                                <svg viewBox="0 0 36 40" width="1.75em" height="1.9em" focusable="false">
                                     <path
                                         fill="#fff"
                                         stroke="rgba(10, 40, 80, 0.28)"
@@ -238,7 +183,6 @@ function OlympiadExpertPromoBanner () {
                             className={styles.ctaSecondary}
                             href={LINK_INFO}
                             aria-label="Вся информация о Международной Scratch-Олимпиаде: creativeprogramming.org"
-                            onClick={onLinkClick}
                             {...EXTERNAL_LINK_PROPS}
                         >
                             <span className={styles.ctaSecondaryTitle}>
@@ -247,7 +191,7 @@ function OlympiadExpertPromoBanner () {
                             <span className={styles.ctaSecondaryValueRow}>
                                 <span className={styles.ctaSecondaryValue}>https://creativeprogramming.org/</span>
                                 <span className={styles.ctaCursorHand} aria-hidden="true">
-                                    <svg viewBox="0 0 28 32" width="1.35em" height="1.5em" focusable="false">
+                                    <svg viewBox="0 0 28 32" width="1.5em" height="1.7em" focusable="false">
                                         <path
                                             fill="#fff"
                                             stroke="rgba(10, 40, 80, 0.28)"
@@ -262,13 +206,12 @@ function OlympiadExpertPromoBanner () {
                             className={styles.ctaSecondary}
                             href={LINK_MAIL}
                             aria-label="Контакты оргкомитета: scratch@creativeprogramming.org"
-                            onClick={onLinkClick}
                         >
                             <span className={styles.ctaSecondaryTitle}>Контакты оргкомитета:</span>
                             <span className={styles.ctaSecondaryValueRow}>
                                 <span className={styles.ctaSecondaryValue}>scratch@creativeprogramming.org</span>
                                 <span className={styles.ctaCursorHand} aria-hidden="true">
-                                    <svg viewBox="0 0 28 32" width="1.35em" height="1.5em" focusable="false">
+                                    <svg viewBox="0 0 28 32" width="1.5em" height="1.7em" focusable="false">
                                         <path
                                             fill="#fff"
                                             stroke="rgba(10, 40, 80, 0.28)"

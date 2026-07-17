@@ -18,6 +18,9 @@
 }
 
 .banner {
+    /* Fixed CSS px — same at any browser zoom; buttons use the same base */
+    --banner-w: 1280px;
+    --cta-font: 19.2px;
     position: relative;
     width: max-content;
     max-width: none;
@@ -31,8 +34,9 @@
 
 .image {
     display: block;
-    /* Width/height set in JS: naturalSize / OS display scale */
-    max-width: none;
+    width: var(--banner-w);
+    height: auto;
+    aspect-ratio: 16 / 9;
     pointer-events: none;
     user-select: none;
     border-radius: 0.25rem;
@@ -42,15 +46,15 @@
 .ctaColumn {
     position: absolute;
     left: 66.5%;
-    top: 53.5%;
+    top: 57%;
     z-index: 3;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 1.05em;
-    width: 29%;
+    gap: 1.2em;
+    width: 30%;
     line-height: normal;
-    font-size: clamp(0.82rem, 1.4vw, 1.18rem);
+    font-size: var(--cta-font);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -75,9 +79,9 @@
 .ctaPrimaryBtn {
     display: inline-block;
     box-sizing: border-box;
-    padding: 0.42em 0.85em;
-    border: 0.11em solid #ffb81c;
-    border-radius: 0.28em;
+    padding: 0.48em 0.95em;
+    border: 0.12em solid #ffb81c;
+    border-radius: 0.3em;
     background: #0070b7;
     color: #fff;
     font-weight: 800;
@@ -87,6 +91,12 @@
     text-transform: uppercase;
     white-space: nowrap;
     animation: olympiad-cta-glow 3.2s ease-in-out infinite;
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
 }
 
 .ctaPrimaryUrl,
@@ -97,10 +107,17 @@
     letter-spacing: 0.01em;
     line-height: 1.25;
     white-space: nowrap;
+    transition: color 0.2s ease, text-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .ctaSecondary {
     gap: 0.22em;
+    border-radius: 0.35em;
+    padding: 0.2em 0.35em 0.2em 0.15em;
+    margin: -0.2em -0.35em -0.2em -0.15em;
+    transition:
+        transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+        background-color 0.2s ease;
 }
 
 .ctaSecondaryTitle {
@@ -110,6 +127,7 @@
     letter-spacing: 0.01em;
     line-height: 1.25;
     white-space: normal;
+    transition: color 0.2s ease;
 }
 
 .ctaSecondaryValueRow {
@@ -119,13 +137,17 @@
     padding-right: 1.55em;
 }
 
+.ctaSecondaryValue {
+    border-bottom: 0.08em solid transparent;
+}
+
 .ctaCursorArrow,
 .ctaCursorHand {
     position: absolute;
     display: flex;
     pointer-events: none;
     filter: drop-shadow(0 0.12em 0.18em rgba(8, 30, 60, 0.4));
-    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), filter 0.2s ease;
 }
 
 .ctaCursorArrow {
@@ -140,20 +162,47 @@
 
 .ctaPrimary:hover,
 .ctaSecondary:hover {
-    transform: translateY(-0.05em);
     text-decoration: none;
     opacity: 1;
 }
 
+.ctaPrimary:hover {
+    transform: translateY(-0.1em);
+}
+
 .ctaPrimary:hover .ctaPrimaryBtn {
-    border-color: #ffc94a;
-    background: #0070b7;
-    background-color: #0070b7;
+    background: #ffb81c;
+    background-color: #ffb81c;
+    border-color: #ffd060;
+    color: #0b2c4a;
+    box-shadow:
+        0 0.2em 0.55em rgba(8, 30, 60, 0.3),
+        0 0 0.85em rgba(255, 196, 74, 0.75);
+}
+
+.ctaPrimary:hover .ctaPrimaryUrl {
+    color: #ffe08a;
+    text-shadow: 0 0 0.45em rgba(255, 184, 28, 0.55);
+}
+
+.ctaSecondary:hover {
+    transform: translateY(-0.08em);
+    background-color: rgba(255, 184, 28, 0.14);
+}
+
+.ctaSecondary:hover .ctaSecondaryTitle {
+    color: #ffd060;
+}
+
+.ctaSecondary:hover .ctaSecondaryValue {
+    color: #fff;
+    border-bottom-color: rgba(255, 255, 255, 0.85);
 }
 
 .ctaPrimary:hover .ctaCursorArrow,
 .ctaSecondary:hover .ctaCursorHand {
-    transform: translate(0.06em, 0.06em) scale(1.04);
+    transform: translate(0.1em, 0.1em) scale(1.12);
+    filter: drop-shadow(0 0.15em 0.35em rgba(255, 196, 74, 0.55));
 }
 
 .ctaPrimary:focus,
