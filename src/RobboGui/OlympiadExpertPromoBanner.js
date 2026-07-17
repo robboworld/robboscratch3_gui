@@ -71,8 +71,11 @@ function getDisplayScale () {
         /Linux/i.test(navigator.userAgent || '') ||
         /Linux/i.test(navigator.platform || '')
     );
-    if (isLinux && dpr === 2) {
-        return 1.5;
+    // Chrome on 150% GNOME fractional scaling often reports dpr=2 at 100% zoom
+    // while CSS follows ~1.5×. Keep that 2→1.5 ratio when browser zoom changes dpr
+    // (e.g. dpr 2.2 → 1.65), otherwise the banner shrinks/grows incorrectly.
+    if (isLinux) {
+        return Math.max(1, 1.5 * (dpr / 2));
     }
     return dpr;
 }
@@ -187,9 +190,7 @@ function OlympiadExpertPromoBanner () {
                         className={styles.close}
                         aria-label="Close"
                         onClick={dismiss}
-                    >
-                        ×
-                    </button>
+                    />
                     <img
                         ref={setImageRef}
                         className={styles.image}
