@@ -1,8 +1,7 @@
 /**
  * Demo JWT verification key for local ЛК / activation servers (`kid: demo-rs3-1`).
  * Must match the public half of the RSA key used by the activation signer
- * (e.g. robbo_personal_account/backend/keys/licensing/dev-public.pem, or
- * rs3-activation-mock/keys/demo-public.pem when using that mock).
+ * (e.g. robbo_personal_account/backend/keys/licensing/dev-public.pem).
  * Accepted only outside production builds — not a production trust root.
  */
 

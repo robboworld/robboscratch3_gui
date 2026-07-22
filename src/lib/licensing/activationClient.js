@@ -1,5 +1,5 @@
 /**
- * @param {string} activationBaseUrl e.g. http://127.0.0.1:9876
+ * @param {string} activationBaseUrl e.g. http://localhost:8080
  * @param {object} body
  * @param {string} body.licenseKey
  * @param {string} body.deviceFingerprint stable device hash
