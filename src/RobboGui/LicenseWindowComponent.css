@@ -97,3 +97,28 @@
     margin: 0;
     line-height: 1.4;
 }
+
+.license_device_link {
+    box-sizing: border-box;
+    padding: 0.5rem;
+    border: 1px solid rgba(0, 120, 200, 0.25);
+    border-radius: $form-radius;
+    background-color: rgba(0, 120, 200, 0.06);
+}
+
+.license_device_link > * + * {
+    margin-top: 0.5rem;
+}
+
+.license_user_code {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-align: center;
+    color: $text-primary;
+}
+
+.license_link_again {
+    width: 100%;
+}

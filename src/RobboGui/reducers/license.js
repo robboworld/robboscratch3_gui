@@ -10,6 +10,21 @@ export const LS_BOUND_FP = 'rs3_license_bound_fingerprint';
 const LS_ACTIVATION_BASE_LEGACY = 'rs3_demo_activation_base_url';
 const LS_TOKEN_LEGACY = 'rs3_demo_signed_token';
 
+/** Default activation server — local ЛК backend unless overridden at build time. */
+export function defaultActivationBaseUrl () {
+    try {
+        if (typeof process !== 'undefined' && process.env && process.env.RS3_ACTIVATION_BASE_URL) {
+            const fromEnv = String(process.env.RS3_ACTIVATION_BASE_URL).trim();
+            if (fromEnv) {
+                return fromEnv;
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return 'http://localhost:8080';
+}
+
+export const DEFAULT_ACTIVATION_BASE_URL = defaultActivationBaseUrl();
+
 export const LICENSE_SET_ACTIVATION_BASE = 'LICENSE_SET_ACTIVATION_BASE';
 export const LICENSE_ACTIVATE_START = 'LICENSE_ACTIVATE_START';
 export const LICENSE_ACTIVATE_SUCCESS = 'LICENSE_ACTIVATE_SUCCESS';
@@ -18,6 +33,8 @@ export const LICENSE_ADDON_READY = 'LICENSE_ADDON_READY';
 export const LICENSE_ADDON_FAILURE = 'LICENSE_ADDON_FAILURE';
 export const LICENSE_HYDRATE = 'LICENSE_HYDRATE';
 export const LICENSE_CLEAR = 'LICENSE_CLEAR';
+export const LICENSE_DEVICE_LINK_START = 'LICENSE_DEVICE_LINK_START';
+export const LICENSE_DEVICE_LINK_CANCEL = 'LICENSE_DEVICE_LINK_CANCEL';
 export const LICENSE_PREMIUM_CHECK_RESULT = 'LICENSE_PREMIUM_CHECK_RESULT';
 export const LICENSE_CHECK_STATUS = 'LICENSE_CHECK_STATUS';
 export const LICENSE_UPDATE_PHASE = 'LICENSE_UPDATE_PHASE';
@@ -69,7 +86,7 @@ function readLocalStorageItem (key, legacyKey) {
 
 export function readPersistedActivationBase () {
     const value = readLocalStorageItem(LS_ACTIVATION_BASE, LS_ACTIVATION_BASE_LEGACY);
-    return value || 'http://127.0.0.1:9876';
+    return value || DEFAULT_ACTIVATION_BASE_URL;
 }
 
 export function readPersistedToken () {
@@ -79,7 +96,7 @@ export function readPersistedToken () {
 export function licenseInitialState () {
     return {
         activationBaseUrl: typeof window !== 'undefined' ? readPersistedActivationBase() :
-            'http://127.0.0.1:9876',
+            DEFAULT_ACTIVATION_BASE_URL,
         status: 'inactive',
         capabilities: [],
         signedOfflineToken: '',
@@ -92,6 +109,9 @@ export function licenseInitialState () {
         activationError: '',
         lastPremiumCheckResult: null,
         isActivating: false,
+        deviceLinkStatus: 'idle',
+        deviceLinkUserCode: '',
+        deviceLinkVerificationUri: '',
         check: licenseCheckInitialState(),
         update: licenseUpdateInitialState()
     };
@@ -133,6 +153,9 @@ export default function reducer (state, action) {
         next.activationError = '';
         next.addonReady = false;
         next.addonError = '';
+        next.deviceLinkStatus = 'idle';
+        next.deviceLinkUserCode = '';
+        next.deviceLinkVerificationUri = '';
         next.check = licenseCheckInitialState();
         return next;
 
@@ -140,6 +163,26 @@ export default function reducer (state, action) {
         next = immutable_copy(state);
         next.isActivating = false;
         next.activationError = action.payload.message || 'activation_failed';
+        next.deviceLinkStatus = state.deviceLinkStatus === 'pending' ? 'idle' : state.deviceLinkStatus;
+        next.deviceLinkUserCode = '';
+        next.deviceLinkVerificationUri = '';
+        return next;
+
+    case LICENSE_DEVICE_LINK_START:
+        next = immutable_copy(state);
+        next.isActivating = true;
+        next.activationError = '';
+        next.deviceLinkStatus = 'pending';
+        next.deviceLinkUserCode = action.payload.userCode || '';
+        next.deviceLinkVerificationUri = action.payload.verificationUri || '';
+        return next;
+
+    case LICENSE_DEVICE_LINK_CANCEL:
+        next = immutable_copy(state);
+        next.isActivating = false;
+        next.deviceLinkStatus = 'idle';
+        next.deviceLinkUserCode = '';
+        next.deviceLinkVerificationUri = '';
         return next;
 
     case LICENSE_ADDON_READY:

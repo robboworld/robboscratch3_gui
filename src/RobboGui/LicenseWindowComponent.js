@@ -10,10 +10,13 @@ import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
 import {
     activateLicenseThunk,
     persistActivationBaseUrlThunk,
-    clearLicenseThunk
+    clearLicenseThunk,
+    startDeviceLinkThunk,
+    cancelDeviceLinkThunk
 } from './actions/licenseActions';
 import {CAPABILITY_PREMIUM_AUTO_UPDATE} from './reducers/license';
 import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
+import {openExternalUrl} from '../lib/platform.js';
 
 const messages = defineMessages({
     title: {
@@ -29,6 +32,28 @@ const messages = defineMessages({
     activation_url: {
         id: 'gui.licenseWindow.activation_url',
         defaultMessage: 'Activation server base URL'
+    },
+    robbo_id_login: {
+        id: 'gui.licenseWindow.robbo_id_login',
+        defaultMessage: 'Sign in with Robbo ID'
+    },
+    robbo_id_cancel: {
+        id: 'gui.licenseWindow.robbo_id_cancel',
+        defaultMessage: 'Cancel'
+    },
+    robbo_id_open_again: {
+        id: 'gui.licenseWindow.robbo_id_open_again',
+        defaultMessage: 'Open confirmation page again'
+    },
+    device_link_waiting: {
+        id: 'gui.licenseWindow.device_link_waiting',
+        defaultMessage:
+            'Confirm code {code} in your Robbo account, then return here. Waiting…'
+    },
+    device_link_hint: {
+        id: 'gui.licenseWindow.device_link_hint',
+        defaultMessage:
+            'Sign in with Robbo ID to activate your license without typing a key. Manual key entry remains available below.'
     },
     license_key: {
         id: 'gui.licenseWindow.license_key',
@@ -50,7 +75,7 @@ const messages = defineMessages({
     hint_dev: {
         id: 'gui.licenseWindow.hint_dev',
         defaultMessage:
-            'Dev: rs3-paid-addon npm run build; rs3-activation-mock npm run sync-addon && npm start. Key: DEMO-LICENSE-VALID.'
+            'Dev: use local ЛК (http://localhost:8080). Sign in with Robbo ID, or activate with a key from «My licenses».'
     },
     status_valid: {
         id: 'gui.licenseWindow.status_valid',
@@ -84,6 +109,14 @@ const messages = defineMessages({
         id: 'gui.licenseWindow.error_capability_denied',
         defaultMessage: 'License has no premium capabilities.'
     },
+    error_device_link_expired: {
+        id: 'gui.licenseWindow.error_device_link_expired',
+        defaultMessage: 'Confirmation timed out. Try Sign in with Robbo ID again.'
+    },
+    error_empty_activation_base: {
+        id: 'gui.licenseWindow.error_empty_activation_base',
+        defaultMessage: 'Set the activation server base URL first.'
+    },
     capabilities_none: {
         id: 'gui.licenseWindow.capabilities_none',
         defaultMessage: '(none)'
@@ -106,6 +139,9 @@ class LicenseWindowComponent extends Component {
         this.handleKeyChange = this.handleKeyChange.bind(this);
         this.onActivateClick = this.onActivateClick.bind(this);
         this.onClearClick = this.onClearClick.bind(this);
+        this.onRobboIdClick = this.onRobboIdClick.bind(this);
+        this.onCancelDeviceLinkClick = this.onCancelDeviceLinkClick.bind(this);
+        this.onOpenVerificationAgain = this.onOpenVerificationAgain.bind(this);
         this.close = this.close.bind(this);
     }
 
@@ -130,12 +166,39 @@ class LicenseWindowComponent extends Component {
         this.props.onClearLicense();
     }
 
+    onRobboIdClick () {
+        this.props.onStartDeviceLink();
+    }
+
+    onCancelDeviceLinkClick () {
+        this.props.onCancelDeviceLink();
+    }
+
+    onOpenVerificationAgain () {
+        const ld = this.props.license;
+        const uri = (ld.deviceLinkVerificationUri || '').trim();
+        const code = (ld.deviceLinkUserCode || '').trim();
+        if (!uri) {
+            return;
+        }
+        const openUrl = code
+            ? `${uri.replace(/\/$/, '')}?code=${encodeURIComponent(code)}`
+            : uri;
+        openExternalUrl(openUrl);
+    }
+
     resolveActivationError (code) {
         if (code === 'empty_license_key') {
             return this.props.intl.formatMessage(messages.error_empty_license_key);
         }
         if (code === 'capability_denied') {
             return this.props.intl.formatMessage(messages.error_capability_denied);
+        }
+        if (code === 'device_link_expired') {
+            return this.props.intl.formatMessage(messages.error_device_link_expired);
+        }
+        if (code === 'empty_activation_base') {
+            return this.props.intl.formatMessage(messages.error_empty_activation_base);
         }
         return code;
     }
@@ -181,6 +244,7 @@ class LicenseWindowComponent extends Component {
         const showDevHint = typeof process !== 'undefined' &&
             process.env &&
             process.env.NODE_ENV !== 'production';
+        const deviceLinkPending = ld.deviceLinkStatus === 'pending';
 
         return (
             <div
@@ -230,6 +294,62 @@ class LicenseWindowComponent extends Component {
                             />
                         </div>
 
+                        <div className={classNames(formStyles.footer, styles.license_actions)}>
+                            <div className={formStyles.button_group}>
+                                {!deviceLinkPending ? (
+                                    <button
+                                        type="button"
+                                        className={formStyles.action_button}
+                                        disabled={ld.isActivating}
+                                        onClick={this.onRobboIdClick}
+                                    >
+                                        {this.props.intl.formatMessage(messages.robbo_id_login)}
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className={classNames(
+                                            formStyles.action_button,
+                                            styles.license_button_secondary
+                                        )}
+                                        onClick={this.onCancelDeviceLinkClick}
+                                    >
+                                        {this.props.intl.formatMessage(messages.robbo_id_cancel)}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {deviceLinkPending ? (
+                            <div className={styles.license_device_link} role="status">
+                                <div className={styles.license_user_code}>
+                                    {ld.deviceLinkUserCode || '—'}
+                                </div>
+                                <div className={styles.license_hint}>
+                                    {this.props.intl.formatMessage(messages.device_link_waiting, {
+                                        code: ld.deviceLinkUserCode || '—'
+                                    })}
+                                </div>
+                                {ld.deviceLinkVerificationUri ? (
+                                    <button
+                                        type="button"
+                                        className={classNames(
+                                            formStyles.action_button,
+                                            styles.license_button_secondary,
+                                            styles.license_link_again
+                                        )}
+                                        onClick={this.onOpenVerificationAgain}
+                                    >
+                                        {this.props.intl.formatMessage(messages.robbo_id_open_again)}
+                                    </button>
+                                ) : null}
+                            </div>
+                        ) : (
+                            <div className={styles.license_hint}>
+                                {this.props.intl.formatMessage(messages.device_link_hint)}
+                            </div>
+                        )}
+
                         <div className={styles.license_field_row}>
                             <label
                                 htmlFor="license-key"
@@ -244,6 +364,7 @@ class LicenseWindowComponent extends Component {
                                 autoComplete="off"
                                 value={this.state.licenseKeyDraft}
                                 onChange={this.handleKeyChange}
+                                disabled={deviceLinkPending}
                             />
                         </div>
 
@@ -252,7 +373,7 @@ class LicenseWindowComponent extends Component {
                                 <button
                                     type="button"
                                     className={formStyles.action_button}
-                                    disabled={ld.isActivating}
+                                    disabled={ld.isActivating || deviceLinkPending}
                                     onClick={this.onActivateClick}
                                 >
                                     {this.props.intl.formatMessage(messages.activate)}
@@ -314,6 +435,12 @@ const mapDispatchToProps = dispatch => ({
     },
     onClearLicense: () => {
         dispatch(clearLicenseThunk());
+    },
+    onStartDeviceLink: () => {
+        dispatch(startDeviceLinkThunk());
+    },
+    onCancelDeviceLink: () => {
+        dispatch(cancelDeviceLinkThunk());
     }
 });
 

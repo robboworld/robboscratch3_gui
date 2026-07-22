@@ -1,9 +1,14 @@
-import {postActivate, postDeactivateSeat} from '../../lib/licensing/activationClient.js';
+import {
+    postActivate,
+    postDeviceLinkStart,
+    postDeviceLinkPoll
+} from '../../lib/licensing/activationClient.js';
 import {verifyActivationJwt} from '../../lib/licensing/verifyJwtRs256.js';
 import {loadPaidAddonFromManifestUrl, clearAddonCache} from '../../lib/licensing/loadPaidAddon.js';
 import paidAddonRegistry from '../../lib/licensing/paidAddonRegistry.js';
 import {computeDeviceFingerprint, getCachedDeviceFingerprint, LS_FP_CACHE} from '../../lib/licensing/deviceFingerprint.js';
 import {assertPremiumAutoUpdateCapability} from '../../lib/licensing/capabilityGateway.js';
+import {openExternalUrl} from '../../lib/platform.js';
 import {APP_VERSION} from '../AboutWindowComponent.js';
 import {
     LS_ACTIVATION_BASE,
@@ -17,6 +22,8 @@ import {
     LICENSE_SET_ACTIVATION_BASE,
     LICENSE_HYDRATE,
     LICENSE_CLEAR,
+    LICENSE_DEVICE_LINK_START,
+    LICENSE_DEVICE_LINK_CANCEL,
     LICENSE_PREMIUM_CHECK_RESULT,
     LICENSE_CHECK_STATUS,
     LICENSE_UPDATE_PHASE,
@@ -25,6 +32,20 @@ import {
     readPersistedActivationBase,
     readPersistedToken
 } from '../reducers/license.js';
+
+const DEVICE_LINK_POLL_MS = 3000;
+
+/** @type {number|null} */
+let deviceLinkPollTimer = null;
+/** @type {number} generation token so stale polls ignore results after cancel */
+let deviceLinkGeneration = 0;
+
+function clearDeviceLinkPollTimer () {
+    if (deviceLinkPollTimer !== null) {
+        clearTimeout(deviceLinkPollTimer);
+        deviceLinkPollTimer = null;
+    }
+}
 
 function capabilitiesFromPayload (jwtPayload) {
     if (!jwtPayload || !Array.isArray(jwtPayload.capabilities)) {
@@ -104,6 +125,52 @@ function loadAddonDispatched (dispatch, manifestUrl, signedOfflineToken, license
 }
 
 /**
+ * Shared success path after /v1/activate or device-link poll returns a token.
+ * @param {function} dispatch
+ * @param {string} base
+ * @param {object} resp
+ * @param {string} fingerprint
+ * @returns {Promise}
+ */
+function finishActivationFromResponse (dispatch, base, resp, fingerprint) {
+    const publicBaseForUrls = base.replace(/\/$/, '');
+    return verifyActivationJwt(resp.signedOfflineToken).then(jwtPayload => {
+        const capList = capabilitiesFromPayload(jwtPayload);
+        if (capList.length === 0) {
+            throw new Error('capability_denied');
+        }
+
+        const addonManifestUrl =
+            typeof resp.addonManifestUrl === 'string' &&
+            resp.addonManifestUrl.trim()
+                ? resp.addonManifestUrl.trim()
+                : manifestUrlFromJwtOrBase(jwtPayload, publicBaseForUrls);
+
+        persistLicenseToStorage(base, resp.signedOfflineToken, fingerprint);
+
+        const licenseContext = licenseContextFromPayload(jwtPayload);
+
+        dispatch({
+            type: LICENSE_ACTIVATE_SUCCESS,
+            payload: {
+                signedOfflineToken: resp.signedOfflineToken,
+                addonManifestUrl,
+                capabilities: capList,
+                licenseId: licenseContext.licenseId,
+                seatId: licenseContext.seatId,
+                deviceBindingValid: true
+            }
+        });
+        return loadAddonDispatched(
+            dispatch,
+            addonManifestUrl,
+            resp.signedOfflineToken,
+            licenseContext
+        );
+    });
+}
+
+/**
  * Persist activation URL when user edits the field (localStorage + redux).
  * @param {string} activationBaseUrl
  * @returns {function}
@@ -138,6 +205,8 @@ export function activateLicenseThunk (licenseKeyTrimmed) {
             });
             return Promise.resolve();
         }
+        clearDeviceLinkPollTimer();
+        deviceLinkGeneration += 1;
         dispatch({type: LICENSE_ACTIVATE_START});
         const publicBaseForUrls = base.replace(/\/$/, '');
         return computeDeviceFingerprint()
@@ -145,46 +214,140 @@ export function activateLicenseThunk (licenseKeyTrimmed) {
                 licenseKey: licenseKeyTrimmed.trim(),
                 deviceFingerprint: fingerprint,
                 publicBase: publicBaseForUrls
-            }).then(resp => verifyActivationJwt(resp.signedOfflineToken).then(jwtPayload => ({
-                resp,
-                jwtPayload,
-                fingerprint
-            }))))
-            .then(({resp, jwtPayload, fingerprint}) => {
-                const capList = capabilitiesFromPayload(jwtPayload);
-                if (capList.length === 0) {
-                    throw new Error('capability_denied');
+            }).then(resp => ({resp, fingerprint})))
+            .then(({resp, fingerprint}) => finishActivationFromResponse(dispatch, base, resp, fingerprint))
+            .catch(err => {
+                dispatch({
+                    type: LICENSE_ACTIVATE_FAILURE,
+                    payload: {message: err.message || String(err)}
+                });
+            });
+    };
+}
+
+/**
+ * Cancel an in-progress device-link poll.
+ * @returns {function}
+ */
+export function cancelDeviceLinkThunk () {
+    return function (dispatch) {
+        clearDeviceLinkPollTimer();
+        deviceLinkGeneration += 1;
+        dispatch({type: LICENSE_DEVICE_LINK_CANCEL});
+    };
+}
+
+/**
+ * Start Robbo ID device-link: open verification URL, poll until confirmed.
+ * @returns {function}
+ */
+export function startDeviceLinkThunk () {
+    return function (dispatch, getState) {
+        const state = getState();
+        const base = (state.scratchGui.license.activationBaseUrl || '').trim();
+        if (!base) {
+            dispatch({
+                type: LICENSE_ACTIVATE_FAILURE,
+                payload: {message: 'empty_activation_base'}
+            });
+            return Promise.resolve();
+        }
+
+        clearDeviceLinkPollTimer();
+        const generation = ++deviceLinkGeneration;
+        const publicBaseForUrls = base.replace(/\/$/, '');
+
+        return computeDeviceFingerprint()
+            .then(fingerprint => postDeviceLinkStart(base, {
+                deviceFingerprint: fingerprint
+            }).then(startResp => {
+                if (generation !== deviceLinkGeneration) {
+                    return null;
                 }
-
-                const addonManifestUrl =
-                    typeof resp.addonManifestUrl === 'string' &&
-                    resp.addonManifestUrl.trim()
-                        ? resp.addonManifestUrl.trim()
-                        : manifestUrlFromJwtOrBase(jwtPayload, publicBaseForUrls);
-
-                persistLicenseToStorage(base, resp.signedOfflineToken, fingerprint);
-
-                const licenseContext = licenseContextFromPayload(jwtPayload);
+                const userCode = String(startResp.user_code || '');
+                const verificationUri = String(startResp.verification_uri || '');
+                const deviceCode = String(startResp.device_code || '');
+                const expiresIn = typeof startResp.expiresIn === 'number'
+                    ? startResp.expiresIn
+                    : 600;
+                const deadline = Date.now() + (expiresIn * 1000);
 
                 dispatch({
-                    type: LICENSE_ACTIVATE_SUCCESS,
+                    type: LICENSE_DEVICE_LINK_START,
                     payload: {
-                        signedOfflineToken: resp.signedOfflineToken,
-                        addonManifestUrl,
-                        capabilities: capList,
-                        licenseId: licenseContext.licenseId,
-                        seatId: licenseContext.seatId,
-                        deviceBindingValid: true
+                        userCode,
+                        verificationUri
                     }
                 });
-                return loadAddonDispatched(
-                    dispatch,
-                    addonManifestUrl,
-                    resp.signedOfflineToken,
-                    licenseContext
-                );
-            })
+
+                const openUrl = userCode
+                    ? `${verificationUri.replace(/\/$/, '')}?code=${encodeURIComponent(userCode)}`
+                    : verificationUri;
+                if (openUrl) {
+                    openExternalUrl(openUrl);
+                }
+
+                const schedulePoll = () => {
+                    if (generation !== deviceLinkGeneration) {
+                        return;
+                    }
+                    deviceLinkPollTimer = setTimeout(runPoll, DEVICE_LINK_POLL_MS);
+                };
+
+                const runPoll = () => {
+                    if (generation !== deviceLinkGeneration) {
+                        return;
+                    }
+                    if (Date.now() > deadline) {
+                        dispatch({
+                            type: LICENSE_ACTIVATE_FAILURE,
+                            payload: {message: 'device_link_expired'}
+                        });
+                        return;
+                    }
+                    postDeviceLinkPoll(base, {
+                        deviceCode,
+                        deviceFingerprint: fingerprint,
+                        publicBase: publicBaseForUrls
+                    })
+                        .then(pollResp => {
+                            if (generation !== deviceLinkGeneration) {
+                                return;
+                            }
+                            if (pollResp && pollResp.signedOfflineToken) {
+                                clearDeviceLinkPollTimer();
+                                return finishActivationFromResponse(
+                                    dispatch,
+                                    base,
+                                    pollResp,
+                                    fingerprint
+                                );
+                            }
+                            const status = pollResp && pollResp.status;
+                            if (status && status !== 'pending') {
+                                throw new Error(status);
+                            }
+                            schedulePoll();
+                        })
+                        .catch(err => {
+                            if (generation !== deviceLinkGeneration) {
+                                return;
+                            }
+                            clearDeviceLinkPollTimer();
+                            dispatch({
+                                type: LICENSE_ACTIVATE_FAILURE,
+                                payload: {message: err.message || String(err)}
+                            });
+                        });
+                };
+
+                schedulePoll();
+                return null;
+            }))
             .catch(err => {
+                if (generation !== deviceLinkGeneration) {
+                    return;
+                }
                 dispatch({
                     type: LICENSE_ACTIVATE_FAILURE,
                     payload: {message: err.message || String(err)}
@@ -278,6 +441,8 @@ export function hydrateLicenseThunk () {
 /** @returns {function} */
 export function clearLicenseThunk () {
     return function (dispatch, getState) {
+        clearDeviceLinkPollTimer();
+        deviceLinkGeneration += 1;
         const base =
             typeof getState().scratchGui.license !== 'undefined'
                 ? String(getState().scratchGui.license.activationBaseUrl || '')
