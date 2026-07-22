@@ -15,6 +15,7 @@ import {
     cancelDeviceLinkThunk
 } from './actions/licenseActions';
 import {LICENSE_FEATURES} from '../lib/licensing/licenseFeatures';
+import {resolveAccountHomeUrl} from '../lib/licensing/accountUrls';
 import {openExternalUrl} from '../lib/platform.js';
 import {
     showTransientButtonFeedback,
@@ -28,6 +29,10 @@ const messages = defineMessages({
         id: 'gui.licenseWindow.title',
         description: 'License window title',
         defaultMessage: 'License'
+    },
+    close: {
+        id: 'gui.licenseWindow.close',
+        defaultMessage: 'Close'
     },
     activation_url: {
         id: 'gui.licenseWindow.activation_url',
@@ -68,12 +73,16 @@ const messages = defineMessages({
     },
     deactivate_license: {
         id: 'gui.licenseWindow.deactivate_license',
-        defaultMessage: 'Deactivate license'
+        defaultMessage: 'Deactivate'
     },
     deactivate_confirm: {
         id: 'gui.licenseWindow.deactivate_confirm',
         defaultMessage:
             'Remove the license from this device? You can activate it again later.'
+    },
+    open_account: {
+        id: 'gui.licenseWindow.open_account',
+        defaultMessage: 'Personal account'
     },
     hint_dev: {
         id: 'gui.licenseWindow.hint_dev',
@@ -161,6 +170,7 @@ class LicenseWindowComponent extends Component {
         this.onToggleKeyForm = this.onToggleKeyForm.bind(this);
         this.onToggleFeatures = this.onToggleFeatures.bind(this);
         this.onCopyId = this.onCopyId.bind(this);
+        this.onOpenAccountClick = this.onOpenAccountClick.bind(this);
         this.close = this.close.bind(this);
     }
 
@@ -197,6 +207,11 @@ class LicenseWindowComponent extends Component {
         }
         this.setState({licenseKeyDraft: '', showKeyForm: false});
         this.props.onClearLicense();
+    }
+
+    onOpenAccountClick () {
+        const url = resolveAccountHomeUrl(this.props.license.activationBaseUrl);
+        openExternalUrl(url);
     }
 
     onRobboIdClick () {
@@ -540,6 +555,16 @@ class LicenseWindowComponent extends Component {
                 <div className={styles.license_card_footer}>
                     <button
                         type="button"
+                        className={classNames(
+                            formStyles.action_button,
+                            styles.license_account_button
+                        )}
+                        onClick={this.onOpenAccountClick}
+                    >
+                        {this.props.intl.formatMessage(messages.open_account)}
+                    </button>
+                    <button
+                        type="button"
                         className={styles.license_deactivate_button}
                         onClick={this.onDeactivateClick}
                     >
@@ -657,7 +682,7 @@ class LicenseWindowComponent extends Component {
                     <button
                         type="button"
                         className={sharedStyles.closeButton}
-                        aria-label="Close"
+                        aria-label={this.props.intl.formatMessage(messages.close)}
                         onClick={this.close}
                     />
                 </div>
