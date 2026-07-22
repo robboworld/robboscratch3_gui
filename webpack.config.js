@@ -189,7 +189,8 @@ module.exports = [
                     'process.env.NODE_ENV': '"' + (process.env.NODE_ENV || 'development') + '"',
                     'process.env.DEBUG': Boolean(process.env.DEBUG),
                     'process.env.GA_ID': '"' + (process.env.GA_ID || 'UA-000000-01') + '"',
-                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"'
+                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"',
+                    'process.env.RS3_ACTIVATION_BASE_URL': JSON.stringify(process.env.RS3_ACTIVATION_BASE_URL || '')
                 }),
                 new HtmlWebpackPlugin({
                     chunks: ['lib.min', 'gui'],
@@ -280,7 +281,8 @@ module.exports = [
             },
             plugins: base.plugins.concat([
                 new webpack.DefinePlugin({
-                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"'
+                    'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"',
+                    'process.env.RS3_ACTIVATION_BASE_URL': JSON.stringify(process.env.RS3_ACTIVATION_BASE_URL || '')
                 }),
                 new CopyWebpackPlugin([{
                     from: 'node_modules/scratch-blocks/media',

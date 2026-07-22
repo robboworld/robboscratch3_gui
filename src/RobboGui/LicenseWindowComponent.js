@@ -14,20 +14,20 @@ import {
     startDeviceLinkThunk,
     cancelDeviceLinkThunk
 } from './actions/licenseActions';
-import {CAPABILITY_PREMIUM_AUTO_UPDATE} from './reducers/license';
-import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
+import {LICENSE_FEATURES} from '../lib/licensing/licenseFeatures';
 import {openExternalUrl} from '../lib/platform.js';
+import {
+    showTransientButtonFeedback,
+    clearTransientButtonFeedbackTimer
+} from '../lib/transient-button-feedback';
+
+const COPY_FEEDBACK_KEY = 'copiedField';
 
 const messages = defineMessages({
     title: {
         id: 'gui.licenseWindow.title',
         description: 'License window title',
         defaultMessage: 'License'
-    },
-    section_in_development: {
-        id: 'gui.licenseWindow.section_in_development',
-        description: 'License window under development notice',
-        defaultMessage: 'In development'
     },
     activation_url: {
         id: 'gui.licenseWindow.activation_url',
@@ -50,10 +50,13 @@ const messages = defineMessages({
         defaultMessage:
             'Confirm code {code} in your Robbo account, then return here. Waiting…'
     },
-    device_link_hint: {
-        id: 'gui.licenseWindow.device_link_hint',
-        defaultMessage:
-            'Sign in with Robbo ID to activate your license without typing a key. Manual key entry remains available below.'
+    show_key_form: {
+        id: 'gui.licenseWindow.show_key_form',
+        defaultMessage: 'I have a license key'
+    },
+    hide_key_form: {
+        id: 'gui.licenseWindow.hide_key_form',
+        defaultMessage: 'Hide license key entry'
     },
     license_key: {
         id: 'gui.licenseWindow.license_key',
@@ -63,86 +66,106 @@ const messages = defineMessages({
         id: 'gui.licenseWindow.activate',
         defaultMessage: 'Activate'
     },
-    clear_license: {
-        id: 'gui.licenseWindow.clear_license',
-        defaultMessage: 'Clear license'
+    deactivate_license: {
+        id: 'gui.licenseWindow.deactivate_license',
+        defaultMessage: 'Deactivate license'
     },
-    hint: {
-        id: 'gui.licenseWindow.hint',
+    deactivate_confirm: {
+        id: 'gui.licenseWindow.deactivate_confirm',
         defaultMessage:
-            'Enter your license key and click Activate. Contact support if you need help.'
+            'Remove the license from this device? You can activate it again later.'
     },
     hint_dev: {
         id: 'gui.licenseWindow.hint_dev',
         defaultMessage:
             'Dev: use local ЛК (http://localhost:8080). Sign in with Robbo ID, or activate with a key from «My licenses».'
     },
-    status_valid: {
-        id: 'gui.licenseWindow.status_valid',
-        defaultMessage: 'License OK. Premium capabilities: {capabilities}. Addon loaded: {addon}.'
+    status_active: {
+        id: 'gui.licenseWindow.status_active',
+        defaultMessage: 'Active'
     },
     status_inactive: {
-        id: 'gui.licenseWindow.status_inactive',
-        defaultMessage: 'No offline license loaded.'
+        id: 'gui.licenseWindow.status_inactive_short',
+        defaultMessage: 'Not activated'
     },
-    premium_autoupgrade_ready: {
-        id: 'gui.licenseWindow.premium_ready',
-        defaultMessage: '{cap} granted — use «Check for updates» in the About window.'
+    status_pending: {
+        id: 'gui.licenseWindow.status_pending',
+        defaultMessage: 'Waiting for confirmation…'
     },
-    addon_pending: {
-        id: 'gui.licenseWindow.addon_pending',
-        defaultMessage: 'Fetching paid addon bundle from server…'
+    meta_status: {
+        id: 'gui.licenseWindow.meta_status',
+        defaultMessage: 'Status'
     },
-    status_error: {
-        id: 'gui.licenseWindow.status_error',
-        defaultMessage: 'Error: {message}'
+    meta_valid_until: {
+        id: 'gui.licenseWindow.meta_valid_until',
+        defaultMessage: 'Valid until'
     },
-    status_addon_issue: {
-        id: 'gui.licenseWindow.status_addon_issue',
-        defaultMessage: 'Activation OK — addon issue: {error}'
+    meta_no_expiry: {
+        id: 'gui.licenseWindow.meta_no_expiry',
+        defaultMessage: 'No expiry date'
     },
-    error_empty_license_key: {
-        id: 'gui.licenseWindow.error_empty_license_key',
-        defaultMessage: 'Enter a license key.'
+    meta_license_id: {
+        id: 'gui.licenseWindow.meta_license_id',
+        defaultMessage: 'License ID'
     },
-    error_capability_denied: {
-        id: 'gui.licenseWindow.error_capability_denied',
-        defaultMessage: 'License has no premium capabilities.'
+    meta_seat_id: {
+        id: 'gui.licenseWindow.meta_seat_id',
+        defaultMessage: 'Device seat'
     },
-    error_device_link_expired: {
-        id: 'gui.licenseWindow.error_device_link_expired',
-        defaultMessage: 'Confirmation timed out. Try Sign in with Robbo ID again.'
+    copy: {
+        id: 'gui.licenseWindow.copy',
+        defaultMessage: 'Copy'
     },
-    error_empty_activation_base: {
-        id: 'gui.licenseWindow.error_empty_activation_base',
-        defaultMessage: 'Set the activation server base URL first.'
+    copied: {
+        id: 'gui.licenseWindow.copied',
+        defaultMessage: 'Copied'
     },
-    capabilities_none: {
-        id: 'gui.licenseWindow.capabilities_none',
-        defaultMessage: '(none)'
+    addon_issue: {
+        id: 'gui.licenseWindow.addon_issue_short',
+        defaultMessage: 'License OK, but paid features failed to load: {error}'
     },
-    addon_yes: {
-        id: 'gui.licenseWindow.addon_yes',
-        defaultMessage: 'yes'
+    features_toggle: {
+        id: 'gui.licenseWindow.features_toggle',
+        defaultMessage: 'What\'s included with a license'
     },
-    addon_pending_short: {
-        id: 'gui.licenseWindow.addon_pending_short',
-        defaultMessage: 'pending'
+    dev_settings: {
+        id: 'gui.licenseWindow.dev_settings',
+        defaultMessage: 'Developer settings'
     }
 });
+
+function shortenId (value, head = 8, tail = 4) {
+    const text = String(value || '');
+    if (text.length <= head + tail + 1) {
+        return text;
+    }
+    return `${text.slice(0, head)}…${text.slice(-tail)}`;
+}
 
 class LicenseWindowComponent extends Component {
     constructor (props) {
         super(props);
-        this.state = {licenseKeyDraft: ''};
+        this.state = {
+            licenseKeyDraft: '',
+            showKeyForm: false,
+            showFeatures: false,
+            [COPY_FEEDBACK_KEY]: null
+        };
         this.handleBaseChange = this.handleBaseChange.bind(this);
         this.handleKeyChange = this.handleKeyChange.bind(this);
         this.onActivateClick = this.onActivateClick.bind(this);
-        this.onClearClick = this.onClearClick.bind(this);
+        this.onDeactivateClick = this.onDeactivateClick.bind(this);
         this.onRobboIdClick = this.onRobboIdClick.bind(this);
         this.onCancelDeviceLinkClick = this.onCancelDeviceLinkClick.bind(this);
         this.onOpenVerificationAgain = this.onOpenVerificationAgain.bind(this);
+        this.onToggleKeyForm = this.onToggleKeyForm.bind(this);
+        this.onToggleFeatures = this.onToggleFeatures.bind(this);
+        this.onCopyId = this.onCopyId.bind(this);
         this.close = this.close.bind(this);
+    }
+
+    componentWillUnmount () {
+        clearTransientButtonFeedbackTimer(this, COPY_FEEDBACK_KEY);
     }
 
     close () {
@@ -158,11 +181,21 @@ class LicenseWindowComponent extends Component {
     }
 
     onActivateClick () {
-        this.props.onActivate(this.state.licenseKeyDraft);
+        const key = (this.state.licenseKeyDraft || '').trim();
+        if (!key) {
+            return;
+        }
+        this.props.onActivate(key);
     }
 
-    onClearClick () {
-        this.setState({licenseKeyDraft: ''});
+    onDeactivateClick () {
+        const confirmed = window.confirm(
+            this.props.intl.formatMessage(messages.deactivate_confirm)
+        );
+        if (!confirmed) {
+            return;
+        }
+        this.setState({licenseKeyDraft: '', showKeyForm: false});
         this.props.onClearLicense();
     }
 
@@ -187,64 +220,430 @@ class LicenseWindowComponent extends Component {
         openExternalUrl(openUrl);
     }
 
-    resolveActivationError (code) {
-        if (code === 'empty_license_key') {
-            return this.props.intl.formatMessage(messages.error_empty_license_key);
-        }
-        if (code === 'capability_denied') {
-            return this.props.intl.formatMessage(messages.error_capability_denied);
-        }
-        if (code === 'device_link_expired') {
-            return this.props.intl.formatMessage(messages.error_device_link_expired);
-        }
-        if (code === 'empty_activation_base') {
-            return this.props.intl.formatMessage(messages.error_empty_activation_base);
-        }
-        return code;
+    onToggleKeyForm () {
+        this.setState(prev => ({showKeyForm: !prev.showKeyForm}));
     }
 
-    renderStatusLine () {
-        const ld = this.props.license;
-        if (ld.activationError) {
-            return this.props.intl.formatMessage(messages.status_error, {
-                message: this.resolveActivationError(ld.activationError)
-            });
+    onToggleFeatures () {
+        this.setState(prev => ({showFeatures: !prev.showFeatures}));
+    }
+
+    copyToClipboard (textToCopy, onSuccess) {
+        const text = textToCopy != null ? String(textToCopy) : '';
+        if (!text) {
+            return;
         }
-        if (ld.addonError && ld.status === 'valid_offline') {
-            return this.props.intl.formatMessage(messages.status_addon_issue, {
-                error: ld.addonError
+        const notifySuccess = () => {
+            if (typeof onSuccess === 'function') {
+                onSuccess();
+            }
+        };
+        if (typeof navigator !== 'undefined' &&
+            navigator.clipboard &&
+            typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(text)
+                .then(notifySuccess)
+                .catch(() => {
+                    if (this.copyToClipboardWithExecCommand(text)) {
+                        notifySuccess();
+                    }
+                });
+            return;
+        }
+        if (this.copyToClipboardWithExecCommand(text)) {
+            notifySuccess();
+        }
+    }
+
+    copyToClipboardWithExecCommand (text) {
+        if (typeof document === 'undefined' || !document.body) {
+            return false;
+        }
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        let copied = false;
+        try {
+            copied = document.execCommand('copy');
+        } catch (e) {
+            copied = false;
+        }
+        document.body.removeChild(textarea);
+        return copied;
+    }
+
+    onCopyId (fieldKey, value) {
+        this.copyToClipboard(value, () => {
+            showTransientButtonFeedback(this, {
+                stateKey: COPY_FEEDBACK_KEY,
+                feedbackToken: fieldKey
             });
+        });
+    }
+
+    formatExpiresAt (expiresAt) {
+        if (typeof expiresAt !== 'number' || !expiresAt) {
+            return this.props.intl.formatMessage(messages.meta_no_expiry);
+        }
+        const date = new Date(expiresAt * 1000);
+        if (Number.isNaN(date.getTime())) {
+            return this.props.intl.formatMessage(messages.meta_no_expiry);
+        }
+        try {
+            return this.props.intl.formatDate(date, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (e) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            return `${day}.${month}.${date.getFullYear()}`;
+        }
+    }
+
+    renderStatusChip () {
+        const ld = this.props.license;
+        const deviceLinkPending = ld.deviceLinkStatus === 'pending';
+        if (deviceLinkPending) {
+            return (
+                <span
+                    className={classNames(
+                        styles.license_status_chip,
+                        styles.license_status_chip_pending
+                    )}
+                    role="status"
+                >
+                    {this.props.intl.formatMessage(messages.status_pending)}
+                </span>
+            );
         }
         if (ld.status === 'valid_offline') {
-            const caps = ld.capabilities.join(', ') ||
-                this.props.intl.formatMessage(messages.capabilities_none);
-            return this.props.intl.formatMessage(messages.status_valid, {
-                capabilities: caps,
-                addon: ld.addonReady
-                    ? this.props.intl.formatMessage(messages.addon_yes)
-                    : this.props.intl.formatMessage(messages.addon_pending_short)
+            return (
+                <span
+                    className={classNames(
+                        styles.license_status_chip,
+                        styles.license_status_chip_active
+                    )}
+                    role="status"
+                >
+                    {this.props.intl.formatMessage(messages.status_active)}
+                </span>
+            );
+        }
+        return (
+            <span
+                className={styles.license_status_chip}
+                role="status"
+            >
+                {this.props.intl.formatMessage(messages.status_inactive)}
+            </span>
+        );
+    }
+
+    renderInactiveForm () {
+        const ld = this.props.license;
+        const deviceLinkPending = ld.deviceLinkStatus === 'pending';
+        const keyTrimmed = (this.state.licenseKeyDraft || '').trim();
+
+        return (
+            <>
+                <div className={styles.license_primary_actions}>
+                    {!deviceLinkPending ? (
+                        <button
+                            type="button"
+                            className={classNames(
+                                formStyles.action_button,
+                                styles.license_primary_button
+                            )}
+                            disabled={ld.isActivating}
+                            onClick={this.onRobboIdClick}
+                        >
+                            {this.props.intl.formatMessage(messages.robbo_id_login)}
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className={classNames(
+                                formStyles.action_button,
+                                styles.license_button_secondary
+                            )}
+                            onClick={this.onCancelDeviceLinkClick}
+                        >
+                            {this.props.intl.formatMessage(messages.robbo_id_cancel)}
+                        </button>
+                    )}
+                </div>
+
+                {deviceLinkPending ? (
+                    <div className={styles.license_device_link} role="status">
+                        <div className={styles.license_user_code}>
+                            {ld.deviceLinkUserCode || '—'}
+                        </div>
+                        <div className={styles.license_hint}>
+                            {this.props.intl.formatMessage(messages.device_link_waiting, {
+                                code: ld.deviceLinkUserCode || '—'
+                            })}
+                        </div>
+                        {ld.deviceLinkVerificationUri ? (
+                            <button
+                                type="button"
+                                className={classNames(
+                                    formStyles.action_button,
+                                    styles.license_button_secondary,
+                                    styles.license_link_again
+                                )}
+                                onClick={this.onOpenVerificationAgain}
+                            >
+                                {this.props.intl.formatMessage(messages.robbo_id_open_again)}
+                            </button>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {!deviceLinkPending ? (
+                    <button
+                        type="button"
+                        className={styles.license_link_button}
+                        onClick={this.onToggleKeyForm}
+                    >
+                        {this.props.intl.formatMessage(
+                            this.state.showKeyForm
+                                ? messages.hide_key_form
+                                : messages.show_key_form
+                        )}
+                    </button>
+                ) : null}
+
+                {this.state.showKeyForm && !deviceLinkPending ? (
+                    <>
+                        <div className={styles.license_field_row}>
+                            <label
+                                htmlFor="license-key"
+                                className={styles.license_field_label}
+                            >
+                                {this.props.intl.formatMessage(messages.license_key)}
+                            </label>
+                            <input
+                                id="license-key"
+                                type="text"
+                                className={styles.license_text_input}
+                                autoComplete="off"
+                                value={this.state.licenseKeyDraft}
+                                onChange={this.handleKeyChange}
+                            />
+                        </div>
+                        <div className={classNames(formStyles.footer, styles.license_actions)}>
+                            <div className={formStyles.button_group}>
+                                <button
+                                    type="button"
+                                    className={formStyles.action_button}
+                                    disabled={ld.isActivating || !keyTrimmed}
+                                    onClick={this.onActivateClick}
+                                >
+                                    {this.props.intl.formatMessage(messages.activate)}
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                ) : null}
+            </>
+        );
+    }
+
+    renderActiveCard () {
+        const ld = this.props.license;
+        const copiedField = this.state[COPY_FEEDBACK_KEY];
+        const idRows = [];
+        if (ld.licenseId) {
+            idRows.push({
+                key: 'licenseId',
+                label: this.props.intl.formatMessage(messages.meta_license_id),
+                value: ld.licenseId,
+                shortValue: shortenId(ld.licenseId, 10, 5)
             });
         }
-        return this.props.intl.formatMessage(messages.status_inactive);
+        if (ld.seatId) {
+            idRows.push({
+                key: 'seatId',
+                label: this.props.intl.formatMessage(messages.meta_seat_id),
+                value: ld.seatId,
+                shortValue: shortenId(ld.seatId, 8, 4)
+            });
+        }
+
+        return (
+            <div className={styles.license_card}>
+                <dl className={styles.license_meta_list}>
+                    <div className={styles.license_meta_row}>
+                        <dt className={styles.license_meta_label}>
+                            {this.props.intl.formatMessage(messages.meta_status)}
+                        </dt>
+                        <dd className={styles.license_meta_value}>
+                            {this.props.intl.formatMessage(messages.status_active)}
+                        </dd>
+                    </div>
+                    <div className={styles.license_meta_row}>
+                        <dt className={styles.license_meta_label}>
+                            {this.props.intl.formatMessage(messages.meta_valid_until)}
+                        </dt>
+                        <dd className={styles.license_meta_value}>
+                            {this.formatExpiresAt(ld.expiresAt)}
+                        </dd>
+                    </div>
+                    {idRows.map(row => {
+                        const justCopied = copiedField === row.key;
+                        return (
+                            <div
+                                key={row.key}
+                                className={classNames(
+                                    styles.license_meta_row,
+                                    styles.license_meta_row_id
+                                )}
+                            >
+                                <dt className={styles.license_meta_label}>
+                                    {row.label}
+                                </dt>
+                                <dd className={styles.license_meta_id_cell}>
+                                    <code
+                                        className={styles.license_meta_id}
+                                        title={row.value}
+                                    >
+                                        {row.shortValue}
+                                    </code>
+                                    <button
+                                        type="button"
+                                        className={classNames(styles.license_copy_button, {
+                                            [styles.license_copy_button_done]: justCopied
+                                        })}
+                                        title={this.props.intl.formatMessage(
+                                            justCopied ? messages.copied : messages.copy
+                                        )}
+                                        aria-label={this.props.intl.formatMessage(
+                                            justCopied ? messages.copied : messages.copy
+                                        )}
+                                        onClick={() => this.onCopyId(row.key, row.value)}
+                                    >
+                                        {justCopied
+                                            ? this.props.intl.formatMessage(messages.copied)
+                                            : this.props.intl.formatMessage(messages.copy)}
+                                    </button>
+                                </dd>
+                            </div>
+                        );
+                    })}
+                </dl>
+                <div className={styles.license_card_footer}>
+                    <button
+                        type="button"
+                        className={styles.license_deactivate_button}
+                        onClick={this.onDeactivateClick}
+                    >
+                        {this.props.intl.formatMessage(messages.deactivate_license)}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    renderFeaturesSection () {
+        const ld = this.props.license;
+        const caps = ld.capabilities || [];
+
+        return (
+            <div className={styles.license_features}>
+                <button
+                    type="button"
+                    className={styles.license_features_toggle}
+                    aria-expanded={this.state.showFeatures}
+                    onClick={this.onToggleFeatures}
+                >
+                    <span>
+                        {this.props.intl.formatMessage(messages.features_toggle)}
+                    </span>
+                    <span className={styles.license_features_chevron} aria-hidden="true">
+                        {this.state.showFeatures ? '▴' : '▾'}
+                    </span>
+                </button>
+                {this.state.showFeatures ? (
+                    <ul className={styles.license_features_list}>
+                        {LICENSE_FEATURES.map(feature => {
+                            const granted = caps.indexOf(feature.capability) >= 0;
+                            return (
+                                <li
+                                    key={feature.capability}
+                                    className={styles.license_feature_row}
+                                >
+                                    <span
+                                        className={classNames(styles.license_feature_icon, {
+                                            [styles.license_feature_icon_granted]: granted,
+                                            [styles.license_feature_icon_locked]: !granted
+                                        })}
+                                        aria-hidden="true"
+                                    />
+                                    <div className={styles.license_feature_text}>
+                                        <div className={styles.license_feature_title}>
+                                            {this.props.intl.formatMessage(feature.titleMessage)}
+                                        </div>
+                                        <div className={styles.license_feature_description}>
+                                            {this.props.intl.formatMessage(
+                                                feature.descriptionMessage
+                                            )}
+                                        </div>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                ) : null}
+            </div>
+        );
+    }
+
+    renderDevBlock () {
+        const ld = this.props.license;
+        const showDev = typeof process !== 'undefined' &&
+            process.env &&
+            process.env.NODE_ENV !== 'production';
+        if (!showDev) {
+            return null;
+        }
+
+        return (
+            <div className={styles.license_dev_block}>
+                <div className={styles.license_dev_title}>
+                    {this.props.intl.formatMessage(messages.dev_settings)}
+                </div>
+                <div className={styles.license_field_row}>
+                    <label
+                        htmlFor="license-activation-base"
+                        className={styles.license_field_label}
+                    >
+                        {this.props.intl.formatMessage(messages.activation_url)}
+                    </label>
+                    <input
+                        id="license-activation-base"
+                        type="text"
+                        className={styles.license_text_input}
+                        value={ld.activationBaseUrl}
+                        onChange={this.handleBaseChange}
+                    />
+                </div>
+                <div className={styles.license_hint}>
+                    {this.props.intl.formatMessage(messages.hint_dev)}
+                </div>
+            </div>
+        );
     }
 
     render () {
         const ld = this.props.license;
-        const hasPremium = hasPremiumAutoUpdateCapability(ld);
-        const premiumHint =
-            hasPremium && ld.addonReady
-                ? this.props.intl.formatMessage(messages.premium_autoupgrade_ready, {
-                    cap: CAPABILITY_PREMIUM_AUTO_UPDATE
-                  })
-                : hasPremium && !ld.addonReady
-                    ? this.props.intl.formatMessage(messages.addon_pending)
-                    : '';
-        const statusIsError = Boolean(ld.activationError) ||
-            Boolean(ld.addonError && ld.status === 'valid_offline');
-        const showDevHint = typeof process !== 'undefined' &&
-            process.env &&
-            process.env.NODE_ENV !== 'production';
-        const deviceLinkPending = ld.deviceLinkStatus === 'pending';
+        const isActive = ld.status === 'valid_offline';
+        const showAddonWarning = Boolean(ld.addonError && isActive);
 
         return (
             <div
@@ -269,149 +668,21 @@ class LicenseWindowComponent extends Component {
                         styles.license_content
                     )}
                 >
-                    <div
-                        id="license-window-dev-notice"
-                        className={styles.license_dev_notice}
-                        role="status"
-                    >
-                        {this.props.intl.formatMessage(messages.section_in_development)}
-                    </div>
-
                     <div className={classNames(formStyles.section, styles.license_section)}>
-                        <div className={styles.license_field_row}>
-                            <label
-                                htmlFor="license-activation-base"
-                                className={styles.license_field_label}
-                            >
-                                {this.props.intl.formatMessage(messages.activation_url)}
-                            </label>
-                            <input
-                                id="license-activation-base"
-                                type="text"
-                                className={styles.license_text_input}
-                                value={ld.activationBaseUrl}
-                                onChange={this.handleBaseChange}
-                            />
-                        </div>
+                        {!isActive ? this.renderStatusChip() : null}
 
-                        <div className={classNames(formStyles.footer, styles.license_actions)}>
-                            <div className={formStyles.button_group}>
-                                {!deviceLinkPending ? (
-                                    <button
-                                        type="button"
-                                        className={formStyles.action_button}
-                                        disabled={ld.isActivating}
-                                        onClick={this.onRobboIdClick}
-                                    >
-                                        {this.props.intl.formatMessage(messages.robbo_id_login)}
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className={classNames(
-                                            formStyles.action_button,
-                                            styles.license_button_secondary
-                                        )}
-                                        onClick={this.onCancelDeviceLinkClick}
-                                    >
-                                        {this.props.intl.formatMessage(messages.robbo_id_cancel)}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {deviceLinkPending ? (
-                            <div className={styles.license_device_link} role="status">
-                                <div className={styles.license_user_code}>
-                                    {ld.deviceLinkUserCode || '—'}
-                                </div>
-                                <div className={styles.license_hint}>
-                                    {this.props.intl.formatMessage(messages.device_link_waiting, {
-                                        code: ld.deviceLinkUserCode || '—'
-                                    })}
-                                </div>
-                                {ld.deviceLinkVerificationUri ? (
-                                    <button
-                                        type="button"
-                                        className={classNames(
-                                            formStyles.action_button,
-                                            styles.license_button_secondary,
-                                            styles.license_link_again
-                                        )}
-                                        onClick={this.onOpenVerificationAgain}
-                                    >
-                                        {this.props.intl.formatMessage(messages.robbo_id_open_again)}
-                                    </button>
-                                ) : null}
-                            </div>
-                        ) : (
-                            <div className={styles.license_hint}>
-                                {this.props.intl.formatMessage(messages.device_link_hint)}
-                            </div>
-                        )}
-
-                        <div className={styles.license_field_row}>
-                            <label
-                                htmlFor="license-key"
-                                className={styles.license_field_label}
-                            >
-                                {this.props.intl.formatMessage(messages.license_key)}
-                            </label>
-                            <input
-                                id="license-key"
-                                type="text"
-                                className={styles.license_text_input}
-                                autoComplete="off"
-                                value={this.state.licenseKeyDraft}
-                                onChange={this.handleKeyChange}
-                                disabled={deviceLinkPending}
-                            />
-                        </div>
-
-                        <div className={classNames(formStyles.footer, styles.license_actions)}>
-                            <div className={formStyles.button_group}>
-                                <button
-                                    type="button"
-                                    className={formStyles.action_button}
-                                    disabled={ld.isActivating || deviceLinkPending}
-                                    onClick={this.onActivateClick}
-                                >
-                                    {this.props.intl.formatMessage(messages.activate)}
-                                </button>
-                                <button
-                                    type="button"
-                                    className={classNames(
-                                        formStyles.action_button,
-                                        styles.license_button_secondary
-                                    )}
-                                    onClick={this.onClearClick}
-                                >
-                                    {this.props.intl.formatMessage(messages.clear_license)}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div
-                            className={classNames(styles.license_status, {
-                                [styles.license_status_error]: statusIsError
-                            })}
-                        >
-                            {this.renderStatusLine()}
-                        </div>
-
-                        {premiumHint ? (
-                            <div className={styles.license_hint}>{premiumHint}</div>
-                        ) : null}
-
-                        <div className={styles.license_hint}>
-                            {this.props.intl.formatMessage(messages.hint)}
-                        </div>
-
-                        {showDevHint ? (
-                            <div className={styles.license_hint}>
-                                {this.props.intl.formatMessage(messages.hint_dev)}
+                        {showAddonWarning ? (
+                            <div className={styles.license_addon_warning} role="alert">
+                                {this.props.intl.formatMessage(messages.addon_issue, {
+                                    error: ld.addonError
+                                })}
                             </div>
                         ) : null}
+
+                        {isActive ? this.renderActiveCard() : this.renderInactiveForm()}
+
+                        {this.renderFeaturesSection()}
+                        {this.renderDevBlock()}
                     </div>
                 </div>
             </div>

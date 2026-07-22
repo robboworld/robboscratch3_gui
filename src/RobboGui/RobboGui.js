@@ -19,6 +19,7 @@ import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 
 import RobboMenu from './RobboMenu';
 import PremiumUpdateProgress from './PremiumUpdateProgress';
+import LicenseActivationFeedback from './LicenseActivationFeedback';
 import OlympiadExpertPromoBanner from './OlympiadExpertPromoBanner';
 import FirmwareFlasherComponent from './FirmwareFlasherComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
@@ -48,6 +49,7 @@ import {
 } from '../lib/settingsLoader';
 import { isRobboLinkMobileWebContext } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
+import {hydrateLicenseThunk} from './actions/licenseActions';
 
 import { withAlert } from 'react-alert';
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
@@ -115,6 +117,8 @@ class RobboGui extends Component {
   }
 
   componentDidMount(){
+      this.props.onHydrateLicense();
+
       if (this.props.vm) {
         const RCA = this.props.vm.getRCA();
         const LCA = this.props.vm.getLCA();
@@ -338,6 +342,7 @@ class RobboGui extends Component {
          <RobboMenu VM={this.props.vm} />
 
          <PremiumUpdateProgress />
+         <LicenseActivationFeedback />
 
          <OlympiadExpertPromoBanner />
 
@@ -434,6 +439,9 @@ const mapDispatchToProps = dispatch => ({
         },
       onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
         dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
+      },
+      onHydrateLicense: () => {
+        dispatch(hydrateLicenseThunk());
       }
 
         // onTriggerNeedLanguageReload:  () => {

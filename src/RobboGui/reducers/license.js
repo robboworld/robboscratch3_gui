@@ -39,6 +39,8 @@ export const LICENSE_PREMIUM_CHECK_RESULT = 'LICENSE_PREMIUM_CHECK_RESULT';
 export const LICENSE_CHECK_STATUS = 'LICENSE_CHECK_STATUS';
 export const LICENSE_UPDATE_PHASE = 'LICENSE_UPDATE_PHASE';
 export const LICENSE_UPDATE_PROGRESS = 'LICENSE_UPDATE_PROGRESS';
+export const LICENSE_FEEDBACK_SHOW = 'LICENSE_FEEDBACK_SHOW';
+export const LICENSE_FEEDBACK_DISMISS = 'LICENSE_FEEDBACK_DISMISS';
 
 export function licenseCheckInitialState () {
     return {
@@ -60,6 +62,15 @@ export function licenseUpdateInitialState () {
         downloadUrl: '',
         errorMessage: '',
         errorCode: ''
+    };
+}
+
+export function licenseFeedbackInitialState () {
+    return {
+        phase: 'idle',
+        capabilities: [],
+        errorCode: '',
+        errorMessage: ''
     };
 }
 
@@ -103,6 +114,7 @@ export function licenseInitialState () {
         addonManifestUrl: '',
         licenseId: '',
         seatId: '',
+        expiresAt: null,
         deviceBindingValid: false,
         addonReady: false,
         addonError: '',
@@ -113,7 +125,8 @@ export function licenseInitialState () {
         deviceLinkUserCode: '',
         deviceLinkVerificationUri: '',
         check: licenseCheckInitialState(),
-        update: licenseUpdateInitialState()
+        update: licenseUpdateInitialState(),
+        feedback: licenseFeedbackInitialState()
     };
 }
 
@@ -148,6 +161,9 @@ export default function reducer (state, action) {
         next.capabilities = action.payload.capabilities.slice();
         next.licenseId = action.payload.licenseId || '';
         next.seatId = action.payload.seatId || '';
+        next.expiresAt = typeof action.payload.expiresAt === 'number'
+            ? action.payload.expiresAt
+            : null;
         next.deviceBindingValid = action.payload.deviceBindingValid !== false;
         next.status = 'valid_offline';
         next.activationError = '';
@@ -210,6 +226,9 @@ export default function reducer (state, action) {
             : [];
         next.licenseId = action.payload.licenseId || '';
         next.seatId = action.payload.seatId || '';
+        next.expiresAt = typeof action.payload.expiresAt === 'number'
+            ? action.payload.expiresAt
+            : null;
         next.deviceBindingValid = action.payload.deviceBindingValid !== false;
         next.status =
             typeof action.payload.status === 'string'
@@ -250,6 +269,16 @@ export default function reducer (state, action) {
         next.update = Object.assign({}, state.update, {
             progress: typeof action.payload === 'number' ? action.payload : state.update.progress
         });
+        return next;
+
+    case LICENSE_FEEDBACK_SHOW:
+        next = immutable_copy(state);
+        next.feedback = Object.assign({}, licenseFeedbackInitialState(), action.payload || {});
+        return next;
+
+    case LICENSE_FEEDBACK_DISMISS:
+        next = immutable_copy(state);
+        next.feedback = licenseFeedbackInitialState();
         return next;
 
     default:

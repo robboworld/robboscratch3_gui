@@ -28,7 +28,10 @@ import {
     LICENSE_CHECK_STATUS,
     LICENSE_UPDATE_PHASE,
     LICENSE_UPDATE_PROGRESS,
+    LICENSE_FEEDBACK_SHOW,
+    LICENSE_FEEDBACK_DISMISS,
     licenseUpdateInitialState,
+    licenseFeedbackInitialState,
     readPersistedActivationBase,
     readPersistedToken
 } from '../reducers/license.js';
@@ -132,6 +135,19 @@ function loadAddonDispatched (dispatch, manifestUrl, signedOfflineToken, license
  * @param {string} fingerprint
  * @returns {Promise}
  */
+function dispatchActivationErrorFeedback (dispatch, err) {
+    const code = (err && (err.errorCode || err.message)) || 'activation_failed';
+    dispatch({
+        type: LICENSE_FEEDBACK_SHOW,
+        payload: {
+            phase: 'error',
+            capabilities: [],
+            errorCode: String(code),
+            errorMessage: (err && err.message) ? String(err.message) : String(code)
+        }
+    });
+}
+
 function finishActivationFromResponse (dispatch, base, resp, fingerprint) {
     const publicBaseForUrls = base.replace(/\/$/, '');
     return verifyActivationJwt(resp.signedOfflineToken).then(jwtPayload => {
@@ -158,7 +174,17 @@ function finishActivationFromResponse (dispatch, base, resp, fingerprint) {
                 capabilities: capList,
                 licenseId: licenseContext.licenseId,
                 seatId: licenseContext.seatId,
+                expiresAt: licenseContext.expiresAt,
                 deviceBindingValid: true
+            }
+        });
+        dispatch({
+            type: LICENSE_FEEDBACK_SHOW,
+            payload: {
+                phase: 'success',
+                capabilities: capList.slice(),
+                errorCode: '',
+                errorMessage: ''
             }
         });
         return loadAddonDispatched(
@@ -221,6 +247,7 @@ export function activateLicenseThunk (licenseKeyTrimmed) {
                     type: LICENSE_ACTIVATE_FAILURE,
                     payload: {message: err.message || String(err)}
                 });
+                dispatchActivationErrorFeedback(dispatch, err);
             });
     };
 }
@@ -299,10 +326,13 @@ export function startDeviceLinkThunk () {
                         return;
                     }
                     if (Date.now() > deadline) {
+                        const expiredErr = new Error('device_link_expired');
+                        expiredErr.errorCode = 'device_link_expired';
                         dispatch({
                             type: LICENSE_ACTIVATE_FAILURE,
                             payload: {message: 'device_link_expired'}
                         });
+                        dispatchActivationErrorFeedback(dispatch, expiredErr);
                         return;
                     }
                     postDeviceLinkPoll(base, {
@@ -338,6 +368,7 @@ export function startDeviceLinkThunk () {
                                 type: LICENSE_ACTIVATE_FAILURE,
                                 payload: {message: err.message || String(err)}
                             });
+                            dispatchActivationErrorFeedback(dispatch, err);
                         });
                 };
 
@@ -352,6 +383,7 @@ export function startDeviceLinkThunk () {
                     type: LICENSE_ACTIVATE_FAILURE,
                     payload: {message: err.message || String(err)}
                 });
+                dispatchActivationErrorFeedback(dispatch, err);
             });
     };
 }
@@ -408,6 +440,7 @@ export function hydrateLicenseThunk () {
                                     addonManifestUrl: manifestUrl,
                                     licenseId: licenseContext.licenseId,
                                     seatId: licenseContext.seatId,
+                                    expiresAt: licenseContext.expiresAt,
                                     deviceBindingValid: true,
                                     status: 'valid_offline',
                                     addonReady: false,
@@ -458,6 +491,16 @@ export function clearLicenseThunk () {
         dispatch({
             type: LICENSE_CLEAR,
             payload: {activationBaseUrl: base}
+        });
+    };
+}
+
+/** @returns {function} */
+export function licenseFeedbackDismissThunk () {
+    return function (dispatch) {
+        dispatch({
+            type: LICENSE_FEEDBACK_DISMISS,
+            payload: licenseFeedbackInitialState()
         });
     };
 }
