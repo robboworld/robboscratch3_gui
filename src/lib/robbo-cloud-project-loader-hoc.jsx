@@ -6,7 +6,7 @@ import {connect} from 'react-redux';
 import queryString from 'query-string';
 
 import log from './log';
-import {downloadProjectSb3, getProjectPage} from './robbo-account/robboAccountClient';
+import {downloadProjectSb3, getProjectPage, getSessionStatus} from './robbo-account/robboAccountClient';
 import {canonicalizeLoopbackEditorHost} from './robbo-account/robboAccountConfig';
 import {setCloudProjectPageId} from '../RobboGui/actions/robboAccountActions';
 import {
@@ -117,30 +117,40 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
             this.props.dispatchProjectUpload(action);
             this.props.openLoadingProject();
 
-            // Fetch metadata (title) and sb3 in parallel; missing sb3 = new empty cloud project.
-            const metaPromise = getProjectPage(projectPageId)
-                .then(resp => {
-                    const page = resp && resp.projectPage;
-                    return (page && page.title) || '';
-                })
-                .catch(err => {
-                    log.warn('cloud project meta load failed', err);
-                    return '';
-                });
-
-            const sb3Promise = downloadProjectSb3(projectPageId)
-                .then(buffer => ({ok: true, buffer}))
-                .catch(err => {
-                    // Newly created pages may not have an uploaded .sb3 yet.
-                    if (err && (err.status === 404 ||
-                        (err.message && String(err.message).indexOf('not found') >= 0) ||
-                        err.errorCode === 'project file not found')) {
-                        return {ok: false, buffer: null};
+            // Wait for ЛК session (OIDC cookie or refresh_token → Bearer) before project API calls.
+            getSessionStatus()
+                .then(status => {
+                    if (!status || !status.authenticated) {
+                        const err = new Error('not_authenticated');
+                        err.errorCode = 'not_authenticated';
+                        throw err;
                     }
-                    throw err;
-                });
 
-            Promise.all([sb3Promise, metaPromise])
+                    // Fetch metadata (title) and sb3 in parallel; missing sb3 = new empty cloud project.
+                    const metaPromise = getProjectPage(projectPageId)
+                        .then(resp => {
+                            const page = resp && resp.projectPage;
+                            return (page && page.title) || '';
+                        })
+                        .catch(err => {
+                            log.warn('cloud project meta load failed', err);
+                            return '';
+                        });
+
+                    const sb3Promise = downloadProjectSb3(projectPageId)
+                        .then(buffer => ({ok: true, buffer}))
+                        .catch(err => {
+                            // Newly created pages may not have an uploaded .sb3 yet.
+                            if (err && (err.status === 404 ||
+                                (err.message && String(err.message).indexOf('not found') >= 0) ||
+                                err.errorCode === 'project file not found')) {
+                                return {ok: false, buffer: null};
+                            }
+                            throw err;
+                        });
+
+                    return Promise.all([sb3Promise, metaPromise]);
+                })
                 .then(([sb3, title]) => {
                     const afterTitle = () => {
                         if (title) {
