@@ -139,14 +139,9 @@
     outline-offset: -2px;
 }
 
-.menu-bar-item.growable {
+.project-title-item {
+    flex: 0 1 auto;
     max-width: $menu-bar-item-max-width;
-    flex: 1;
-}
-
-.title-field-growable {
-    flex-grow: 1;
-    width: 2rem;
 }
 
 .file-group {
@@ -166,6 +161,16 @@
     left: 0;
     margin-top: 0;
     z-index: $z-index-menu-bar;
+}
+
+.account-menu-dropdown {
+    left: auto;
+    right: 0;
+}
+
+[dir="rtl"] .account-menu-dropdown {
+    left: 0;
+    right: auto;
 }
 
 .feedback-link {
@@ -247,8 +252,9 @@
 
 .profile-icon {
     margin: 0 .25rem;
-    width: $menu-bar-button-size;
-    border-radius: $form-radius;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
 }
 
 .dropdown-caret-icon {

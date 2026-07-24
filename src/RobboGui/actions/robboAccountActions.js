@@ -1,5 +1,6 @@
 import log from '../../lib/log';
 import dataURItoBlob from '../../lib/data-uri-to-blob';
+import queryString from 'query-string';
 import {
     getSessionStatus,
     signIn,
@@ -26,6 +27,20 @@ import {
     ROBBO_ACCOUNT_SIGN_OUT
 } from '../reducers/robboAccount';
 import {setProjectTitle} from '../../reducers/project-title';
+
+const UUID_RE = /^[0-9a-fA-F-]{36}$/;
+
+function parseUrlProjectPageId () {
+    if (typeof window === 'undefined') {
+        return '';
+    }
+    const q = queryString.parse(window.location.search);
+    const id = (q.projectPageId || q.projectRef || '').trim();
+    if (!id || !UUID_RE.test(id)) {
+        return '';
+    }
+    return id;
+}
 
 function displayNameFromStatus (status) {
     if (!status) {
@@ -57,6 +72,55 @@ export function clearSaveStatus () {
     return {type: ROBBO_ACCOUNT_CLEAR_SAVE_STATUS};
 }
 
+/**
+ * Ensure a cloud projectPageId exists for authenticated standalone editor sessions.
+ * Uses URL param when present; otherwise creates a new project page in ЛК.
+ */
+export function ensureCloudProjectPageThunk () {
+    return function (dispatch, getState) {
+        const account = getState().scratchGui.robboAccount || {};
+        if (account.cloudProjectPageId) {
+            return Promise.resolve(account.cloudProjectPageId);
+        }
+        const urlId = parseUrlProjectPageId();
+        if (urlId) {
+            dispatch(setCloudProjectPageId(urlId));
+            return Promise.resolve(urlId);
+        }
+        if (account.sessionStatus !== 'authenticated') {
+            return Promise.resolve('');
+        }
+        return createProjectPage()
+            .then(resp => {
+                const page = resp && resp.projectPage;
+                const id = page && (page.projectPageId || page.projectPageID);
+                if (!id) {
+                    throw new Error('create_project_no_id');
+                }
+                dispatch(setCloudProjectPageId(id));
+                if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+                    const params = Object.assign(
+                        {},
+                        queryString.parse(window.location.search),
+                        {projectPageId: id}
+                    );
+                    const search = queryString.stringify(params);
+                    const hash = window.location.hash || '';
+                    window.history.replaceState(
+                        null,
+                        '',
+                        `${window.location.pathname}?${search}${hash}`
+                    );
+                }
+                return id;
+            })
+            .catch(err => {
+                log.warn('ensure cloud project failed', err);
+                return '';
+            });
+    };
+}
+
 export function checkSessionThunk () {
     return function (dispatch) {
         if (canonicalizeLoopbackEditorHost()) {
@@ -81,7 +145,7 @@ export function checkSessionThunk () {
                                 lmsPasswordFallback : undefined
                         }
                     });
-                    return status;
+                    return dispatch(ensureCloudProjectPageThunk()).then(() => status);
                 }
                 dispatch({
                     type: ROBBO_ACCOUNT_SESSION_FAILURE,

@@ -8,39 +8,48 @@ can set a width for example or what it should do in a flex box (eg. grow).
 */
 
 .title-field {
-    border: 1px dashed $ui-black-transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
     border-radius: $form-radius;
     -webkit-border-radius: $form-radius;
     -moz-border-radius: $form-radius;
-    background-color: $ui-white-transparent;
+    background-color: transparent;
     background-clip: padding-box;
     -webkit-background-clip: padding-box;
-    height: auto;
+    box-sizing: border-box;
+    height: calc(0.8rem + 1rem + 2px);
+    line-height: 1;
     padding: .5rem;
+    field-sizing: content;
+    width: auto;
+    min-width: 4.5rem;
+    max-width: $menu-bar-item-max-width;
 }
 
 .title-field {
-    ccolor: #383838;
+    color: white;
     font-weight: bold;
     font-size: .8rem;
 }
 
 .title-field::placeholder {
-    color: $ui-white;
+    color: rgba(255, 255, 255, 0.55);
     font-weight: normal;
     font-size: .8rem;
     font-style: italic;
 }
 
 .title-field:hover {
-    background-color: hsla(0, 100%, 100%, 0.5);
+    background-color: $ui-black-transparent;
 }
 
 .title-field:focus {
-    outline:none;
-    border: 1px solid $ui-transparent;
-    -webkit-box-shadow: 0 0 0 calc($space * .5) $ui-white-transparent;
-    box-shadow: 0 0 0 calc($space * .5) $ui-white-transparent;
+    outline: none;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: none;
     background-color: $ui-white;
     color: $text-primary;
+}
+
+.title-field:focus::placeholder {
+    color: $text-primary-transparent;
 }

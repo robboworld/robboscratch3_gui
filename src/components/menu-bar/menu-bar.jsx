@@ -61,7 +61,7 @@ import styles from './menu-bar.css';
 import helpIcon from '../../lib/assets/icon--tutorials.svg';
 import mystuffIcon from './icon--mystuff.png';
 import feedbackIcon from './icon--feedback.svg';
-import profileIcon from './icon--profile.png';
+import profileIcon from './icon--account.svg';
 import remixIcon from './icon--remix.svg';
 import dropdownCaret from './dropdown-caret.svg';
 import fileIcon from './icon--file.svg';
@@ -725,9 +725,8 @@ class MenuBar extends React.Component {
                     ) : null}
 
                     {this.props.cloudProjectPageId ? (
-                        <div className={classNames(styles.menuBarItem, styles.growable)}>
+                        <div className={classNames(styles.menuBarItem, styles.projectTitleItem)}>
                             <ProjectTitleInput
-                                className={classNames(styles.titleFieldGrowable)}
                                 onUpdateProjectTitle={this.handleUpdateCloudProjectTitle}
                             />
                         </div>
@@ -792,7 +791,7 @@ class MenuBar extends React.Component {
                                     src={dropdownCaret}
                                 />
                                 <MenuBarMenu
-                                    className={classNames(styles.menuBarMenu)}
+                                    className={classNames(styles.menuBarMenu, styles.accountMenuDropdown)}
                                     open={this.props.accountMenuOpen}
                                     place={this.props.isRtl ? 'right' : 'left'}
                                     onRequestClose={this.props.onRequestCloseAccount}

@@ -51,7 +51,7 @@ const LoginDropdown = ({
     renderLogin
 }) => (
     <MenuBarMenu
-        className={className}
+        className={classNames(className, styles.loginMenuDropdown)}
         open={isOpen}
         // note: the Rtl styles are switched here, because this menu is justified
         // opposite all the others
