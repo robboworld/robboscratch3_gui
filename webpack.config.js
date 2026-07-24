@@ -71,7 +71,10 @@ const base = {
     devtool: isProduction ? false : 'cheap-module-source-map',
     devServer: {
         contentBase: path.resolve(__dirname, 'build'),
-        host: '127.0.0.1',
+        // Prefer localhost (not 127.0.0.1): refresh_token cookies are host-bound and
+        // ЛК opens the editor via SCRATCH_EDITOR_URL=http://localhost:8601/.
+        host: 'localhost',
+        disableHostCheck: true,
         port: process.env.PORT || 8601,
         headers: {
             'Permissions-Policy': 'unload=(self)'
@@ -190,7 +193,9 @@ module.exports = [
                     'process.env.DEBUG': Boolean(process.env.DEBUG),
                     'process.env.GA_ID': '"' + (process.env.GA_ID || 'UA-000000-01') + '"',
                     'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"',
-                    'process.env.RS3_ACTIVATION_BASE_URL': JSON.stringify(process.env.RS3_ACTIVATION_BASE_URL || '')
+                    'process.env.RS3_ACTIVATION_BASE_URL': JSON.stringify(process.env.RS3_ACTIVATION_BASE_URL || ''),
+                    'process.env.ROBBO_ACCOUNT_API_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_API_URL || ''),
+                    'process.env.ROBBO_ACCOUNT_LK_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_LK_URL || '')
                 }),
                 new HtmlWebpackPlugin({
                     chunks: ['lib.min', 'gui'],
@@ -282,7 +287,9 @@ module.exports = [
             plugins: base.plugins.concat([
                 new webpack.DefinePlugin({
                     'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"',
-                    'process.env.RS3_ACTIVATION_BASE_URL': JSON.stringify(process.env.RS3_ACTIVATION_BASE_URL || '')
+                    'process.env.RS3_ACTIVATION_BASE_URL': JSON.stringify(process.env.RS3_ACTIVATION_BASE_URL || ''),
+                    'process.env.ROBBO_ACCOUNT_API_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_API_URL || ''),
+                    'process.env.ROBBO_ACCOUNT_LK_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_LK_URL || '')
                 }),
                 new CopyWebpackPlugin([{
                     from: 'node_modules/scratch-blocks/media',

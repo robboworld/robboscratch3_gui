@@ -7,6 +7,7 @@ import queryString from 'query-string';
 
 import log from './log';
 import {downloadProjectSb3, getProjectPage} from './robbo-account/robboAccountClient';
+import {canonicalizeLoopbackEditorHost} from './robbo-account/robboAccountConfig';
 import {setCloudProjectPageId} from '../RobboGui/actions/robboAccountActions';
 import {
     LoadingState,
@@ -47,6 +48,9 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
             this._retryCount = 0;
         }
         componentDidMount () {
+            if (canonicalizeLoopbackEditorHost()) {
+                return;
+            }
             this.tryLoadCloudProject();
         }
         componentDidUpdate (prevProps) {

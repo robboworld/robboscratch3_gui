@@ -30,13 +30,56 @@ function currentProtocol () {
     return 'http:';
 }
 
+function isLoopbackHost (hostname) {
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+/**
+ * Cookies for :8080 are host-bound: login on 127.0.0.1 does not apply on localhost.
+ * Prefer a single loopback name (localhost) for editor + API + ЛК links.
+ * @returns {boolean} true if a redirect was triggered
+ */
+export function canonicalizeLoopbackEditorHost () {
+    if (typeof window === 'undefined' || !window.location) {
+        return false;
+    }
+    const {hostname, protocol, port, pathname, search, hash} = window.location;
+    if (hostname !== '127.0.0.1') {
+        return false;
+    }
+    const portPart = port ? `:${port}` : '';
+    const next = `${protocol}//localhost${portPart}${pathname}${search}${hash}`;
+    window.location.replace(next);
+    return true;
+}
+
+/**
+ * Rewrite loopback hostname in a URL to match the current page host.
+ * @param {string} url
+ * @returns {string}
+ */
+export function alignLoopbackUrlHost (url) {
+    if (!url || typeof window === 'undefined' || !window.location) {
+        return url;
+    }
+    try {
+        const parsed = new URL(url, window.location.origin);
+        const pageHost = window.location.hostname;
+        if (isLoopbackHost(pageHost) && isLoopbackHost(parsed.hostname) && parsed.hostname !== pageHost) {
+            parsed.hostname = pageHost;
+            return parsed.toString();
+        }
+    } catch (e) { /* ignore */ }
+    return url;
+}
+
 /**
  * @returns {string} e.g. http://localhost:8080
  */
 export function resolveApiBase () {
     const fromEnv = envString('ROBBO_ACCOUNT_API_URL') || envString('RS3_ACTIVATION_BASE_URL');
     if (fromEnv) {
-        return trimTrailingSlash(fromEnv);
+        return trimTrailingSlash(alignLoopbackUrlHost(fromEnv));
     }
     return `${currentProtocol()}//${currentHostname()}:8080`;
 }
@@ -47,7 +90,7 @@ export function resolveApiBase () {
 export function resolveLkBase () {
     const fromEnv = envString('ROBBO_ACCOUNT_LK_URL') || envString('RS3_ACCOUNT_BASE_URL');
     if (fromEnv) {
-        return trimTrailingSlash(fromEnv);
+        return trimTrailingSlash(alignLoopbackUrlHost(fromEnv));
     }
     return `${currentProtocol()}//${currentHostname()}:3030`;
 }

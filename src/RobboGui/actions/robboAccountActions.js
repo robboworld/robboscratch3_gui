@@ -2,6 +2,7 @@ import log from '../../lib/log';
 import dataURItoBlob from '../../lib/data-uri-to-blob';
 import {
     getSessionStatus,
+    signIn,
     createProjectPage,
     updateProjectPage,
     uploadProjectSb3,
@@ -10,7 +11,8 @@ import {
 } from '../../lib/robbo-account/robboAccountClient';
 import {
     oidcLogoutUrl,
-    resolveLkBase
+    resolveLkBase,
+    canonicalizeLoopbackEditorHost
 } from '../../lib/robbo-account/robboAccountConfig';
 import {
     ROBBO_ACCOUNT_SESSION_START,
@@ -37,6 +39,13 @@ function displayNameFromStatus (status) {
     return (status.sub || status.edx_user_id || '').trim();
 }
 
+function lmsPasswordFallbackFromStatus (status) {
+    if (status && typeof status.lms_password_fallback === 'boolean') {
+        return status.lms_password_fallback;
+    }
+    return undefined;
+}
+
 export function setCloudProjectPageId (cloudProjectPageId) {
     return {
         type: ROBBO_ACCOUNT_SET_CLOUD_PROJECT,
@@ -50,9 +59,13 @@ export function clearSaveStatus () {
 
 export function checkSessionThunk () {
     return function (dispatch) {
+        if (canonicalizeLoopbackEditorHost()) {
+            return Promise.resolve();
+        }
         dispatch({type: ROBBO_ACCOUNT_SESSION_START});
         return getSessionStatus()
             .then(status => {
+                const lmsPasswordFallback = lmsPasswordFallbackFromStatus(status);
                 if (status && status.authenticated) {
                     dispatch({
                         type: ROBBO_ACCOUNT_SESSION_SUCCESS,
@@ -63,14 +76,20 @@ export function checkSessionThunk () {
                                 sub: status.sub || '',
                                 role: status.role || 0,
                                 displayName: displayNameFromStatus(status)
-                            }
+                            },
+                            lmsPasswordFallback: typeof lmsPasswordFallback === 'boolean' ?
+                                lmsPasswordFallback : undefined
                         }
                     });
                     return status;
                 }
                 dispatch({
                     type: ROBBO_ACCOUNT_SESSION_FAILURE,
-                    payload: {anonymous: true}
+                    payload: {
+                        anonymous: true,
+                        lmsPasswordFallback: typeof lmsPasswordFallback === 'boolean' ?
+                            lmsPasswordFallback : undefined
+                    }
                 });
                 return status;
             })
@@ -229,19 +248,49 @@ export function updateCloudProjectTitleThunk (newTitle) {
     };
 }
 
+function navigateTop (url) {
+    try {
+        if (typeof window !== 'undefined' && window.top && window.top !== window) {
+            window.top.location.href = url;
+            return;
+        }
+    } catch (e) { /* cross-origin top — fall through */ }
+    if (typeof window !== 'undefined') {
+        window.location.href = url;
+    }
+}
+
+/**
+ * Inline dropdown password sign-in (MIT-style). Uses POST /auth/sign-in.
+ * @param {string} email
+ * @param {string} password
+ * @returns {function} thunk → Promise<{ok: boolean, status?: number, errorCode?: string}>
+ */
+export function signInWithPasswordThunk (email, password) {
+    return function (dispatch) {
+        dispatch({type: ROBBO_ACCOUNT_SESSION_START});
+        return signIn(email, password)
+            .then(() => dispatch(checkSessionThunk()))
+            .then(status => ({ok: !!(status && status.authenticated)}))
+            .catch(err => {
+                dispatch({
+                    type: ROBBO_ACCOUNT_SESSION_FAILURE,
+                    payload: {anonymous: true}
+                });
+                return {
+                    ok: false,
+                    status: err && err.status,
+                    errorCode: err && err.errorCode
+                };
+            });
+    };
+}
+
 export function signOutThunk () {
     return function (dispatch) {
         clearAccessTokenMemory();
         dispatch({type: ROBBO_ACCOUNT_SIGN_OUT});
         const target = oidcLogoutUrl(`${resolveLkBase()}/login`);
-        try {
-            if (window.top && window.top !== window) {
-                window.top.location.href = target;
-            } else {
-                window.location.href = target;
-            }
-        } catch (e) {
-            window.location.href = target;
-        }
+        navigateTop(target);
     };
 }

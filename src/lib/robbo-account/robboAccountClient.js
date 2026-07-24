@@ -89,12 +89,36 @@ export function refreshAccessToken () {
 }
 
 /**
+ * Password sign-in via ЛК REST. Sets refresh_token cookie and returns access JWT.
+ * @param {string} email email or LMS username
+ * @param {string} password
+ * @returns {Promise<{accessToken: string}>}
+ */
+export function signIn (email, password) {
+    return fetchJson('/auth/sign-in', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            email: email || '',
+            password: password || '',
+            role: 0
+        })
+    }).then(json => {
+        if (json && json.accessToken) {
+            accessTokenMemory = json.accessToken;
+        }
+        return json;
+    });
+}
+
+/**
  * @returns {Promise<{
  *   authenticated: boolean,
  *   email?: string,
  *   edx_user_id?: string,
  *   sub?: string,
- *   role?: number
+ *   role?: number,
+ *   lms_password_fallback?: boolean
  * }>}
  */
 export function getSessionStatus () {
@@ -108,14 +132,14 @@ export function getSessionStatus () {
                 if (!token) {
                     return status || {authenticated: false};
                 }
-                return {
+                return Object.assign({}, status || {}, {
                     authenticated: true,
-                    email: '',
-                    edx_user_id: '',
-                    sub: '',
-                    role: 0,
+                    email: (status && status.email) || '',
+                    edx_user_id: (status && status.edx_user_id) || '',
+                    sub: (status && status.sub) || '',
+                    role: (status && status.role) || 0,
                     auth_via: 'refresh'
-                };
+                });
             });
         })
         .catch(() => refreshAccessToken().then(token => {

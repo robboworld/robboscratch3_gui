@@ -22,6 +22,7 @@ import ProjectTitleInput from './project-title-input.jsx';
 import AuthorInfo from './author-info.jsx';
 import AccountNav from '../../containers/account-nav.jsx';
 import LoginDropdown from './login-dropdown.jsx';
+import RobboLoginForm from './robbo-login-form.jsx';
 import SB3Downloader from '../../containers/sb3-downloader.jsx';
 import DeletionRestorer from '../../containers/deletion-restorer.jsx';
 import TurboMode from '../../containers/turbo-mode.jsx';
@@ -80,7 +81,6 @@ import {
     updateCloudProjectTitleThunk
 } from '../../RobboGui/actions/robboAccountActions';
 import {
-    loginUrl,
     myProjectsUrl,
     projectPageUrl,
     resolveLkBase
@@ -246,7 +246,6 @@ class MenuBar extends React.Component {
             'handleKeyPress',
             'handleRestoreOption',
             'restoreOptionMessage',
-            'handleClickSignIn',
             'handleClickSignOut',
             'handleClickMyStuff',
             'handleClickAccountHome',
@@ -264,12 +263,6 @@ class MenuBar extends React.Component {
     }
     componentWillUnmount () {
         document.removeEventListener('keydown', this.handleKeyPress);
-    }
-    handleClickSignIn () {
-        const returnTo = (typeof window !== 'undefined' && window.top && window.top.location) ?
-            window.top.location.href :
-            (typeof window !== 'undefined' ? window.location.href : '');
-        navigateTop(loginUrl(returnTo));
     }
     handleClickSignOut () {
         if (this.props.onSignOut) {
@@ -817,10 +810,21 @@ class MenuBar extends React.Component {
                         </React.Fragment>
                     ) : (
                         <div
-                            className={classNames(styles.menuBarItem, styles.hoverable)}
-                            onClick={this.handleClickSignIn}
+                            className={classNames(styles.menuBarItem, styles.hoverable, {
+                                [styles.active]: this.props.loginMenuOpen
+                            })}
+                            onMouseUp={this.props.onClickLogin}
                         >
                             {this.props.intl.formatMessage(messages.signIn)}
+                            <LoginDropdown
+                                className={classNames(styles.menuBarMenu)}
+                                isOpen={this.props.loginMenuOpen}
+                                isRtl={this.props.isRtl}
+                                renderLogin={({onClose}) => (
+                                    <RobboLoginForm onClose={onClose} />
+                                )}
+                                onClose={this.props.onRequestCloseLogin}
+                            />
                         </div>
                     )}
                 </div>
@@ -886,7 +890,6 @@ MenuBar.propTypes = {
     onUpdateProjectTitle: PropTypes.func,
     projectChanged: PropTypes.bool,
     projectTitle: PropTypes.string,
-    renderLogin: PropTypes.func,
     robboAccountUser: PropTypes.object,
     sessionExists: PropTypes.bool,
     showComingSoon: PropTypes.bool,
