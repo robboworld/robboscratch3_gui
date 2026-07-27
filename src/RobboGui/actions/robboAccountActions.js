@@ -354,7 +354,8 @@ export function signOutThunk () {
     return function (dispatch) {
         clearAccessTokenMemory();
         dispatch({type: ROBBO_ACCOUNT_SIGN_OUT});
-        const target = oidcLogoutUrl(`${resolveLkBase()}/login`);
+        // Land on LK landing with logged_out=1 so FE clears localStorage token on :3030.
+        const target = oidcLogoutUrl(`${resolveLkBase()}/?logged_out=1`);
         navigateTop(target);
     };
 }

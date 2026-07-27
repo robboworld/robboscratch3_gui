@@ -28,3 +28,25 @@ export function resolveAccountHomeUrl (activationBaseUrl) {
         return 'http://localhost:3030/home';
     }
 }
+
+/**
+ * «My licenses» page in the personal account (subscription / seats).
+ *
+ * @param {string} [activationBaseUrl]
+ * @returns {string}
+ */
+export function resolveLicensesUrl (activationBaseUrl) {
+    const home = resolveAccountHomeUrl(activationBaseUrl);
+    try {
+        const url = new URL(home);
+        url.pathname = '/licenses';
+        url.search = '';
+        url.hash = '';
+        return url.toString().replace(/\/$/, '');
+    } catch (e) {
+        return 'http://localhost:3030/licenses';
+    }
+}
+
+/** Public download directory for Desktop installers. */
+export const DESKTOP_DOWNLOAD_URL = 'http://files.robbo.ru/Software/RobboScratch3.0/';

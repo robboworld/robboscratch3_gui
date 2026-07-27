@@ -8,7 +8,7 @@ import {loadPaidAddonFromManifestUrl, clearAddonCache} from '../../lib/licensing
 import paidAddonRegistry from '../../lib/licensing/paidAddonRegistry.js';
 import {computeDeviceFingerprint, getCachedDeviceFingerprint, LS_FP_CACHE} from '../../lib/licensing/deviceFingerprint.js';
 import {assertPremiumAutoUpdateCapability} from '../../lib/licensing/capabilityGateway.js';
-import {openExternalUrl} from '../../lib/platform.js';
+import {isDesktopWithBluetooth, openExternalUrl} from '../../lib/platform.js';
 import {APP_VERSION} from '../AboutWindowComponent.js';
 import {
     LS_ACTIVATION_BASE,
@@ -222,6 +222,9 @@ export function persistActivationBaseUrlThunk (activationBaseUrl) {
  */
 export function activateLicenseThunk (licenseKeyTrimmed) {
     return function (dispatch, getState) {
+        if (!isDesktopWithBluetooth()) {
+            return Promise.resolve();
+        }
         const state = getState();
         const base = (state.scratchGui.license.activationBaseUrl || '').trim();
         if (!licenseKeyTrimmed || !licenseKeyTrimmed.trim()) {
@@ -270,6 +273,9 @@ export function cancelDeviceLinkThunk () {
  */
 export function startDeviceLinkThunk () {
     return function (dispatch, getState) {
+        if (!isDesktopWithBluetooth()) {
+            return Promise.resolve();
+        }
         const state = getState();
         const base = (state.scratchGui.license.activationBaseUrl || '').trim();
         if (!base) {
@@ -394,6 +400,11 @@ export function startDeviceLinkThunk () {
  */
 export function hydrateLicenseThunk () {
     return function (dispatch) {
+        // Device-bound JWT / paid-addon hydrate is Desktop-only.
+        // Web uses account session (robboAccount) for cloud subscription features.
+        if (!isDesktopWithBluetooth()) {
+            return Promise.resolve();
+        }
         try {
             if (typeof localStorage !== 'undefined') {
                 const base = readPersistedActivationBase();

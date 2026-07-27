@@ -8,8 +8,91 @@ import {resolveApiBase} from './robboAccountConfig';
 /** @type {string} */
 let accessTokenMemory = '';
 
+const LOGIN_HINT_KEY = 'robbo_account_login_hint';
+
 function apiBase () {
     return resolveApiBase().replace(/\/$/, '');
+}
+
+/**
+ * Persist email/username typed at password sign-in so refresh-only sessions
+ * can still show a display name (password JWT has Id/Role only, no email).
+ * @param {string} hint
+ */
+function setLoginHint (hint) {
+    const value = (hint || '').trim();
+    try {
+        if (typeof sessionStorage === 'undefined') {
+            return;
+        }
+        if (value) {
+            sessionStorage.setItem(LOGIN_HINT_KEY, value);
+        } else {
+            sessionStorage.removeItem(LOGIN_HINT_KEY);
+        }
+    } catch (e) { /* private mode / blocked storage */ }
+}
+
+function getLoginHint () {
+    try {
+        if (typeof sessionStorage === 'undefined') {
+            return '';
+        }
+        return (sessionStorage.getItem(LOGIN_HINT_KEY) || '').trim();
+    } catch (e) {
+        return '';
+    }
+}
+
+/**
+ * Best-effort decode of password-auth access JWT payload (not verified).
+ * @param {string} token
+ * @returns {{email: string, edxUserId: string, role: number}}
+ */
+function profileFromAccessToken (token) {
+    const empty = {email: '', edxUserId: '', role: 0};
+    if (!token || typeof token !== 'string') {
+        return empty;
+    }
+    try {
+        const parts = token.split('.');
+        if (parts.length < 2) {
+            return empty;
+        }
+        const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+        const json = JSON.parse(atob(b64 + pad));
+        if (!json || typeof json !== 'object') {
+            return empty;
+        }
+        return {
+            email: String(json.Email || json.email || '').trim(),
+            edxUserId: String(json.Id || json.id || '').trim(),
+            role: typeof json.Role === 'number' ? json.Role :
+                (typeof json.role === 'number' ? json.role : 0)
+        };
+    } catch (e) {
+        return empty;
+    }
+}
+
+/**
+ * Build authenticated status when OIDC BFF cookie is absent but refresh JWT works.
+ * @param {object|null} status OIDC status (usually anonymous)
+ * @param {string} token access JWT
+ * @returns {object}
+ */
+function statusFromRefreshToken (status, token) {
+    const fromJwt = profileFromAccessToken(token);
+    const hint = getLoginHint();
+    return Object.assign({}, status || {}, {
+        authenticated: true,
+        email: (status && status.email) || fromJwt.email || hint || '',
+        edx_user_id: (status && status.edx_user_id) || fromJwt.edxUserId || '',
+        sub: (status && status.sub) || fromJwt.edxUserId || '',
+        role: (status && status.role) || fromJwt.role || 0,
+        auth_via: 'refresh'
+    });
 }
 
 function parseJsonSafe (text) {
@@ -106,6 +189,7 @@ export function signIn (email, password) {
     }).then(json => {
         if (json && json.accessToken) {
             accessTokenMemory = json.accessToken;
+            setLoginHint(email);
         }
         return json;
     });
@@ -132,28 +216,14 @@ export function getSessionStatus () {
                 if (!token) {
                     return status || {authenticated: false};
                 }
-                return Object.assign({}, status || {}, {
-                    authenticated: true,
-                    email: (status && status.email) || '',
-                    edx_user_id: (status && status.edx_user_id) || '',
-                    sub: (status && status.sub) || '',
-                    role: (status && status.role) || 0,
-                    auth_via: 'refresh'
-                });
+                return statusFromRefreshToken(status, token);
             });
         })
         .catch(() => refreshAccessToken().then(token => {
             if (!token) {
                 return {authenticated: false};
             }
-            return {
-                authenticated: true,
-                email: '',
-                edx_user_id: '',
-                sub: '',
-                role: 0,
-                auth_via: 'refresh'
-            };
+            return statusFromRefreshToken(null, token);
         }));
 }
 
@@ -253,4 +323,5 @@ export function downloadProjectSb3 (projectPageId) {
 
 export function clearAccessTokenMemory () {
     accessTokenMemory = '';
+    setLoginHint('');
 }

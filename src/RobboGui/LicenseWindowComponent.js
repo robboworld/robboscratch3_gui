@@ -15,8 +15,13 @@ import {
     cancelDeviceLinkThunk
 } from './actions/licenseActions';
 import {LICENSE_FEATURES} from '../lib/licensing/licenseFeatures';
-import {resolveAccountHomeUrl} from '../lib/licensing/accountUrls';
-import {openExternalUrl} from '../lib/platform.js';
+import {
+    resolveAccountHomeUrl,
+    resolveLicensesUrl,
+    DESKTOP_DOWNLOAD_URL
+} from '../lib/licensing/accountUrls';
+import {loginUrl} from '../lib/robbo-account/robboAccountConfig';
+import {isDesktopWithBluetooth, openExternalUrl} from '../lib/platform.js';
 import {
     showTransientButtonFeedback,
     clearTransientButtonFeedbackTimer
@@ -140,6 +145,36 @@ const messages = defineMessages({
     dev_settings: {
         id: 'gui.licenseWindow.dev_settings',
         defaultMessage: 'Developer settings'
+    },
+    web_signed_in: {
+        id: 'gui.licenseWindow.web_signed_in',
+        defaultMessage: 'Signed in as {name}'
+    },
+    web_signed_out: {
+        id: 'gui.licenseWindow.web_signed_out',
+        defaultMessage: 'Not signed in'
+    },
+    web_account_hint: {
+        id: 'gui.licenseWindow.web_account_hint',
+        defaultMessage:
+            'Cloud features (project sharing, editor extras, and similar) follow your Robbo account subscription. Device-linked premium features do not use this browser.'
+    },
+    web_sign_in: {
+        id: 'gui.licenseWindow.web_sign_in',
+        defaultMessage: 'Sign in to Robbo account'
+    },
+    web_manage_subscription: {
+        id: 'gui.licenseWindow.web_manage_subscription',
+        defaultMessage: 'Manage subscription'
+    },
+    web_desktop_note: {
+        id: 'gui.licenseWindow.web_desktop_note',
+        defaultMessage:
+            'Automatic updates and IoT blocks require the Desktop app.'
+    },
+    web_download_desktop: {
+        id: 'gui.licenseWindow.web_download_desktop',
+        defaultMessage: 'Download Desktop'
     }
 });
 
@@ -171,6 +206,9 @@ class LicenseWindowComponent extends Component {
         this.onToggleFeatures = this.onToggleFeatures.bind(this);
         this.onCopyId = this.onCopyId.bind(this);
         this.onOpenAccountClick = this.onOpenAccountClick.bind(this);
+        this.onOpenLicensesClick = this.onOpenLicensesClick.bind(this);
+        this.onWebSignInClick = this.onWebSignInClick.bind(this);
+        this.onDownloadDesktopClick = this.onDownloadDesktopClick.bind(this);
         this.close = this.close.bind(this);
     }
 
@@ -212,6 +250,19 @@ class LicenseWindowComponent extends Component {
     onOpenAccountClick () {
         const url = resolveAccountHomeUrl(this.props.license.activationBaseUrl);
         openExternalUrl(url);
+    }
+
+    onOpenLicensesClick () {
+        const url = resolveLicensesUrl(this.props.license.activationBaseUrl);
+        openExternalUrl(url);
+    }
+
+    onWebSignInClick () {
+        openExternalUrl(loginUrl());
+    }
+
+    onDownloadDesktopClick () {
+        openExternalUrl(DESKTOP_DOWNLOAD_URL);
     }
 
     onRobboIdClick () {
@@ -357,6 +408,76 @@ class LicenseWindowComponent extends Component {
             >
                 {this.props.intl.formatMessage(messages.status_inactive)}
             </span>
+        );
+    }
+
+    renderWebAccountPanel () {
+        const authenticated = this.props.robboAccountSessionStatus === 'authenticated';
+        const user = this.props.robboAccountUser;
+        const displayName = (user && (user.displayName || user.email || user.sub)) || '';
+
+        return (
+            <>
+                <span
+                    className={classNames(
+                        styles.license_status_chip,
+                        authenticated ? styles.license_status_chip_active : null
+                    )}
+                    role="status"
+                >
+                    {authenticated ?
+                        this.props.intl.formatMessage(messages.web_signed_in, {
+                            name: displayName || '—'
+                        }) :
+                        this.props.intl.formatMessage(messages.web_signed_out)}
+                </span>
+
+                <div className={styles.license_hint}>
+                    {this.props.intl.formatMessage(messages.web_account_hint)}
+                </div>
+
+                <div className={styles.license_primary_actions}>
+                    {authenticated ? (
+                        <button
+                            type="button"
+                            className={classNames(
+                                formStyles.action_button,
+                                styles.license_primary_button
+                            )}
+                            onClick={this.onOpenLicensesClick}
+                        >
+                            {this.props.intl.formatMessage(messages.web_manage_subscription)}
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className={classNames(
+                                formStyles.action_button,
+                                styles.license_primary_button
+                            )}
+                            onClick={this.onWebSignInClick}
+                        >
+                            {this.props.intl.formatMessage(messages.web_sign_in)}
+                        </button>
+                    )}
+                </div>
+
+                <div className={styles.license_desktop_note}>
+                    <div className={styles.license_hint}>
+                        {this.props.intl.formatMessage(messages.web_desktop_note)}
+                    </div>
+                    <button
+                        type="button"
+                        className={classNames(
+                            formStyles.action_button,
+                            styles.license_button_secondary
+                        )}
+                        onClick={this.onDownloadDesktopClick}
+                    >
+                        {this.props.intl.formatMessage(messages.web_download_desktop)}
+                    </button>
+                </div>
+            </>
         );
     }
 
@@ -667,8 +788,9 @@ class LicenseWindowComponent extends Component {
 
     render () {
         const ld = this.props.license;
+        const isDesktop = isDesktopWithBluetooth();
         const isActive = ld.status === 'valid_offline';
-        const showAddonWarning = Boolean(ld.addonError && isActive);
+        const showAddonWarning = Boolean(ld.addonError && isActive && isDesktop);
 
         return (
             <div
@@ -694,20 +816,26 @@ class LicenseWindowComponent extends Component {
                     )}
                 >
                     <div className={classNames(formStyles.section, styles.license_section)}>
-                        {!isActive ? this.renderStatusChip() : null}
+                        {isDesktop ? (
+                            <>
+                                {!isActive ? this.renderStatusChip() : null}
 
-                        {showAddonWarning ? (
-                            <div className={styles.license_addon_warning} role="alert">
-                                {this.props.intl.formatMessage(messages.addon_issue, {
-                                    error: ld.addonError
-                                })}
-                            </div>
-                        ) : null}
+                                {showAddonWarning ? (
+                                    <div className={styles.license_addon_warning} role="alert">
+                                        {this.props.intl.formatMessage(messages.addon_issue, {
+                                            error: ld.addonError
+                                        })}
+                                    </div>
+                                ) : null}
 
-                        {isActive ? this.renderActiveCard() : this.renderInactiveForm()}
+                                {isActive ? this.renderActiveCard() : this.renderInactiveForm()}
 
-                        {this.renderFeaturesSection()}
-                        {this.renderDevBlock()}
+                                {this.renderFeaturesSection()}
+                                {this.renderDevBlock()}
+                            </>
+                        ) : (
+                            this.renderWebAccountPanel()
+                        )}
                     </div>
                 </div>
             </div>
@@ -716,7 +844,9 @@ class LicenseWindowComponent extends Component {
 }
 
 const mapStateToProps = state => ({
-    license: state.scratchGui.license
+    license: state.scratchGui.license,
+    robboAccountSessionStatus: (state.scratchGui.robboAccount || {}).sessionStatus,
+    robboAccountUser: (state.scratchGui.robboAccount || {}).user
 });
 
 const mapDispatchToProps = dispatch => ({
