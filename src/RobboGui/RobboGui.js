@@ -50,6 +50,7 @@ import {
 import { isRobboLinkMobileWebContext } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
 import {hydrateLicenseThunk} from './actions/licenseActions';
+import {LICENSE_UI_ENABLED} from '../lib/licensing/licenseUiEnabled';
 
 import { withAlert } from 'react-alert';
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
@@ -117,7 +118,9 @@ class RobboGui extends Component {
   }
 
   componentDidMount(){
-      this.props.onHydrateLicense();
+      if (LICENSE_UI_ENABLED) {
+        this.props.onHydrateLicense();
+      }
 
       if (this.props.vm) {
         const RCA = this.props.vm.getRCA();
@@ -341,8 +344,8 @@ class RobboGui extends Component {
 
          <RobboMenu VM={this.props.vm} />
 
-         <PremiumUpdateProgress />
-         <LicenseActivationFeedback />
+         {LICENSE_UI_ENABLED ? <PremiumUpdateProgress /> : null}
+         {LICENSE_UI_ENABLED ? <LicenseActivationFeedback /> : null}
 
          <OlympiadExpertPromoBanner />
 
@@ -366,11 +369,13 @@ class RobboGui extends Component {
 
          </NewDraggableWindowComponent>
 
+         {LICENSE_UI_ENABLED ? (
          <NewDraggableWindowComponent draggableWindowId={'license-window'} initialCoords={initial_coords_license}>
 
             <LicenseWindowComponent />
 
          </NewDraggableWindowComponent>
+         ) : null}
 
 
         {/*  <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>

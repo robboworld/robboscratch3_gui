@@ -85,6 +85,7 @@ import {
     projectPageUrl,
     resolveLkBase
 } from '../../lib/robbo-account/robboAccountConfig';
+import {AUTH_UI_ENABLED} from '../../lib/licensing/licenseUiEnabled';
 
 const navigateTop = url => {
     try {
@@ -258,7 +259,7 @@ class MenuBar extends React.Component {
     }
     componentDidMount () {
         document.addEventListener('keydown', this.handleKeyPress);
-        if (this.props.onCheckSession) {
+        if (AUTH_UI_ENABLED && this.props.onCheckSession) {
             this.props.onCheckSession();
         }
     }
@@ -612,7 +613,7 @@ class MenuBar extends React.Component {
                                         </MenuItem>
                                     )}</SB3Downloader>
                                 </MenuSection>
-                                {this.props.isRobboAccountAuthenticated ? (
+                                {AUTH_UI_ENABLED && this.props.isRobboAccountAuthenticated ? (
                                     <MenuSection>
                                         <MenuItem onClick={this.handleClickSaveToCloud}>
                                             {this.props.intl.formatMessage(messages.saveToCloud)}
@@ -739,28 +740,29 @@ class MenuBar extends React.Component {
                             />
                         </div>
                     ) : null}
-                    {this.props.cloudProjectPageId ? (
+                    {AUTH_UI_ENABLED && this.props.cloudProjectPageId ? (
                         <div className={classNames(styles.menuBarItem)}>
                             <CommunityButton onClick={this.handleClickSeeProjectPage} />
                         </div>
                     ) : null}
-                    {this.props.cloudSaveStatus === 'saving' ? (
+                    {AUTH_UI_ENABLED && this.props.cloudSaveStatus === 'saving' ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatus)}>
                             {this.props.intl.formatMessage(messages.savingToCloud)}
                         </div>
                     ) : null}
-                    {this.props.cloudSaveStatus === 'success' ? (
+                    {AUTH_UI_ENABLED && this.props.cloudSaveStatus === 'success' ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatus)}>
                             {this.props.intl.formatMessage(messages.savedToCloud)}
                         </div>
                     ) : null}
-                    {this.props.cloudSaveStatus === 'error' ? (
+                    {AUTH_UI_ENABLED && this.props.cloudSaveStatus === 'error' ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatusError)}>
                             {this.props.intl.formatMessage(messages.saveToCloudError)}
                         </div>
                     ) : null}
                 </div>
 
+                {AUTH_UI_ENABLED ? (
                 <div className={styles.accountInfoGroup}>
                     {this.props.isRobboAccountAuthenticated ? (
                         <React.Fragment>
@@ -824,6 +826,7 @@ class MenuBar extends React.Component {
                         </div>
                     )}
                 </div>
+                ) : null}
             </Box>
         );
     }

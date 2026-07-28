@@ -24,6 +24,7 @@ import RobboPopupTransition from './RobboPopupTransition';
 import {getMenuBarDropdownTopPx} from '../lib/menu-bar-dropdown-anchor';
 
 import {createDiv,createDivShort} from './lib/lib.js';
+import {LICENSE_UI_ENABLED} from '../lib/licensing/licenseUiEnabled';
 
 //import Blockly_Arduino from 'blocks-compiler';
 
@@ -699,11 +700,13 @@ class RobboMenu extends Component {
 
                       )}>{this.props.intl.formatMessage(messages.trigger_settings_window)} </div>           
 
+              {LICENSE_UI_ENABLED ? (
               <div id="trigger-license-window" onClick={this.triggerLicenseWindow.bind(this)} className={classNames(
 
                         {[styles.robbo_menu_item]: true}
 
                       )}>{this.props.intl.formatMessage(messages.trigger_license_window)} </div>
+              ) : null}
 
 
               <div id="trigger-about-window" onClick={this.triggerAboutWindow.bind(this)} className={classNames(
