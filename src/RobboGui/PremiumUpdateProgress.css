@@ -1,0 +1,284 @@
+@import "../css/colors.css";
+@import "../css/units.css";
+@import "../css/z-index.css";
+@import "./RobboPopupChrome.css";
+
+.overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: $z-index-modal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+    pointer-events: auto;
+    background: rgba(15, 24, 40, 0.42);
+    animation: premium-update-overlay-in 0.22s ease-out;
+}
+
+.panel {
+    composes: popupShell;
+    box-sizing: border-box;
+    width: 22rem;
+    max-width: 96vw;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
+    animation: premium-update-panel-in 0.28s ease-out;
+}
+
+.header {
+    composes: popupHeader;
+    cursor: default;
+    min-height: 2.5rem;
+    padding: 0 1rem 0 2.75rem;
+}
+
+.headerIcon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 50%;
+    background-color: rgba(0, 175, 65, 0.12);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 0.875rem;
+}
+
+.headerTitle {
+    composes: popupHeaderTitle;
+    font-size: $popup-font-size;
+}
+
+.body {
+    composes: popupBody;
+    padding: 14px 16px 16px;
+}
+
+.versionBadge {
+    display: inline-block;
+    margin-bottom: 0.625rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 175, 65, 0.35);
+    background-color: rgba(0, 175, 65, 0.08);
+    color: $motion-primary;
+    font-size: $popup-font-size-sm;
+    font-weight: bold;
+    line-height: 1.35;
+}
+
+.status {
+    margin: 0 0 0.875rem;
+    font-size: $popup-font-size;
+    line-height: 1.45;
+    color: $text-primary;
+}
+
+.progressRow {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.progressRow > * + * {
+    margin-left: 0.75rem;
+}
+
+.track {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 0.625rem;
+    border-radius: 999px;
+    background: $ui-tertiary;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(0, 175, 65, 0.85) 0%, $motion-primary 100%);
+    transition: width 0.18s ease-out;
+}
+
+.fillIndeterminate {
+    width: 40% !important;
+    animation: premium-update-indeterminate 1.1s ease-in-out infinite;
+}
+
+.percent {
+    flex: 0 0 auto;
+    min-width: 2.5rem;
+    margin: 0;
+    font-size: $popup-font-size-sm;
+    font-weight: bold;
+    text-align: right;
+    color: $text-primary;
+    font-variant-numeric: tabular-nums;
+}
+
+.installingRow {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    margin-top: 0.75rem;
+}
+
+.installingRow > * + * {
+    margin-left: 0.625rem;
+}
+
+.spinner {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(0, 175, 65, 0.2);
+    border-top-color: $motion-primary;
+    border-radius: 50%;
+    animation: premium-update-spin 0.75s linear infinite;
+}
+
+.installingHint {
+    margin: 0;
+    font-size: $popup-font-size-sm;
+    line-height: 1.35;
+    color: $text-primary-transparent;
+}
+
+.headerIconConfirm {
+    background-color: rgba(0, 175, 65, 0.12);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E");
+}
+
+.headerIconCheck {
+    background-color: rgba(0, 175, 65, 0.12);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='23 4 23 10 17 10'/%3E%3Cpath d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10'/%3E%3C/svg%3E");
+}
+
+.headerIconSuccess {
+    background-color: rgba(0, 175, 65, 0.14);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+}
+
+.headerIconError {
+    background-color: rgba(255, 102, 26, 0.12);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff661a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
+}
+
+.versionBadgeMuted {
+    border-color: rgba(0, 0, 0, 0.12);
+    background-color: rgba(0, 0, 0, 0.04);
+    color: $text-primary;
+}
+
+.successBox {
+    box-sizing: border-box;
+    margin: 0 0 0.875rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: $form-radius;
+    border-left: 3px solid $motion-primary;
+    background-color: rgba(0, 175, 65, 0.08);
+}
+
+.successText {
+    margin: 0;
+    font-size: $popup-font-size-sm;
+    line-height: 1.45;
+    color: $text-primary;
+}
+
+.footerSplit {
+    justify-content: space-between;
+}
+
+.footerSplit > * + * {
+    margin-left: 0.625rem;
+}
+
+.primaryButton {
+    background-color: rgba(0, 175, 65, 0.18);
+    border-color: rgba(0, 175, 65, 0.75);
+}
+
+.secondaryButton {
+    background-color: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.14);
+}
+
+.secondaryButton:hover {
+    background-color: rgba(0, 0, 0, 0.07);
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+.errorBox {
+    box-sizing: border-box;
+    margin: 0 0 0.875rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: $form-radius;
+    border-left: 3px solid $red-primary;
+    background-color: rgba(255, 102, 26, 0.08);
+}
+
+.errorText {
+    margin: 0;
+    font-size: $popup-font-size-sm;
+    line-height: 1.45;
+    color: $text-primary;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+@keyframes premium-update-overlay-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes premium-update-panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes premium-update-indeterminate {
+    0% {
+        transform: translateX(-120%);
+    }
+
+    100% {
+        transform: translateX(320%);
+    }
+}
+
+@keyframes premium-update-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

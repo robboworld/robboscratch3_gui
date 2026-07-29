@@ -13,9 +13,8 @@ import MenuBarMenu from './menu-bar-menu.jsx';
 
 import styles from './login-dropdown.css';
 
-// these are here as a hack to get them translated, so that equivalent messages will be translated
-// when passed in from www via gui's renderLogin() function
-const LoginDropdownMessages = defineMessages({ // eslint-disable-line no-unused-vars
+// Shared with robbo-login-form.jsx (same message ids as upstream scratch-www).
+export const LoginDropdownMessages = defineMessages({
     username: {
         defaultMessage: 'Username',
         description: 'Label for login username input',
@@ -52,7 +51,7 @@ const LoginDropdown = ({
     renderLogin
 }) => (
     <MenuBarMenu
-        className={className}
+        className={classNames(className, styles.loginMenuDropdown)}
         open={isOpen}
         // note: the Rtl styles are switched here, because this menu is justified
         // opposite all the others

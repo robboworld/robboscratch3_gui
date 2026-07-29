@@ -18,6 +18,8 @@ import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 //import {ActionTriggerNeedLanguageReload} from './actions/sensor_actions';
 
 import RobboMenu from './RobboMenu';
+import PremiumUpdateProgress from './PremiumUpdateProgress';
+import LicenseActivationFeedback from './LicenseActivationFeedback';
 import FirmwareFlasherComponent from './FirmwareFlasherComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
 import SettingsWindowComponent from './SettingsWindowComponent';
@@ -26,6 +28,7 @@ import styles from './RobboGui.css';
 
 import SearchPanelComponent from './SearchPanelComponent';
 import AboutWindowComponent from './AboutWindowComponent';
+import LicenseWindowComponent from './LicenseWindowComponent';
 
 import NewDraggableWindowComponent from './NewDraggableWindowComponent';
 import ProfilerWindowComponent from './ProfilerWindowComponent';
@@ -45,9 +48,9 @@ import {
 } from '../lib/settingsLoader';
 import { isRobboLinkMobileWebContext } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
+import {hydrateLicenseThunk} from './actions/licenseActions';
 
 import { withAlert } from 'react-alert';
-
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 
 const messages = defineMessages({
@@ -113,6 +116,8 @@ class RobboGui extends Component {
   }
 
   componentDidMount(){
+      this.props.onHydrateLicense();
+
       if (this.props.vm) {
         const RCA = this.props.vm.getRCA();
         const LCA = this.props.vm.getLCA();
@@ -224,7 +229,6 @@ class RobboGui extends Component {
   }
 
 
-
   stopSearchProcess(){
 
     console.log("stopSearchProcess");
@@ -285,6 +289,8 @@ class RobboGui extends Component {
 
   var initial_coords_profiler = [300,300];
 
+  var initial_coords_license = [380, 320];
+
   var initial_coords_iot = [500,500];
 
   return (
@@ -334,6 +340,9 @@ class RobboGui extends Component {
 
          <RobboMenu VM={this.props.vm} />
 
+         <PremiumUpdateProgress />
+         <LicenseActivationFeedback />
+
          <SearchPanelComponent VM={this.props.vm} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
           <NewDraggableWindowComponent draggableWindowId={"profiler-window"} initialCoords={initial_coords_profiler}>
@@ -351,6 +360,12 @@ class RobboGui extends Component {
          >
 
             <AboutWindowComponent VM={this.props.vm} RCA={this.RCA} DCA={this.DCA}/>
+
+         </NewDraggableWindowComponent>
+
+         <NewDraggableWindowComponent draggableWindowId={'license-window'} initialCoords={initial_coords_license}>
+
+            <LicenseWindowComponent />
 
          </NewDraggableWindowComponent>
 
@@ -421,6 +436,9 @@ const mapDispatchToProps = dispatch => ({
         },
       onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
         dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
+      },
+      onHydrateLicense: () => {
+        dispatch(hydrateLicenseThunk());
       }
 
         // onTriggerNeedLanguageReload:  () => {

@@ -13,7 +13,7 @@ import {getDefaultSimulationCopterSpriteJson, hasSimulationCopterSprite} from '.
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
-import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions'
+import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 import {
@@ -105,6 +105,44 @@ const messages = defineMessages({
       description: ' ',
       defaultMessage: 'About'
 
+    },
+    trigger_license_window: {
+        id: 'gui.RobboMenu.trigger_license_window',
+        description: ' ',
+        defaultMessage: 'License'
+    },
+    premium_waiting_addon_tooltip: {
+        id: 'gui.RobboMenu.premium_waiting_addon_tooltip',
+        description: ' ',
+        defaultMessage: 'Paid addon is still loading from the activation server…'
+    },
+    premium_error_license_inactive: {
+        id: 'gui.licenseWindow.premium_error_license_inactive',
+        defaultMessage: 'Activate a valid license first.'
+    },
+    premium_error_device_mismatch: {
+        id: 'gui.licenseWindow.premium_error_device_mismatch',
+        defaultMessage: 'License is bound to another device.'
+    },
+    premium_error_capability_denied: {
+        id: 'gui.licenseWindow.premium_error_capability_denied',
+        defaultMessage: 'License does not include premium auto-update.'
+    },
+    premium_error_addon_not_loaded: {
+        id: 'gui.licenseWindow.premium_error_addon_not_loaded',
+        defaultMessage: 'Paid addon is not loaded yet.'
+    },
+    premium_update_available: {
+        id: 'gui.RobboMenu.premium_update_available',
+        defaultMessage: 'Update available: version {version}. Update now?'
+    },
+    premium_update_none: {
+        id: 'gui.RobboMenu.premium_update_none',
+        defaultMessage: 'You have the latest version ({version}).'
+    },
+    premium_update_desktop_only: {
+        id: 'gui.RobboMenu.premium_update_desktop_only',
+        defaultMessage: 'Premium auto-update is available only in the Desktop app.'
     },
     color_sensor_correction1:{
 
@@ -363,6 +401,10 @@ class RobboMenu extends Component {
   triggerAboutWindow(){
 
       this.props.onTriggerAboutWindow("about-window");
+  }
+
+  triggerLicenseWindow () {
+      this.props.onTriggerLicenseWindow('license-window');
   }
 
   triggerIotConnectionWindow() {
@@ -657,12 +699,18 @@ class RobboMenu extends Component {
 
                       )}>{this.props.intl.formatMessage(messages.trigger_settings_window)} </div>           
 
+              <div id="trigger-license-window" onClick={this.triggerLicenseWindow.bind(this)} className={classNames(
+
+                        {[styles.robbo_menu_item]: true}
+
+                      )}>{this.props.intl.formatMessage(messages.trigger_license_window)} </div>
+
 
               <div id="trigger-about-window" onClick={this.triggerAboutWindow.bind(this)} className={classNames(
 
                         {[styles.robbo_menu_item]: true}
 
-                      )}>{this.props.intl.formatMessage(messages.trigger_about_window)} </div>                   
+                      )}>{this.props.intl.formatMessage(messages.trigger_about_window)} </div>
 
 
       </div>
@@ -672,8 +720,9 @@ class RobboMenu extends Component {
 
 
 }
-
 }
+
+
 
 const mapStateToProps =  state => ({
 
@@ -727,6 +776,10 @@ const mapDispatchToProps = dispatch => ({
 
               dispatch(ActionTriggerNewDraggableWindow(window_id));
             },
+    onTriggerLicenseWindow: windowId => {
+
+        dispatch(ActionTriggerNewDraggableWindow(windowId));
+      },
     onTriggerRobboMenu: () => {
 
       dispatch(ActionTriggerRobboMenu());

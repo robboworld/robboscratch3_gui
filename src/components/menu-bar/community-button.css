@@ -1,9 +1,35 @@
 @import "../../css/colors.css";
+@import "../../css/units.css";
+
+/* Match project-title-input .title-field height (font + vertical padding + border). */
+$project-page-control-height: calc(0.8rem + 1rem + 2px);
 
 .community-button {
-    box-shadow: 0 0 0 1px $ui-black-transparent;
+    box-sizing: border-box;
+    height: $project-page-control-height;
+    padding: .5rem .625rem;
+    font-size: .8rem;
+    line-height: 1;
+    border-radius: $form-radius;
+    color: white;
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: none;
 }
 
-.community-button-icon {
-    height: 1.25rem;
+.community-button:hover {
+    background-color: $ui-black-transparent;
+}
+
+.community-button > img {
+    height: .875rem;
+    width: .875rem;
+}
+
+[dir="ltr"] .community-button > img {
+    margin-right: .375rem;
+}
+
+[dir="rtl"] .community-button > img {
+    margin-left: .375rem;
 }

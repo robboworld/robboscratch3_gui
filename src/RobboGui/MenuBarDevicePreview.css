@@ -36,11 +36,6 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
     outline-offset: 2px;
 }
 
-/* NW.js / старый Chromium: flex gap может не работать — отступ через margin */
-.previewButton+.previewButton {
-    margin-left: 0.375rem;
-}
-
 /* Не подключено: как фон .robboMenuGroup (прозрачно — виден фон панели) */
 .previewButton.disconnected {
     border: 2px solid $device-disconnected-border;
@@ -108,7 +103,6 @@ $device-disconnected-border-hover: rgba(198, 205, 214, 1);
 .previewIcon {
     display: block;
     flex-shrink: 0;
-    /* без height:% (в NW.js flex → 0px); ~100% кнопки + крупнее фон */
     width: 1.7rem;
     height: 1.7rem;
     max-width: 100%;

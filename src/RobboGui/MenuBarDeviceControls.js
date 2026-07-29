@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 
 import MenuBarDevicePreview from './MenuBarDevicePreview';
 import {ActionTriggerSensorsPalette} from './actions/sensor_actions';
+import {hydrateLicenseThunk} from './actions/licenseActions';
 import {isDesktopWithBluetooth} from '../lib/platform';
 import {showSearchPanel} from './search-panel-visibility';
 import {
@@ -130,6 +131,8 @@ class MenuBarDeviceControls extends Component {
         if (isDesktopWithBluetooth()) {
             vm.getQCA().searchQuadcopterDevices();
         }
+
+        this.props.onHydrateDemoLicense();
     }
 
     triggerSensorsPalette () {
@@ -265,6 +268,9 @@ const mapStateToProps = state => ({
 const mapDispatchToProps = dispatch => ({
     onTriggerSensorsPalette: () => {
         dispatch(ActionTriggerSensorsPalette());
+    },
+    onHydrateDemoLicense: () => {
+        dispatch(hydrateLicenseThunk());
     }
 });
 

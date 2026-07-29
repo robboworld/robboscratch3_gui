@@ -20,6 +20,7 @@ import { applyRobboPopupZIndex } from '../lib/robbo-popup-z-index';
 import { resolveCf2FirmwareVersionLabel, parseCf2FlashToolLine } from '../lib/crazyflie-flash-ui';
 import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
 import {setFlashButtonVisualMode, setFlashLogStatusTone} from '../lib/device-status-dom';
+import {hydrateLicenseThunk} from './actions/licenseActions';
 
 const messages = defineMessages({
 
@@ -1734,6 +1735,8 @@ class SearchPanelDeviceComponent extends Component {
         if (this.props.QCA) {
             this.props.QCA.searchQuadcopterDevices({ from: 'SearchPanelDeviceComponent.searchDevices' });
         }
+
+        this.props.onHydrateDemoLicense();
     }
 
 
@@ -2331,6 +2334,10 @@ const mapDispatchToProps = dispatch => ({
     onCreateDraggableWindow: (draggable_window_id) => {
 
         dispatch(ActionCreateDraggableWindow(draggable_window_id));
+    },
+
+    onHydrateDemoLicense: () => {
+        dispatch(hydrateLicenseThunk());
     }
 
     // onDeviceFound: (device) => {
