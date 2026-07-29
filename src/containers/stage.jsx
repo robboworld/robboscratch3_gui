@@ -116,6 +116,7 @@ class Stage extends React.Component {
             this.props.isColorPicking !== nextProps.isColorPicking ||
             this.state.colorInfo !== nextState.colorInfo ||
             this.props.isFullScreen !== nextProps.isFullScreen ||
+            this.props.isEmbedPlayer !== nextProps.isEmbedPlayer ||
             this.props.fullscreenRenderQuality !== nextProps.fullscreenRenderQuality ||
             this.props.simSensorDebugOverlayEnabled !== nextProps.simSensorDebugOverlayEnabled ||
             this.props.isSimActivated !== nextProps.isSimActivated ||
@@ -144,13 +145,19 @@ class Stage extends React.Component {
      * In normal mode, render at display size as before.
      */
     applyStageSize() {
-        if (this.props.isFullScreen) {
-            const dims = getStageDimensions(this.props.stageSize, true);
-            const renderSize = getFullscreenRenderSize(
-                dims.width,
-                dims.height,
-                this.props.fullscreenRenderQuality
+        if (this.props.isFullScreen || this.props.isEmbedPlayer) {
+            const dims = getStageDimensions(
+                this.props.stageSize,
+                this.props.isFullScreen,
+                this.props.isEmbedPlayer
             );
+            const renderSize = this.props.isEmbedPlayer ?
+                {width: dims.width, height: dims.height} :
+                getFullscreenRenderSize(
+                    dims.width,
+                    dims.height,
+                    this.props.fullscreenRenderQuality
+                );
 
             this.renderer.resize(renderSize.width, renderSize.height);
             this.canvas.style.width = `${dims.width}px`;
@@ -212,7 +219,7 @@ class Stage extends React.Component {
     }
     updateRect() {
         this.rect = this.canvas.getBoundingClientRect();
-        if (this.props.isFullScreen) {
+        if (this.props.isFullScreen || this.props.isEmbedPlayer) {
             this.applyStageSize();
         }
     }
@@ -582,6 +589,7 @@ Stage.propTypes = {
     fullscreenRenderQuality: PropTypes.number,
     isColorPicking: PropTypes.bool,
     isFullScreen: PropTypes.bool.isRequired,
+    isEmbedPlayer: PropTypes.bool,
     micIndicator: PropTypes.bool,
     onActivateColorPicker: PropTypes.func,
     onDeactivateColorPicker: PropTypes.func,

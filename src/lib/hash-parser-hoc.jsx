@@ -43,7 +43,7 @@ const HashParserHOC = function (WrappedComponent) {
                 (window.__ROBBO_NW_PENDING_PROJECT__ || window.__ROBBO_NW_LOADING_PROJECT__)) {
                 return;
             }
-            const hashMatch = window.location.hash.match(/#(\d+)/);
+            const hashMatch = window.location.hash.match(/#([0-9a-fA-F-]{36}|\d+)/);
             const hashProjectId = hashMatch === null ? defaultProjectId : hashMatch[1];
             this.props.setProjectId(hashProjectId.toString());
         }

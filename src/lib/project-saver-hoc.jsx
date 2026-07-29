@@ -196,6 +196,9 @@ const ProjectSaverHOC = function (WrappedComponent) {
         }
 
         __ROBBO__autoSaveProject () {
+            if (typeof this.props.vm.saveProjectSb3_auto !== 'function') {
+                return;
+            }
             this.props.vm.saveProjectSb3_auto()
                 .catch(() => {}); // empty/invalid project or serialization error — ignore
         }

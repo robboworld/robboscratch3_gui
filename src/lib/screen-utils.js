@@ -19,6 +19,22 @@ const STAGE_DIMENSION_DEFAULTS = {
     menuHeightAdjustment: 44
 };
 
+const getEmbedStageDimensions = () => {
+    const widthDefault = layout.standardStageWidth;
+    const heightDefault = layout.standardStageHeight;
+    const availW = window.innerWidth;
+    const availH = window.innerHeight;
+    const scale = Math.min(availW / widthDefault, availH / heightDefault);
+
+    return {
+        heightDefault,
+        widthDefault,
+        height: Math.round(heightDefault * scale),
+        width: Math.round(widthDefault * scale),
+        scale
+    };
+};
+
 /**
  * Resolve the current GUI and browser state to an actual stage size enum value.
  * @param {STAGE_SIZE_MODES} stageSizeMode - the state of the stage size toggle button.
@@ -39,9 +55,14 @@ const resolveStageSize = (stageSizeMode, isFullSize) => {
  * Retrieve info used to determine the actual stage size based on the current GUI and browser state.
  * @param {STAGE_DISPLAY_SIZES} stageSize - the current fully-resolved stage size.
  * @param {boolean} isFullScreen - true if full-screen mode is enabled.
+ * @param {boolean} isEmbedPlayer - true when player.html runs inside LK iframe.
  * @return {StageDimensions} - an object describing the dimensions of the stage.
  */
-const getStageDimensions = (stageSize, isFullScreen) => {
+const getStageDimensions = (stageSize, isFullScreen, isEmbedPlayer = false) => {
+    if (isEmbedPlayer) {
+        return getEmbedStageDimensions();
+    }
+
     const stageDimensions = {
         heightDefault: layout.standardStageHeight,
         widthDefault: layout.standardStageWidth,
@@ -99,6 +120,7 @@ const stageSizeToTransform = ({width, height, widthDefault, heightDefault}) => {
 
 export {
     getStageDimensions,
+    getEmbedStageDimensions,
     resolveStageSize,
     stageSizeToTransform
 };

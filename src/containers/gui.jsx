@@ -164,6 +164,10 @@ class GUI extends React.Component {
             return Promise.resolve(false);
         }
 
+        if (this.props.isPlayerOnly || typeof this.props.vm.saveProjectSb3_auto !== 'function') {
+            return Promise.resolve(false);
+        }
+
         const hasPendingVmChanges = nextChangeToken > this.lastAutoSavedChangeToken;
         const hasPendingLayoutChanges = this.hasLayoutChangedSinceLastSave();
         if (!force && !hasPendingVmChanges && !hasPendingLayoutChanges) {
