@@ -20,7 +20,6 @@ import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import RobboMenu from './RobboMenu';
 import PremiumUpdateProgress from './PremiumUpdateProgress';
 import LicenseActivationFeedback from './LicenseActivationFeedback';
-import OlympiadExpertPromoBanner from './OlympiadExpertPromoBanner';
 import FirmwareFlasherComponent from './FirmwareFlasherComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
 import SettingsWindowComponent from './SettingsWindowComponent';
@@ -346,8 +345,6 @@ class RobboGui extends Component {
 
          {LICENSE_UI_ENABLED ? <PremiumUpdateProgress /> : null}
          {LICENSE_UI_ENABLED ? <LicenseActivationFeedback /> : null}
-
-         <OlympiadExpertPromoBanner />
 
          <SearchPanelComponent VM={this.props.vm} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
