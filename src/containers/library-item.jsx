@@ -109,6 +109,7 @@ class LibraryItem extends React.PureComponent {
                 internetConnectionRequired={this.props.internetConnectionRequired}
                 name={this.props.name}
                 scenarioCard={this.props.scenarioCard}
+                tutorialCard={this.props.tutorialCard}
                 onBlur={this.handleBlur}
                 onClick={this.handleClick}
                 onFocus={this.handleFocus}
@@ -148,7 +149,8 @@ LibraryItem.propTypes = {
     onMouseEnter: PropTypes.func.isRequired,
     onMouseLeave: PropTypes.func.isRequired,
     onSelect: PropTypes.func.isRequired,
-    scenarioCard: PropTypes.bool
+    scenarioCard: PropTypes.bool,
+    tutorialCard: PropTypes.bool
 };
 
 export default injectIntl(LibraryItem);

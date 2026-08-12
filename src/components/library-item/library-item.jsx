@@ -12,6 +12,58 @@ import internetConnectionIconURL from './internet-connection.svg';
 /* eslint-disable react/prefer-stateless-function */
 class LibraryItemComponent extends React.PureComponent {
     render () {
+        if (this.props.tutorialCard) {
+            const ariaProps = typeof this.props.name === 'string' ?
+                {'aria-label': this.props.name} :
+                {};
+            return (
+                <Box
+                    {...ariaProps}
+                    className={classNames(
+                        styles.libraryItem,
+                        styles.tutorialCard,
+                        {
+                            [styles.disabled]: this.props.disabled,
+                            [styles.hidden]: this.props.hidden
+                        }
+                    )}
+                    role="button"
+                    tabIndex="0"
+                    onBlur={this.props.onBlur}
+                    onClick={this.props.onClick}
+                    onFocus={this.props.onFocus}
+                    onKeyPress={this.props.onKeyPress}
+                    onMouseEnter={this.props.onMouseEnter}
+                    onMouseLeave={this.props.onMouseLeave}
+                >
+                    <div className={styles.tutorialCardMedia}>
+                        <img
+                            alt=""
+                            className={styles.tutorialCardImage}
+                            draggable={false}
+                            src={this.props.iconURL}
+                        />
+                        <div
+                            aria-hidden="true"
+                            className={styles.tutorialCardMediaShade}
+                        />
+                    </div>
+                    <div className={styles.tutorialCardBody}>
+                        <div className={styles.tutorialCardTitle}>{this.props.name}</div>
+                        {this.props.description ? (
+                            <p className={styles.tutorialCardDescription}>{this.props.description}</p>
+                        ) : null}
+                        <span className={styles.tutorialCardCta}>
+                            <FormattedMessage
+                                defaultMessage="Open tutorial →"
+                                description="CTA on tutorial library card (RobboWorld-style)"
+                                id="gui.tipsLibrary.openTutorial"
+                            />
+                        </span>
+                    </div>
+                </Box>
+            );
+        }
         if (this.props.scenarioCard) {
             const ariaProps = typeof this.props.name === 'string' ?
                 {'aria-label': this.props.name} :
@@ -200,12 +252,14 @@ LibraryItemComponent.propTypes = {
     onKeyPress: PropTypes.func.isRequired,
     onMouseEnter: PropTypes.func.isRequired,
     onMouseLeave: PropTypes.func.isRequired,
-    scenarioCard: PropTypes.bool
+    scenarioCard: PropTypes.bool,
+    tutorialCard: PropTypes.bool
 };
 
 LibraryItemComponent.defaultProps = {
     disabled: false,
-    scenarioCard: false
+    scenarioCard: false,
+    tutorialCard: false
 };
 
 export default LibraryItemComponent;

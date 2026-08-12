@@ -29,6 +29,35 @@
     min-height: 0;
 }
 
+/* Tutorials: CourseGrid-like layout (robbo_personal_account Landing) */
+.library-scroll-grid-tutorials {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+    padding: 1.25rem clamp(1rem, 3vw, 2rem) 2rem;
+    justify-content: stretch;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+    background: #f0fdf4;
+}
+
+.library-scroll-grid-tutorials.withFilterBar {
+    height: calc(100% - $library-header-height - $library-filter-bar-height - 2rem);
+}
+
+@media (max-width: 960px) {
+    .library-scroll-grid-tutorials {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .library-scroll-grid-tutorials {
+        grid-template-columns: 1fr;
+    }
+}
+
 .filter-bar {
     display: flex;
     flex-direction: row;
@@ -38,6 +67,25 @@
     background-color: $motion-transparent;
     padding: 0 1rem;
     font-size: .875rem;
+}
+
+.filter-bar-tutorials {
+    background: #e8f8ef;
+    border-bottom: 1px solid rgba(0, 175, 65, 0.12);
+    padding: 0 clamp(1rem, 3vw, 2rem);
+}
+
+.tag-button-tutorials {
+    background: #fff !important;
+    color: #383838 !important;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.tag-button-tutorials-active {
+    background: $motion-primary !important;
+    color: #fff !important;
+    border-color: $motion-primary;
 }
 
 .filter-bar-item {

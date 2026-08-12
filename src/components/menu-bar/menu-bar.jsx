@@ -762,71 +762,86 @@ class MenuBar extends React.Component {
                     ) : null}
                 </div>
 
-                {AUTH_UI_ENABLED ? (
                 <div className={styles.accountInfoGroup}>
-                    {this.props.isRobboAccountAuthenticated ? (
-                        <React.Fragment>
-                            <div
-                                className={classNames(styles.menuBarItem, styles.hoverable, styles.mystuffButton)}
-                                title={this.props.intl.formatMessage(messages.myStuff)}
-                                onClick={this.handleClickMyStuff}
-                            >
-                                <img
-                                    alt={this.props.intl.formatMessage(messages.myStuff)}
-                                    className={styles.mystuffIcon}
-                                    draggable={false}
-                                    src={mystuffIcon}
-                                />
-                            </div>
-                            <div
-                                className={classNames(styles.menuBarItem, styles.hoverable, {
-                                    [styles.active]: this.props.accountMenuOpen
-                                })}
-                                onMouseUp={this.props.onClickAccount}
-                            >
-                                <img
-                                    alt=""
-                                    className={styles.profileIcon}
-                                    draggable={false}
-                                    src={profileIcon}
-                                />
-                                <span>
-                                    {(this.props.robboAccountUser && this.props.robboAccountUser.displayName) ||
-                                        this.props.intl.formatMessage(messages.accountHome)}
-                                </span>
-                                <img
-                                    alt=""
-                                    className={styles.dropdownCaretIcon}
-                                    draggable={false}
-                                    src={dropdownCaret}
-                                />
-                                <MenuBarMenu
-                                    className={classNames(styles.menuBarMenu)}
-                                    open={this.props.accountMenuOpen}
-                                    place={this.props.isRtl ? 'right' : 'left'}
-                                    onRequestClose={this.props.onRequestCloseAccount}
+                    <div
+                        aria-label={this.props.intl.formatMessage(ariaMessages.tutorials)}
+                        className={classNames(styles.menuBarItem, styles.hoverable)}
+                        onClick={this.props.onOpenTipLibrary}
+                    >
+                        <img
+                            alt=""
+                            className={styles.helpIcon}
+                            draggable={false}
+                            src={helpIcon}
+                        />
+                        <span className={styles.menuBarItemLabel}>
+                            <FormattedMessage {...ariaMessages.tutorials} />
+                        </span>
+                    </div>
+                    {AUTH_UI_ENABLED ? (
+                        this.props.isRobboAccountAuthenticated ? (
+                            <React.Fragment>
+                                <div
+                                    className={classNames(styles.menuBarItem, styles.hoverable, styles.mystuffButton)}
+                                    title={this.props.intl.formatMessage(messages.myStuff)}
+                                    onClick={this.handleClickMyStuff}
                                 >
-                                    <MenuItem onClick={this.handleClickAccountHome}>
-                                        {this.props.intl.formatMessage(messages.accountHome)}
-                                    </MenuItem>
-                                    <MenuSection>
-                                        <MenuItem onClick={this.handleClickSignOut}>
-                                            {this.props.intl.formatMessage(messages.signOut)}
+                                    <img
+                                        alt={this.props.intl.formatMessage(messages.myStuff)}
+                                        className={styles.mystuffIcon}
+                                        draggable={false}
+                                        src={mystuffIcon}
+                                    />
+                                </div>
+                                <div
+                                    className={classNames(styles.menuBarItem, styles.hoverable, {
+                                        [styles.active]: this.props.accountMenuOpen
+                                    })}
+                                    onMouseUp={this.props.onClickAccount}
+                                >
+                                    <img
+                                        alt=""
+                                        className={styles.profileIcon}
+                                        draggable={false}
+                                        src={profileIcon}
+                                    />
+                                    <span>
+                                        {(this.props.robboAccountUser && this.props.robboAccountUser.displayName) ||
+                                            this.props.intl.formatMessage(messages.accountHome)}
+                                    </span>
+                                    <img
+                                        alt=""
+                                        className={styles.dropdownCaretIcon}
+                                        draggable={false}
+                                        src={dropdownCaret}
+                                    />
+                                    <MenuBarMenu
+                                        className={classNames(styles.menuBarMenu)}
+                                        open={this.props.accountMenuOpen}
+                                        place={this.props.isRtl ? 'right' : 'left'}
+                                        onRequestClose={this.props.onRequestCloseAccount}
+                                    >
+                                        <MenuItem onClick={this.handleClickAccountHome}>
+                                            {this.props.intl.formatMessage(messages.accountHome)}
                                         </MenuItem>
-                                    </MenuSection>
-                                </MenuBarMenu>
+                                        <MenuSection>
+                                            <MenuItem onClick={this.handleClickSignOut}>
+                                                {this.props.intl.formatMessage(messages.signOut)}
+                                            </MenuItem>
+                                        </MenuSection>
+                                    </MenuBarMenu>
+                                </div>
+                            </React.Fragment>
+                        ) : (
+                            <div
+                                className={classNames(styles.menuBarItem, styles.hoverable)}
+                                onClick={this.handleClickSignIn}
+                            >
+                                {this.props.intl.formatMessage(messages.signIn)}
                             </div>
-                        </React.Fragment>
-                    ) : (
-                        <div
-                            className={classNames(styles.menuBarItem, styles.hoverable)}
-                            onClick={this.handleClickSignIn}
-                        >
-                            {this.props.intl.formatMessage(messages.signIn)}
-                        </div>
-                    )}
+                        )
+                    ) : null}
                 </div>
-                ) : null}
             </Box>
         );
     }

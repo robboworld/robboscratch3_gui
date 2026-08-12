@@ -70,7 +70,7 @@ class TipsLibrary extends React.PureComponent {
                 rawURL: decksLibraryContent[id].img,
                 id: id,
                 name: decksLibraryContent[id].name,
-                featured: true,
+                tutorialCard: true,
                 tags: decksLibraryContent[id].tags,
                 urlId: decksLibraryContent[id].urlId,
                 requiredProjectId: decksLibraryContent[id].requiredProjectId,
@@ -83,6 +83,7 @@ class TipsLibrary extends React.PureComponent {
                 filterable
                 data={decksLibraryThumbnailData}
                 id="tipsLibrary"
+                scrollGridVariant="tutorials"
                 tags={tutorialTags}
                 title={this.props.intl.formatMessage(messages.tipsLibraryTitle)}
                 visible={this.props.visible}

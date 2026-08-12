@@ -13,7 +13,7 @@
     position: absolute;
     top: 5%;
     background: $ui-white;
-    border: 1px solid $ui-tertiary;
+    border: 1px solid rgba(15, 23, 42, 0.08);
     width: .75rem;
     z-index: 10;
     opacity: 0.9;
@@ -41,7 +41,7 @@
     left: 0;
     height: 2.5rem;
     width: 100%;
-    background: $extensions-primary;
+    background: $motion-primary;
 }
 
 .left-button, .right-button {
@@ -51,8 +51,8 @@
     z-index: 20;
     user-select: none;
     cursor: pointer;
-    background: $extensions-primary;
-    box-shadow: 0 0 0 4px $extensions-transparent;
+    background: $motion-primary;
+    box-shadow: 0 0 0 4px $motion-transparent;
     height: 44px;
     width: 44px;
     border-radius: 100%;
@@ -63,7 +63,7 @@
 }
 
 .left-button:hover, .right-button:hover {
-    box-shadow: 0 0 0 6px $extensions-transparent;
+    box-shadow: 0 0 0 6px $motion-transparent;
     transform: scale(1.125);
 }
 
@@ -80,16 +80,19 @@
 }
 
 .card {
-    border: 1px solid $ui-tertiary;
-    border-radius: 0.75rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 10px;
     display: flex;
     flex-direction: column;
     cursor: move;
     z-index: 20;
     overflow: hidden;
-    box-shadow: 0px 5px 25px 5px $ui-black-transparent;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 12px 32px rgba(15, 23, 42, 0.12);
     align-items: center;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: #fff;
 }
 
 .header-buttons {
@@ -98,8 +101,8 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    background: $extensions-primary;
-    border-bottom: 1px solid $extensions-tertiary;
+    background: $motion-primary;
+    border-bottom: 1px solid rgba(0, 122, 46, 0.35);
     font-size: 0.625rem;
     font-weight: bold;
 }
@@ -122,12 +125,12 @@
     font-size: 0.9rem;
     margin: 0.9rem;
     text-align: center;
-    font-weight: bold;
-    color: $text-primary;
+    font-weight: 700;
+    color: #383838;
 }
 
 .step-body {
-    background: $ui-white;
+    background: #fff;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -142,9 +145,9 @@
 
 .step-image {
     max-width: 450px;
-    background: #F9F9F9;
-    border: 1px solid #ddd;
-    border-radius: 0.5rem;
+    background: #f0fdf4;
+    border: 1px solid rgba(0, 175, 65, 0.12);
+    border-radius: 10px;
     overflow: hidden;
     margin: 0 0.5rem 0.5rem;
 }
@@ -153,32 +156,46 @@
     display: flex;
     flex-direction: row;
     justify-content: space-around;
-    padding: 0 1rem 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0 1rem 0.75rem;
 }
 
 .deck {
     display: flex;
     flex-direction: column;
-    margin: 0 8px 8px;
+    margin: 0;
     cursor: pointer;
-    border: 1px solid $ui-black-transparent;
-    border-radius: 0.25rem;
+    border: 1px solid rgba(15, 23, 42, 0.07);
+    border-radius: 10px;
     overflow: hidden;
+    background: #fff;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 8px 22px rgba(15, 23, 42, 0.06);
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease;
+}
+
+.deck:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 175, 65, 0.28);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
 .deck-image {
     width: 200px;
-    height: 100px;
+    height: 112px;
     object-fit: cover;
 }
 
 .deck-name {
     color: $motion-primary;
-    font-weight: bold;
+    font-weight: 600;
     font-size: 0.85rem;
-    margin: .625rem 0px;
-    text-align: center;
-    font-weight: bold;
+    margin: .625rem 0.5rem;
     text-align: center;
     max-width: 200px;
 }

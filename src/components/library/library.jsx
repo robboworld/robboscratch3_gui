@@ -128,7 +128,11 @@ class LibraryComponent extends React.Component {
                 onRequestClose={this.handleClose}
             >
                 {(this.props.filterable || this.props.tags) && (
-                    <div className={styles.filterBar}>
+                    <div
+                        className={classNames(styles.filterBar, {
+                            [styles.filterBarTutorials]: this.props.scrollGridVariant === 'tutorials'
+                        })}
+                    >
                         {this.props.filterable && (
                             <Filter
                                 className={classNames(
@@ -153,7 +157,14 @@ class LibraryComponent extends React.Component {
                                         className={classNames(
                                             styles.filterBarItem,
                                             styles.tagButton,
-                                            tagProps.className
+                                            tagProps.className,
+                                            {
+                                                [styles.tagButtonTutorials]:
+                                                    this.props.scrollGridVariant === 'tutorials',
+                                                [styles.tagButtonTutorialsActive]:
+                                                    this.props.scrollGridVariant === 'tutorials' &&
+                                                    this.state.selectedTag === tagProps.tag.toLowerCase()
+                                            }
                                         )}
                                         key={`tag-button-${id}`}
                                         onClick={this.handleTagClick}
@@ -169,7 +180,8 @@ class LibraryComponent extends React.Component {
                         styles.libraryScrollGrid,
                         {
                             [styles.withFilterBar]: this.props.filterable || this.props.tags,
-                            [styles.libraryScrollGridScenarios]: this.props.scrollGridVariant === 'scenarios'
+                            [styles.libraryScrollGridScenarios]: this.props.scrollGridVariant === 'scenarios',
+                            [styles.libraryScrollGridTutorials]: this.props.scrollGridVariant === 'tutorials'
                         }
                     )}
                     ref={this.setFilteredDataRef}
@@ -192,6 +204,7 @@ class LibraryComponent extends React.Component {
                             key={`item_${index}`}
                             name={dataItem.name}
                             scenarioCard={dataItem.scenarioCard}
+                            tutorialCard={dataItem.tutorialCard}
                             onMouseEnter={this.handleMouseEnter}
                             onMouseLeave={this.handleMouseLeave}
                             onSelect={this.handleSelect}
@@ -225,7 +238,7 @@ LibraryComponent.propTypes = {
     onItemMouseLeave: PropTypes.func,
     onItemSelected: PropTypes.func,
     onRequestClose: PropTypes.func,
-    scrollGridVariant: PropTypes.oneOf(['scenarios']),
+    scrollGridVariant: PropTypes.oneOf(['scenarios', 'tutorials']),
     tags: PropTypes.arrayOf(PropTypes.shape(TagButton.propTypes)),
     title: PropTypes.string.isRequired
 };

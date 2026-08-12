@@ -235,7 +235,16 @@
 }
 
 .help-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    display: block;
     margin-right: 0.35rem;
+}
+
+[dir="rtl"] .help-icon {
+    margin-right: 0;
+    margin-left: 0.35rem;
 }
 
 .account-nav-menu, .mystuff-button {
