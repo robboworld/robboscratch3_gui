@@ -211,7 +211,13 @@ const EmbedProjectLoaderHOC = function (WrappedComponent) {
             };
             tryPlay().catch(err => {
                 this.props.onError(err);
-                this.notifyParent('scratch:error', {message: String(err && err.message ? err.message : err)});
+                const raw = String(err && err.message ? err.message : err);
+                const isInvalid = raw.indexOf('validationError') !== -1 ||
+                    raw.indexOf('Could not parse as a valid SB2 or SB3') !== -1 ||
+                    raw.indexOf('playUrl did not return a .sb3') !== -1;
+                this.notifyParent('scratch:error', {
+                    message: isInvalid ? 'INVALID_PROJECT_FILE' : raw
+                });
             });
         }
         render () {
