@@ -18,18 +18,6 @@ export const FIRMWARE_SETTINGS_LIMITS = Object.freeze({
   baud_rate: Object.freeze({ min: 9600, max: 115200 })
 });
 
-export const FULLSCREEN_RENDER_QUALITY_DEFAULT = 3;
-export const FULLSCREEN_RENDER_QUALITY_LIMITS = Object.freeze({
-  min: 1,
-  max: 3
-});
-
-export const SIMULATION_STEP_MS_DEFAULT = 4;
-export const SIMULATION_STEP_MS_LIMITS = Object.freeze({
-  min: 1,
-  max: 10
-});
-
 function toRoundedNumber(value) {
   const rounded = Math.round(Number(value));
   return Number.isFinite(rounded) ? rounded : null;
@@ -45,14 +33,6 @@ function pickFirstDefined(...values) {
 }
 
 function normalizeFirmwareSetting(value, limits, fallback) {
-  const normalizedValue = toRoundedNumber(value);
-  if (normalizedValue != null && normalizedValue >= limits.min && normalizedValue <= limits.max) {
-    return normalizedValue;
-  }
-  return fallback;
-}
-
-function normalizeBoundedNumber(value, limits, fallback) {
   const normalizedValue = toRoundedNumber(value);
   if (normalizedValue != null && normalizedValue >= limits.min && normalizedValue <= limits.max) {
     return normalizedValue;
@@ -119,49 +99,6 @@ export function applyFirmwareSettingsToRuntime(vm, settingsData = {}) {
   runtime.firmware_baud_rate = firmwareSettings.baud_rate;
 
   return firmwareSettings;
-}
-
-export function normalizeFullscreenRenderQuality(rawSettings = {}) {
-  return normalizeBoundedNumber(
-    rawSettings.fullscreen_render_quality,
-    FULLSCREEN_RENDER_QUALITY_LIMITS,
-    FULLSCREEN_RENDER_QUALITY_DEFAULT
-  );
-}
-
-export function getFullscreenRenderQualityStorageData(rawSettings = {}) {
-  return {
-    fullscreen_render_quality: normalizeFullscreenRenderQuality(rawSettings)
-  };
-}
-
-export function normalizeSimulationStepMs(rawSettings = {}) {
-  return normalizeBoundedNumber(
-    rawSettings.simulation_step_ms,
-    SIMULATION_STEP_MS_LIMITS,
-    SIMULATION_STEP_MS_DEFAULT
-  );
-}
-
-export function getSimulationStepMsStorageData(rawSettings = {}) {
-  return {
-    simulation_step_ms: normalizeSimulationStepMs(rawSettings)
-  };
-}
-
-/**
- * Applies simulation step interval to the VM runtime (1–10 ms).
- * @param {object} vm
- * @param {object} settingsData - May contain simulation_step_ms
- * @returns {number} normalized ms applied
- */
-export function applySimulationStepMsToRuntime(vm, settingsData = {}) {
-  const ms = normalizeSimulationStepMs(settingsData);
-  if (!vm || !vm.runtime || typeof vm.runtime.setThreadStepIntervalMs !== 'function') {
-    return ms;
-  }
-  vm.runtime.setThreadStepIntervalMs(ms);
-  return ms;
 }
 
 /**

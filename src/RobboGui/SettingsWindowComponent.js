@@ -13,17 +13,9 @@ import { isDesktopWithBluetooth } from '../lib/platform';
 import {
   getSettingsFromStorage,
   applySettingsToDCA,
-  applyFirmwareSettingsToRuntime,
-  FULLSCREEN_RENDER_QUALITY_DEFAULT,
-  getFullscreenRenderQualityStorageData,
-  normalizeFullscreenRenderQuality,
-  SIMULATION_STEP_MS_DEFAULT,
-  getSimulationStepMsStorageData,
-  normalizeSimulationStepMs,
-  applySimulationStepMsToRuntime
+  applyFirmwareSettingsToRuntime
 } from '../lib/settingsLoader';
-import { setFullscreenRenderQuality, setSimSensorDebugOverlayEnabled } from './reducers/settings';
-import RobboSelect, { syncRobboSelectFromNative } from './RobboSelect';
+import { setSimSensorDebugOverlayEnabled } from './reducers/settings';
 import {
   showTransientButtonFeedback,
   clearTransientButtonFeedbackTimer,
@@ -55,50 +47,10 @@ const messages = defineMessages({
     description: 'Settings save button success label',
     defaultMessage: 'Saved'
   },
-  fullscreen_render_quality: {
-    id: 'gui.RobboGui.settings_window.fullscreen_render_quality',
-    description: ' ',
-    defaultMessage: 'Rendering quality'
-  },
-  fullscreen_quality_note: {
-    id: 'gui.RobboGui.settings_window.fullscreen_quality_note',
-    description: ' ',
-    defaultMessage: 'The parameter affects GPU and CPU load'
-  },
-  vm_section_title: {
-    id: 'gui.RobboGui.settings_window.vm_section_title',
-    description: ' ',
-    defaultMessage: 'VM'
-  },
-  fullscreen_quality_performance: {
-    id: 'gui.RobboGui.settings_window.fullscreen_quality_performance',
-    description: ' ',
-    defaultMessage: 'Performance'
-  },
-  fullscreen_quality_balanced: {
-    id: 'gui.RobboGui.settings_window.fullscreen_quality_balanced',
-    description: ' ',
-    defaultMessage: 'Balanced'
-  },
-  fullscreen_quality_quality: {
-    id: 'gui.RobboGui.settings_window.fullscreen_quality_quality',
-    description: ' ',
-    defaultMessage: 'Quality'
-  },
   sim_sensor_debug_overlay: {
     id: 'gui.RobboGui.settings_window.sim_sensor_debug_overlay',
     description: ' ',
     defaultMessage: 'Show simulator sensor debug overlay'
-  },
-  simulation_step_ms: {
-    id: 'gui.RobboGui.settings_window.simulation_step_ms',
-    description: ' ',
-    defaultMessage: 'Simulation step (ms)'
-  },
-  simulation_step_ms_hint: {
-    id: 'gui.RobboGui.settings_window.simulation_step_ms_hint',
-    description: ' ',
-    defaultMessage: 'Lower values run faster but increase CPU load.'
   },
   experimental_section_title: {
     id: 'gui.RobboGui.settings_window.experimental_section_title',
@@ -214,17 +166,9 @@ class SettingsWindowComponent extends Component {
   }
 
   saveSettings() {
-    const fullscreenRenderQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
-    const simulationStepMsInput = this.getInput("raw-simulation-step-ms-settings-window-content-column-2");
     const simSensorDebugOverlayInput = this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
     const settings_data = {
       ...this.saveDCASettings(),
-      ...getFullscreenRenderQualityStorageData({
-        fullscreen_render_quality: fullscreenRenderQualityInput ? fullscreenRenderQualityInput.value : undefined
-      }),
-      ...getSimulationStepMsStorageData({
-        simulation_step_ms: simulationStepMsInput ? simulationStepMsInput.value : undefined
-      }),
       sim_sensor_debug_overlay_enabled: simSensorDebugOverlayInput ? simSensorDebugOverlayInput.checked === true : false
     };
 
@@ -235,13 +179,8 @@ class SettingsWindowComponent extends Component {
 
     const settings_data_serialized = JSON.stringify(settings_data);
 
-    this.VM.runtime.clearAvTimeInterval();
-    this.VM.runtime.setSettingsSaved();
-
     applySettingsToDCA(this.VM, settings_data);
     applyFirmwareSettingsToRuntime(this.VM, {});
-    applySimulationStepMsToRuntime(this.VM, settings_data);
-    this.props.onSetFullscreenRenderQuality(settings_data.fullscreen_render_quality);
     this.props.onSetSimSensorDebugOverlayEnabled(settings_data.sim_sensor_debug_overlay_enabled);
 
     this.deleteSettingsFile(() => {
@@ -324,19 +263,9 @@ class SettingsWindowComponent extends Component {
     if (btSearchEl && btSearchEl.children[0]) {
       btSearchEl.children[0].checked = true;
     }
-
-    const fullscreenQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
-    if (fullscreenQualityInput) {
-      fullscreenQualityInput.value = FULLSCREEN_RENDER_QUALITY_DEFAULT;
-      syncRobboSelectFromNative(fullscreenQualityInput);
-    }
     const simSensorOverlay = this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
     if (simSensorOverlay) {
       simSensorOverlay.checked = false;
-    }
-    const simulationStepMsInput = this.getInput("raw-simulation-step-ms-settings-window-content-column-2");
-    if (simulationStepMsInput) {
-      simulationStepMsInput.value = SIMULATION_STEP_MS_DEFAULT;
     }
 
   }
@@ -356,8 +285,6 @@ class SettingsWindowComponent extends Component {
       const c2 = child0("raw-connection-2-settings-window-content-column-2");
       const c3 = child0("raw-connection-3-settings-window-content-column-2");
       const c4 = child0("raw-connection-4-settings-window-content-column-2");
-      const fullscreenQuality = child0("raw-fullscreen-quality-settings-window-content-column-2");
-      const simulationStepMs = child0("raw-simulation-step-ms-settings-window-content-column-2");
       const simSensorOverlay = child0("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
 
       if (result.file_exists) {
@@ -376,44 +303,31 @@ class SettingsWindowComponent extends Component {
           const btSearchEl = child0("raw-bt-search-settings-window-content-column-2");
           if (btSearchEl) btSearchEl.checked = settings_data.bluetooth_search_enabled !== false;
 
-          const fullscreenRenderQuality = normalizeFullscreenRenderQuality(settings_data);
-          if (fullscreenQuality) {
-            fullscreenQuality.value = fullscreenRenderQuality;
-            syncRobboSelectFromNative(fullscreenQuality);
-          }
-          const simulationStepMsValue = normalizeSimulationStepMs(settings_data);
-          if (simulationStepMs) simulationStepMs.value = simulationStepMsValue;
           const simSensorDebugOverlayEnabled = settings_data.sim_sensor_debug_overlay_enabled === true;
           if (simSensorOverlay) simSensorOverlay.checked = simSensorDebugOverlayEnabled;
 
           applySettingsToDCA(this.VM, settings_data);
-          this.props.onSetFullscreenRenderQuality(fullscreenRenderQuality);
           this.props.onSetSimSensorDebugOverlayEnabled(simSensorDebugOverlayEnabled);
 
           this.VM.runtime.left_motor_inverted = settings_data.left_motor_inverted_setting_checked === 1 || settings_data.left_motor_inverted_setting_checked === true;
           this.VM.runtime.right_motor_inverted = settings_data.right_motor_inverted_setting_checked === 1 || settings_data.right_motor_inverted_setting_checked === true;
 
           applyFirmwareSettingsToRuntime(this.VM, settings_data);
-          applySimulationStepMsToRuntime(this.VM, settings_data);
         } catch (error) {
           console.error(error);
           this.deleteSettingsFile();
           this.setDefaultsDCAValues();
-          this.props.onSetFullscreenRenderQuality(FULLSCREEN_RENDER_QUALITY_DEFAULT);
           this.props.onSetSimSensorDebugOverlayEnabled(false);
           this.VM.runtime.left_motor_inverted = false;
           this.VM.runtime.right_motor_inverted = false;
           applyFirmwareSettingsToRuntime(this.VM, {});
-          applySimulationStepMsToRuntime(this.VM, {});
         }
       } else {
         this.setDefaultsDCAValues();
-        this.props.onSetFullscreenRenderQuality(FULLSCREEN_RENDER_QUALITY_DEFAULT);
         this.props.onSetSimSensorDebugOverlayEnabled(false);
         this.VM.runtime.left_motor_inverted = false;
         this.VM.runtime.right_motor_inverted = false;
         applyFirmwareSettingsToRuntime(this.VM, {});
-        applySimulationStepMsToRuntime(this.VM, {});
       }
     });
   }
@@ -505,60 +419,6 @@ class SettingsWindowComponent extends Component {
           </div>
 
           <div
-            id="settings-window-content-raw-vm-section-title"
-            className={classNames(formStyles.section, styles.settings_section)}
-            role="group"
-            aria-labelledby="raw-vm-section-title-settings-window-content-column-1"
-          >
-            <h3
-              id="raw-vm-section-title-settings-window-content-column-1"
-              className={formStyles.section_title}
-            >
-              {this.props.intl.formatMessage(messages.vm_section_title)}
-            </h3>
-
-            <div id="settings-window-content-raw-fullscreen-quality" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
-              <div id="raw-fullscreen-quality-settings-window-content-column-1" className={formStyles.field_label}>
-                <div>{this.props.intl.formatMessage(messages.fullscreen_render_quality)}</div>
-                <div className={formStyles.field_hint}>
-                  {this.props.intl.formatMessage(messages.fullscreen_quality_note)}
-                </div>
-              </div>
-              <div id="raw-fullscreen-quality-settings-window-content-column-2" className={formStyles.field_control}>
-                <RobboSelect
-                  defaultValue={FULLSCREEN_RENDER_QUALITY_DEFAULT}
-                  options={[
-                    {
-                      value: '1',
-                      label: this.props.intl.formatMessage(messages.fullscreen_quality_performance)
-                    },
-                    {
-                      value: '2',
-                      label: this.props.intl.formatMessage(messages.fullscreen_quality_balanced)
-                    },
-                    {
-                      value: '3',
-                      label: this.props.intl.formatMessage(messages.fullscreen_quality_quality)
-                    }
-                  ]}
-                />
-              </div>
-            </div>
-
-            <div id="settings-window-content-raw-simulation-step-ms" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
-              <div id="raw-simulation-step-ms-settings-window-content-column-1" className={formStyles.field_label}>
-                <div>{this.props.intl.formatMessage(messages.simulation_step_ms)}</div>
-                <div className={formStyles.field_hint}>
-                  {this.props.intl.formatMessage(messages.simulation_step_ms_hint)}
-                </div>
-              </div>
-              <div id="raw-simulation-step-ms-settings-window-content-column-2" className={formStyles.field_control}>
-                <input type="number" min="1" max="10" defaultValue={SIMULATION_STEP_MS_DEFAULT} />
-              </div>
-            </div>
-          </div>
-
-          <div
             id="settings-window-content-raw-sim-sensor-debug-overlay-title"
             className={classNames(formStyles.section, styles.settings_section)}
             role="group"
@@ -612,9 +472,6 @@ const mapStateToProps = state => ({});
 const mapDispatchToProps = dispatch => ({
   onSettingsWindowClose: () => {
     dispatch(ActionTriggerDraggableWindow(4));
-  },
-  onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
-    dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
   },
   onSetSimSensorDebugOverlayEnabled: (enabled) => {
     dispatch(setSimSensorDebugOverlayEnabled(enabled));

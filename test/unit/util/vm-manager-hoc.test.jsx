@@ -23,7 +23,6 @@ describe('VMManagerHOC', () => {
         });
         vm = new VM();
         vm.attachAudioEngine = jest.fn();
-        vm.setCompatibilityMode = jest.fn();
         vm.start = jest.fn();
     });
     test('when it mounts in player mode, the vm is initialized but not started', () => {
@@ -38,7 +37,6 @@ describe('VMManagerHOC', () => {
             />
         );
         expect(vm.attachAudioEngine.mock.calls.length).toBe(1);
-        expect(vm.setCompatibilityMode.mock.calls.length).toBe(1);
         expect(vm.initialized).toBe(true);
 
         // But vm should not be started automatically
@@ -56,7 +54,6 @@ describe('VMManagerHOC', () => {
             />
         );
         expect(vm.attachAudioEngine.mock.calls.length).toBe(1);
-        expect(vm.setCompatibilityMode.mock.calls.length).toBe(1);
         expect(vm.initialized).toBe(true);
 
         expect(vm.start).toHaveBeenCalled();
@@ -74,7 +71,6 @@ describe('VMManagerHOC', () => {
             />
         );
         expect(vm.attachAudioEngine.mock.calls.length).toBe(0);
-        expect(vm.setCompatibilityMode.mock.calls.length).toBe(0);
         expect(vm.initialized).toBe(true);
 
         expect(vm.start).toHaveBeenCalled();

@@ -218,6 +218,9 @@ const ActionLaboratoriesConnectionStatusCheckStart = function(laboratory_number,
 
 
   return (dispatch) => {
+    if (LaboratoriesConnectionStatusCheckInterval) {
+      clearInterval(LaboratoriesConnectionStatusCheckInterval);
+    }
     LaboratoriesConnectionStatusCheckInterval =   setInterval(() => {
 
           dispatch(ActionLaboratoriesConnectionStatusCheck(laboratory_number,LCA));
@@ -251,6 +254,9 @@ const ActionRobotsConnectionStatusCheckStart = function(robot_number,RCA){
 
 
   return (dispatch) => {
+    if (RobotsConnectionStatusCheckInterval) {
+      clearInterval(RobotsConnectionStatusCheckInterval);
+    }
     RobotsConnectionStatusCheckInterval =   setInterval(() => {
 
           dispatch(ActionRobotsConnectionStatusCheck(robot_number,RCA));
@@ -283,6 +289,9 @@ const ActionRobotGetDataStart = function(robot_number,RCA){
 
 
   return (dispatch) => {
+    if (RobotGetDataInterval) {
+      clearInterval(RobotGetDataInterval);
+    }
     RobotGetDataInterval =   setInterval(() => {
 
         if (robot_get_data_order){
@@ -328,6 +337,9 @@ const ActionLaboratoryGetDataStart = function(laboratory_number,LCA){
 
 
   return (dispatch) => {
+    if (LaboratoryGetDataInterval) {
+      clearInterval(LaboratoryGetDataInterval);
+    }
     LaboratoryGetDataInterval =   setInterval(() => {
 
       if (!robot_get_data_order){

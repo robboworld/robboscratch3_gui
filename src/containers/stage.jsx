@@ -5,7 +5,7 @@ import Renderer from 'scratch-render';
 import VM from 'scratch-vm';
 import { connect } from 'react-redux';
 
-import layout, { STAGE_DISPLAY_SIZES } from '../lib/layout-constants';
+import { STAGE_DISPLAY_SIZES } from '../lib/layout-constants';
 import { getStageDimensions } from '../lib/screen-utils';
 import { getEventXY } from '../lib/touch-utils';
 import VideoProvider from '../lib/video/video-provider';
@@ -21,30 +21,6 @@ import {
 
 const colorPickerRadius = 20;
 const dragThreshold = 3; // Same as the block drag threshold
-
-const getFullscreenRenderSize = (displayWidth, displayHeight, fullscreenRenderQuality) => {
-    const roundedQuality = Math.round(Number(fullscreenRenderQuality));
-    const normalizedQuality = Math.max(1, Math.min(3, Number.isFinite(roundedQuality) ? roundedQuality : 3));
-
-    if (normalizedQuality === 3) {
-        return {
-            width: displayWidth,
-            height: displayHeight
-        };
-    }
-
-    if (normalizedQuality === 2) {
-        return {
-            width: Math.round((layout.standardStageWidth + displayWidth) / 2),
-            height: Math.round((layout.standardStageHeight + displayHeight) / 2)
-        };
-    }
-
-    return {
-        width: layout.standardStageWidth,
-        height: layout.standardStageHeight
-    };
-};
 
 class Stage extends React.Component {
     constructor(props) {
@@ -83,6 +59,8 @@ class Stage extends React.Component {
             question: null
         };
         this.sensorDebugOverlayRaf = null;
+        this._lastRenderWidth = null;
+        this._lastRenderHeight = null;
         if (this.props.vm.renderer) {
             this.renderer = this.props.vm.renderer;
             this.canvas = this.renderer.canvas;
@@ -117,7 +95,6 @@ class Stage extends React.Component {
             this.state.colorInfo !== nextState.colorInfo ||
             this.props.isFullScreen !== nextProps.isFullScreen ||
             this.props.isEmbedPlayer !== nextProps.isEmbedPlayer ||
-            this.props.fullscreenRenderQuality !== nextProps.fullscreenRenderQuality ||
             this.props.simSensorDebugOverlayEnabled !== nextProps.simSensorDebugOverlayEnabled ||
             this.props.isSimActivated !== nextProps.isSimActivated ||
             this.state.question !== nextState.question ||
@@ -141,31 +118,35 @@ class Stage extends React.Component {
         }
     }
     /**
-     * In fullscreen, adjust the render buffer according to the selected quality level.
-     * In normal mode, render at display size as before.
+     * Resize the renderer buffer to match the visible canvas size.
+     * Skips the GL resize when pixel size is unchanged.
      */
     applyStageSize() {
+        let width;
+        let height;
         if (this.props.isFullScreen || this.props.isEmbedPlayer) {
             const dims = getStageDimensions(
                 this.props.stageSize,
                 this.props.isFullScreen,
                 this.props.isEmbedPlayer
             );
-            const renderSize = this.props.isEmbedPlayer ?
-                {width: dims.width, height: dims.height} :
-                getFullscreenRenderSize(
-                    dims.width,
-                    dims.height,
-                    this.props.fullscreenRenderQuality
-                );
-
-            this.renderer.resize(renderSize.width, renderSize.height);
+            width = dims.width;
+            height = dims.height;
             this.canvas.style.width = `${dims.width}px`;
             this.canvas.style.height = `${dims.height}px`;
             this.rect = this.canvas.getBoundingClientRect();
         } else {
             this.updateRect();
-            this.renderer.resize(this.rect.width, this.rect.height);
+            width = this.rect.width;
+            height = this.rect.height;
+        }
+        if (this._lastRenderWidth !== width || this._lastRenderHeight !== height) {
+            this._lastRenderWidth = width;
+            this._lastRenderHeight = height;
+            this.renderer.resize(width, height);
+            if (this.props.vm && this.props.vm.runtime) {
+                this.props.vm.runtime.requestRedraw();
+            }
         }
     }
     componentWillUnmount() {
@@ -565,7 +546,6 @@ class Stage extends React.Component {
     }
     render() {
         const {
-            fullscreenRenderQuality, // eslint-disable-line no-unused-vars
             vm, // eslint-disable-line no-unused-vars
             onActivateColorPicker, // eslint-disable-line no-unused-vars
             ...props
@@ -586,7 +566,6 @@ class Stage extends React.Component {
 }
 
 Stage.propTypes = {
-    fullscreenRenderQuality: PropTypes.number,
     isColorPicking: PropTypes.bool,
     isFullScreen: PropTypes.bool.isRequired,
     isEmbedPlayer: PropTypes.bool,
@@ -607,7 +586,6 @@ Stage.defaultProps = {
 const mapStateToProps = state => ({
     isColorPicking: state.scratchGui.colorPicker.active,
     isFullScreen: state.scratchGui.mode.isFullScreen,
-    fullscreenRenderQuality: state.scratchGui.settings.fullscreen_render_quality,
     simSensorDebugOverlayEnabled: state.scratchGui.settings.sim_sensor_debug_overlay_enabled,
     isSimActivated: state.scratchGui.settings.is_sim_activated === true,
     isStarted: state.scratchGui.vmStatus.started,

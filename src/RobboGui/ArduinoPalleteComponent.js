@@ -76,7 +76,10 @@ class ArduinoPalleteComponent extends Component {
     // var pin20_sensor_value_field = pin20_sensor_component;
     // var pin21_sensor_component = document.getElementById(`arduino_sensor-data-block-arduino-${this.props.arduinoIndex}-pin21_type-analog`);
     // var pin21_sensor_value_field = pin21_sensor_component;
-    var getDataLoopInterval = setInterval(() => {
+    if (this.getDataInterval) {
+        clearInterval(this.getDataInterval);
+    }
+    this.getDataInterval = setInterval(() => {
           pin0_sensor_value_field.innerHTML = this.props.ACA.get_pin(0);
           pin1_sensor_value_field.innerHTML = this.props.ACA.get_pin(1);
           pin2_sensor_value_field.innerHTML = this.props.ACA.get_pin(2);
@@ -105,6 +108,13 @@ class ArduinoPalleteComponent extends Component {
 
   componentDidMount(){
       this.startGetDataLoop();
+  }
+
+  componentWillUnmount() {
+    if (this.getDataInterval) {
+      clearInterval(this.getDataInterval);
+      this.getDataInterval = null;
+    }
   }
 
   render() {

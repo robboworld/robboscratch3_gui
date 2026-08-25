@@ -1,6 +1,3 @@
-import { FULLSCREEN_RENDER_QUALITY_DEFAULT } from '../../lib/settingsLoader';
-
-const SET_FULLSCREEN_RENDER_QUALITY = 'SET_FULLSCREEN_RENDER_QUALITY';
 const SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED = 'SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED';
 
 /** Must match scratch-vm VirtualMachine.ROBBO_SIMULATOR_PROJECT_META_APPLIED */
@@ -14,7 +11,6 @@ const initialState = {
   is_copter_sim_activated: false,
   is_lab_ext_enabled: false,
   robot_is_scratchduino: false,
-  fullscreen_render_quality: FULLSCREEN_RENDER_QUALITY_DEFAULT,
   sim_sensor_debug_overlay_enabled: false
 };
 
@@ -59,11 +55,6 @@ const reducer = function (state, action) {
     settings_state.robot_is_scratchduino = false;
     return settings_state;
 
-  case SET_FULLSCREEN_RENDER_QUALITY:
-    settings_state = Object.assign({}, state);
-    settings_state.fullscreen_render_quality = action.fullscreenRenderQuality;
-    return settings_state;
-
   case SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED:
     settings_state = Object.assign({}, state);
     // Strict boolean: Boolean("false") is true in JS; default must stay off unless explicitly true.
@@ -95,13 +86,6 @@ const reducer = function (state, action) {
   }
 };
 
-const setFullscreenRenderQuality = function (fullscreenRenderQuality) {
-  return {
-    type: SET_FULLSCREEN_RENDER_QUALITY,
-    fullscreenRenderQuality: fullscreenRenderQuality
-  };
-};
-
 const setSimSensorDebugOverlayEnabled = function (enabled) {
   return {
     type: SET_SIM_SENSOR_DEBUG_OVERLAY_ENABLED,
@@ -112,6 +96,5 @@ const setSimSensorDebugOverlayEnabled = function (enabled) {
 export {
   reducer as default,
   initialState as settings_InitialState,
-  setFullscreenRenderQuality,
   setSimSensorDebugOverlayEnabled
 };

@@ -5,12 +5,7 @@
  */
 export const RobboMessageIds = {
     settingsWindow: {
-        vmSectionTitle: 'gui.RobboGui.settings_window.vm_section_title',
-        fullscreenRenderQuality: 'gui.RobboGui.settings_window.fullscreen_render_quality',
-        fullscreenRenderQualityHint: 'gui.RobboGui.settings_window.fullscreen_quality_note',
-        fullscreenQualityPerformance: 'gui.RobboGui.settings_window.fullscreen_quality_performance',
-        fullscreenQualityBalanced: 'gui.RobboGui.settings_window.fullscreen_quality_balanced',
-        fullscreenQualityQuality: 'gui.RobboGui.settings_window.fullscreen_quality_quality'
+        experimentalSectionTitle: 'gui.RobboGui.settings_window.experimental_section_title'
     },
     dca: {
         deviceConnectionSection: 'gui.dca.device_connection_section'

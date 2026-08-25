@@ -42,12 +42,9 @@ import IotConnectionComponent from './IotConnectionComponent';
 import {
   getSettingsFromStorage,
   applySettingsToDCA,
-  applyFirmwareSettingsToRuntime,
-  normalizeFullscreenRenderQuality,
-  applySimulationStepMsToRuntime
+  applyFirmwareSettingsToRuntime
 } from '../lib/settingsLoader';
 import { isRobboLinkMobileWebContext } from '../lib/platform';
-import { setFullscreenRenderQuality } from './reducers/settings';
 import {hydrateLicenseThunk} from './actions/licenseActions';
 import {LICENSE_UI_ENABLED} from '../lib/licensing/licenseUiEnabled';
 
@@ -132,14 +129,11 @@ class RobboGui extends Component {
         }
         getSettingsFromStorage().then((r) => {
           let firmwareSettingsApplied = false;
-          let fullscreenRenderQuality = normalizeFullscreenRenderQuality();
           if (r.file_exists && r.file) {
             try {
               const data = JSON.parse(r.file);
               applySettingsToDCA(this.props.vm, data);
               applyFirmwareSettingsToRuntime(this.props.vm, data);
-              applySimulationStepMsToRuntime(this.props.vm, data);
-              fullscreenRenderQuality = normalizeFullscreenRenderQuality(data);
               firmwareSettingsApplied = true;
             } catch (e) {
               // ignore parse errors
@@ -147,9 +141,7 @@ class RobboGui extends Component {
           }
           if (!firmwareSettingsApplied) {
             applyFirmwareSettingsToRuntime(this.props.vm, {});
-            applySimulationStepMsToRuntime(this.props.vm, {});
           }
-          this.props.onSetFullscreenRenderQuality(fullscreenRenderQuality);
         });
       }
 
@@ -439,9 +431,6 @@ const mapDispatchToProps = dispatch => ({
 
           dispatch(ActionTriggerColorCorrectorTable(sensor_caller_id));
         },
-      onSetFullscreenRenderQuality: (fullscreenRenderQuality) => {
-        dispatch(setFullscreenRenderQuality(fullscreenRenderQuality));
-      },
       onHydrateLicense: () => {
         dispatch(hydrateLicenseThunk());
       }

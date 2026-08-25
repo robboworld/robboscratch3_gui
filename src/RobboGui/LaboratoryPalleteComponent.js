@@ -180,7 +180,10 @@ class LaboratoryPalleteComponent extends Component {
 
 
 
-      setInterval(() => {
+      if (this.getDataInterval) {
+          clearInterval(this.getDataInterval);
+      }
+      this.getDataInterval = setInterval(() => {
 
           this.labGetData.call(this);
 
@@ -229,6 +232,13 @@ class LaboratoryPalleteComponent extends Component {
 
   this.labGetDataStart();
 
+  }
+
+  componentWillUnmount() {
+    if (this.getDataInterval) {
+      clearInterval(this.getDataInterval);
+      this.getDataInterval = null;
+    }
   }
 
   onThisWindowClose(){
