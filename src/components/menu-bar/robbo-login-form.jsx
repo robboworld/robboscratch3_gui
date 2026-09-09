@@ -3,8 +3,7 @@ import React from 'react';
 import {connect} from 'react-redux';
 import {defineMessages, injectIntl, intlShape} from 'react-intl';
 
-import {signInWithPasswordThunk} from '../../RobboGui/actions/robboAccountActions';
-import {loginUrl} from '../../lib/robbo-account/robboAccountConfig';
+import {signInWithPasswordThunk, startOidcLoginThunk} from '../../RobboGui/actions/robboAccountActions';
 import {LoginDropdownMessages} from './login-dropdown.jsx';
 
 import styles from './robbo-login-form.css';
@@ -64,8 +63,8 @@ class RobboLoginForm extends React.Component {
         this.setState({password: event.target.value, errorStatus: null});
     }
     handleOpenLkLogin () {
-        if (typeof window !== 'undefined') {
-            window.open(loginUrl(), '_blank', 'noopener,noreferrer');
+        if (this.props.onStartOidcLogin) {
+            this.props.onStartOidcLogin();
         }
     }
     handleNeedHelp (event) {
@@ -208,18 +207,20 @@ RobboLoginForm.propTypes = {
     intl: intlShape.isRequired,
     lmsPasswordFallback: PropTypes.bool,
     onClose: PropTypes.func,
-    onSignIn: PropTypes.func.isRequired
+    onSignIn: PropTypes.func.isRequired,
+    onStartOidcLogin: PropTypes.func
 };
 
 const mapStateToProps = state => {
     const account = state.scratchGui.robboAccount || {};
     return {
-        lmsPasswordFallback: account.lmsPasswordFallback !== false
+        lmsPasswordFallback: account.lmsPasswordFallback === true
     };
 };
 
 const mapDispatchToProps = dispatch => ({
-    onSignIn: (email, password) => dispatch(signInWithPasswordThunk(email, password))
+    onSignIn: (email, password) => dispatch(signInWithPasswordThunk(email, password)),
+    onStartOidcLogin: () => dispatch(startOidcLoginThunk())
 });
 
 export default injectIntl(connect(

@@ -104,6 +104,17 @@ export function loginUrl (returnTo) {
     return `${base}/login?return_to=${encodeURIComponent(target)}`;
 }
 
+export function oidcStartUrl (returnTo, prompt) {
+    const api = resolveApiBase();
+    const target = returnTo || (typeof window !== 'undefined' ? window.location.href : '');
+    const start = new URL(`${api}/auth/oidc/start`);
+    if (target) {
+        start.searchParams.set('return_to', target);
+    }
+    start.searchParams.set('prompt', prompt || 'login');
+    return start.toString();
+}
+
 export function oidcLogoutUrl (returnTo) {
     const api = resolveApiBase();
     const lk = resolveLkBase();

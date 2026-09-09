@@ -25,8 +25,7 @@ export function robboAccountInitialState () {
         cloudProjectPageId: '',
         saveStatus: 'idle', // idle | saving | success | error
         saveError: '',
-        // Default true so the form is shown before the first /auth/oidc/status resolves.
-        lmsPasswordFallback: true
+        lmsPasswordFallback: false
     };
 }
 

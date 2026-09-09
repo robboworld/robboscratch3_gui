@@ -125,6 +125,9 @@ function fetchAccount (path, init) {
     if (accessTokenMemory && !headers.has('Authorization')) {
         headers.set('Authorization', `Bearer ${accessTokenMemory}`);
     }
+    if (!headers.has('X-Requested-With')) {
+        headers.set('X-Requested-With', 'XMLHttpRequest');
+    }
     return fetch(`${apiBase()}${path}`, Object.assign({}, init, {
         credentials: 'include',
         headers

@@ -12,6 +12,7 @@ import {
 } from '../../lib/robbo-account/robboAccountClient';
 import {
     oidcLogoutUrl,
+    oidcStartUrl,
     resolveLkBase,
     canonicalizeLoopbackEditorHost
 } from '../../lib/robbo-account/robboAccountConfig';
@@ -347,6 +348,13 @@ export function signInWithPasswordThunk (email, password) {
                     errorCode: err && err.errorCode
                 };
             });
+    };
+}
+
+export function startOidcLoginThunk (returnTo) {
+    return function () {
+        const target = returnTo || (typeof window !== 'undefined' ? window.location.href : '');
+        navigateTop(oidcStartUrl(target, 'login'));
     };
 }
 
