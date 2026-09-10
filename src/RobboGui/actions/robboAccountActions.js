@@ -13,7 +13,6 @@ import {
 import {
     oidcLogoutUrl,
     oidcStartUrl,
-    resolveLkBase,
     canonicalizeLoopbackEditorHost
 } from '../../lib/robbo-account/robboAccountConfig';
 import {
@@ -30,6 +29,32 @@ import {
 import {setProjectTitle} from '../../reducers/project-title';
 
 const UUID_RE = /^[0-9a-fA-F-]{36}$/;
+
+const SILENT_SSO_FLAG = 'robbo_silent_sso_attempted';
+
+function markSilentSsoAttempted () {
+    try {
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem(SILENT_SSO_FLAG, '1');
+        }
+    } catch (e) { /* ignore */ }
+}
+
+function clearSilentSsoAttempted () {
+    try {
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.removeItem(SILENT_SSO_FLAG);
+        }
+    } catch (e) { /* ignore */ }
+}
+
+function hasSilentSsoAttempted () {
+    try {
+        return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SILENT_SSO_FLAG) === '1';
+    } catch (e) {
+        return false;
+    }
+}
 
 function parseUrlProjectPageId () {
     if (typeof window === 'undefined') {
@@ -132,6 +157,7 @@ export function checkSessionThunk () {
             .then(status => {
                 const lmsPasswordFallback = lmsPasswordFallbackFromStatus(status);
                 if (status && status.authenticated) {
+                    clearSilentSsoAttempted();
                     dispatch({
                         type: ROBBO_ACCOUNT_SESSION_SUCCESS,
                         payload: {
@@ -147,6 +173,11 @@ export function checkSessionThunk () {
                         }
                     });
                     return dispatch(ensureCloudProjectPageThunk()).then(() => status);
+                }
+                if (!hasSilentSsoAttempted() && typeof window !== 'undefined') {
+                    markSilentSsoAttempted();
+                    navigateTop(oidcStartUrl(window.location.href, 'none'));
+                    return status;
                 }
                 dispatch({
                     type: ROBBO_ACCOUNT_SESSION_FAILURE,
@@ -360,10 +391,16 @@ export function startOidcLoginThunk (returnTo) {
 
 export function signOutThunk () {
     return function (dispatch) {
+        markSilentSsoAttempted();
         clearAccessTokenMemory();
         dispatch({type: ROBBO_ACCOUNT_SIGN_OUT});
-        // Land on LK landing with logged_out=1 so FE clears localStorage token on :3030.
-        const target = oidcLogoutUrl(`${resolveLkBase()}/?logged_out=1`);
-        navigateTop(target);
+        navigateTop(oidcLogoutUrl());
+    };
+}
+
+export function handleRemoteSignOutThunk () {
+    return function (dispatch) {
+        clearAccessTokenMemory();
+        dispatch({type: ROBBO_ACCOUNT_SIGN_OUT});
     };
 }

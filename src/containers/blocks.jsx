@@ -628,6 +628,10 @@ class Blocks extends React.Component {
         if (toolboxXML) {
             this.props.updateToolboxState(toolboxXML);
         }
+        if (this.workspace && this.props.isVisible) {
+            this.setLocale();
+            this.requestToolboxUpdate();
+        }
     }
     handleBlocksInfoUpdate (blocksInfo) {
         // @todo Later we should replace this to avoid all the warnings from redefining blocks.

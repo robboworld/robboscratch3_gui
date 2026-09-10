@@ -142,7 +142,13 @@ const base = {
             })
         ]
     },
-    plugins: []
+    plugins: [
+        new webpack.NormalModuleReplacementPlugin(
+            /scratch-parser[\\/]lib[\\/]unpack\.js$/,
+            path.resolve(__dirname, 'src/lib/scratch-parser-unpack-web.js')
+        ),
+        new webpack.IgnorePlugin(/^adm-zip$/)
+    ]
 };
 
 module.exports = [

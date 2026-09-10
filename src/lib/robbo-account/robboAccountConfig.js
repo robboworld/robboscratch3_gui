@@ -115,11 +115,23 @@ export function oidcStartUrl (returnTo, prompt) {
     return start.toString();
 }
 
-export function oidcLogoutUrl (returnTo) {
+export function resolveEditorLogoutReturnTo () {
+    if (typeof window !== 'undefined' && window.location) {
+        const {protocol, host, pathname, search, hash} = window.location;
+        return `${protocol}//${host}${pathname}${search}${hash}`;
+    }
+    const port = envString('PORT') || '8601';
+    return `${currentProtocol()}//${currentHostname()}:${port}/`;
+}
+
+export function oidcLogoutUrl (returnTo, {skipIdp = false} = {}) {
     const api = resolveApiBase();
-    const lk = resolveLkBase();
-    const post = returnTo || `${lk}/login`;
-    return `${api}/auth/oidc/logout?return_to=${encodeURIComponent(post)}`;
+    if (!skipIdp) {
+        return `${api}/auth/oidc/logout/rs`;
+    }
+    const post = returnTo || resolveEditorLogoutReturnTo();
+    const url = `${api}/auth/oidc/logout?return_to=${encodeURIComponent(post)}`;
+    return `${url}&skip_idp=1`;
 }
 
 export function myProjectsUrl () {

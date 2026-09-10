@@ -76,10 +76,12 @@ import {setRobboUiHidden} from '../../reducers/layout-visibility';
 import storage from '../../lib/storage';
 import {
     checkSessionThunk,
+    handleRemoteSignOutThunk,
     saveToCloudThunk,
     signOutThunk,
     updateCloudProjectTitleThunk
 } from '../../RobboGui/actions/robboAccountActions';
+import {startBffSessionWatch} from '../../lib/robbo-account/authEcosystemSync';
 import {
     myProjectsUrl,
     projectPageUrl,
@@ -260,9 +262,20 @@ class MenuBar extends React.Component {
         if (this.props.onCheckSession) {
             this.props.onCheckSession();
         }
+        this._stopSessionWatch = startBffSessionWatch({
+            isAuthenticated: () => this.props.isRobboAccountAuthenticated,
+            onSessionLost: () => {
+                if (this.props.onRemoteSignOut) {
+                    this.props.onRemoteSignOut();
+                }
+            }
+        });
     }
     componentWillUnmount () {
         document.removeEventListener('keydown', this.handleKeyPress);
+        if (this._stopSessionWatch) {
+            this._stopSessionWatch();
+        }
     }
     handleClickSignOut () {
         if (this.props.onSignOut) {
@@ -870,6 +883,7 @@ MenuBar.propTypes = {
     onClickSave: PropTypes.func,
     onClickSaveAsCopy: PropTypes.func,
     onCheckSession: PropTypes.func,
+    onRemoteSignOut: PropTypes.func,
     onLogOut: PropTypes.func,
     onOpenRegistration: PropTypes.func,
     onOpenTipLibrary: PropTypes.func,
@@ -932,6 +946,7 @@ const mapDispatchToProps = dispatch => ({
     onOpenTipLibrary: () => dispatch(openTipsLibrary()),
     onOpenScenariosLibrary: () => dispatch(openScenariosLibrary()),
     onCheckSession: () => dispatch(checkSessionThunk()),
+    onRemoteSignOut: () => dispatch(handleRemoteSignOutThunk()),
     onClickAccount: () => dispatch(openAccountMenu()),
     onRequestCloseAccount: () => dispatch(closeAccountMenu()),
     onClickFile: () => dispatch(openFileMenu()),

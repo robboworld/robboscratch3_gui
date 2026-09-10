@@ -54,5 +54,5 @@ const reducer = function (state, action) {
 
 export {
     reducer as default,
-    initialState as iot_block_InitialState,
+    initialState as iot_blocks_InitialState,
 };
