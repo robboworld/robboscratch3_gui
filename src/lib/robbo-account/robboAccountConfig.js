@@ -130,8 +130,10 @@ export function oidcLogoutUrl (returnTo, {skipIdp = false} = {}) {
         return `${api}/auth/oidc/logout/rs`;
     }
     const post = returnTo || resolveEditorLogoutReturnTo();
-    const url = `${api}/auth/oidc/logout?return_to=${encodeURIComponent(post)}`;
-    return `${url}&skip_idp=1`;
+    const logout = new URL(`${api}/auth/oidc/logout`);
+    logout.searchParams.set('skip_idp', '1');
+    logout.searchParams.set('return_to', post);
+    return logout.toString();
 }
 
 export function myProjectsUrl () {

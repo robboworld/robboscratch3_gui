@@ -394,7 +394,7 @@ export function signOutThunk () {
         markSilentSsoAttempted();
         clearAccessTokenMemory();
         dispatch({type: ROBBO_ACCOUNT_SIGN_OUT});
-        navigateTop(oidcLogoutUrl());
+        navigateTop(oidcLogoutUrl(undefined, {skipIdp: true}));
     };
 }
 
