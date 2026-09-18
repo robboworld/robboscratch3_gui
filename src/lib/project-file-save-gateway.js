@@ -1,7 +1,6 @@
 import downloadBlob from './download-blob';
 import {
     deletePersistenceValue,
-    getPersistenceValue,
     setPersistenceValue
 } from './project-persistence-db';
 
@@ -9,7 +8,6 @@ const FILE_HANDLE_KEY = 'project-save-file-handle-v1';
 const PROJECT_FILE_MIME = 'application/x.scratch.sb3';
 
 let cachedFileHandle = null;
-let hasLoadedRememberedHandle = false;
 
 const hasFilePickerSupport = () => typeof window !== 'undefined' &&
     typeof window.showSaveFilePicker === 'function';
@@ -35,50 +33,6 @@ const clearRememberedFileHandle = () => {
         .catch(() => {});
 };
 
-const preloadRememberedFileHandle = () => {
-    if (hasLoadedRememberedHandle) {
-        return Promise.resolve(cachedFileHandle);
-    }
-    hasLoadedRememberedHandle = true;
-    return getPersistenceValue(FILE_HANDLE_KEY)
-        .then(handle => {
-            if (!isWritableFileHandle(handle)) {
-                return null;
-            }
-            cachedFileHandle = handle;
-            return handle;
-        })
-        .catch(() => null);
-};
-
-if (typeof window !== 'undefined') {
-    preloadRememberedFileHandle();
-}
-
-const ensureWritePermission = handle => {
-    if (!isWritableFileHandle(handle)) {
-        return Promise.resolve(false);
-    }
-    if (typeof handle.queryPermission !== 'function' ||
-        typeof handle.requestPermission !== 'function') {
-        return Promise.resolve(true);
-    }
-
-    return Promise.resolve(handle.queryPermission({mode: 'readwrite'}))
-        .catch(() => 'prompt')
-        .then(permission => {
-            if (permission === 'granted') {
-                return true;
-            }
-            if (permission === 'denied') {
-                return false;
-            }
-            return Promise.resolve(handle.requestPermission({mode: 'readwrite'}))
-                .then(result => result === 'granted')
-                .catch(() => false);
-        });
-};
-
 const pickFileHandle = filename => window.showSaveFilePicker({
     suggestedName: filename,
     types: [{
@@ -96,41 +50,23 @@ const prepareProjectSaveTarget = filename => {
         });
     }
 
-    return Promise.resolve(cachedFileHandle)
-        .then(handle => {
-            if (!handle) {
-                return null;
+    // Always show the location picker for "Save to your computer".
+    // Reusing a cached FileSystemFileHandle skipped the dialog and could
+    // overwrite a different previously saved file.
+    return pickFileHandle(filename)
+        .then(handle => rememberFileHandle(handle).then(() => ({
+            mode: 'file-handle',
+            handle
+        })))
+        .catch(error => {
+            if (isAbortError(error)) {
+                return {
+                    mode: 'aborted'
+                };
             }
-            return ensureWritePermission(handle)
-                .then(hasPermission => {
-                    if (hasPermission) {
-                        return {
-                            mode: 'file-handle',
-                            handle
-                        };
-                    }
-                    return clearRememberedFileHandle().then(() => null);
-                });
-        })
-        .then(target => {
-            if (target) {
-                return target;
-            }
-            return pickFileHandle(filename)
-                .then(handle => rememberFileHandle(handle).then(() => ({
-                    mode: 'file-handle',
-                    handle
-                })))
-                .catch(error => {
-                    if (isAbortError(error)) {
-                        return {
-                            mode: 'aborted'
-                        };
-                    }
-                    return {
-                        mode: 'download'
-                    };
-                });
+            return {
+                mode: 'download'
+            };
         });
 };
 
