@@ -34,6 +34,9 @@ class ProjectTitleInput extends React.Component {
         }
     }
     render () {
+        if (!this.props.isRobboAccountAuthenticated) {
+            return null;
+        }
         return (
             <BufferedInput
                 className={classNames(styles.titleField, this.props.className)}
@@ -51,11 +54,13 @@ class ProjectTitleInput extends React.Component {
 ProjectTitleInput.propTypes = {
     className: PropTypes.string,
     intl: intlShape.isRequired,
+    isRobboAccountAuthenticated: PropTypes.bool,
     onUpdateProjectTitle: PropTypes.func,
     projectTitle: PropTypes.string
 };
 
 const mapStateToProps = state => ({
+    isRobboAccountAuthenticated: (state.scratchGui.robboAccount || {}).sessionStatus === 'authenticated',
     projectTitle: state.scratchGui.projectTitle
 });
 

@@ -1,0 +1,299 @@
+@import "../css/colors.css";
+@import "../css/units.css";
+@import "../css/z-index.css";
+@import "./RobboPopupChrome.css";
+
+.overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: $z-index-modal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    box-sizing: border-box;
+    background: rgba(15, 24, 40, 0.48);
+    backdrop-filter: blur(3px);
+    animation: logout-unsaved-overlay-in 0.22s ease-out;
+}
+
+.panel {
+    composes: popupShell;
+    box-sizing: border-box;
+    width: 26rem;
+    max-width: 96vw;
+    overflow: hidden;
+    animation: logout-unsaved-panel-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.header {
+    composes: popupHeader;
+    cursor: default;
+    min-height: 2.75rem;
+    padding: 0 2.75rem 0 2.75rem;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 175, 65, 0.1) 0%,
+        $ui-white 100%
+    );
+}
+
+.headerIcon {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background-color: rgba(217, 45, 32, 0.12);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d92d20' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 0.9rem;
+}
+
+.headerTitle {
+    composes: popupHeaderTitle;
+    font-size: $popup-font-size;
+}
+
+.closeButton {
+    composes: popupCloseButton;
+}
+
+.body {
+    padding: 0 1.25rem 0.25rem;
+}
+
+.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.25rem 0 0.875rem;
+}
+
+.illustration {
+    width: 5.5rem;
+    height: 4.25rem;
+    margin-bottom: 0.625rem;
+}
+
+.message {
+    margin: 0;
+    font-size: $popup-font-size;
+    line-height: 1.5;
+    text-align: center;
+    color: $text-primary;
+}
+
+.hint {
+    margin: 0.5rem 0 0;
+    font-size: $popup-font-size-sm;
+    line-height: 1.45;
+    text-align: center;
+    color: $text-primary-transparent;
+}
+
+.projectCard {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: calc($form-radius + 2px);
+    border: 1px solid rgba(0, 175, 65, 0.22);
+    background: linear-gradient(
+        135deg,
+        rgba(0, 175, 65, 0.07) 0%,
+        rgba(0, 175, 65, 0.03) 100%
+    );
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.projectIcon {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: $form-radius;
+    background-color: $ui-white;
+    border: 1px solid rgba(0, 175, 65, 0.2);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpolyline points='14 2 14 8 20 8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 1.125rem;
+}
+
+.projectMeta {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.projectLabel {
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(0, 175, 65, 0.85);
+}
+
+.projectTitle {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: $popup-font-size;
+    font-weight: bold;
+    line-height: 1.35;
+    color: $text-primary;
+}
+
+.errorBox {
+    box-sizing: border-box;
+    margin-top: 0.875rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: $form-radius;
+    border-left: 3px solid $red-primary;
+    background-color: rgba(255, 102, 26, 0.08);
+}
+
+.errorText {
+    margin: 0;
+    font-size: $popup-font-size-sm;
+    line-height: 1.45;
+    color: $text-primary;
+}
+
+.footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem 1.25rem;
+    border-top: 1px solid rgba(0, 175, 65, 0.12);
+    background-color: rgba(0, 175, 65, 0.03);
+}
+
+.primaryButton {
+    composes: action_button from "./RobboPaletteForm.css";
+    width: 100%;
+    padding: 0.625rem 1rem;
+    border-color: rgba(0, 175, 65, 0.75);
+    background: linear-gradient(
+        180deg,
+        rgba(0, 175, 65, 0.22) 0%,
+        rgba(0, 175, 65, 0.14) 100%
+    );
+    text-align: center;
+}
+
+.primaryButton:hover:not(:disabled) {
+    background: linear-gradient(
+        180deg,
+        rgba(0, 175, 65, 0.3) 0%,
+        rgba(0, 175, 65, 0.2) 100%
+    );
+    border-color: rgba(0, 175, 65, 0.9);
+}
+
+.primaryButton:disabled {
+    opacity: 0.72;
+    cursor: wait;
+}
+
+.dangerButton {
+    composes: action_button from "./RobboPaletteForm.css";
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border-color: rgba(217, 45, 32, 0.45);
+    background: linear-gradient(
+        180deg,
+        rgba(217, 45, 32, 0.14) 0%,
+        rgba(217, 45, 32, 0.08) 100%
+    );
+    text-align: center;
+}
+
+.dangerButton:hover:not(:disabled) {
+    background: linear-gradient(
+        180deg,
+        rgba(217, 45, 32, 0.22) 0%,
+        rgba(217, 45, 32, 0.14) 100%
+    );
+    border-color: rgba(217, 45, 32, 0.65);
+}
+
+.dangerButton:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.cancelLink {
+    margin: 0.125rem auto 0;
+    padding: 0.25rem 0.5rem;
+    border: none;
+    background: transparent;
+    color: $text-primary-transparent;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: $popup-font-size-sm;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.cancelLink:hover:not(:disabled) {
+    color: $text-primary;
+}
+
+.cancelLink:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.buttonContent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.spinner {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid rgba(0, 175, 65, 0.2);
+    border-top-color: $motion-primary;
+    border-radius: 50%;
+    animation: logout-unsaved-spin 0.7s linear infinite;
+}
+
+@keyframes logout-unsaved-overlay-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes logout-unsaved-panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.85rem) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes logout-unsaved-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

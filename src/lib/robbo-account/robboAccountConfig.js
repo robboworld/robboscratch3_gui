@@ -95,6 +95,31 @@ export function resolveLkBase () {
     return `${currentProtocol()}//${currentHostname()}:3030`;
 }
 
+/**
+ * @returns {string} e.g. http://local.openedx.io
+ */
+export function resolveLmsBase () {
+    const fromEnv = envString('ROBBO_LMS_URL');
+    if (fromEnv) {
+        return trimTrailingSlash(alignLoopbackUrlHost(fromEnv));
+    }
+    return 'http://local.openedx.io';
+}
+
+/**
+ * Open edX registration page; after signup user returns to returnTo when allowlisted.
+ * @param {string} [returnTo]
+ * @returns {string}
+ */
+export function lmsRegisterUrl (returnTo) {
+    const lmsBase = resolveLmsBase();
+    const url = new URL(`${lmsBase}/register`);
+    const next = returnTo ||
+        (typeof window !== 'undefined' ? window.location.href : `${lmsBase}/`);
+    url.searchParams.set('next', next);
+    return url.toString();
+}
+
 export function loginUrl (returnTo) {
     const base = resolveLkBase();
     const target = returnTo || (typeof window !== 'undefined' ? window.location.href : '');
@@ -124,12 +149,27 @@ export function resolveEditorLogoutReturnTo () {
     return `${currentProtocol()}//${currentHostname()}:${port}/`;
 }
 
+export function bffLogoutClearUrl () {
+    return `${resolveApiBase()}/auth/oidc/logout/clear`;
+}
+
+/** LMS /logout with redirect (clears Tutor session in a top-level window or popup). */
+export function idpLogoutUrl (returnTo) {
+    const target = returnTo || bffLogoutClearUrl();
+    const logout = new URL(`${resolveLmsBase()}/logout`);
+    logout.searchParams.set('redirect_url', target);
+    logout.searchParams.set('post_logout_redirect_uri', target);
+    return logout.toString();
+}
+
 export function oidcLogoutUrl (returnTo, {skipIdp = false} = {}) {
     const api = resolveApiBase();
-    if (!skipIdp) {
-        return `${api}/auth/oidc/logout/rs`;
-    }
     const post = returnTo || resolveEditorLogoutReturnTo();
+    if (!skipIdp) {
+        const logout = new URL(`${api}/auth/oidc/logout/rs`);
+        logout.searchParams.set('return_to', post);
+        return logout.toString();
+    }
     const logout = new URL(`${api}/auth/oidc/logout`);
     logout.searchParams.set('skip_idp', '1');
     logout.searchParams.set('return_to', post);

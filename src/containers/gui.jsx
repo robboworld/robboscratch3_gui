@@ -46,6 +46,7 @@ import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
 import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
 
 import GUIComponent from '../components/gui/gui.jsx';
+import CloudProjectNotFound from '../components/cloud-project-not-found/cloud-project-not-found.jsx';
 import RobboSimulatorVmSync from './robbo-simulator-vm-sync.jsx';
 import {setIsScratchDesktop} from '../lib/isScratchDesktop.js';
 
@@ -231,6 +232,9 @@ class GUI extends React.Component {
             .catch(() => {});
     }
     setReduxTitle (newTitle) {
+        if (!this.props.isRobboAccountAuthenticated) {
+            return;
+        }
         if (newTitle === null || typeof newTitle === 'undefined') {
             this.props.onUpdateReduxProjectTitle(
                 this.props.intl.formatMessage(messages.defaultProjectTitle)
@@ -256,14 +260,19 @@ class GUI extends React.Component {
             throw new Error(
                 `Error in Scratch GUI [location=${window.location}]: ${this.props.error}`);
         }
+        if (this.props.cloudProjectAccessBlocked) {
+            return <CloudProjectNotFound />;
+        }
         const {
             /* eslint-disable no-unused-vars */
             assetHost,
             cloudHost,
+            cloudProjectAccessBlocked,
             error,
             isError,
             isScratchDesktop,
             isShowingProject,
+            isRobboAccountAuthenticated,
             onProjectLoaded,
             onStorageInit,
             onUpdateProjectId,
@@ -298,12 +307,14 @@ GUI.propTypes = {
     assetHost: PropTypes.string,
     children: PropTypes.node,
     cloudHost: PropTypes.string,
+    cloudProjectAccessBlocked: PropTypes.bool,
     error: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
     fetchingProject: PropTypes.bool,
     importInfoVisible: PropTypes.bool,
     intl: intlShape,
     isError: PropTypes.bool,
     isLoading: PropTypes.bool,
+    isRobboAccountAuthenticated: PropTypes.bool,
     isBlocksWorkspaceLayoutPending: PropTypes.bool,
     isScratchDesktop: PropTypes.bool,
     isShowingProject: PropTypes.bool,
@@ -345,6 +356,7 @@ const mapStateToProps = state => {
         connectionModalVisible: state.scratchGui.modals.connectionModal,
         costumeLibraryVisible: state.scratchGui.modals.costumeLibrary,
         costumesTabVisible: state.scratchGui.editorTab.activeTabIndex === COSTUMES_TAB_INDEX,
+        cloudProjectAccessBlocked: (state.scratchGui.robboAccount || {}).cloudProjectAccessBlocked,
         error: state.scratchGui.projectState.error,
         importInfoVisible: state.scratchGui.modals.importInfo,
         isError: getIsError(loadingState),
@@ -356,6 +368,7 @@ const mapStateToProps = state => {
         isRobboUiHidden: state.scratchGui.layoutVisibility.isRobboUiHidden,
         isBlocksWorkspaceLayoutPending: state.scratchGui.layoutVisibility.isBlocksWorkspaceLayoutPending,
         isRtl: state.locales.isRtl,
+        isRobboAccountAuthenticated: (state.scratchGui.robboAccount || {}).sessionStatus === 'authenticated',
         projectChanged: state.scratchGui.projectChanged,
         isShowingProject: getIsShowingProject(loadingState),
         loadingStateVisible: state.scratchGui.modals.loadingProject,

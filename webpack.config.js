@@ -142,13 +142,7 @@ const base = {
             })
         ]
     },
-    plugins: [
-        new webpack.NormalModuleReplacementPlugin(
-            /scratch-parser[\\/]lib[\\/]unpack\.js$/,
-            path.resolve(__dirname, 'src/lib/scratch-parser-unpack-web.js')
-        ),
-        new webpack.IgnorePlugin(/^adm-zip$/)
-    ]
+    plugins: []
 };
 
 module.exports = [
@@ -201,7 +195,8 @@ module.exports = [
                     'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"',
                     'process.env.RS3_ACTIVATION_BASE_URL': JSON.stringify(process.env.RS3_ACTIVATION_BASE_URL || ''),
                     'process.env.ROBBO_ACCOUNT_API_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_API_URL || ''),
-                    'process.env.ROBBO_ACCOUNT_LK_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_LK_URL || '')
+                    'process.env.ROBBO_ACCOUNT_LK_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_LK_URL || ''),
+                    'process.env.ROBBO_LMS_URL': JSON.stringify(process.env.ROBBO_LMS_URL || '')
                 }),
                 new HtmlWebpackPlugin({
                     chunks: ['lib.min', 'gui'],
@@ -295,7 +290,8 @@ module.exports = [
                     'process.env.ROBBO_BUILD_VERSION_SUFFIX': '"-web"',
                     'process.env.RS3_ACTIVATION_BASE_URL': JSON.stringify(process.env.RS3_ACTIVATION_BASE_URL || ''),
                     'process.env.ROBBO_ACCOUNT_API_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_API_URL || ''),
-                    'process.env.ROBBO_ACCOUNT_LK_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_LK_URL || '')
+                    'process.env.ROBBO_ACCOUNT_LK_URL': JSON.stringify(process.env.ROBBO_ACCOUNT_LK_URL || ''),
+                    'process.env.ROBBO_LMS_URL': JSON.stringify(process.env.ROBBO_LMS_URL || '')
                 }),
                 new CopyWebpackPlugin([{
                     from: 'node_modules/scratch-blocks/media',

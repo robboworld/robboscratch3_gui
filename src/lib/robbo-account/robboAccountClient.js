@@ -208,11 +208,18 @@ export function signIn (email, password) {
  *   lms_password_fallback?: boolean
  * }>}
  */
+function mayUsePasswordRefreshFallback (status) {
+    return Boolean(status && status.lms_password_fallback === true);
+}
+
 export function getSessionStatus () {
     return fetchJson('/auth/oidc/status', {method: 'GET'})
         .then(status => {
             if (status && status.authenticated) {
                 return status;
+            }
+            if (!mayUsePasswordRefreshFallback(status)) {
+                return status || {authenticated: false};
             }
             // Password / hybrid: OIDC cookie absent — try refresh cookie → Bearer.
             return refreshAccessToken().then(token => {
@@ -222,19 +229,29 @@ export function getSessionStatus () {
                 return statusFromRefreshToken(status, token);
             });
         })
-        .catch(() => refreshAccessToken().then(token => {
-            if (!token) {
-                return {authenticated: false};
-            }
-            return statusFromRefreshToken(null, token);
-        }));
+        .catch(() => {
+            return {authenticated: false};
+        });
 }
 
 /**
+ * @returns {Promise<{projectPages: object[]}>}
+ */
+export function listProjectPages () {
+    return fetchJson('/projectPage/', {method: 'GET'});
+}
+
+/**
+ * @param {string} [locale] GUI locale for localized default title (Accept-Language)
  * @returns {Promise<{projectPage: object}>}
  */
-export function createProjectPage () {
-    return fetchJson('/projectPage/', {method: 'POST'});
+export function createProjectPage (locale) {
+    const headers = {};
+    const lang = (locale || '').trim();
+    if (lang) {
+        headers['Accept-Language'] = lang;
+    }
+    return fetchJson('/projectPage/', {method: 'POST', headers});
 }
 
 /**
@@ -308,11 +325,77 @@ export function uploadProjectPreview (projectPageId, blob) {
 }
 
 /**
+ * @param {object} playTokenHttp
+ * @returns {string}
+ */
+export function extractPlayToken (playTokenHttp) {
+    if (!playTokenHttp) {
+        return '';
+    }
+    const playUrl = playTokenHttp.playUrl || playTokenHttp.playURL || '';
+    if (!playUrl) {
+        return '';
+    }
+    try {
+        const base = typeof window !== 'undefined' && window.location ?
+            window.location.origin : 'http://localhost';
+        const parsed = new URL(playUrl, base);
+        return (parsed.searchParams.get('token') || '').trim();
+    } catch (e) {
+        return '';
+    }
+}
+
+/**
+ * True when the viewer cannot open this project (private or forbidden).
+ * Missing .sb3 (404 on download) is not treated as unavailable — new drafts have no file yet.
+ * @param {Error} err
+ * @returns {boolean}
+ */
+export function isCloudProjectUnavailableError (err) {
+    if (!err) {
+        return false;
+    }
+    if (err.status === 403) {
+        return true;
+    }
+    const msg = String(err.message || err.errorCode || '').toLowerCase();
+    return msg.indexOf('not access') >= 0 ||
+        msg.indexOf('forbidden') >= 0;
+}
+
+/**
+ * True when the project card itself does not exist.
+ * @param {Error} err
+ * @returns {boolean}
+ */
+export function isCloudProjectMissingError (err) {
+    if (!err) {
+        return false;
+    }
+    const msg = String(err.message || err.errorCode || '').toLowerCase();
+    // GET .../download 404 means "no .sb3 yet", not "no project card".
+    if (msg.indexOf('project file') >= 0 || msg.indexOf('download_sb3') >= 0) {
+        return false;
+    }
+    if (err.status === 404) {
+        return true;
+    }
+    return msg.indexOf('page not found') >= 0;
+}
+
+/**
  * @param {string} projectPageId
+ * @param {{playToken?: string}} [options]
  * @returns {Promise<ArrayBuffer>}
  */
-export function downloadProjectSb3 (projectPageId) {
-    return fetchAccount(`/projectPage/${encodeURIComponent(projectPageId)}/download`, {
+export function downloadProjectSb3 (projectPageId, options) {
+    const playToken = options && options.playToken;
+    let path = `/projectPage/${encodeURIComponent(projectPageId)}/download`;
+    if (playToken) {
+        path += `?token=${encodeURIComponent(playToken)}`;
+    }
+    return fetchAccount(path, {
         method: 'GET'
     }).then(res => {
         if (!res.ok) {
