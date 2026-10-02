@@ -106,6 +106,10 @@ import {
 } from '../../lib/robbo-account/robboAccountConfig';
 import {AUTH_UI_ENABLED} from '../../lib/licensing/licenseUiEnabled';
 
+// Robbo: Scratch tutorials are English-only (no ru screenshots, Wistia videos); the cards engine stays for
+// future Robbo lessons in lib/libraries/decks/index.jsx — enable the menu button once there are some
+const TUTORIALS_UI_ENABLED = false;
+
 const navigateTop = url => {
     try {
         if (typeof window !== 'undefined' && window.top && window.top !== window) {
@@ -872,22 +876,24 @@ class MenuBar extends React.Component {
                             {this.props.intl.formatMessage(messages.saveToCloudError)}
                         </div>
                     ) : null}
-                    <Divider className={classNames(styles.divider)} />
-                    <div className={styles.fileGroup}>
-                        <div
-                            aria-label={this.props.intl.formatMessage(ariaMessages.tutorials)}
-                            className={classNames(styles.menuBarItem, styles.hoverable, 'tutorials-button')}
-                            onClick={this.props.onOpenTipLibrary}
-                        >
-                            <img
-                                className={styles.helpIcon}
-                                src={helpIcon}
-                            />
-                            <span className={styles.tutorialsLabel}>
-                                <FormattedMessage {...ariaMessages.tutorials} />
-                            </span>
+                    {TUTORIALS_UI_ENABLED && <Divider className={classNames(styles.divider)} />}
+                    {TUTORIALS_UI_ENABLED && (
+                        <div className={styles.fileGroup}>
+                            <div
+                                aria-label={this.props.intl.formatMessage(ariaMessages.tutorials)}
+                                className={classNames(styles.menuBarItem, styles.hoverable, 'tutorials-button')}
+                                onClick={this.props.onOpenTipLibrary}
+                            >
+                                <img
+                                    className={styles.helpIcon}
+                                    src={helpIcon}
+                                />
+                                <span className={styles.tutorialsLabel}>
+                                    <FormattedMessage {...ariaMessages.tutorials} />
+                                </span>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {AUTH_UI_ENABLED ? (
