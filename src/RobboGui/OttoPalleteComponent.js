@@ -41,7 +41,10 @@ class OttoPalleteComponent extends Component {
         const sound_sensor_value_field = getPaletteSensorValueNode(sound_sensor_component);
         const distanse_sensor_component = document.getElementById(`otto_sensor-data-block-otto-${this.props.ottoIndex}-distanse_type-analog`);
         const distanse_sensor_value_field = getPaletteSensorValueNode(distanse_sensor_component);
-        setInterval(() => {
+        if (this.getDataLoopInterval) {
+            clearInterval(this.getDataLoopInterval);
+        }
+        this.getDataLoopInterval = setInterval(() => {
             sound_sensor_value_field.innerHTML = this.props.OCA.get_sound();
             distanse_sensor_value_field.innerHTML = this.props.OCA.get_dist();
         }, 50);
@@ -49,6 +52,13 @@ class OttoPalleteComponent extends Component {
 
     componentDidMount () {
         this.startGetDataLoop();
+    }
+
+    componentWillUnmount () {
+        if (this.getDataLoopInterval) {
+            clearInterval(this.getDataLoopInterval);
+            this.getDataLoopInterval = null;
+        }
     }
 
     render () {
