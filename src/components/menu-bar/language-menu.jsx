@@ -10,7 +10,7 @@ import check from './check.svg';
 import {MenuItem, Submenu} from '../menu/menu.jsx';
 import languageIcon from '../language-selector/language-icon.svg';
 import {languageMenuOpen, openLanguageMenu} from '../../reducers/menus.js';
-import {selectLocale} from '../../reducers/locales.js';
+import {changeLocale} from '../../reducers/locales.js';
 
 import styles from './settings-menu.css';
 
@@ -118,7 +118,7 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = (dispatch, ownProps) => ({
     onChangeLanguage: locale => {
-        dispatch(selectLocale(locale));
+        changeLocale(dispatch, locale);
         ownProps.onRequestCloseSettings();
     },
     onRequestOpen: () => dispatch(openLanguageMenu())
