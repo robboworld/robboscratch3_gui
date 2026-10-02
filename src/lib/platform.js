@@ -72,10 +72,14 @@ function getNodeRequire() {
   if (typeof window !== 'undefined' && window.nw && typeof window.nw.require === 'function') {
     return window.nw.require.bind(window.nw);
   }
+  // __non_webpack_require__ is emitted as the runtime's own `require` (Electron/Node);
+  // a bare `require` used as a value makes webpack warn about a critical dependency
+  /* eslint-disable no-undef */
   if (typeof process !== 'undefined' && process.versions && process.versions.node &&
-      typeof require === 'function') {
-    return require;
+      typeof __non_webpack_require__ === 'function') {
+    return __non_webpack_require__;
   }
+  /* eslint-enable no-undef */
   return null;
 }
 
