@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import Box from '../box/box.jsx';
+import PlayButton from '../../containers/play-button.jsx';
 import styles from './library-item.css';
 import classNames from 'classnames';
 
@@ -113,12 +114,12 @@ class LibraryItemComponent extends React.PureComponent {
                                     <div
                                         className={styles.featuredExtensionMetadataDetail}
                                     >
-                                        <img
-                                            src={this.props.bluetoothRequired ?
-                                                bluetoothIconURL :
-                                                internetConnectionIconURL
-                                            }
-                                        />
+                                        {this.props.bluetoothRequired ? (
+                                            <img src={bluetoothIconURL} />
+                                        ) : null}
+                                        {this.props.internetConnectionRequired ? (
+                                            <img src={internetConnectionIconURL} />
+                                        ) : null}
                                     </div>
                                 </div>
                             ) : null}
@@ -147,8 +148,9 @@ class LibraryItemComponent extends React.PureComponent {
         ) : (
             <Box
                 className={classNames(
-                    styles.libraryItem,
-                    this.props.hidden ? styles.hidden : null
+                    styles.libraryItem, {
+                        [styles.hidden]: this.props.hidden
+                    }
                 )}
                 role="button"
                 tabIndex="0"
@@ -156,12 +158,16 @@ class LibraryItemComponent extends React.PureComponent {
                 onClick={this.props.onClick}
                 onFocus={this.props.onFocus}
                 onKeyPress={this.props.onKeyPress}
-                onMouseEnter={this.props.onMouseEnter}
-                onMouseLeave={this.props.onMouseLeave}
+                onMouseEnter={this.props.showPlayButton ? null : this.props.onMouseEnter}
+                onMouseLeave={this.props.showPlayButton ? null : this.props.onMouseLeave}
             >
                 {/* Layers of wrapping is to prevent layout thrashing on animation */}
                 <Box className={styles.libraryItemImageContainerWrapper}>
-                    <Box className={styles.libraryItemImageContainer}>
+                    <Box
+                        className={styles.libraryItemImageContainer}
+                        onMouseEnter={this.props.showPlayButton ? this.props.onMouseEnter : null}
+                        onMouseLeave={this.props.showPlayButton ? this.props.onMouseLeave : null}
+                    >
                         <img
                             className={styles.libraryItemImage}
                             src={this.props.iconURL}
@@ -169,6 +175,13 @@ class LibraryItemComponent extends React.PureComponent {
                     </Box>
                 </Box>
                 <span className={styles.libraryItemName}>{this.props.name}</span>
+                {this.props.showPlayButton ? (
+                    <PlayButton
+                        isPlaying={this.props.isPlaying}
+                        onPlay={this.props.onPlay}
+                        onStop={this.props.onStop}
+                    />
+                ) : null}
             </Box>
         );
     }
@@ -190,6 +203,7 @@ LibraryItemComponent.propTypes = {
     iconURL: PropTypes.string,
     insetIconURL: PropTypes.string,
     internetConnectionRequired: PropTypes.bool,
+    isPlaying: PropTypes.bool,
     name: PropTypes.oneOfType([
         PropTypes.string,
         PropTypes.node
@@ -200,12 +214,16 @@ LibraryItemComponent.propTypes = {
     onKeyPress: PropTypes.func.isRequired,
     onMouseEnter: PropTypes.func.isRequired,
     onMouseLeave: PropTypes.func.isRequired,
-    scenarioCard: PropTypes.bool
+    onPlay: PropTypes.func.isRequired,
+    onStop: PropTypes.func.isRequired,
+    scenarioCard: PropTypes.bool,
+    showPlayButton: PropTypes.bool
 };
 
 LibraryItemComponent.defaultProps = {
     disabled: false,
-    scenarioCard: false
+    scenarioCard: false,
+    showPlayButton: false
 };
 
 export default LibraryItemComponent;

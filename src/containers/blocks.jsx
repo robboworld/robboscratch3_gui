@@ -14,9 +14,12 @@ import ExtensionLibrary from './extension-library.jsx';
 import extensionData from '../lib/libraries/extensions/index.jsx';
 import CustomProcedures from './custom-procedures.jsx';
 import errorBoundaryHOC from '../lib/error-boundary-hoc.jsx';
-import {STAGE_DISPLAY_SIZES} from '../lib/layout-constants';
+import {BLOCKS_DEFAULT_SCALE, STAGE_DISPLAY_SIZES} from '../lib/layout-constants';
 import DropAreaHOC from '../lib/drop-area-hoc.jsx';
 import DragConstants from '../lib/drag-constants';
+import defineDynamicBlock from '../lib/define-dynamic-block';
+import {DEFAULT_THEME, getColorsForTheme, themeMap} from '../lib/themes';
+import {injectExtensionBlockTheme, injectExtensionCategoryTheme} from '../lib/themes/blockHelpers';
 
 import {connect} from 'react-redux';
 import {updateToolbox} from '../reducers/toolbox';
@@ -24,6 +27,8 @@ import {activateColorPicker} from '../reducers/color-picker';
 import {closeExtensionLibrary, openSoundRecorder, openConnectionModal} from '../reducers/modals';
 import {activateCustomProcedures, deactivateCustomProcedures} from '../reducers/custom-procedures';
 import {setConnectionModalExtensionId} from '../reducers/connection-modal';
+import {updateMetrics} from '../reducers/workspace-metrics';
+import {isTimeTravel2020} from '../reducers/time-travel';
 
 import {
     activateTab,
@@ -49,8 +54,8 @@ const easeInOutCubic = t => (t < 0.5 ?
 
 const addFunctionListener = (object, property, callback) => {
     const oldFn = object[property];
-    object[property] = function () {
-        const result = oldFn.apply(this, arguments);
+    object[property] = function (...args) {
+        const result = oldFn.apply(this, args);
         callback.apply(this, result);
         return result;
     };
@@ -63,7 +68,7 @@ const DroppableBlocks = DropAreaHOC([
 class Blocks extends React.Component {
     constructor (props) {
         super(props);
-        this.ScratchBlocks = VMScratchBlocks(props.vm);
+        this.ScratchBlocks = VMScratchBlocks(props.vm, false);
         bindAll(this, [
             'attachVM',
             'detachVM',
@@ -81,6 +86,7 @@ class Blocks extends React.Component {
             'onScriptGlowOff',
             'onBlockGlowOn',
             'onBlockGlowOff',
+            'handleMonitorsUpdate',
             'handleExtensionAdded',
             'handleBlocksInfoUpdate',
             'onTargetsUpdate',
@@ -134,7 +140,6 @@ class Blocks extends React.Component {
         this.ScratchBlocks.recordSoundCallback = this.handleOpenSoundRecorder;
 
         this.state = {
-            workspaceMetrics: {},
             prompt: null,
             paletteAnimating: false,
             paletteResizing: false,
@@ -144,6 +149,11 @@ class Blocks extends React.Component {
         this.toolboxUpdateQueue = [];
     }
     componentDidMount () {
+        this.ScratchBlocks = VMScratchBlocks(this.props.vm, this.props.useCatBlocks);
+        this.ScratchBlocks.prompt = this.handlePromptStart;
+        this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
+        this.ScratchBlocks.recordSoundCallback = this.handleOpenSoundRecorder;
+
         this.ScratchBlocks.FieldColourSlider.activateEyedropper_ = this.props.onActivateColorPicker;
         this.ScratchBlocks.Procedures.externalProcedureDefCallback = this.props.onActivateCustomProcedures;
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
@@ -151,7 +161,7 @@ class Blocks extends React.Component {
         const workspaceConfig = defaultsDeep({},
             Blocks.defaultOptions,
             this.props.options,
-            {rtl: this.props.isRtl, toolbox: this.props.toolboxXML}
+            {rtl: this.props.isRtl, toolbox: this.props.toolboxXML, colours: getColorsForTheme(this.props.theme)}
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
         this.installToolboxPaletteInterceptor();
@@ -180,6 +190,21 @@ class Blocks extends React.Component {
                 this.blocks.style.setProperty('--blocks-flyout-width', '0px');
             }
         }
+
+        // Register buttons under new callback keys for creating variables,
+        // lists, and procedures from extensions.
+
+        const toolboxWorkspace = this.workspace.getFlyout().getWorkspace();
+
+        const varListButtonCallback = type =>
+            (() => this.ScratchBlocks.Variables.createVariable(this.workspace, null, type));
+        const procButtonCallback = () => {
+            this.ScratchBlocks.Procedures.createProcedureDefCallback_(this.workspace);
+        };
+
+        toolboxWorkspace.registerButtonCallback('MAKE_A_VARIABLE', varListButtonCallback(''));
+        toolboxWorkspace.registerButtonCallback('MAKE_A_LIST', varListButtonCallback('list'));
+        toolboxWorkspace.registerButtonCallback('MAKE_A_PROCEDURE', procButtonCallback);
 
         // Store the xml of the toolbox that is actually rendered.
         // This is used in componentDidUpdate instead of prevProps, because
@@ -257,21 +282,10 @@ class Blocks extends React.Component {
           || (this.props.robbo_settings.is_copter_sim_activated !== prevProps.robbo_settings.is_copter_sim_activated)
           || (this.props.isRobboUiHidden !== prevProps.isRobboUiHidden)   ){
 
-          const dynamicBlocksXML = this.props.vm.runtime.getBlocksXML();
-          const target = this.props.vm.editingTarget;
-
-          var config = {};
-          config.isExternalSensorsActivated = this.props.robbo_settings.is_lab_ext_enabled;
-          config.isExtensionPackActivated   = this.props.extension_pack.is_extension_pack_activated;
-          config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
-          config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
-          config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
-          config.robbo_ui_hidden            = this.props.isRobboUiHidden;
-          config.locale = this.props.locale;
-          config.messages = this.props.messages;
-          const toolboxXML = makeToolboxXML(target.isStage, target.id, config, dynamicBlocksXML);
-
-          this.props.updateToolboxState(toolboxXML);
+          const toolboxXML = this.getToolboxXML();
+          if (toolboxXML) {
+              this.props.updateToolboxState(toolboxXML);
+          }
 
         }
 
@@ -280,7 +294,6 @@ class Blocks extends React.Component {
         }
 
         if (this.props.isShowingProject && !prevProps.isShowingProject) {
-            this.setState({workspaceMetrics: {}});
             if (this._pendingInitialWorkspaceCenter) {
                 this.beginInitialWorkspaceLayout();
             }
@@ -331,6 +344,7 @@ class Blocks extends React.Component {
                 this.setLocale();
             } else {
                 this.props.vm.refreshWorkspace();
+                this.requestToolboxUpdate();
             }
 
             if (this.props.paletteCollapsed) {
@@ -366,6 +380,9 @@ class Blocks extends React.Component {
         if (root) {
             root.classList.remove('flyout-animating-out', 'flyout-animating-in');
         }
+
+        // Clear the flyout blocks so that they can be recreated on mount.
+        this.props.vm.clearFlyoutBlocks();
     }
     requestToolboxUpdate () {
         clearTimeout(this.toolboxUpdateTimeout);
@@ -457,6 +474,7 @@ class Blocks extends React.Component {
         this.props.vm.addListener('VISUAL_REPORT', this.onVisualReport);
         this.props.vm.addListener('workspaceUpdate', this.onWorkspaceUpdate);
         this.props.vm.addListener('targetsUpdate', this.onTargetsUpdate);
+        this.props.vm.addListener('MONITORS_UPDATE', this.handleMonitorsUpdate);
         this.props.vm.addListener('EXTENSION_ADDED', this.handleExtensionAdded);
         this.props.vm.addListener('BLOCKSINFO_UPDATE', this.handleBlocksInfoUpdate);
         this.props.vm.addListener('PERIPHERAL_CONNECTED', this.handleStatusButtonUpdate);
@@ -470,6 +488,7 @@ class Blocks extends React.Component {
         this.props.vm.removeListener('VISUAL_REPORT', this.onVisualReport);
         this.props.vm.removeListener('workspaceUpdate', this.onWorkspaceUpdate);
         this.props.vm.removeListener('targetsUpdate', this.onTargetsUpdate);
+        this.props.vm.removeListener('MONITORS_UPDATE', this.handleMonitorsUpdate);
         this.props.vm.removeListener('EXTENSION_ADDED', this.handleExtensionAdded);
         this.props.vm.removeListener('BLOCKSINFO_UPDATE', this.handleBlocksInfoUpdate);
         this.props.vm.removeListener('PERIPHERAL_CONNECTED', this.handleStatusButtonUpdate);
@@ -499,14 +518,18 @@ class Blocks extends React.Component {
     onWorkspaceMetricsChange () {
         const target = this.props.vm.editingTarget;
         if (target && target.id) {
-            const workspaceMetrics = Object.assign({}, this.state.workspaceMetrics, {
-                [target.id]: {
+            // Dispatch updateMetrics later, since onWorkspaceMetricsChange may be (very indirectly)
+            // called from a reducer, i.e. when you create a custom procedure.
+            // TODO: Is this a vehement hack?
+            setTimeout(() => {
+                if (!this.workspace) return;
+                this.props.updateMetrics({
+                    targetID: target.id,
                     scrollX: this.workspace.scrollX,
                     scrollY: this.workspace.scrollY,
                     scale: this.workspace.scale
-                }
-            });
-            this.setState({workspaceMetrics});
+                });
+            }, 0);
         }
     }
     onScriptGlowOn (data) {
@@ -524,6 +547,18 @@ class Blocks extends React.Component {
     onVisualReport (data) {
         this.workspace.reportValue(data.id, data.value);
     }
+    getRobboToolboxConfig () {
+        var config = {};
+        config.isExternalSensorsActivated = this.props.robbo_settings.is_lab_ext_enabled;
+        config.isExtensionPackActivated   = this.props.extension_pack.is_extension_pack_activated;
+        config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
+        config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
+        config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
+        config.robbo_ui_hidden            = this.props.isRobboUiHidden;
+        config.locale = this.props.locale;
+        config.messages = this.props.messages;
+        return config;
+    }
     getToolboxXML () {
         // Use try/catch because this requires digging pretty deep into the VM
         // Code inside intentionally ignores several error situations (no stage, etc.)
@@ -536,22 +571,17 @@ class Blocks extends React.Component {
             const stageCostumes = stage.getCostumes();
             const targetCostumes = target.getCostumes();
             const targetSounds = target.getSounds();
-            const dynamicBlocksXML = this.props.vm.runtime.getBlocksXML();
+            const dynamicBlocksXML = injectExtensionCategoryTheme(
+                this.props.vm.runtime.getBlocksXML(target),
+                this.props.theme
+            );
 
-            var config = {};
-            config.isExternalSensorsActivated = this.props.robbo_settings.is_lab_ext_enabled;
-            config.isExtensionPackActivated   = this.props.extension_pack.is_extension_pack_activated;
-            config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
-            config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
-            config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
-            config.robbo_ui_hidden            = this.props.isRobboUiHidden;
-            config.locale = this.props.locale;
-            config.messages = this.props.messages;
-
-            return makeToolboxXML(target.isStage, target.id, config, dynamicBlocksXML,
-                targetCostumes[0].name,
-                stageCostumes[0].name,
-                targetSounds.length > 0 ? targetSounds[0].name : ''
+            return makeToolboxXML(false, target.isStage, target.id, dynamicBlocksXML,
+                targetCostumes[targetCostumes.length - 1].name,
+                stageCostumes[stageCostumes.length - 1].name,
+                targetSounds.length > 0 ? targetSounds[targetSounds.length - 1].name : '',
+                getColorsForTheme(this.props.theme),
+                this.getRobboToolboxConfig()
             );
         } catch {
             return null;
@@ -569,7 +599,7 @@ class Blocks extends React.Component {
         }
 
         const targetId = this.props.vm.editingTarget && this.props.vm.editingTarget.id;
-        const savedMetrics = targetId ? this.state.workspaceMetrics[targetId] : null;
+        const savedMetrics = targetId ? this.props.workspaceMetrics.targets[targetId] : null;
 
         // Remove and reattach the workspace listener (but allow flyout events)
         this.workspace.removeChangeListener(this.props.vm.blockListener);
@@ -618,20 +648,68 @@ class Blocks extends React.Component {
         // workspace to be 'undone' here.
         this.workspace.clearUndo();
     }
-    handleExtensionAdded (blocksInfo) {
-        // select JSON from each block info object then reject the pseudo-blocks which don't have JSON, like separators
-        // this actually defines blocks and MUST run regardless of the UI state
-        this.ScratchBlocks.defineBlocksWithJsonArray(blocksInfo.map(blockInfo => blockInfo.json).filter(x => x));
+    handleMonitorsUpdate (monitors) {
+        // Update the checkboxes of the relevant monitors.
+        // TODO: What about monitors that have fields? See todo in scratch-vm blocks.js changeBlock:
+        // https://github.com/LLK/scratch-vm/blob/2373f9483edaf705f11d62662f7bb2a57fbb5e28/src/engine/blocks.js#L569-L576
+        const flyout = this.workspace.getFlyout();
+        for (const monitor of monitors.values()) {
+            const blockId = monitor.get('id');
+            const isVisible = monitor.get('visible');
+            flyout.setCheckboxState(blockId, isVisible);
+            // We also need to update the isMonitored flag for this block on the VM, since it's used to determine
+            // whether the checkbox is activated or not when the checkbox is re-displayed (e.g. local variables/blocks
+            // when switching between sprites).
+            const block = this.props.vm.runtime.monitorBlocks.getBlock(blockId);
+            if (block) {
+                block.isMonitored = isVisible;
+            }
+        }
+    }
+    handleExtensionAdded (categoryInfo) {
+        const defineBlocks = blockInfoArray => {
+            if (blockInfoArray && blockInfoArray.length > 0) {
+                const staticBlocksJson = [];
+                const dynamicBlocksInfo = [];
+                blockInfoArray.forEach(blockInfo => {
+                    if (blockInfo.info && blockInfo.info.isDynamic) {
+                        dynamicBlocksInfo.push(blockInfo);
+                    } else if (blockInfo.json) {
+                        staticBlocksJson.push(injectExtensionBlockTheme(blockInfo.json, this.props.theme));
+                    }
+                    // otherwise it's a non-block entry such as '---'
+                });
 
-        // Update the toolbox with new blocks
+                this.ScratchBlocks.defineBlocksWithJsonArray(staticBlocksJson);
+                dynamicBlocksInfo.forEach(blockInfo => {
+                    // This is creating the block factory / constructor -- NOT a specific instance of the block.
+                    // The factory should only know static info about the block: the category info and the opcode.
+                    // Anything else will be picked up from the XML attached to the block instance.
+                    const extendedOpcode = `${categoryInfo.id}_${blockInfo.info.opcode}`;
+                    const blockDefinition =
+                        defineDynamicBlock(this.ScratchBlocks, categoryInfo, blockInfo, extendedOpcode);
+                    this.ScratchBlocks.Blocks[extendedOpcode] = blockDefinition;
+                });
+            }
+        };
+
+        // scratch-blocks implements a menu or custom field as a special kind of block ("shadow" block)
+        // these actually define blocks and MUST run regardless of the UI state
+        defineBlocks(
+            Object.getOwnPropertyNames(categoryInfo.customFieldTypes)
+                .map(fieldTypeName => categoryInfo.customFieldTypes[fieldTypeName].scratchBlocksDefinition));
+        defineBlocks(categoryInfo.menus);
+        defineBlocks(categoryInfo.blocks);
+
+        // Update the toolbox with new blocks if possible
         const toolboxXML = this.getToolboxXML();
         if (toolboxXML) {
             this.props.updateToolboxState(toolboxXML);
         }
     }
-    handleBlocksInfoUpdate (blocksInfo) {
+    handleBlocksInfoUpdate (categoryInfo) {
         // @todo Later we should replace this to avoid all the warnings from redefining blocks.
-        this.handleExtensionAdded(blocksInfo);
+        this.handleExtensionAdded(categoryInfo);
     }
     handleCategorySelected (categoryId) {
         const selectCategory = () => {
@@ -1494,6 +1572,9 @@ class Blocks extends React.Component {
             onRequestCloseExtensionLibrary,
             onRequestCloseCustomProcedures,
             toolboxXML,
+            updateMetrics: updateMetricsProp,
+            useCatBlocks,
+            workspaceMetrics,
             ...props
         } = this.props;
         /* eslint-enable no-unused-vars */
@@ -1516,6 +1597,7 @@ class Blocks extends React.Component {
                     <Prompt
                         defaultValue={this.state.prompt.defaultValue}
                         isStage={vm.runtime.getEditingTarget().isStage}
+                        showListMessage={this.state.prompt.varType === this.ScratchBlocks.LIST_VARIABLE_TYPE}
                         label={this.state.prompt.message}
                         showCloudOption={this.state.prompt.showCloudOption}
                         showVariableOptions={this.state.prompt.showVariableOptions}
@@ -1575,49 +1657,31 @@ Blocks.propTypes = {
             wheel: PropTypes.bool,
             startScale: PropTypes.number
         }),
-        colours: PropTypes.shape({
-            workspace: PropTypes.string,
-            flyout: PropTypes.string,
-            toolbox: PropTypes.string,
-            toolboxSelected: PropTypes.string,
-            scrollbar: PropTypes.string,
-            scrollbarHover: PropTypes.string,
-            insertionMarker: PropTypes.string,
-            insertionMarkerOpacity: PropTypes.number,
-            fieldShadow: PropTypes.string,
-            dragShadowOpacity: PropTypes.number
-        }),
         comments: PropTypes.bool,
         collapse: PropTypes.bool
     }),
     stageSize: PropTypes.oneOf(Object.keys(STAGE_DISPLAY_SIZES)).isRequired,
+    theme: PropTypes.oneOf(Object.keys(themeMap)),
     toolboxXML: PropTypes.string,
+    updateMetrics: PropTypes.func,
     updateToolboxState: PropTypes.func,
-    vm: PropTypes.instanceOf(VM).isRequired
+    useCatBlocks: PropTypes.bool,
+    vm: PropTypes.instanceOf(VM).isRequired,
+    workspaceMetrics: PropTypes.shape({
+        targets: PropTypes.objectOf(PropTypes.object)
+    })
 };
 
 Blocks.defaultOptions = {
     zoom: {
         controls: true,
         wheel: true,
-        startScale: 0.675
+        startScale: BLOCKS_DEFAULT_SCALE
     },
     grid: {
         spacing: 40,
         length: 2,
         colour: '#ddd'
-    },
-    colours: {
-        workspace: '#F9F9F9',
-        flyout: '#F9F9F9',
-        toolbox: '#FFFFFF',
-        toolboxSelected: '#E9EEF2',
-        scrollbar: '#CECDCE',
-        scrollbarHover: '#CECDCE',
-        insertionMarker: '#000000',
-        insertionMarkerOpacity: 0.2,
-        fieldShadow: 'rgba(255, 255, 255, 0.3)',
-        dragShadowOpacity: 0.6
     },
     comments: true,
     collapse: false,
@@ -1628,7 +1692,8 @@ Blocks.defaultProps = {
     isVisible: true,
     paletteCollapsed: false,
     blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
-    options: Blocks.defaultOptions
+    options: Blocks.defaultOptions,
+    theme: DEFAULT_THEME
 };
 
 const mapStateToProps = state => ({
@@ -1648,7 +1713,9 @@ const mapStateToProps = state => ({
     toolboxXML: state.scratchGui.toolbox.toolboxXML,
     customProceduresVisible: state.scratchGui.customProcedures.active,
     extension_pack:  state.scratchGui.extension_pack,
-    robbo_settings: state.scratchGui.settings
+    robbo_settings: state.scratchGui.settings,
+    workspaceMetrics: state.scratchGui.workspaceMetrics,
+    useCatBlocks: isTimeTravel2020(state)
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -1670,6 +1737,9 @@ const mapDispatchToProps = dispatch => ({
     },
     updateToolboxState: toolboxXML => {
         dispatch(updateToolbox(toolboxXML));
+    },
+    updateMetrics: metrics => {
+        dispatch(updateMetrics(metrics));
     },
     onBlocksWorkspaceLayoutPending: isPending => {
         dispatch(setBlocksWorkspaceLayoutPending(isPending));

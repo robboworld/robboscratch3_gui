@@ -45,76 +45,6 @@
     display: flex;
 }
 
-/* Same selection pattern as sprite visibility (.radio / .radio.is-active) */
-.stage-size-toggle-group .stage-button {
-    filter: grayscale(1);
-}
-
-.stage-size-toggle-group .stage-button-active {
-    filter: none;
-    background-color: $motion-selected-bg;
-}
-
-.stage-size-toggle-group .stage-button-active:hover {
-    background-color: $motion-selected-bg;
-}
-
-[dir="ltr"] .stage-size-toggle-group .stage-button-first {
-    border: 1px solid $ui-black-transparent;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    border-top-left-radius: $form-radius;
-    border-bottom-left-radius: $form-radius;
-}
-
-[dir="ltr"] .stage-size-toggle-group .stage-button-middle {
-    border-top: 1px solid $ui-black-transparent;
-    border-bottom: 1px solid $ui-black-transparent;
-    border-right: 1px solid $ui-black-transparent;
-    border-left: none;
-    border-radius: 0;
-}
-
-[dir="ltr"] .stage-size-toggle-group .stage-button-last {
-    border-top: 1px solid $ui-black-transparent;
-    border-bottom: 1px solid $ui-black-transparent;
-    border-right: 1px solid $ui-black-transparent;
-    border-left: none;
-    border-top-right-radius: $form-radius;
-    border-bottom-right-radius: $form-radius;
-}
-
-[dir="rtl"] .stage-size-toggle-group .stage-button-first {
-    border: 1px solid $ui-black-transparent;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-top-right-radius: $form-radius;
-    border-bottom-right-radius: $form-radius;
-}
-
-[dir="rtl"] .stage-size-toggle-group .stage-button-middle {
-    border-top: 1px solid $ui-black-transparent;
-    border-bottom: 1px solid $ui-black-transparent;
-    border-left: 1px solid $ui-black-transparent;
-    border-right: none;
-    border-radius: 0;
-}
-
-[dir="rtl"] .stage-size-toggle-group .stage-button-last {
-    border-top: 1px solid $ui-black-transparent;
-    border-bottom: 1px solid $ui-black-transparent;
-    border-left: 1px solid $ui-black-transparent;
-    border-right: none;
-    border-top-left-radius: $form-radius;
-    border-bottom-left-radius: $form-radius;
-}
-
-.stage-size-toggle-group .stage-button-first:focus-visible,
-.stage-size-toggle-group .stage-button-middle:focus-visible,
-.stage-size-toggle-group .stage-button-last:focus-visible {
-    border-color: $motion-primary;
-}
-
 .stage-layout-toggle-group {
     display: flex;
 }
@@ -125,6 +55,12 @@
 
 [dir="rtl"] .stage-toolbar-trailing-item {
     margin-right: .2rem;
+}
+
+.stage-size-row > *, .unselect-wrapper {
+    /* Use a white background so semi-transparent selection states look correct */
+    background-color: $ui-white;
+    border-radius: $form-radius;
 }
 
 [dir="ltr"] .stage-size-toggle-group {
@@ -165,6 +101,10 @@
     outline-offset: 1px;
 }
 
+.stage-button:active {
+    background-color: $looks-transparent;
+}
+
 .stage-button-icon {
     width: 100%;
     height: 100%;
@@ -173,36 +113,3 @@
 [dir="rtl"] .stage-button-icon {
     transform: scaleX(-1);
 }
-
-[dir="ltr"] .stage-button-first {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-[dir="ltr"] .stage-button-middle {
-    border-left: none;
-    border-radius: 0;
-}
-
-[dir="ltr"] .stage-button-last {
-    border-left: none;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
-[dir="rtl"] .stage-button-first {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
-[dir="rtl"] .stage-button-middle {
-    border-right: none;
-    border-radius: 0;
-}
-
-[dir="rtl"] .stage-button-last {
-    border-right: none;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-

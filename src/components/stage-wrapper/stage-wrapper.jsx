@@ -23,9 +23,13 @@ const StageWrapperComponent = function (props) {
 
     return (
         <Box
-            className={classNames(styles.stageWrapper, {
-                [styles.stageWrapperEmbed]: isEmbedPlayer
-            })}
+            className={classNames(
+                styles.stageWrapper,
+                {
+                    [styles.fullScreen]: isFullScreen,
+                    [styles.stageWrapperEmbed]: isEmbedPlayer
+                }
+            )}
             dir={isRtl ? 'rtl' : 'ltr'}
         >
             <Box className={styles.stageCanvasWrapper}>

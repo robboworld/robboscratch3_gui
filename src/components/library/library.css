@@ -12,6 +12,7 @@
     overflow-y: auto;
     height: auto;
     padding: 0.5rem;
+    height: calc(100% - $library-header-height);
 }
 
 .library-scroll-grid.withFilterBar {
@@ -29,13 +30,31 @@
     min-height: 0;
 }
 
+.library-category {
+  display: flex;
+  flex-direction: column;
+}
+
+.library-category-title {
+  padding-Left: .5rem;
+  font-weight: bold;
+  font-size: 2rem;
+  color: $text-primary;
+}
+
+.library-category-items {
+  display: flex;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+}
+
 .filter-bar {
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
     align-items: center;
     height: calc($library-filter-bar-height + 2rem); /* padding */
-    background-color: $motion-transparent;
+    background-color: $looks-transparent;
     padding: 0 1rem;
     font-size: .875rem;
 }
@@ -69,4 +88,12 @@
     flex-wrap: wrap;
     height: $library-filter-bar-height;
     overflow: hidden;
+}
+
+.spinner-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }

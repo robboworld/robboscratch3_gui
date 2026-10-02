@@ -34,6 +34,7 @@ const MonitorList = props => {
                         draggable={false}
                         height={monitorData.height}
                         id={monitorData.id}
+                        isDiscrete={monitorData.isDiscrete}
                         key={monitorData.id}
                         layout="corner"
                         max={monitorData.sliderMax}
@@ -72,6 +73,7 @@ const MonitorList = props => {
                         draggable={props.draggable}
                         height={monitorData.height}
                         id={monitorData.id}
+                        isDiscrete={monitorData.isDiscrete}
                         key={monitorData.id}
                         max={monitorData.sliderMax}
                         min={monitorData.sliderMin}

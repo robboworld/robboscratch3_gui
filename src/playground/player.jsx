@@ -10,7 +10,6 @@ import GUI from '../containers/gui.jsx';
 import HashParserHOC from '../lib/hash-parser-hoc.jsx';
 import EmbedProjectLoaderHOC from '../lib/embed-project-loader-hoc.jsx';
 import AppStateHOC from '../lib/app-state-hoc.jsx';
-import TitledHOC from '../lib/titled-hoc.jsx';
 
 import {setPlayer} from '../reducers/mode';
 
@@ -40,6 +39,7 @@ const Player = ({isPlayerOnly, onSeeInside, projectId, embedMode}) => {
     )}>
         {isPlayerOnly && !embedMode && <button onClick={onSeeInside}>{'See inside'}</button>}
         <GUI
+            canEditTitle
             enableCommunity
             isPlayerOnly={isPlayerOnly}
             embedMode={embedMode}
@@ -88,8 +88,7 @@ const HashParserOptionalHOC = function (WrappedComponent) {
 const WrappedPlayer = compose(
     AppStateHOC,
     EmbedProjectLoaderHOC,
-    HashParserOptionalHOC,
-    TitledHOC
+    HashParserOptionalHOC
 )(ConnectedPlayer);
 
 const appTarget = document.createElement('div');

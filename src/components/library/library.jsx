@@ -9,7 +9,8 @@ import Modal from '../../containers/modal.jsx';
 import Divider from '../divider/divider.jsx';
 import Filter from '../filter/filter.jsx';
 import TagButton from '../../containers/tag-button.jsx';
-import analytics from '../../lib/analytics';
+import Spinner from '../spinner/spinner.jsx';
+import {CATEGORIES} from '../../../src/lib/libraries/decks/index.jsx';
 
 import styles from './library.css';
 
@@ -23,6 +24,28 @@ const messages = defineMessages({
         id: 'gui.library.allTag',
         defaultMessage: 'All',
         description: 'Label for library tag to revert to all items after filtering by tag.'
+    },
+    // Strings here need to be defined statically
+    // https://formatjs.io/docs/getting-started/message-declaration/#pre-declaring-using-definemessage-for-later-consumption-less-recommended
+    [CATEGORIES.gettingStarted]: {
+        id: `gui.library.gettingStarted`,
+        defaultMessage: 'Getting Started',
+        description: 'Label for getting started category'
+    },
+    [CATEGORIES.basics]: {
+        id: `gui.library.basics`,
+        defaultMessage: 'Basics',
+        description: 'Label for basics category'
+    },
+    [CATEGORIES.intermediate]: {
+        id: `gui.library.intermediate`,
+        defaultMessage: 'Intermediate',
+        description: 'Label for intermediate category'
+    },
+    [CATEGORIES.prompts]: {
+        id: `gui.library.prompts`,
+        defaultMessage: 'Prompts',
+        description: 'Label for prompts category'
     }
 });
 
@@ -38,16 +61,25 @@ class LibraryComponent extends React.Component {
             'handleFilterClear',
             'handleMouseEnter',
             'handleMouseLeave',
+            'handlePlayingEnd',
             'handleSelect',
             'handleTagClick',
             'itemSearchBlob',
             'setFilteredDataRef'
         ]);
         this.state = {
-            selectedItem: null,
+            playingItem: null,
             filterQuery: '',
-            selectedTag: ALL_TAG.tag
+            selectedTag: ALL_TAG.tag,
+            loaded: false
         };
+    }
+    componentDidMount () {
+        // Allow the spinner to display before loading the content
+        setTimeout(() => {
+            this.setState({loaded: true});
+        });
+        if (this.props.setStopHandler) this.props.setStopHandler(this.handlePlayingEnd);
     }
     componentDidUpdate (prevProps, prevState) {
         if (prevState.filterQuery !== this.state.filterQuery ||
@@ -57,29 +89,69 @@ class LibraryComponent extends React.Component {
     }
     handleSelect (id) {
         this.handleClose();
-        this.props.onItemSelected(this.getFilteredData()[id]);
+        this.props.onItemSelected(this.getFilteredData()
+            .find(item => this.constructKey(item) === id));
     }
     handleClose () {
         this.props.onRequestClose();
-        analytics.pageview(`/${this.props.id}/search?q=${this.state.filterQuery}`);
     }
     handleTagClick (tag) {
-        this.setState({
-            filterQuery: '',
-            selectedTag: tag.toLowerCase()
-        });
+        if (this.state.playingItem === null) {
+            this.setState({
+                filterQuery: '',
+                selectedTag: tag.toLowerCase()
+            });
+        } else {
+            this.props.onItemMouseLeave((this.getFilteredData()
+                .find(item => this.constructKey(item) === this.state.playingItem)));
+            this.setState({
+                filterQuery: '',
+                playingItem: null,
+                selectedTag: tag.toLowerCase()
+            });
+        }
     }
     handleMouseEnter (id) {
-        if (this.props.onItemMouseEnter) this.props.onItemMouseEnter(this.getFilteredData()[id]);
+        // don't restart if mouse over already playing item
+        if (this.props.onItemMouseEnter && this.state.playingItem !== id) {
+            this.props.onItemMouseEnter(this.getFilteredData()
+                .find(item => this.constructKey(item) === id));
+            this.setState({
+                playingItem: id
+            });
+        }
     }
     handleMouseLeave (id) {
-        if (this.props.onItemMouseLeave) this.props.onItemMouseLeave(this.getFilteredData()[id]);
+        if (this.props.onItemMouseLeave) {
+            this.props.onItemMouseLeave(this.getFilteredData()
+                .find(item => this.constructKey(item) === id));
+            this.setState({
+                playingItem: null
+            });
+        }
+    }
+    handlePlayingEnd () {
+        if (this.state.playingItem !== null) {
+            this.setState({
+                playingItem: null
+            });
+        }
     }
     handleFilterChange (event) {
-        this.setState({
-            filterQuery: event.target.value,
-            selectedTag: ALL_TAG.tag
-        });
+        if (this.state.playingItem === null) {
+            this.setState({
+                filterQuery: event.target.value,
+                selectedTag: ALL_TAG.tag
+            });
+        } else {
+            this.props.onItemMouseLeave(this.getFilteredData()
+                .find(item => this.constructKey(item) === this.state.playingItem));
+            this.setState({
+                filterQuery: event.target.value,
+                playingItem: null,
+                selectedTag: ALL_TAG.tag
+            });
+        }
     }
     handleFilterClear () {
         this.setState({filterQuery: ''});
@@ -99,7 +171,7 @@ class LibraryComponent extends React.Component {
             .join('\n');
     }
     getFilteredData () {
-        if (this.state.selectedTag === 'all') {
+        if (this.state.selectedTag === ALL_TAG.tag) {
             if (!this.state.filterQuery) return this.props.data;
             const q = this.state.filterQuery.toLowerCase();
             return this.props.data.filter(dataItem => (
@@ -113,11 +185,68 @@ class LibraryComponent extends React.Component {
                 .indexOf(this.state.selectedTag) !== -1
         ));
     }
+    constructKey (data) {
+        return typeof data.name === 'string' ? data.name : data.rawURL;
+    }
     scrollToTop () {
         this.filteredDataRef.scrollTop = 0;
     }
     setFilteredDataRef (ref) {
         this.filteredDataRef = ref;
+    }
+    renderElement (data) {
+        const key = this.constructKey(data);
+        return (<LibraryItem
+            bluetoothRequired={data.bluetoothRequired}
+            collaborator={data.collaborator}
+            description={data.description}
+            disabled={data.disabled}
+            extensionId={data.extensionId}
+            featured={data.featured}
+            hidden={data.hidden}
+            iconMd5={data.costumes ? data.costumes[0].md5ext : data.md5ext}
+            iconRawURL={data.rawURL}
+            icons={data.costumes}
+            id={key}
+            insetIconURL={data.insetIconURL}
+            internetConnectionRequired={data.internetConnectionRequired}
+            isPlaying={this.state.playingItem === key}
+            key={key}
+            name={data.name}
+            scenarioCard={data.scenarioCard}
+            showPlayButton={this.props.showPlayButton}
+            onMouseEnter={this.handleMouseEnter}
+            onMouseLeave={this.handleMouseLeave}
+            onSelect={this.handleSelect}
+        />);
+    }
+    renderData (data) {
+        if (this.state.selectedTag !== ALL_TAG.tag || !this.props.withCategories) {
+            return data.map(item => this.renderElement(item));
+        }
+
+        const dataByCategory = Object.groupBy(data, el => el.category);
+        const categoriesOrder = Object.values(CATEGORIES);
+
+        return Object.entries(dataByCategory)
+            .sort(([key1], [key2]) => categoriesOrder.indexOf(key1) - categoriesOrder.indexOf(key2))
+            .map(([key, values]) =>
+                (<div
+                    key={key}
+                    className={styles.libraryCategory}
+                >
+                    {key === 'undefined' ?
+                        null :
+                        <span className={styles.libraryCategoryTitle}>
+                            {this.props.intl.formatMessage(messages[key])}
+                        </span>
+                    }
+                    <div
+                        className={styles.libraryCategoryItems}
+                    >
+                        {values.map(item => this.renderElement(item))}
+                    </div>
+                </div>));
     }
     render () {
         return (
@@ -174,29 +303,14 @@ class LibraryComponent extends React.Component {
                     )}
                     ref={this.setFilteredDataRef}
                 >
-                    {this.getFilteredData().map((dataItem, index) => (
-                        <LibraryItem
-                            bluetoothRequired={dataItem.bluetoothRequired}
-                            collaborator={dataItem.collaborator}
-                            description={dataItem.description}
-                            disabled={dataItem.disabled}
-                            extensionId={dataItem.extensionId}
-                            featured={dataItem.featured}
-                            hidden={dataItem.hidden}
-                            iconMd5={`${dataItem.md5}`}
-                            iconRawURL={dataItem.rawURL}
-                            icons={dataItem.json && dataItem.json.costumes}
-                            id={index}
-                            insetIconURL={dataItem.insetIconURL}
-                            internetConnectionRequired={dataItem.internetConnectionRequired}
-                            key={`item_${index}`}
-                            name={dataItem.name}
-                            scenarioCard={dataItem.scenarioCard}
-                            onMouseEnter={this.handleMouseEnter}
-                            onMouseLeave={this.handleMouseLeave}
-                            onSelect={this.handleSelect}
-                        />
-                    ))}
+                    {this.state.loaded ? this.renderData(this.getFilteredData()) : (
+                        <div className={styles.spinnerWrapper}>
+                            <Spinner
+                                large
+                                level="primary"
+                            />
+                        </div>
+                    )}
                 </div>
             </Modal>
         );
@@ -219,6 +333,7 @@ LibraryComponent.propTypes = {
         /* eslint-enable react/no-unused-prop-types, lines-around-comment */
     ),
     filterable: PropTypes.bool,
+    withCategories: PropTypes.bool,
     id: PropTypes.string.isRequired,
     intl: intlShape.isRequired,
     onItemMouseEnter: PropTypes.func,
@@ -226,12 +341,15 @@ LibraryComponent.propTypes = {
     onItemSelected: PropTypes.func,
     onRequestClose: PropTypes.func,
     scrollGridVariant: PropTypes.oneOf(['scenarios']),
+    setStopHandler: PropTypes.func,
+    showPlayButton: PropTypes.bool,
     tags: PropTypes.arrayOf(PropTypes.shape(TagButton.propTypes)),
     title: PropTypes.string.isRequired
 };
 
 LibraryComponent.defaultProps = {
-    filterable: true
+    filterable: true,
+    showPlayButton: false
 };
 
 export default injectIntl(LibraryComponent);

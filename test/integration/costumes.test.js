@@ -13,6 +13,9 @@ const {
     scope
 } = new SeleniumHelper();
 
+// The costumes library is slow to load. Increase the timeout for these tests.
+jest.setTimeout(60_000);
+
 const uri = path.resolve(__dirname, '../../build/index.html');
 
 let driver;
@@ -28,7 +31,7 @@ describe('Working with costumes', () => {
 
     test('Adding a costume through the library', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
+        await driver.sleep(500);
         await clickText('Costumes');
         await clickXpath('//button[@aria-label="Choose a Costume"]');
         const el = await findByXpath("//input[@placeholder='Search']");
@@ -41,7 +44,6 @@ describe('Working with costumes', () => {
 
     test('Adding a costume by surprise button', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
         const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
         await driver.actions().mouseMove(el)
@@ -54,7 +56,6 @@ describe('Working with costumes', () => {
 
     test('Adding a costume by paint button', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
         const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
         await driver.actions().mouseMove(el)
@@ -67,7 +68,6 @@ describe('Working with costumes', () => {
 
     test('Duplicating a costume', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
 
         await rightClickText('costume1', scope.costumesTab);
@@ -83,7 +83,6 @@ describe('Working with costumes', () => {
 
     test('Converting bitmap/vector in paint editor', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
 
         // Convert the first costume to bitmap.
@@ -107,7 +106,6 @@ describe('Working with costumes', () => {
 
     test('Undo/redo in the paint editor', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
         await clickText('costume1', scope.costumesTab);
         await clickText('Convert to Bitmap', scope.costumesTab);
@@ -122,7 +120,6 @@ describe('Working with costumes', () => {
 
     test('Adding an svg from file', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
         const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
         await driver.actions().mouseMove(el)
@@ -138,7 +135,6 @@ describe('Working with costumes', () => {
 
     test('Adding a png from file (gh-3582)', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
         const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
         await driver.actions().mouseMove(el)
@@ -151,12 +147,46 @@ describe('Working with costumes', () => {
         await expect(logs).toEqual([]);
     });
 
+    test('Adding a bmp from file', async () => {
+        await loadUri(uri);
+        await clickText('Costumes');
+        const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
+        await driver.actions().mouseMove(el)
+            .perform();
+        await driver.sleep(500); // Wait for thermometer menu to come up
+        const input = await findByXpath('//input[@type="file"]');
+        await input.sendKeys(path.resolve(__dirname, '../fixtures/bmpfile.bmp'));
+        await clickText('bmpfile', scope.costumesTab);
+        const logs = await getLogs();
+        await expect(logs).toEqual([]);
+    });
+
+    test('Adding several costumes with a gif', async () => {
+        await loadUri(uri);
+        await clickText('Costumes');
+        const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
+        await driver.actions().mouseMove(el)
+            .perform();
+        await driver.sleep(500); // Wait for thermometer menu to come up
+        const input = await findByXpath('//input[@type="file"]');
+        await input.sendKeys(path.resolve(__dirname, '../fixtures/paddleball.gif'));
+
+        await findByText('paddleball', scope.costumesTab);
+        await findByText('paddleball2', scope.costumesTab);
+        await findByText('paddleball3', scope.costumesTab);
+        await findByText('paddleball4', scope.costumesTab);
+        await findByText('paddleball5', scope.costumesTab);
+        await findByText('paddleball6', scope.costumesTab);
+
+        const logs = await getLogs();
+        await expect(logs).toEqual([]);
+    });
+
     test('Adding a letter costume through the Letters filter in the library', async () => {
         await loadUri(uri);
         await driver.manage()
             .window()
             .setSize(1244, 768); // Letters filter not visible at 1024 width
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
         await clickXpath('//button[@aria-label="Choose a Costume"]');
         await clickText('Letters');
@@ -168,7 +198,6 @@ describe('Working with costumes', () => {
 
     test('Costumes animate on mouseover', async () => {
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickXpath('//button[@aria-label="Choose a Sprite"]');
         const searchElement = await findByXpath("//input[@placeholder='Search']");
         await searchElement.sendKeys('abb');
@@ -177,18 +206,17 @@ describe('Working with costumes', () => {
             .mouseMove(abbyElement)
             .perform();
         // wait for one of Abby's alternate costumes to appear
-        await findByXpath('//img[@src="https://cdn.assets.scratch.mit.edu/internalapi/asset/b6e23922f23b49ddc6f62f675e77417c.svg/get/"]');
+        await findByXpath('//img[@src="https://cdn.assets.scratch.mit.edu/internalapi/asset/45de34b47a2ce22f6f5d28bb35a44ff5.svg/get/"]');
         const logs = await getLogs();
         await expect(logs).toEqual([]);
     });
 
-    test.only('Adding multiple costumes at the same time', async () => {
+    test('Adding multiple costumes at the same time', async () => {
         const files = [
             path.resolve(__dirname, '../fixtures/gh-3582-png.png'),
             path.resolve(__dirname, '../fixtures/100-100.svg')
         ];
         await loadUri(uri);
-        await clickXpath('//button[@title="Try It"]');
         await clickText('Costumes');
         const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
         await driver.actions().mouseMove(el)
@@ -202,5 +230,33 @@ describe('Working with costumes', () => {
 
         const logs = await getLogs();
         await expect(logs).toEqual([]);
+    });
+
+    test('Load an invalid svg from scratch3 as costume', async () => { // eslint-disable-line no-disabled-tests
+        await loadUri(uri);
+        await clickText('Costumes');
+        const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
+        await driver.actions().mouseMove(el)
+            .perform();
+        await driver.sleep(500); // Wait for thermometer menu to come up
+        const input = await findByXpath('//input[@type="file"]');
+        await input.sendKeys(path.resolve(__dirname, '../fixtures/corrupt-from-scratch3.svg'));
+        const costumeTile = await findByText('corrupt-from-scratch3', scope.costumesTab); // Name from filename
+        const tileVisible = await costumeTile.isDisplayed();
+        await expect(tileVisible).toBe(true);
+    });
+
+    test('Load an invalid svg from scratch2 as costume', async () => { // eslint-disable-line no-disabled-tests
+        await loadUri(uri);
+        await clickText('Costumes');
+        const el = await findByXpath('//button[@aria-label="Choose a Costume"]');
+        await driver.actions().mouseMove(el)
+            .perform();
+        await driver.sleep(500); // Wait for thermometer menu to come up
+        const input = await findByXpath('//input[@type="file"]');
+        await input.sendKeys(path.resolve(__dirname, '../fixtures/scratch2-corrupted.svg'));
+        const costumeTile = await findByText('scratch2-corrupted', scope.costumesTab); // Name from filename
+        const tileVisible = await costumeTile.isDisplayed();
+        await expect(tileVisible).toBe(true);
     });
 });
