@@ -4,6 +4,7 @@
  *   - flying (propellers spinning)
  */
 import spriteLibraryContent from './libraries/sprites.json';
+import {librarySpriteToSprite2Json} from './robbo-simulation-sprite';
 
 export const SIMULATION_COPTER_SPRITE_NAMES = ['Robbo Quadcopter'];
 
@@ -27,6 +28,13 @@ export const hasSimulationCopterSprite = function (vm) {
 export const getDefaultSimulationCopterSpriteJson = function () {
     const item = spriteLibraryContent.find(s => s.name === 'Robbo Quadcopter');
     if (item && item.json) return Object.assign({}, item.json);
+    if (item) {
+        return Object.assign(librarySpriteToSprite2Json(item), {
+            scale: 0.15,
+            direction: 90,
+            isDraggable: true
+        });
+    }
 
     return {
         objName: 'Robbo Quadcopter',

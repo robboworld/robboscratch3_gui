@@ -4,6 +4,21 @@ import defaultProject from './default-project';
 import {getBundledSimulatorAssetUrl} from './robbo-bundled-simulator-asset-url';
 
 /**
+ * scratch-storage 2.x fetches assets from an inline (blob:) worker, which cannot
+ * resolve document-relative URLs, so resolve local asset paths against the page.
+ * @param {string} url - possibly relative URL
+ * @returns {string} absolute URL when a document base is available
+ */
+const toAbsoluteUrl = url => {
+    if (typeof document === 'undefined' || !document.baseURI) return url;
+    try {
+        return new URL(url, document.baseURI).href;
+    } catch (e) {
+        return url;
+    }
+};
+
+/**
  * Wrapper for ScratchStorage which adds default web sources.
  * @todo make this more configurable
  */
@@ -36,8 +51,13 @@ class Storage extends ScratchStorage {
     setProjectHost (projectHost) {
         this.projectHost = projectHost;
     }
+    setProjectToken (projectToken) {
+        this.projectToken = projectToken;
+    }
     getProjectGetConfig (projectAsset) {
-        return `${this.projectHost}/${projectAsset.assetId}`;
+        const path = `${this.projectHost}/${projectAsset.assetId}`;
+        const qs = this.projectToken ? `?token=${this.projectToken}` : '';
+        return path + qs;
     }
     getProjectCreateConfig () {
         return {
@@ -56,8 +76,8 @@ class Storage extends ScratchStorage {
     }
     getAssetGetConfig (asset) {
         const bundled = getBundledSimulatorAssetUrl(asset.assetId, asset.dataFormat);
-        if (bundled) return bundled;
-        return `./static/assets/${asset.assetId}.${asset.dataFormat}`;
+        if (bundled) return toAbsoluteUrl(bundled);
+        return toAbsoluteUrl(`./static/assets/${asset.assetId}.${asset.dataFormat}`);
     }
     getAssetCreateConfig (asset) {
         return {

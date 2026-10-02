@@ -27,10 +27,8 @@
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: $menu-bar-standard-font-size;
     font-weight: bold;
-    background-color: #00af41;
-    /*color: #383838;*/
-    color:white;
-    
+    background-color: $looks-secondary;
+    color: $ui-white;
 }
 
 .main-menu {
@@ -40,6 +38,9 @@
     flex-wrap: nowrap;
     align-items: center;
     flex-grow: 1;
+}
+.inactive {
+    opacity: 0;
 }
 
 /* LMS header wordmark: themes/robbo-theme/lms/static/sass/extra/_header.scss */
@@ -71,7 +72,7 @@
     vertical-align: super;
 }
 
-/* Stock menu items: icon + label + dropdown caret (File, Edit, language) */
+/* Stock menu items: icon + label + dropdown caret (File, Edit) */
 .menu-bar-item-content {
     display: inline-flex;
     flex-direction: row;
@@ -96,19 +97,6 @@
 
 .menu-bar-item-label {
     line-height: 1;
-}
-
-.language-menu {
-    box-sizing: border-box;
-    display: inline-flex;
-    align-items: center;
-    position: relative;
-    min-width: 3.25rem;
-    padding: 0 0.5rem;
-}
-
-.menu-bar-item.language-menu {
-    padding: 0 0.5rem;
 }
 
 .menu-bar-item {
@@ -169,7 +157,7 @@
 }
 
 .feedback-link {
-    color: $motion-primary;
+    color: $looks-secondary;
     text-decoration: none;
 }
 
@@ -226,6 +214,7 @@
 }
 
 .account-info-group .menu-bar-item {
+    margin: 0 .25rem;
     padding: 0 0.75rem;
 }
 
@@ -235,7 +224,11 @@
 }
 
 .help-icon {
-    margin-right: 0.35rem;
+    margin: 0 .25rem 0 0;
+}
+
+[dir="rtl"] .help-icon {
+    margin: 0 0 0 .25rem;
 }
 
 .account-nav-menu, .mystuff-button {
@@ -285,7 +278,31 @@
 }
 
 .mystuff > a {
-  background-image: url("/images/mystuff.png");
+  background-image: url("./icon--mystuff.png");
+}
+
+.about-icon {
+    height: 1.25rem;
+    margin: 0.5rem;
+    vertical-align: middle;
+}
+
+.collapsible-label {
+    margin: 0 .5rem 0 .25rem;
+}
+
+[dir="rtl"] .collapsible-label {
+    margin: 0 0.25rem 0 0.5rem;
+}
+
+@media only screen and (max-width: 1024px) {
+    .tutorials-label, .collapsible-label, .menu-bar-item-label {
+        display: none;
+    }
+
+    .help-icon {
+        margin-right: 0;
+    }
 }
 
 .robboMenuGroup {

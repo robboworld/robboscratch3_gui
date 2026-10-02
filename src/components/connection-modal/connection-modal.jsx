@@ -11,6 +11,7 @@ import ConnectingStep from './connecting-step.jsx';
 import ConnectedStep from './connected-step.jsx';
 import ErrorStep from './error-step.jsx';
 import UnavailableStep from './unavailable-step.jsx';
+import UpdatePeripheralStep from './update-peripheral-step.jsx';
 
 import styles from './connection-modal.css';
 
@@ -19,7 +20,8 @@ const PHASES = keyMirror({
     connecting: null,
     connected: null,
     error: null,
-    unavailable: null
+    unavailable: null,
+    updatePeripheral: null
 });
 
 const ConnectionModalComponent = props => (
@@ -27,7 +29,7 @@ const ConnectionModalComponent = props => (
         className={styles.modalContent}
         contentLabel={props.name}
         headerClassName={styles.header}
-        headerImage={props.smallPeripheralImage}
+        headerImage={props.connectionSmallIconURL}
         id="connectionModal"
         onHelp={props.onHelp}
         onRequestClose={props.onCancel}
@@ -39,20 +41,25 @@ const ConnectionModalComponent = props => (
             {props.phase === PHASES.connected && <ConnectedStep {...props} />}
             {props.phase === PHASES.error && <ErrorStep {...props} />}
             {props.phase === PHASES.unavailable && <UnavailableStep {...props} />}
+            {props.phase === PHASES.updatePeripheral && <UpdatePeripheralStep {...props} />}
         </Box>
     </Modal>
 );
 
 ConnectionModalComponent.propTypes = {
-    connectingMessage: PropTypes.node,
+    connectingMessage: PropTypes.node.isRequired,
+    connectionSmallIconURL: PropTypes.string,
+    connectionTipIconURL: PropTypes.string,
     name: PropTypes.node,
     onCancel: PropTypes.func.isRequired,
     onHelp: PropTypes.func.isRequired,
-    peripheralButtonImage: PropTypes.string,
     phase: PropTypes.oneOf(Object.keys(PHASES)).isRequired,
-    smallPeripheralImage: PropTypes.string,
     title: PropTypes.string.isRequired,
     useAutoScan: PropTypes.bool.isRequired
+};
+
+ConnectionModalComponent.defaultProps = {
+    connectingMessage: 'Connecting'
 };
 
 export {

@@ -6,24 +6,29 @@ import styles from './toggle-buttons.css';
 
 const ToggleButtons = ({buttons, className, disabled}) => (
     <div
-        className={classNames(styles.row, className, {
-            [styles.disabled]: disabled
-        })}
+        className={classNames(
+            className,
+            styles.row,
+            {
+                [styles.disabled]: disabled
+            }
+        )}
     >
         {buttons.map((button, index) => (
             <button
-                key={index}
+                key={`toggle-${index}`}
+                className={styles.button}
+                title={button.title}
                 aria-label={button.title}
                 aria-pressed={button.isSelected}
-                className={styles.button}
-                disabled={disabled}
-                title={button.title}
                 onClick={button.handleClick}
+                disabled={disabled}
             >
                 <img
+                    src={button.icon}
+                    aria-hidden="true"
                     className={button.iconClassName}
                     draggable={false}
-                    src={button.icon}
                 />
             </button>
         ))}

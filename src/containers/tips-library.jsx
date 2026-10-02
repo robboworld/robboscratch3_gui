@@ -62,16 +62,23 @@ class TipsLibrary extends React.PureComponent {
     }
     render () {
         const decksLibraryThumbnailData = Object.keys(decksLibraryContent)
-            .filter(id =>
+            .filter(id => {
+                if (notScratchDesktop()) return true; // Do not filter anything in online editor
+                const deck = decksLibraryContent[id];
                 // Scratch Desktop doesn't want tutorials with `requiredProjectId`
-                notScratchDesktop() || !decksLibraryContent[id].hasOwnProperty('requiredProjectId')
-            )
+                if (Object.prototype.hasOwnProperty.call(deck, 'requiredProjectId')) return false;
+                // Scratch Desktop should not load tutorials that are _only_ videos
+                if (deck.steps.filter(s => s.title).length === 0) return false;
+                // Allow any other tutorials
+                return true;
+            })
             .map(id => ({
                 rawURL: decksLibraryContent[id].img,
                 id: id,
                 name: decksLibraryContent[id].name,
                 featured: true,
                 tags: decksLibraryContent[id].tags,
+                category: decksLibraryContent[id].category,
                 urlId: decksLibraryContent[id].urlId,
                 requiredProjectId: decksLibraryContent[id].requiredProjectId,
                 hidden: decksLibraryContent[id].hidden || false
@@ -88,6 +95,7 @@ class TipsLibrary extends React.PureComponent {
                 visible={this.props.visible}
                 onItemSelected={this.handleItemSelect}
                 onRequestClose={this.props.onRequestClose}
+                withCategories
             />
         );
     }

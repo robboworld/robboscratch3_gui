@@ -21,10 +21,13 @@ import fontsLoadedReducer, {fontsLoadedInitialState} from './fonts-loaded';
 import restoreDeletionReducer, {restoreDeletionInitialState} from './restore-deletion';
 import stageSizeReducer, {stageSizeInitialState} from './stage-size';
 import targetReducer, {targetsInitialState} from './targets';
+import themeReducer, {themeInitialState} from './theme';
 import timeoutReducer, {timeoutInitialState} from './timeout';
+import timeTravelReducer, {timeTravelInitialState} from './time-travel';
 import toolboxReducer, {toolboxInitialState} from './toolbox';
 import vmReducer, {vmInitialState} from './vm';
 import vmStatusReducer, {vmStatusInitialState} from './vm-status';
+import workspaceMetricsReducer, {workspaceMetricsInitialState} from './workspace-metrics';
 import layoutVisibilityReducer from './layout-visibility';
 import {getLayoutVisibilityInitialState} from '../lib/layout-visibility-persistence';
 import {layoutVisibilityPersistenceMiddleware} from '../lib/layout-visibility-persistence';
@@ -49,7 +52,7 @@ import draggable_window,{draggable_window_InitialState} from '../RobboGui/reduce
 import new_draggable_window,{new_draggable_window_InitialState} from '../RobboGui/reducers/new_draggable_window';
 import devices_firmware_flasher,{devices_firmware_flasher_InitialState} from '../RobboGui/reducers/devices_firmware_flasher';
 
-import iot_blocks,{iot_blocks_InitialState} from '../RobboGui/reducers/iot_blocks';
+import iot_blocks,{iot_block_InitialState as iot_blocks_InitialState} from '../RobboGui/reducers/iot_blocks';
 import license,{license_InitialState} from '../RobboGui/reducers/license';
 import robboAccount,{robboAccount_InitialState} from '../RobboGui/reducers/robboAccount';
 
@@ -84,10 +87,13 @@ const guiInitialState = {
     fontsLoaded: fontsLoadedInitialState,
     restoreDeletion: restoreDeletionInitialState,
     targets: targetsInitialState,
+    theme: themeInitialState,
     timeout: timeoutInitialState,
+    timeTravel: timeTravelInitialState,
     toolbox: toolboxInitialState,
     vm: vmInitialState,
     vmStatus: vmStatusInitialState,
+    workspaceMetrics: workspaceMetricsInitialState,
     layoutVisibility: getLayoutVisibilityInitialState(),
 
     robot_sensors:robot_sensors_InitialState,
@@ -157,22 +163,11 @@ const initTutorialCard = function (currentState, deckId) {
                 visible: true,
                 content: decks,
                 activeDeckId: deckId,
+                expanded: true,
                 step: 0,
                 x: 0,
                 y: 0,
                 dragging: false
-            }
-        }
-    );
-};
-
-const initPreviewInfo = function (currentState) {
-    return Object.assign(
-        {},
-        currentState,
-        {
-            modals: {
-                previewInfo: false // this key must match `MODAL_PREVIEW_INFO` in modals.js //modified_by_Yaroslav
             }
         }
     );
@@ -213,10 +208,13 @@ const guiReducer = combineReducers({
     fontsLoaded: fontsLoadedReducer,
     restoreDeletion: restoreDeletionReducer,
     targets: targetReducer,
+    theme: themeReducer,
     timeout: timeoutReducer,
+    timeTravel: timeTravelReducer,
     toolbox: toolboxReducer,
     vm: vmReducer,
     vmStatus: vmStatusReducer,
+    workspaceMetrics: workspaceMetricsReducer,
     layoutVisibility: layoutVisibilityReducer,
 
     robot_sensors:robot_sensors,
@@ -247,7 +245,6 @@ export {
     initEmbedded,
     initFullScreen,
     initPlayer,
-    initPreviewInfo,
     initTelemetryModal,
     initTutorialCard
 };

@@ -4,7 +4,7 @@ import {compose} from 'redux';
 import {connect} from 'react-redux';
 import ReactModal from 'react-modal';
 import VM from 'scratch-vm';
-import {defineMessages, injectIntl, intlShape} from 'react-intl';
+import {injectIntl, intlShape} from 'react-intl';
 import bindAll from 'lodash.bindall';
 import debounce from 'lodash.debounce';
 
@@ -13,7 +13,6 @@ import {
     getIsError,
     getIsShowingProject
 } from '../reducers/project-state';
-import {setProjectTitle} from '../reducers/project-title';
 import {
     activateTab,
     BLOCKS_TAB_INDEX,
@@ -33,7 +32,9 @@ import FontLoaderHOC from '../lib/font-loader-hoc.jsx';
 import nwCliProjectOpenerHOC from '../lib/nw-cli-project-opener-hoc.jsx';
 import robboCloudProjectLoaderHOC from '../lib/robbo-cloud-project-loader-hoc.jsx';
 import LocalizationHOC from '../lib/localization-hoc.jsx';
+import SBFileUploaderHOC from '../lib/sb-file-uploader-hoc.jsx';
 import ProjectFetcherHOC from '../lib/project-fetcher-hoc.jsx';
+import TitledHOC from '../lib/titled-hoc.jsx';
 import ProjectSaverHOC from '../lib/project-saver-hoc.jsx';
 import QueryParserHOC from '../lib/query-parser-hoc.jsx';
 import {
@@ -44,6 +45,7 @@ import storage from '../lib/storage';
 import vmListenerHOC from '../lib/vm-listener-hoc.jsx';
 import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
 import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
+import systemPreferencesHOC from '../lib/system-preferences-hoc.jsx';
 
 import GUIComponent from '../components/gui/gui.jsx';
 import RobboSimulatorVmSync from './robbo-simulator-vm-sync.jsx';
@@ -54,13 +56,17 @@ import HTML5Backend from 'react-dnd-html5-backend';
 
 import {withAlert} from 'react-alert';
 
-const messages = defineMessages({
-    defaultProjectTitle: {
-        id: 'gui.gui.defaultProjectTitle',
-        description: 'Default title for project',
-        defaultMessage: 'Scratch Project'
+const {RequestMetadata, setMetadata, unsetMetadata} = storage.scratchFetch;
+
+const setProjectIdMetadata = projectId => {
+    // If project ID is '0' or zero, it's not a real project ID. In that case, remove the project ID metadata.
+    // Same if it's null undefined.
+    if (projectId && projectId !== '0') {
+        setMetadata(RequestMetadata.ProjectId, projectId);
+    } else {
+        unsetMetadata(RequestMetadata.ProjectId);
     }
-});
+};
 
 /** Delay after last PROJECT_CHANGED before session snapshot (ms). */
 const AUTOSAVE_DEBOUNCE_MS = 1000;
@@ -90,8 +96,9 @@ class GUI extends React.Component {
 
     componentDidMount () {
         setIsScratchDesktop(this.props.isScratchDesktop);
-        this.setReduxTitle(this.props.projectTitle);
         this.props.onStorageInit(storage);
+        this.props.onVmInit(this.props.vm);
+        setProjectIdMetadata(this.props.projectId);
         this.props.vm.on('PROJECT_CHANGED', this.handleVmProjectChanged);
         if (typeof document !== 'undefined') {
             document.addEventListener('visibilitychange', this.handlePageHide);
@@ -105,11 +112,11 @@ class GUI extends React.Component {
         }
     }
     componentDidUpdate (prevProps) {
-        if (this.props.projectId !== prevProps.projectId && this.props.projectId !== null) {
-            this.props.onUpdateProjectId(this.props.projectId);
-        }
-        if (this.props.projectTitle !== prevProps.projectTitle) {
-            this.setReduxTitle(this.props.projectTitle);
+        if (this.props.projectId !== prevProps.projectId) {
+            if (this.props.projectId !== null) {
+                this.props.onUpdateProjectId(this.props.projectId);
+            }
+            setProjectIdMetadata(this.props.projectId);
         }
         if (this.props.isShowingProject &&
             (this.props.isRightPanelHidden !== prevProps.isRightPanelHidden ||
@@ -123,6 +130,9 @@ class GUI extends React.Component {
             // At this time the project view in www doesn't need to know when a project is unloaded
             this.props.onProjectLoaded();
             this.autoSaveProject({force: true});
+        }
+        if (this.props.shouldStopProject && !prevProps.shouldStopProject) {
+            this.props.vm.stopAll();
         }
     }
     componentWillUnmount () {
@@ -230,15 +240,6 @@ class GUI extends React.Component {
         removeSessionSnapshot()
             .catch(() => {});
     }
-    setReduxTitle (newTitle) {
-        if (newTitle === null || typeof newTitle === 'undefined') {
-            this.props.onUpdateReduxProjectTitle(
-                this.props.intl.formatMessage(messages.defaultProjectTitle)
-            );
-        } else {
-            this.props.onUpdateReduxProjectTitle(newTitle);
-        }
-    }
     render () {
 
 
@@ -267,7 +268,7 @@ class GUI extends React.Component {
             onProjectLoaded,
             onStorageInit,
             onUpdateProjectId,
-            onUpdateReduxProjectTitle,
+            onVmInit,
             projectHost,
             projectId,
             projectTitle,
@@ -300,7 +301,6 @@ GUI.propTypes = {
     cloudHost: PropTypes.string,
     error: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
     fetchingProject: PropTypes.bool,
-    importInfoVisible: PropTypes.bool,
     intl: intlShape,
     isError: PropTypes.bool,
     isLoading: PropTypes.bool,
@@ -311,27 +311,29 @@ GUI.propTypes = {
     isBlocksPaletteCollapsed: PropTypes.bool,
     blocksPaletteFlyoutWidth: PropTypes.number,
     isRobboUiHidden: PropTypes.bool,
+    isTotallyNormal: PropTypes.bool,
     loadingStateVisible: PropTypes.bool,
     onProjectLoaded: PropTypes.func,
     onSeeCommunity: PropTypes.func,
     onStorageInit: PropTypes.func,
     onUpdateProjectId: PropTypes.func,
-    onUpdateProjectTitle: PropTypes.func,
-    onUpdateReduxProjectTitle: PropTypes.func,
-    previewInfoVisible: PropTypes.bool,
+    onVmInit: PropTypes.func,
     projectChanged: PropTypes.bool,
     projectHost: PropTypes.string,
     projectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     projectTitle: PropTypes.string,
+    shouldStopProject: PropTypes.bool,
     telemetryModalVisible: PropTypes.bool,
     vm: PropTypes.instanceOf(VM).isRequired
 };
 
 GUI.defaultProps = {
     isScratchDesktop: false,
+    isTotallyNormal: false,
     onStorageInit: storageInstance => storageInstance.addOfficialScratchWebStores(),
     onProjectLoaded: () => {},
-    onUpdateProjectId: () => {}
+    onUpdateProjectId: () => {},
+    onVmInit: (/* vm */) => {}
 };
 
 const mapStateToProps = state => {
@@ -346,7 +348,6 @@ const mapStateToProps = state => {
         costumeLibraryVisible: state.scratchGui.modals.costumeLibrary,
         costumesTabVisible: state.scratchGui.editorTab.activeTabIndex === COSTUMES_TAB_INDEX,
         error: state.scratchGui.projectState.error,
-        importInfoVisible: state.scratchGui.modals.importInfo,
         isError: getIsError(loadingState),
         isFullScreen: state.scratchGui.mode.isFullScreen,
         isPlayerOnly: state.scratchGui.mode.isPlayerOnly,
@@ -359,8 +360,8 @@ const mapStateToProps = state => {
         projectChanged: state.scratchGui.projectChanged,
         isShowingProject: getIsShowingProject(loadingState),
         loadingStateVisible: state.scratchGui.modals.loadingProject,
-        previewInfoVisible: state.scratchGui.modals.previewInfo,
         projectId: state.scratchGui.projectState.projectId,
+        projectTitle: state.scratchGui.projectTitle,
         soundsTabVisible: state.scratchGui.editorTab.activeTabIndex === SOUNDS_TAB_INDEX,
         targetIsStage: (
             state.scratchGui.targets.stage &&
@@ -380,8 +381,7 @@ const mapDispatchToProps = dispatch => ({
     onRequestCloseBackdropLibrary: () => dispatch(closeBackdropLibrary()),
     onRequestCloseCostumeLibrary: () => dispatch(closeCostumeLibrary()),
     onRequestCloseScenariosLibrary: () => dispatch(closeScenariosLibrary()),
-    onRequestCloseTelemetryModal: () => dispatch(closeTelemetryModal()),
-    onUpdateReduxProjectTitle: title => dispatch(setProjectTitle(title))
+    onRequestCloseTelemetryModal: () => dispatch(closeTelemetryModal())
 });
 
 // const ConnectedGUI = injectIntl(connect(
@@ -403,12 +403,15 @@ const WrappedGui = compose(
     FontLoaderHOC,
     QueryParserHOC,
     ProjectFetcherHOC,
+    TitledHOC,
     ProjectSaverHOC,
     vmListenerHOC,
     vmManagerHOC,
+    SBFileUploaderHOC,
     nwCliProjectOpenerHOC,
     robboCloudProjectLoaderHOC,
-    cloudManagerHOC
+    cloudManagerHOC,
+    systemPreferencesHOC
 )(ConnectedGUI);
 
 WrappedGui.setAppElement = ReactModal.setAppElement;

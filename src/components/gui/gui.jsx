@@ -29,10 +29,9 @@ import {
     setBlocksPaletteFlyoutWidth,
     setRightPanelHidden
 } from '../../reducers/layout-visibility';
+import {setProjectTitle} from '../../reducers/project-title';
 
 import Backpack from '../../containers/backpack.jsx';
-import PreviewModal from '../../containers/preview-modal.jsx';
-import ImportModal from '../../containers/import-modal.jsx';
 import WebGlModal from '../../containers/webgl-modal.jsx';
 import TipsLibrary from '../../containers/tips-library.jsx';
 import ScenariosLibrary from '../../containers/scenarios-library.jsx';
@@ -44,6 +43,7 @@ import TelemetryModal from '../telemetry-modal/telemetry-modal.jsx';
 
 import layout, {STAGE_SIZE_MODES} from '../../lib/layout-constants';
 import {getStageDimensions, resolveStageSize} from '../../lib/screen-utils';
+import {themeMap} from '../../lib/themes';
 
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
@@ -151,10 +151,14 @@ const GUIComponent = props => {
         backdropLibraryVisible,
         backpackHost,
         backpackVisible,
+        blocksId,
         blocksTabVisible,
         cardsVisible,
+        canChangeLanguage,
+        canChangeTheme,
         canCreateNew,
         canEditTitle,
+        canManageFiles,
         canRemix,
         canSave,
         canCreateCopy,
@@ -165,7 +169,6 @@ const GUIComponent = props => {
         costumeLibraryVisible,
         costumesTabVisible,
         enableCommunity,
-        importInfoVisible,
         intl,
         isCreating,
         isFullScreen,
@@ -173,36 +176,43 @@ const GUIComponent = props => {
         embedMode,
         isRtl,
         isShared,
+        isTelemetryEnabled,
+        isTotallyNormal,
         loading,
         isRightPanelHidden,
         isRobboUiHidden,
+        logo,
         renderLogin,
+        onClickAbout,
         onClickAccountNav,
         onCloseAccountNav,
         onLogOut,
         onOpenRegistration,
         onToggleLoginOpen,
-        onUpdateProjectTitle,
         onActivateCostumesTab,
         onActivateSoundsTab,
         onActivateTab,
         onClickLogo,
         onExtensionButtonClick,
+        onProjectTelemetryEvent,
         onRequestCloseBackdropLibrary,
         onRequestCloseCostumeLibrary,
         onRequestCloseScenariosLibrary,
         onRequestCloseTelemetryModal,
         onSeeCommunity,
         onShare,
+        onShowPrivacyPolicy,
+        onStartSelectingFileUpload,
         onTelemetryModalCancel,
         onTelemetryModalOptIn,
         onTelemetryModalOptOut,
-        previewInfoVisible,
+        onUpdateProjectTitle,
         showComingSoon,
         soundsTabVisible,
         stageSizeMode,
         targetIsStage,
         telemetryModalVisible,
+        theme,
         tipsLibraryVisible,
         vm,
         connectDropTarget, //modified_by_Yaroslav
@@ -273,15 +283,15 @@ const GUIComponent = props => {
                 dir={isRtl ? 'rtl' : 'ltr'}
                 {...componentProps}
             >
-                {previewInfoVisible ? (
-                    <PreviewModal />
-                ) : null}
                 {telemetryModalVisible ? (
                     <TelemetryModal
+                        isRtl={isRtl}
+                        isTelemetryEnabled={isTelemetryEnabled}
                         onCancel={onTelemetryModalCancel}
                         onOptIn={onTelemetryModalOptIn}
                         onOptOut={onTelemetryModalOptOut}
                         onRequestClose={onRequestCloseTelemetryModal}
+                        onShowPrivacyPolicy={onShowPrivacyPolicy}
                     />
                 ) : null}
                 {loading ? (
@@ -289,9 +299,6 @@ const GUIComponent = props => {
                 ) : null}
                 {isCreating ? (
                     <Loader messageId="gui.loader.creating" />
-                ) : null}
-                {importInfoVisible ? (
-                    <ImportModal />
                 ) : null}
                 {isRendererSupported ? null : (
                     <WebGlModal isRtl={isRtl} />
@@ -333,26 +340,33 @@ const GUIComponent = props => {
                     authorId={authorId}
                     authorThumbnailUrl={authorThumbnailUrl}
                     authorUsername={authorUsername}
+                    canChangeLanguage={canChangeLanguage}
+                    canChangeTheme={canChangeTheme}
                     canCreateCopy={canCreateCopy}
                     canCreateNew={canCreateNew}
                     canEditTitle={canEditTitle}
+                    canManageFiles={canManageFiles}
                     canRemix={canRemix}
                     canSave={canSave}
                     canShare={canShare}
                     className={styles.menuBarPosition}
                     enableCommunity={enableCommunity}
                     isShared={isShared}
+                    isTotallyNormal={isTotallyNormal}
+                    logo={logo}
                     renderLogin={renderLogin}
                     showComingSoon={showComingSoon}
+                    onClickAbout={onClickAbout}
                     onClickAccountNav={onClickAccountNav}
                     onClickLogo={onClickLogo}
                     onCloseAccountNav={onCloseAccountNav}
                     onLogOut={onLogOut}
                     onOpenRegistration={onOpenRegistration}
+                    onProjectTelemetryEvent={onProjectTelemetryEvent}
                     onSeeCommunity={onSeeCommunity}
                     onShare={onShare}
+                    onStartSelectingFileUpload={onStartSelectingFileUpload}
                     onToggleLoginOpen={onToggleLoginOpen}
-                    onUpdateProjectTitle={onUpdateProjectTitle}
                 />
                 <Box className={styles.bodyWrapper}>
                     <Box className={styles.flexWrapper}>
@@ -417,6 +431,7 @@ const GUIComponent = props => {
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     <Box className={styles.blocksWrapper}>
                                         <Blocks
+                                            key={`${blocksId}/${theme}`}
                                             canUseCloud={canUseCloud}
                                             grow={1}
                                             isVisible={blocksTabVisible}
@@ -430,9 +445,10 @@ const GUIComponent = props => {
                                             onSetBlocksPaletteFlyoutWidth={onSetBlocksPaletteFlyoutWidth}
                                             onTogglePalette={onSetBlocksPaletteCollapsed}
                                             options={{
-                                                media: `${basePath}static/blocks-media/`
+                                                media: `${basePath}static/${themeMap[theme].blocksMediaFolder}/`
                                             }}
                                             stageSize={stageSize}
+                                            theme={theme}
                                             vm={vm}
                                         />
                                     </Box>
@@ -547,9 +563,13 @@ GUIComponent.propTypes = {
     backpackVisible: PropTypes.bool,
     basePath: PropTypes.string,
     blocksTabVisible: PropTypes.bool,
+    blocksId: PropTypes.string,
+    canChangeLanguage: PropTypes.bool,
+    canChangeTheme: PropTypes.bool,
     canCreateCopy: PropTypes.bool,
     canCreateNew: PropTypes.bool,
     canEditTitle: PropTypes.bool,
+    canManageFiles: PropTypes.bool,
     canRemix: PropTypes.bool,
     canSave: PropTypes.bool,
     canShare: PropTypes.bool,
@@ -559,7 +579,6 @@ GUIComponent.propTypes = {
     costumeLibraryVisible: PropTypes.bool,
     costumesTabVisible: PropTypes.bool,
     enableCommunity: PropTypes.bool,
-    importInfoVisible: PropTypes.bool,
     intl: intlShape.isRequired,
     isCreating: PropTypes.bool,
     isFullScreen: PropTypes.bool,
@@ -572,7 +591,9 @@ GUIComponent.propTypes = {
     onSetBlocksPaletteFlyoutWidth: PropTypes.func,
     isRtl: PropTypes.bool,
     isShared: PropTypes.bool,
+    isTotallyNormal: PropTypes.bool,
     loading: PropTypes.bool,
+    logo: PropTypes.string,
     onActivateCostumesTab: PropTypes.func,
     onActivateSoundsTab: PropTypes.func,
     onActivateTab: PropTypes.func,
@@ -588,19 +609,20 @@ GUIComponent.propTypes = {
     onRequestCloseTelemetryModal: PropTypes.func,
     onSeeCommunity: PropTypes.func,
     onShare: PropTypes.func,
+    onShowPrivacyPolicy: PropTypes.func,
+    onStartSelectingFileUpload: PropTypes.func,
     onTabSelect: PropTypes.func,
     onTelemetryModalCancel: PropTypes.func,
     onTelemetryModalOptIn: PropTypes.func,
     onTelemetryModalOptOut: PropTypes.func,
     onToggleLoginOpen: PropTypes.func,
-    onUpdateProjectTitle: PropTypes.func,
-    previewInfoVisible: PropTypes.bool,
     renderLogin: PropTypes.func,
     showComingSoon: PropTypes.bool,
     soundsTabVisible: PropTypes.bool,
     stageSizeMode: PropTypes.oneOf(Object.keys(STAGE_SIZE_MODES)),
     targetIsStage: PropTypes.bool,
     telemetryModalVisible: PropTypes.bool,
+    theme: PropTypes.string,
     tipsLibraryVisible: PropTypes.bool,
     vm: PropTypes.instanceOf(VM).isRequired
 };
@@ -608,8 +630,12 @@ GUIComponent.defaultProps = {
     backpackHost: null,
     backpackVisible: false,
     basePath: './',
+    blocksId: 'original',
+    canChangeLanguage: true,
+    canChangeTheme: true,
     canCreateNew: false,
     canEditTitle: false,
+    canManageFiles: true,
     canRemix: false,
     canSave: false,
     canCreateCopy: false,
@@ -618,12 +644,12 @@ GUIComponent.defaultProps = {
     enableCommunity: false,
     isCreating: false,
     isShared: false,
+    isTotallyNormal: false,
     loading: false,
     isBlocksPaletteCollapsed: false,
     blocksPaletteFlyoutWidth: BLOCKS_PALETTE_FLYOUT_WIDTH_DEFAULT,
     onSetBlocksPaletteCollapsed: () => {},
     onSetBlocksPaletteFlyoutWidth: () => {},
-    onUpdateProjectTitle: () => {},
     showComingSoon: false,
     stageSizeMode: STAGE_SIZE_MODES.large
 };
@@ -659,12 +685,17 @@ const mapDispatchToProps = dispatch => ({
   },
   onSetBlocksPaletteFlyoutWidth: width => {
     dispatch(setBlocksPaletteFlyoutWidth(width));
+  },
+  onUpdateProjectTitle: title => {
+    dispatch(setProjectTitle(title));
   }
 });
 
 const mapStateToProps = state => ({
     // This is the button's mode, as opposed to the actual current state
+    blocksId: state.scratchGui.timeTravel.year.toString(),
     stageSizeMode: state.scratchGui.stageSize.stageSize,
+    theme: state.scratchGui.theme.theme,
     isRightPanelHidden: state.scratchGui.layoutVisibility.isRightPanelHidden,
     isBlocksPaletteCollapsed: state.scratchGui.layoutVisibility.isBlocksPaletteCollapsed,
     blocksPaletteFlyoutWidth: state.scratchGui.layoutVisibility.blocksPaletteFlyoutWidth
