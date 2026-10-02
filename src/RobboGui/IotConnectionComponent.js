@@ -177,7 +177,10 @@ class IotConnectionComponent extends Component {
 
         var internet_connection_status_component = document.getElementById("raw-9-iot-connection-column-2");
 
-        let  internet_connection_status_LoopInterval = setInterval(() => {
+        if (this.internetConnectionStatusInterval) {
+            clearInterval(this.internetConnectionStatusInterval);
+        }
+        this.internetConnectionStatusInterval = setInterval(() => {
 
             this.checkOnlineStatus();  
 
@@ -186,6 +189,13 @@ class IotConnectionComponent extends Component {
             internet_connection_status_component.innerHTML = this.internet_connection_status ? "Connected" : "Disconnected";
 
         },3000);
+    }
+
+    componentWillUnmount () {
+        if (this.internetConnectionStatusInterval) {
+            clearInterval(this.internetConnectionStatusInterval);
+            this.internetConnectionStatusInterval = null;
+        }
     }
 
     componentDidMount(){

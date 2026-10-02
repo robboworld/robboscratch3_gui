@@ -180,12 +180,23 @@ class LaboratoryPalleteComponent extends Component {
 
 
 
-      setInterval(() => {
+      if (this.getDataInterval) {
+        clearInterval(this.getDataInterval);
+      }
+
+      this.getDataInterval = setInterval(() => {
 
           this.labGetData.call(this);
 
       },100);
 
+  }
+
+  componentWillUnmount () {
+    if (this.getDataInterval) {
+      clearInterval(this.getDataInterval);
+      this.getDataInterval = null;
+    }
   }
 
   componentDidUpdate(){

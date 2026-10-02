@@ -358,6 +358,9 @@ class Blocks extends React.Component {
     }
     componentWillUnmount () {
         this.detachVM();
+        // The whole GUI remounts on locale change: drop deferred work that would touch the disposed workspace.
+        this.onTargetsUpdate.cancel();
+        this.toolboxUpdateQueue = [];
         if (this.workspace) {
             this.workspace.dispose();
             this.workspace = null;
@@ -404,11 +407,14 @@ class Blocks extends React.Component {
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
         this.props.vm.setLocale(this.props.locale, this.getVmLocaleMessages())
             .then(() => {
+                // unmounted while the VM was refreshing its blocks
+                if (!this.workspace) return;
                 const flyout = this.workspace.getFlyout();
                 if (flyout) flyout.setRecyclingEnabled(false);
                 this.props.vm.refreshWorkspace();
                 this.requestToolboxUpdate();
                 this.withToolboxUpdates(() => {
+                    if (!this.workspace) return;
                     const flyoutAfter = this.workspace.getFlyout();
                     if (flyoutAfter) flyoutAfter.setRecyclingEnabled(true);
                 });
@@ -497,8 +503,9 @@ class Blocks extends React.Component {
 
     updateToolboxBlockValue (id, value) {
         this.withToolboxUpdates(() => {
-            const block = this.workspace
-                .getFlyout()
+            const flyout = this.workspace && this.workspace.getFlyout();
+            if (!flyout) return;
+            const block = flyout
                 .getWorkspace()
                 .getBlockById(id);
             if (block) {
@@ -508,7 +515,7 @@ class Blocks extends React.Component {
     }
 
     onTargetsUpdate () {
-        if (this.props.vm.editingTarget && this.workspace.getFlyout()) {
+        if (this.props.vm.editingTarget && this.workspace && this.workspace.getFlyout()) {
             ['glide', 'move', 'set'].forEach(prefix => {
                 this.updateToolboxBlockValue(`${prefix}x`, Math.round(this.props.vm.editingTarget.x).toString());
                 this.updateToolboxBlockValue(`${prefix}y`, Math.round(this.props.vm.editingTarget.y).toString());
@@ -719,6 +726,7 @@ class Blocks extends React.Component {
             }
 
             this.withToolboxUpdates(() => {
+                if (!this.workspace || !this.workspace.toolbox_) return;
                 this.workspace.toolbox_.setSelectedCategoryById(categoryId);
             });
         };

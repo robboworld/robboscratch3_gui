@@ -242,13 +242,20 @@ class ColorCorrectorTableComponent extends Component {
   componentWillUnmount () {
     clearTransientButtonFeedbackTimer(this, APPLY_BUTTON_FEEDBACK_KEY);
     stopPopupDragFollow(this);
+    if (this.colorBoxInterval) {
+      clearInterval(this.colorBoxInterval);
+      this.colorBoxInterval = null;
+    }
   }
 
 
   updateColorBox(){
 
+      if (this.colorBoxInterval) {
+        clearInterval(this.colorBoxInterval);
+      }
 
-      setInterval(() => {
+      this.colorBoxInterval = setInterval(() => {
 
         if (this.props.color_corrector_table.isShowing){
 
