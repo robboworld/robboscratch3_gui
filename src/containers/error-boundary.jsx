@@ -4,6 +4,7 @@ import {connect} from 'react-redux';
 import BrowserModalComponent from '../components/browser-modal/browser-modal.jsx';
 import CrashMessageComponent from '../components/crash-message/crash-message.jsx';
 import log from '../lib/log.js';
+import {recordError} from '../lib/error-journal';
 import {recommendedBrowser} from '../lib/supported-browser';
 
 class ErrorBoundary extends React.Component {
@@ -38,6 +39,8 @@ class ErrorBoundary extends React.Component {
             });
         }
 
+        recordError('react', error, `action=${this.props.action}${errorInfo.componentStack}`);
+
         // report every error in the console
         log.error([
             `Unhandled Error with action='${this.props.action}': ${error.stack}`,
@@ -58,6 +61,7 @@ class ErrorBoundary extends React.Component {
             if (recommendedBrowser()) {
                 return (
                     <CrashMessageComponent
+                        errorMessage={String(this.state.error.message || this.state.error)}
                         onReload={this.handleReload}
                     />
                 );

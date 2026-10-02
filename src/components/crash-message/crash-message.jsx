@@ -41,6 +41,9 @@ const CrashMessage = props => (
                     />
                 </p>
             )}
+            {props.errorMessage && (
+                <p className={styles.errorMessage}>{props.errorMessage}</p>
+            )}
             <button
                 className={styles.reloadButton}
                 onClick={props.onReload}
@@ -56,6 +59,7 @@ const CrashMessage = props => (
 );
 
 CrashMessage.propTypes = {
+    errorMessage: PropTypes.string,
     eventId: PropTypes.string,
     onReload: PropTypes.func.isRequired
 };

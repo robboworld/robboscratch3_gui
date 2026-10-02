@@ -28,6 +28,7 @@ import {
   renderTransientActionLabel
 } from '../lib/transient-button-feedback';
 import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
+import {getErrorJournalFilePath, getErrorJournalText} from '../lib/error-journal';
 import {
   premiumAutoUpdateCheckThunk,
   premiumStartUpdateThunk
@@ -535,7 +536,7 @@ class AboutWindowComponent extends Component {
   }
 
   onCopySystemInfoClick (systemInfoText) {
-    this.copyToClipboard(systemInfoText, () => {
+    this.copyToClipboard(this.appendErrorJournal(systemInfoText), () => {
       showTransientButtonFeedback(this, {
         stateKey: COPY_BUTTON_FEEDBACK_KEY,
         feedbackToken: COPY_FEEDBACK_TOKEN
@@ -594,6 +595,19 @@ class AboutWindowComponent extends Component {
       document.body.removeChild(textarea);
     }
     return copied;
+  }
+
+  appendErrorJournal (systemInfoText) {
+    const journalText = getErrorJournalText();
+    if (!journalText) return systemInfoText;
+
+    const logFilePath = getErrorJournalFilePath();
+    return [
+      systemInfoText,
+      '',
+      `Recent errors${logFilePath ? ` (full log: ${logFilePath})` : ''}:`,
+      journalText
+    ].join('\n');
   }
 
   buildSystemInfoText(rows) {
