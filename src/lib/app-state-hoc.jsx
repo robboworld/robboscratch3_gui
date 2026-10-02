@@ -4,12 +4,13 @@ import {Provider} from 'react-redux';
 import {createStore, combineReducers, compose} from 'redux';
 import ConnectedIntlProvider from './connected-intl-provider.jsx';
 
-import localesReducer, {initLocale, localesInitialState} from '../reducers/locales';
+import localesReducer, {changeLocale, initLocale, localesInitialState} from '../reducers/locales';
 
 import {setPlayer, setFullScreen} from '../reducers/mode.js';
 
 import locales from 'scratch-l10n';
 import {resolveStartupLocale} from './detect-locale';
+import log from './log';
 
 import { Provider as AlertProvider } from 'react-alert';
 import AlertTemplate from 'react-alert-template-basic';
@@ -91,6 +92,10 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
                 initialState,
                 enhancer
             );
+            if (initializedLocales.locale !== locale) {
+                // Startup language is not bundled: start in the default one, switch once its chunk loads
+                changeLocale(this.store.dispatch, locale).catch(e => log.warn(`Failed to load locale ${locale}`, e));
+            }
         }
         componentDidUpdate (prevProps) {
             if (localesOnly) return;
