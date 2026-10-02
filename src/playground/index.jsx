@@ -7,6 +7,9 @@ import 'intl'; // For Safari 9
 import initNwDesktopFileBootstrap from '../lib/nw-desktop-file-bootstrap';
 initNwDesktopFileBootstrap();
 
+import {installErrorJournal} from '../lib/error-journal';
+installErrorJournal();
+
 import React from 'react';
 import ReactDOM from 'react-dom';
 

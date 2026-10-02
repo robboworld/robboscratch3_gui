@@ -22,6 +22,13 @@
     color: inherit;
 }
 
+.error-message {
+    font-family: monospace;
+    font-size: 0.75rem;
+    word-break: break-word;
+    user-select: text;
+}
+
 .reloadButton {
     border: 1px solid #383838;
     border-radius: 0.25rem;
