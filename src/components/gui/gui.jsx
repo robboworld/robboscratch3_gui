@@ -76,14 +76,12 @@ const Target = {
 
       props.onSensorChooseWindowDrop(dropPos.top, dropPos.left);
 
-      console.log(`Drop: SensorChooseWindow y:${dropPos.top}  x:${dropPos.left}`);
 
 
     }else if (item.element_type == ItemTypes.COLOR_CORRECTOR_WINDOW){
 
         props.onColorCorrectorWindowDrop(dropPos.top, dropPos.left);
 
-        console.log(`Drop: ColorCorrectorWindow y:${dropPos.top}  x:${dropPos.left}`);
 
     }else if (item.element_type == ItemTypes.DRAGGABLE_WINDOW){
 
@@ -91,7 +89,6 @@ const Target = {
 
         props.onDraggableWindowDrop(dropPos.top, dropPos.left,draggable_window_id);
 
-        console.log(`Drop: DRAGGABLE_WINDOW id: ${draggable_window_id} y:${dropPos.top}  x:${dropPos.left}`);
 
     } else if (item.element_type == ItemTypes.NEW_DRAGGABLE_WINDOW){
       
@@ -99,7 +96,6 @@ const Target = {
 
         props.onNewDraggableWindowDrop(dropPos.top, dropPos.left,draggable_window_id);
 
-        console.log(`Drop: NEW DRAGGABLE_WINDOW id: ${draggable_window_id} y:${dropPos.top}  x:${dropPos.left}`);
 
     }
 

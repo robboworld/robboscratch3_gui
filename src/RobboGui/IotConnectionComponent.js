@@ -93,7 +93,6 @@ class IotConnectionComponent extends Component {
         this.internet_connection_status = false; 
     }
     onThisWindowClose() {
-        console.log("iotconnection close");
         this.props.onIotWindowClose("iot_connection");
     }
 

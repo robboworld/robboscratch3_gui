@@ -222,7 +222,6 @@ class LaboratoryPalleteComponent extends Component {
   componentDidMount(){
 
 
-    console.log("startLaboratoryGetData");
   //  this.props.startLaboratoryGetData(0,this.props.LCA);
 
   this.props.setLCALocal(this.props.LCA);
@@ -233,7 +232,6 @@ class LaboratoryPalleteComponent extends Component {
 
   onThisWindowClose(){
 
-    console.log("LaboartoryPalette close");
     this.props.onLaboratoryPaletteWindowClose(2);
 
   }

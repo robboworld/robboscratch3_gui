@@ -124,7 +124,6 @@ class RobotPalleteComponent extends Component {
   componentDidMount(){
 
 
-    console.log("startRobotGetData");
   //  this.props.startRobotGetData(0,this.props.RCA);
 
    
@@ -166,7 +165,6 @@ componentDidUpdate(){
 
   onThisWindowClose(){
 
-    console.log("RobotPalette close");
     this.props.onRobotPaletteWindowClose(1);
 
   }

@@ -159,7 +159,6 @@ const TriggerSensorName = function(payload){
 
 let data;
 
-console.log('ActionTriggerSensorName: ' + payload );
 
 if (payload.startsWith("robot-")){
 
@@ -187,7 +186,7 @@ if (payload.startsWith("robot-")){
 
 }
 
-    console.log('ERROR_UNKNOWN_DEVICE_SENSOR');
+    console.warn('ERROR_UNKNOWN_DEVICE_SENSOR');
     return {
       type: 'ERROR_UNKNOWN_DEVICE_SENSOR',
 

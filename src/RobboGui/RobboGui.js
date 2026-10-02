@@ -234,7 +234,6 @@ class RobboGui extends Component {
 
   stopSearchProcess(){
 
-    console.log("stopSearchProcess");
   //  this.props.stopSearchProcess(this.props.vm.getRCA());
 
   this.props.vm.getRCA().stopSearchProcess();
@@ -249,7 +248,6 @@ class RobboGui extends Component {
   stopDataRecievingProcess(){
 
 
-    console.log("stopDataRecievingProcess");
   //  this.props.stopDataRecievingProcess(this.props.vm.getRCA());
 
   this.props.vm.getRCA().stopDataRecievingProcess();
@@ -261,7 +259,6 @@ class RobboGui extends Component {
 
   triggerExtensionPack(){
 
-    console.log("triggerExtensionPack");
     this.props.onTriggerExtensionPack();
 
 
@@ -269,7 +266,6 @@ class RobboGui extends Component {
 
   triggerColorCorrectorTable(sensor_caller_id){
 
-    console.log("triggerColorCorrectorTable");
     this.props.onTriggerColorCorrectorTable(sensor_caller_id);
 
   }

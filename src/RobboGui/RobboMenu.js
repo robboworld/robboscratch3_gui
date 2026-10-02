@@ -249,7 +249,6 @@ class RobboMenu extends Component {
 
   searchDevices(){
 
-    console.log("searchDevices");
 
 
   //  this.DCA.searchAllDevices();
@@ -265,7 +264,6 @@ class RobboMenu extends Component {
 
   stopSearchProcess(){
 
-    console.log("stopSearchProcess");
   //  this.props.stopSearchProcess(this.props.vm.getRCA());
 
   this.RCA.stopSearchProcess();
@@ -277,7 +275,6 @@ class RobboMenu extends Component {
   stopDataRecievingProcess(){
 
 
-    console.log("stopDataRecievingProcess");
   //  this.props.stopDataRecievingProcess(this.props.vm.getRCA());
 
   this.RCA.stopDataRecievingProcess();
@@ -372,14 +369,12 @@ class RobboMenu extends Component {
 
   triggerColorCorrectorTable(sensor_caller_id){
 
-    console.log("triggerColorCorrectorTable");
     this.props.onTriggerColorCorrectorTable(sensor_caller_id);
 
   }
 
   triggerLogging(){
 
-        console.log("triggerLogging");
         this.DCA.triggerLogging();
 
        

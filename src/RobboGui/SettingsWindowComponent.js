@@ -156,7 +156,6 @@ class SettingsWindowComponent extends Component {
   }
 
   onThisWindowClose () {
-    console.log("SettingsWindow close");
     this.props.onSettingsWindowClose(4);
   }
 
@@ -262,14 +261,12 @@ class SettingsWindowComponent extends Component {
     };
 
     function onInitFs(fs) {
-      console.log('Opened file system: ' + fs.name);
       fs.root.getFile("settings" + "." + "json", { create: true }, function (fileEntry) {
         fileEntry.createWriter(function (fileWriter) {
           fileWriter.onwriteend = function (e) {
-            console.log('Settings write completed.');
           }
           fileWriter.onerror = function (e) {
-            console.log('Settings writing failed: ' + e.toString());
+            console.error('Settings writing failed: ' + e.toString());
           };
           var bb = new Blob([settings_data]);
           fileWriter.write(bb);
@@ -279,7 +276,6 @@ class SettingsWindowComponent extends Component {
 
     navigator.webkitPersistentStorage.requestQuota(500 * 1024 * 1024, //500Мб
       function (grantedBytes) {
-        console.log("byte granted=" + grantedBytes);
         window.webkitRequestFileSystem(PERSISTENT, grantedBytes, onInitFs, errorHandler);
       }, errorHandler
     );
@@ -296,7 +292,6 @@ class SettingsWindowComponent extends Component {
     var _onInitFs = function (fs) {
       fs.root.getFile("settings.json", { create: false }, function (fileEntry) {
         fileEntry.remove(() => {
-          console.log('File settings.json was removed.');
           if (typeof (callback) === 'function') callback();
         }, errorHandler);
       }, errorHandler);

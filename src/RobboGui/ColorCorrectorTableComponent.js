@@ -57,7 +57,6 @@ const ColorCorrectorWindowSource = wrapPopupDragSource({
   canDrag(props,monitor) {
 
 
-     console.log("canDrag");
 
       //let coord = monitor.getClientOffset();
 
@@ -319,11 +318,9 @@ class ColorCorrectorTableComponent extends Component {
 
        var slider_value_now = Number(slider.value);//текущее значение пересчиываемого датчикаы
 
-       console.log("slider_value_now: " + slider_value_now);
 
        var slider_value_old = Number(document.getElementById(slider_id+"-value").innerHTML.replace("%","")); //старое значение показаний датчика (до начала drag) 
 
-       console.log("slider_value_old: " + slider_value_old);
 
        var filtered_sliders_arr =  sliders_arr.filter(slider => slider != slider_id); //все слайдеры кроме пересчитываемого 
 
@@ -356,7 +353,6 @@ class ColorCorrectorTableComponent extends Component {
 
       var one_slider_percent_value;
       var one_slider_percent_value_without_round = percent_delta / unchecked_sliders_arr.length; //распределение дельты на каждый неотмеченный слайдер
-      console.log("one_slider_percent_value_without_round: " + one_slider_percent_value_without_round);
       one_slider_percent_value = one_slider_percent_value_without_round;
 
       if (!isInteger(one_slider_percent_value_without_round)){
@@ -365,16 +361,13 @@ class ColorCorrectorTableComponent extends Component {
 
           one_slider_percent_value =  Math.round(one_slider_percent_value_without_round);
 
-          console.log("one_slider_percent_value_rounded: " +   one_slider_percent_value);
 
           slider_rounded_flag_old = slider_rounded_flag;
           slider_rounded_flag+=1;
 
-          console.log("slider_rounded_flag: " + slider_rounded_flag);
 
         if (slider_rounded_flag == 2){
 
-          console.log("slider_rounded_flag == 2");
 
         //  if (isEqualSign(one_slider_percent_value,one_slider_percent_value_old)){
 
@@ -406,7 +399,6 @@ class ColorCorrectorTableComponent extends Component {
 
 
 
-      console.log("one_slider_percent_value: " + one_slider_percent_value);
 
      
       let value = 0;
@@ -424,8 +416,6 @@ class ColorCorrectorTableComponent extends Component {
 
              value_is_negative = ((value_buf < 0) || (value_is_negative))?true:false; 
 
-                console.log("Number(document.getElementById(slider).value): " + Number(document.getElementById(slider).value));
-                console.log("value1: " + value);
 
       });
 
@@ -433,7 +423,6 @@ class ColorCorrectorTableComponent extends Component {
 
         let sum = slider_value_now + value;
 
-          console.log("Low then : " +  percents + "sum: " + sum);
 
       }
 
@@ -448,7 +437,6 @@ class ColorCorrectorTableComponent extends Component {
         unchecked_sliders_arr.forEach(function(slider,index){
 
               let value =  Number(document.getElementById(slider).value) -  one_slider_percent_value;
-              console.log("value2: " + value);
 
               document.getElementById(slider).value  = value;
               document.getElementById(slider+"-value").innerHTML = value + "%";
@@ -575,7 +563,6 @@ class ColorCorrectorTableComponent extends Component {
 
   onButtonApplyChangesClick(RCA, sensor_id){
 
-       console.log("onButtonApplyChangesClick" );
 
 
        var color_corrector_table_object = {};
@@ -607,7 +594,6 @@ class ColorCorrectorTableComponent extends Component {
   onButtonSaveClick(){
 
 
-       console.log("onButtonSaveClick()" );
 
         var color_corrector_table_object = {};
 
@@ -662,14 +648,13 @@ class ColorCorrectorTableComponent extends Component {
                     //   return;
                     // }
 
-                      console.log(`Saving color table to ${path} completed`);
 
                 //    status.innerText = 'Export to '+fileDisplayPath+' completed';
                   };
 
                   fileWriter.onerror = function(e) {
 
-                    console.log(`Saving color table failed: ${e.toString()}`);
+                    console.error(`Saving color table failed: ${e.toString()}`);
 
                   };
 
@@ -701,7 +686,6 @@ class ColorCorrectorTableComponent extends Component {
   onButtonLoadClick(){
 
 
-    console.log("onButtonLoadClick" );
 
     function updateTable(color_corrector_table_object_loaded){
 
@@ -764,7 +748,6 @@ class ColorCorrectorTableComponent extends Component {
 
 
   onThisWindowClose(){
-    console.log("ColorCorrectorTable close");
     this.props.onCloseColorCorrectorTable(this.props.color_corrector_table.sensor_caller_id);
   }
 

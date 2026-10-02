@@ -56,7 +56,6 @@ class FirmwareFlasherComponent extends Component {
 
   getDevicesInfo(){
 
-      console.log(`getDevicesInfo`);
 
       // var devicesFirmwareFlasherDevicesList = document.getElementById("devices-firmware-flasher-devices-list");
       //
@@ -68,7 +67,6 @@ class FirmwareFlasherComponent extends Component {
 
   onThisWindowClose(){
 
-    console.log("FirmwareFlasher close");
     this.props.onFirmwareFlasherWindowClose(3);
 
   }

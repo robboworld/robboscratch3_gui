@@ -32,7 +32,6 @@ class ProfilerWindowComponent extends Component {
 
   onThisWindowClose(){
 
-    console.log("ProfilerWindow close");
     this.props.onProfilerWindowClose("profiler-window");
 
   }
