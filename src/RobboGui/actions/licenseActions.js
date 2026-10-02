@@ -614,7 +614,6 @@ export function premiumAutoUpdateCheckThunk () {
                 });
             }
 
-            console.info('[rs3-license] Premium auto-update result:', result);
             return result;
         }).catch(err => {
             dispatch({

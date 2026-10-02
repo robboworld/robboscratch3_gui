@@ -49,21 +49,18 @@ class SensorPallete extends Component {
 
   triggerSensorsPalette(){
 
-    console.log("triggerSensorsPalette");
     this.props.onTriggerSensorsPalette();
 
   }
 
   triggerExtensionPack(){
 
-      console.log("triggerExtensionPack()");
       this.props.onTriggerExtensionPack();
 
   }
 
   triggerSensorChooseWindow(){
 
-      console.log("triggerSensorChooseWindow()");
       this.props.onTriggerSensorChooseWindow(0);
 
   }

@@ -37,7 +37,7 @@ const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
 const SUPPORT_URL = 'https://support.robbo.world/';
 
-const VERSION = 'Robbo Scratch v.3.133.0-alpha';
+const VERSION = 'Robbo Scratch v.3.133.1-alpha';
 export {VERSION};
 export const APP_VERSION = (VERSION.match(/v\.(.+)$/) || [])[1] || '';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
@@ -240,7 +240,6 @@ class AboutWindowComponent extends Component {
   }
 
   onThisWindowClose () {
-    console.log('aboutWindow close');
     this.props.onAboutWindowClose('about-window');
   }
 

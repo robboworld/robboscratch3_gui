@@ -73,7 +73,6 @@ class QuadcopterPalleteComponent extends Component {
 
   onThisWindowClose(){
 
-    console.log("QuadcopterPalette close");
     this.props.onQuadcopterPaletteWindowClose(0);
 
   }

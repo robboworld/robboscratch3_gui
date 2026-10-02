@@ -12,7 +12,6 @@ class SensorChooseWindowComponentElement extends Component {
 
   ChooseSensorType(){
 
-      console.log('ChooseSensorName()2');
 
       this.props.onSensorNameChoosen(ReactDOM.findDOMNode(this).id);
 

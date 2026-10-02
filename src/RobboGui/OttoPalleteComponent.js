@@ -33,7 +33,6 @@ const messages = defineMessages({
 
 class OttoPalleteComponent extends Component {
     onThisWindowClose () {
-        console.log('OttoPalette close');
         this.props.onOttoPaletteWindowClose(5);
     }
 

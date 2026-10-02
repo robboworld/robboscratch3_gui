@@ -26,7 +26,6 @@ const messages = defineMessages({
 
 class ArduinoPalleteComponent extends Component {
   onThisWindowClose(){
-    console.log("ArduinoPalette close");
     this.props.onArduinoPaletteWindowClose(6);
   }
 
