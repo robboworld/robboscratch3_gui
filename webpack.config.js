@@ -1,4 +1,5 @@
 const defaultsDeep = require('lodash.defaultsdeep');
+const fs = require('fs');
 var path = require('path');
 var webpack = require('webpack');
 
@@ -33,6 +34,16 @@ const webSeo = {
     ogImage: 'https://scratch.ru/static/favicon.png',
     organizationName: 'ROBBO',
     organizationUrl: 'https://robboclub.ru'
+};
+
+// Blocks of components/loader inlined into index.html: the static loading screen shows them
+// before any script has loaded (see src/lib/loading-splash.js).
+const loaderBlockDataUri = name => 'data:image/svg+xml;base64,' +
+    fs.readFileSync(path.resolve(__dirname, 'src/components/loader', name)).toString('base64');
+const loadingSplash = {
+    top: loaderBlockDataUri('top-block.svg'),
+    middle: loaderBlockDataUri('middle-block.svg'),
+    bottom: loaderBlockDataUri('bottom-block.svg')
 };
 
 const useBabelCache = !isProduction;
@@ -212,6 +223,7 @@ module.exports = [
                     favicon: path.resolve(__dirname, 'static/favicon.png'),
                     sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null,
                     seo: webSeo,
+                    loadingSplash,
                     yandexMetrika: isProduction ? 93772324 : null
                 })
             ],

@@ -49,6 +49,7 @@ import GUIComponent from '../components/gui/gui.jsx';
 import CloudProjectNotFound from '../components/cloud-project-not-found/cloud-project-not-found.jsx';
 import RobboSimulatorVmSync from './robbo-simulator-vm-sync.jsx';
 import {setIsScratchDesktop} from '../lib/isScratchDesktop.js';
+import hideLoadingSplash from '../lib/loading-splash';
 
 import {DragDropContext} from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
@@ -106,6 +107,11 @@ class GUI extends React.Component {
         }
     }
     componentDidUpdate (prevProps) {
+        // Normally the Loader removes the static loading screen; this covers a project shown
+        // (or failed) without the Loader ever mounting, so the screen never hides the editor.
+        if (this.props.isShowingProject || this.props.isError) {
+            hideLoadingSplash();
+        }
         if (this.props.projectId !== prevProps.projectId && this.props.projectId !== null) {
             this.props.onUpdateProjectId(this.props.projectId);
         }
