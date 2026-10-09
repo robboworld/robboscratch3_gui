@@ -12,6 +12,13 @@ var autoprefixer = require('autoprefixer');
 var postcssVars = require('postcss-simple-vars');
 var postcssImport = require('postcss-import');
 
+// `npm run build:release` is the release build on every OS. The npm script cannot carry a
+// bash-style NODE_ENV=production (build.ps1 runs it on Windows), and without NODE_ENV it used
+// to produce an unminified development bundle (~30 MB lib.min.js instead of ~16 MB).
+if (process.env.npm_lifecycle_event === 'build:release' && !process.env.NODE_ENV) {
+    process.env.NODE_ENV = 'production';
+}
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.BUILD_MODE === 'dist';
 const shouldBuildLibraryDist = process.env.BUILD_MODE === 'dist';
 const isAppBuild = process.env.BUILD_MODE === 'app';
