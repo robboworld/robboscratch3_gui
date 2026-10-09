@@ -40,10 +40,34 @@ const webSeo = {
 // before any script has loaded (see src/lib/loading-splash.js).
 const loaderBlockDataUri = name => 'data:image/svg+xml;base64,' +
     fs.readFileSync(path.resolve(__dirname, 'src/components/loader', name)).toString('base64');
+// The Loader headline in every editor locale, so the static screen shows the same title as the
+// React Loader that replaces it. Read from scratch-l10n: supported locales and their messages.
+const loaderHeadlines = (() => {
+    const l10nDir = path.resolve(__dirname, 'node_modules/scratch-l10n');
+    const readHeadline = locale => {
+        try {
+            const file = path.join(l10nDir, 'editor/interface', `${locale}.json`);
+            return JSON.parse(fs.readFileSync(file, 'utf8'))['gui.loader.headline'];
+        } catch (e) {
+            return null;
+        }
+    };
+    const fallback = readHeadline('en') || 'Loading Project';
+    let locales = [];
+    try {
+        const source = fs.readFileSync(path.join(l10nDir, 'src/supported-locales.js'), 'utf8');
+        locales = Array.from(source.matchAll(/^\s*'([^']+)': \{name:/gm), match => match[1]);
+    } catch (e) {
+        // No titles: the static screen shows the blocks only.
+    }
+    return locales.reduce((acc, locale) => Object.assign(acc, {[locale]: readHeadline(locale) || fallback}), {});
+})();
 const loadingSplash = {
     top: loaderBlockDataUri('top-block.svg'),
     middle: loaderBlockDataUri('middle-block.svg'),
-    bottom: loaderBlockDataUri('bottom-block.svg')
+    bottom: loaderBlockDataUri('bottom-block.svg'),
+    // Inlined into a <script>: no "</" may close it early.
+    headlinesJson: JSON.stringify(loaderHeadlines).replace(/</g, '\\u003c')
 };
 
 const useBabelCache = !isProduction;

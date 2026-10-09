@@ -94,7 +94,7 @@
       #app-loading-splash .splash-top { animation: app-splash-top 1.5s ease infinite; }
       #app-loading-splash .splash-middle { animation: app-splash-middle 1.5s ease infinite; }
       #app-loading-splash .splash-bottom { animation: app-splash-bottom 1.5s ease infinite; }
-      /* The title and message lines stay empty: the locale is only known to the app. */
+      /* The message line stays empty: the React Loader picks a random one. */
       #app-loading-splash .splash-title { font-size: 2rem; font-weight: bold; margin: 0.75rem 0; }
       #app-loading-splash .splash-message { height: 30px; }
       @keyframes app-splash-top {
@@ -118,10 +118,36 @@
           <img class="splash-middle" src="<%= splash.middle %>" alt="">
           <img class="splash-bottom" src="<%= splash.bottom %>" alt="">
         </div>
-        <div class="splash-title">&nbsp;</div>
+        <div class="splash-title" id="app-loading-splash-title">&nbsp;</div>
         <div class="splash-message"></div>
       </div>
     </div>
+    <script>
+      // The editor locale as lib/detect-locale.js resolves it (URL, saved choice, browser),
+      // to show the Loader title right away.
+      (function () {
+        var titles = <%= splash.headlinesJson %>;
+        var has = function (locale) { return Object.prototype.hasOwnProperty.call(titles, locale); };
+        var locale = null;
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var fromUrl = (params.get('locale') || params.get('lang') || '').toLowerCase();
+          if (fromUrl && has(fromUrl)) locale = fromUrl;
+        } catch (e) {}
+        if (!locale) {
+          try {
+            var saved = JSON.parse(window.localStorage.getItem('scratch-gui-layout-visibility-v1') || 'null');
+            if (saved && typeof saved.locale === 'string' && has(saved.locale)) locale = saved.locale;
+          } catch (e) {}
+        }
+        if (!locale) {
+          var browser = String(navigator.userLanguage || navigator.language || '').toLowerCase();
+          locale = has(browser) ? browser : (has(browser.split('-')[0]) ? browser.split('-')[0] : 'en');
+        }
+        var title = document.getElementById('app-loading-splash-title');
+        if (title && titles[locale]) title.textContent = titles[locale];
+      })();
+    </script>
     <% } %>
     <% if (htmlWebpackPlugin.options.seo && htmlWebpackPlugin.options.seo.enabled) { %>
     <% var seoBody = htmlWebpackPlugin.options.seo; %>
