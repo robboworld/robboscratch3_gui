@@ -74,6 +74,26 @@ const messages = defineMessages({
         description: 'Crazyradio closed or copter powered off during search (deviceClosed).',
         defaultMessage: 'Quadcopter not found. Turn on the copter and try searching again.'
     },
+    quadcopter_search_refused_in_flight: {
+        id: 'gui.SearchPanel.quadcopter_search_refused_in_flight',
+        description: 'Search was requested while the quadcopter is flying; restarting the link would drop it.',
+        defaultMessage: 'The quadcopter is flying: search again after it lands.'
+    },
+    quadcopter_flash_close_blocked: {
+        id: 'gui.RobboGui.QuadcopterPalette.flashCloseBlocked',
+        description: 'Shown when the user tries to close the app during a quadcopter firmware update',
+        defaultMessage: 'Wait until the quadcopter firmware update finishes: if you close the program now, the quadcopter will stop starting'
+    },
+    quadcopter_low_battery_landing: {
+        id: 'gui.SearchPanel.quadcopter_low_battery_landing',
+        description: 'Battery became critical in flight; the copter lands by itself.',
+        defaultMessage: 'The quadcopter battery is critically low: landing.'
+    },
+    quadcopter_locked: {
+        id: 'gui.SearchPanel.quadcopter_locked',
+        description: 'Supervisor locked: the quadcopter ignores commands until restarted.',
+        defaultMessage: 'The quadcopter does not respond to commands — restart it'
+    },
     quadcopter_landing: {
         id: 'gui.SearchPanel.quadcopter_landing',
         description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
@@ -788,7 +808,13 @@ class SearchPanelDeviceComponent extends Component {
     /** Жирная колонка в панели поиска: на Desktop — имя устройства (когда готово) + порт; в Web — тип устройства. */
     getSearchPanelRowTitle() {
         if (this.props.isQuadcopter) {
-            return this.props.intl.formatMessage(messages.device_quadcopter);
+            const title = this.props.intl.formatMessage(messages.device_quadcopter);
+            const qca = this.props.QCA;
+            const connected = qca && typeof qca.getCopters === 'function' ?
+                qca.getCopters().filter(c => c.connected).length :
+                0;
+            // Several copters: the row stays for search / firmware of the primary one; details are in the copter palette.
+            return connected > 1 ? `${title}: ${connected}` : title;
         }
         const port = this.props.devicePort || '';
         if (port.indexOf('webserial:') === 0) {
@@ -911,6 +937,7 @@ class SearchPanelDeviceComponent extends Component {
         const allDevices = this.props.DCA.getDevices();
         for (let i = 0; i < allDevices.length; i++) {
             const dev = allDevices[i];
+            if (!dev) continue;
             if (!(dev.getState() === 6 && !dev.isFirmwareVersionDiffers())) {
                 return false;
             }
@@ -1172,6 +1199,15 @@ class SearchPanelDeviceComponent extends Component {
         if (code === 'deviceClosed' || msg.indexOf('Crazyradio handle is not opened') !== -1) {
             return this.props.intl.formatMessage(messages.quadcopter_copter_not_found);
         }
+        if (code === 'searchRefusedInFlight') {
+            return this.props.intl.formatMessage(messages.quadcopter_search_refused_in_flight);
+        }
+        if (code === 'copterLocked') {
+            return this.props.intl.formatMessage(messages.quadcopter_locked);
+        }
+        if (code === 'quadcopterLowBatteryLanding') {
+            return this.props.intl.formatMessage(messages.quadcopter_low_battery_landing);
+        }
         return msg || null;
     }
 
@@ -1210,6 +1246,7 @@ class SearchPanelDeviceComponent extends Component {
                     quadcopterLastError: this.state.quadcopterLastError
                 });
             }
+            this._retryQuadcopterSearchAfterLogSetupFailure(probeEpoch);
             return;
         }
 
@@ -1239,10 +1276,25 @@ class SearchPanelDeviceComponent extends Component {
                 return;
             }
             this._resetQuadcopterRowAfterFirmwareDeclined(info);
+            this._retryQuadcopterSearchAfterLogSetupFailure(probeEpoch);
         } catch (confirmErr) {
             console.error('[CF2 firmware] confirm failed', confirmErr);
             this._resetQuadcopterRowAfterFirmwareDeclined(info);
         }
+    }
+
+    /**
+     * Older firmware (e.g. 2023.07) often fails the first log-block setup and connects on the next
+     * search. Instead of leaving the user with an error, retry once per search epoch.
+     */
+    _retryQuadcopterSearchAfterLogSetupFailure(probeEpoch) {
+        if (probeEpoch !== this.props.searchEpoch) return;
+        if (this._quadcopterLogRetryEpoch === probeEpoch) return;
+        const blob = this._quadcopterSearchErrorText(this._lastFailedQuadcopterSearch);
+        if (!/log block|log reset/i.test(blob)) return;
+        if (!this.props.QCA || typeof this.props.QCA.searchQuadcopterDevices !== 'function') return;
+        this._quadcopterLogRetryEpoch = probeEpoch;
+        this.props.QCA.searchQuadcopterDevices();
     }
 
     _maybeCheckFirmwareAfterConnectFailure(searchSnapshot) {
@@ -1270,6 +1322,7 @@ class SearchPanelDeviceComponent extends Component {
         }
 
         const probeEpoch = this.props.searchEpoch;
+        this._lastFailedQuadcopterSearch = searchSnapshot;
         const runProbe = typeof this.props.QCA.probeFirmwareAfterFailedConnect === 'function'
             ? this.props.QCA.probeFirmwareAfterFailedConnect.bind(this.props.QCA)
             : null;
@@ -1733,7 +1786,8 @@ class SearchPanelDeviceComponent extends Component {
         this.ACA.searchArduinoDevices();
 
         if (this.props.QCA) {
-            this.props.QCA.searchQuadcopterDevices({ from: 'SearchPanelDeviceComponent.searchDevices' });
+            // A hidden search (after flashing a robot) must not give a number to a new copter.
+            this.props.QCA.searchQuadcopterDevices({ from: 'SearchPanelDeviceComponent.searchDevices', background: !showPanel });
         }
 
         this.props.onHydrateDemoLicense();
@@ -2156,6 +2210,7 @@ class SearchPanelDeviceComponent extends Component {
         }, 0);
 
         this.props.QCA.flashBundledFirmware({
+            closeBlockedMessage: this.props.intl.formatMessage(messages.quadcopter_flash_close_blocked),
             onLine: (line, meta) => {
                 if (line && typeof line === 'string') {
                     this.onQuadcopterFlashingStatusChanged(line, meta || {});

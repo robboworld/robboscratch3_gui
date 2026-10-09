@@ -348,7 +348,7 @@ class SearchPanelComponent extends Component {
   }
 
   _refreshDeviceList() {
-    let allDevices = this.DCA.getDevices();
+    let allDevices = this.DCA.getDevices().filter(Boolean);
     let newList = [];
     for (let index = 0; index < allDevices.length; index++) {
       newList.push({

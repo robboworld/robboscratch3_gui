@@ -9,7 +9,7 @@ import {
 } from './actions/sensor_actions';
 import {ActionTriggerLabExtSensors} from  './actions/sensor_actions';
 import {getDefaultSimulationRobotSpriteJson, hasSimulationRobotSprite} from '../lib/robbo-simulation-sprite';
-import {getDefaultSimulationCopterSpriteJson, hasSimulationCopterSprite} from '../lib/robbo-simulation-copter-sprite';
+import {getDefaultSimulationCopterSpriteJson, hasSimulationCopterSprite, isSimulationCopterTarget} from '../lib/robbo-simulation-copter-sprite';
 import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
@@ -330,10 +330,11 @@ class RobboMenu extends Component {
       const ensureCopterDraggable = () => {
         const targets = this.props.VM && this.props.VM.runtime && this.props.VM.runtime.targets;
         if (!Array.isArray(targets)) return;
-        const target = targets.find(t => t && t.isOriginal && !t.isStage && t.sprite && t.sprite.name === 'Robbo Quadcopter');
-        if (target && !target.draggable && typeof target.setDraggable === 'function') {
-          target.setDraggable(true);
-        }
+        targets.filter(isSimulationCopterTarget).forEach(target => {
+          if (!target.draggable && typeof target.setDraggable === 'function') {
+            target.setDraggable(true);
+          }
+        });
       };
       if (!hasSimulationCopterSprite(this.props.VM)) {
         this.props.VM.addSprite(JSON.stringify(spriteJson))
