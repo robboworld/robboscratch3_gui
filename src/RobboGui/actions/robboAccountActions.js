@@ -24,6 +24,13 @@ import {
     ROBBO_ACCOUNT_SIGN_OUT
 } from '../reducers/robboAccount';
 import {setProjectTitle} from '../../reducers/project-title';
+import {setProjectUnchanged} from '../../reducers/project-changed';
+import {
+    fileSaveFailed,
+    fileSaveSucceeded,
+    startFileSave
+} from '../../reducers/project-save-status';
+import {setProjectSaveTarget} from '../../lib/project-save-target';
 
 function displayNameFromStatus (status) {
     if (!status) {
@@ -141,6 +148,7 @@ export function saveToCloudThunk (options) {
         }
 
         dispatch({type: ROBBO_ACCOUNT_SAVE_START});
+        dispatch(startFileSave());
 
         const existingId = account.cloudProjectPageId || '';
         const needCreate = asCopy || !existingId;
@@ -192,6 +200,10 @@ export function saveToCloudThunk (options) {
                     type: ROBBO_ACCOUNT_SAVE_SUCCESS,
                     payload: {cloudProjectPageId: projectPageId}
                 });
+                // Ctrl+S now saves to this cloud project.
+                setProjectSaveTarget({kind: 'cloud', name: (projectTitle || '').trim()});
+                dispatch(setProjectUnchanged());
+                dispatch(fileSaveSucceeded(Date.now()));
                 // Clear success banner after a short delay.
                 setTimeout(() => {
                     dispatch(clearSaveStatus());
@@ -199,6 +211,7 @@ export function saveToCloudThunk (options) {
             })
             .catch(err => {
                 log.warn('cloud save failed', err);
+                dispatch(fileSaveFailed());
                 dispatch({
                     type: ROBBO_ACCOUNT_SAVE_FAILURE,
                     payload: {message: (err && err.message) || 'save_failed'}

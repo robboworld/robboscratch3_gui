@@ -14,8 +14,10 @@ const getVariableValue = (vm, targetId, variableId) => {
     return variable.value;
 };
 
+// Called for user edits in monitors (slider, list items, import): the value is saved with the project.
 const setVariableValue = (vm, targetId, variableId, value) => {
     getVariable(vm, targetId, variableId).value = value;
+    vm.runtime.emitProjectChanged();
 };
 
 export {

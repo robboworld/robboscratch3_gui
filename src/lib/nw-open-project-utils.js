@@ -155,6 +155,7 @@ export const readProjectFromAbsolutePath = absPath => {
     bytes.set(buf);
     return {
         data: bytes.buffer,
+        path: nwPath.resolve(normalizedPath),
         title: nwPath.basename(normalizedPath, ext)
     };
 };

@@ -113,6 +113,12 @@ class Monitor extends React.Component {
         }
         this.props.removeMonitorRect(this.props.id);
     }
+    // User changes to a monitor (position, mode, slider range, visibility) are saved with the project,
+    // but requestUpdateMonitor alone does not emit PROJECT_CHANGED.
+    updateMonitor (monitorRecord) {
+        this.props.vm.runtime.requestUpdateMonitor(monitorRecord);
+        this.props.vm.runtime.emitProjectChanged();
+    }
     handleDragEnd (e, {x, y}) {
         const newX = parseInt(this.element.style.left, 10) + x;
         const newY = parseInt(this.element.style.top, 10) + y;
@@ -121,14 +127,14 @@ class Monitor extends React.Component {
             newX,
             newY
         );
-        this.props.vm.runtime.requestUpdateMonitor(Map({
+        this.updateMonitor(Map({
             id: this.props.id,
             x: newX,
             y: newY
         }));
     }
     handleHide () {
-        this.props.vm.runtime.requestUpdateMonitor(Map({
+        this.updateMonitor(Map({
             id: this.props.id,
             visible: false
         }));
@@ -137,25 +143,25 @@ class Monitor extends React.Component {
         const modes = availableModes(this.props.opcode);
         const modeIndex = modes.indexOf(this.props.mode);
         const newMode = modes[(modeIndex + 1) % modes.length];
-        this.props.vm.runtime.requestUpdateMonitor(Map({
+        this.updateMonitor(Map({
             id: this.props.id,
             mode: newMode
         }));
     }
     handleSetModeToDefault () {
-        this.props.vm.runtime.requestUpdateMonitor(Map({
+        this.updateMonitor(Map({
             id: this.props.id,
             mode: 'default'
         }));
     }
     handleSetModeToLarge () {
-        this.props.vm.runtime.requestUpdateMonitor(Map({
+        this.updateMonitor(Map({
             id: this.props.id,
             mode: 'large'
         }));
     }
     handleSetModeToSlider () {
-        this.props.vm.runtime.requestUpdateMonitor(Map({
+        this.updateMonitor(Map({
             id: this.props.id,
             mode: 'slider'
         }));
@@ -169,7 +175,7 @@ class Monitor extends React.Component {
     handleSliderPromptOk (min, max, isDiscrete) {
         const realMin = Math.min(min, max);
         const realMax = Math.max(min, max);
-        this.props.vm.runtime.requestUpdateMonitor(Map({
+        this.updateMonitor(Map({
             id: this.props.id,
             sliderMin: realMin,
             sliderMax: realMax,

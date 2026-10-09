@@ -19,6 +19,7 @@ import {
 import {openLoadingProject, closeLoadingProject} from '../reducers/modals';
 import {closeFileMenu} from '../reducers/menus';
 import {setProjectTitle} from '../reducers/project-title';
+import {setProjectSaveFile} from './project-save-target';
 
 const messages = defineMessages({
     loadError: {
@@ -130,7 +131,7 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
                 this._scheduleRetry();
                 return;
             }
-            const {data, title} = pending;
+            const {data, path, title} = pending;
             window.__ROBBO_NW_LOADING_PROJECT__ = true;
             this.props.dispatchProjectUpload(action);
             delete window.__ROBBO_NW_PENDING_PROJECT__;
@@ -139,6 +140,8 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
             setTimeout(() => {
                 this.props.vm.loadProject(data)
                     .then(() => {
+                        // Ctrl+S writes back to the opened file.
+                        setProjectSaveFile({path});
                         if (title) {
                             this.props.onUpdateProjectTitle(title);
                             document.title = title;

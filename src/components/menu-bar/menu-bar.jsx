@@ -23,7 +23,7 @@ import ProjectTitleInput from './project-title-input.jsx';
 import AuthorInfo from './author-info.jsx';
 import AccountNav from '../../containers/account-nav.jsx';
 import LoginDropdown from './login-dropdown.jsx';
-import SB3Downloader from '../../containers/sb3-downloader.jsx';
+import ProjectSaveButton from './project-save-button.jsx';
 import DeletionRestorer from '../../containers/deletion-restorer.jsx';
 import TurboMode from '../../containers/turbo-mode.jsx';
 import MenuBarHOC from '../../containers/menu-bar-hoc.jsx';
@@ -73,6 +73,7 @@ import {
 } from '../../reducers/menus';
 
 import collectMetadata from '../../lib/collect-metadata';
+import {saveProjectThunk} from '../../lib/project-save-actions';
 
 import styles from './menu-bar.css';
 
@@ -272,7 +273,8 @@ class MenuBar extends React.Component {
             'handleSetMode',
             'handleKeyPress',
             'handleRestoreOption',
-            'getSaveToComputerHandler',
+            'handleClickSaveToFile',
+            'handleClickSaveAsToFile',
             'restoreOptionMessage',
             'handleClickSignIn',
             'handleClickSignOut',
@@ -427,20 +429,40 @@ class MenuBar extends React.Component {
     }
     handleKeyPress (event) {
         const modifier = bowser.mac ? event.metaKey : event.ctrlKey;
-        if (modifier && event.key === 's') {
+        // event.code: the S key on any keyboard layout (event.key is "ы" in the Russian one).
+        const isSKey = event.code === 'KeyS' || (event.key && event.key.toLowerCase() === 's');
+        if (!modifier || !isSKey || event.altKey) {
+            return;
+        }
+        event.preventDefault();
+        if (event.repeat) {
+            return;
+        }
+        if (this.props.canSave) {
+            // Project from a Scratch project server.
             this.props.onClickSave();
-            event.preventDefault();
+            return;
+        }
+        if (!this.props.canManageFiles) {
+            return;
+        }
+        if (event.shiftKey) {
+            this.handleClickSaveAsToFile();
+        } else {
+            this.handleClickSaveToFile();
         }
     }
-    getSaveToComputerHandler (downloadProjectCallback) {
-        return () => {
-            this.props.onRequestCloseFile();
-            downloadProjectCallback();
-            if (this.props.onProjectTelemetryEvent) {
-                const metadata = collectMetadata(this.props.vm, this.props.projectTitle, this.props.locale);
-                this.props.onProjectTelemetryEvent('projectDidSave', metadata);
-            }
-        };
+    handleClickSaveToFile () {
+        this.props.onRequestCloseFile();
+        this.props.onSaveProject();
+    }
+    handleClickSaveAsToFile () {
+        this.props.onRequestCloseFile();
+        this.props.onSaveProjectAs();
+        if (this.props.onProjectTelemetryEvent) {
+            const metadata = collectMetadata(this.props.vm, this.props.projectTitle, this.props.locale);
+            this.props.onProjectTelemetryEvent('projectDidSave', metadata);
+        }
     }
     restoreOptionMessage (deletedItem) {
         switch (deletedItem) {
@@ -667,18 +689,30 @@ class MenuBar extends React.Component {
                                         >
                                             {this.props.intl.formatMessage(sharedMessages.loadFromComputerTitle)}
                                         </MenuItem>
-                                        <SB3Downloader>{(className, downloadProjectCallback) => (
-                                            <MenuItem
-                                                className={className}
-                                                onClick={this.getSaveToComputerHandler(downloadProjectCallback)}
-                                            >
+                                        <MenuItem onClick={this.handleClickSaveToFile}>
+                                            <span className={styles.menuItemWithShortcut}>
                                                 <FormattedMessage
-                                                    defaultMessage="Save to your computer"
-                                                    description="Menu bar item for downloading a project to your computer" // eslint-disable-line max-len
-                                                    id="gui.menuBar.downloadToComputer"
+                                                    defaultMessage="Save"
+                                                    description="File menu: save the project to its file"
+                                                    id="gui.menuBar.saveToFile"
                                                 />
-                                            </MenuItem>
-                                        )}</SB3Downloader>
+                                                <span className={styles.menuShortcut}>
+                                                    {bowser.mac ? '⌘S' : 'Ctrl+S'}
+                                                </span>
+                                            </span>
+                                        </MenuItem>
+                                        <MenuItem onClick={this.handleClickSaveAsToFile}>
+                                            <span className={styles.menuItemWithShortcut}>
+                                                <FormattedMessage
+                                                    defaultMessage="Save as…"
+                                                    description="File menu: save the project to a new file"
+                                                    id="gui.menuBar.saveAsToFile"
+                                                />
+                                                <span className={styles.menuShortcut}>
+                                                    {bowser.mac ? '⇧⌘S' : 'Ctrl+Shift+S'}
+                                                </span>
+                                            </span>
+                                        </MenuItem>
                                     </MenuSection>
                                     {AUTH_UI_ENABLED && this.props.isRobboAccountAuthenticated ? (
                                         <MenuSection>
@@ -803,6 +837,7 @@ class MenuBar extends React.Component {
                                 </MenuBarMenu>
                             </div>
                         )}
+                        {this.props.canManageFiles ? <ProjectSaveButton /> : null}
                     </div>
                     <Divider className={classNames(styles.divider)} />
 
@@ -1035,6 +1070,8 @@ MenuBar.propTypes = {
     onOpenTipLibrary: PropTypes.func,
     onOpenScenariosLibrary: PropTypes.func,
     onProjectTelemetryEvent: PropTypes.func,
+    onSaveProject: PropTypes.func,
+    onSaveProjectAs: PropTypes.func,
     onSaveToCloud: PropTypes.func,
     onSetRobboUiHidden: PropTypes.func,
     onSignOut: PropTypes.func,
@@ -1131,6 +1168,8 @@ const mapDispatchToProps = dispatch => ({
     onClickSave: () => dispatch(manualUpdateProject()),
     onClickSaveAsCopy: () => dispatch(saveProjectAsCopy()),
     onSaveToCloud: opts => dispatch(saveToCloudThunk(opts)),
+    onSaveProject: () => dispatch(saveProjectThunk({saveAs: false})),
+    onSaveProjectAs: () => dispatch(saveProjectThunk({saveAs: true})),
     onSignOut: () => dispatch(signOutThunk()),
     onUpdateCloudProjectTitle: title => dispatch(updateCloudProjectTitleThunk(title)),
     onSeeCommunity: () => dispatch(setPlayer(true)),

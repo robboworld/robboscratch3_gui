@@ -5,6 +5,8 @@ import {defineMessages, intlShape, injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import log from '../lib/log';
 import sharedMessages from './shared-messages';
+import {isNwRuntime} from './nw-open-project-utils';
+import {setProjectSaveFile} from './project-save-target';
 
 import {
     LoadingStates,
@@ -21,6 +23,16 @@ import {
 import {
     closeFileMenu
 } from '../reducers/menus';
+
+/**
+ * Chromium (web): the open dialog of the File System Access API returns a file handle,
+ * so "Save" can later write back to the same file. NW.js keeps <input type="file">:
+ * its File objects carry an absolute `path` that is written with Node fs.
+ * @returns {boolean} true when showOpenFilePicker should be used
+ */
+const canUseOpenFilePicker = () => typeof window !== 'undefined' &&
+    typeof window.showOpenFilePicker === 'function' &&
+    !isNwRuntime();
 
 const messages = defineMessages({
     loadError: {
@@ -49,6 +61,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 'handleFinishedLoadingUpload',
                 'handleStartSelectingFileUpload',
                 'handleChange',
+                'handleSelectedFile',
                 'onload',
                 'removeFileObjects'
             ]);
@@ -67,7 +80,39 @@ const SBFileUploaderHOC = function (WrappedComponent) {
         }
         // step 1: this is where the upload process begins
         handleStartSelectingFileUpload () {
+            if (canUseOpenFilePicker()) {
+                this.pickFileWithHandle();
+                return;
+            }
             this.createFileObjects(); // go to step 2
+        }
+        // step 2 (Chromium): open dialog that also returns a file handle for "Save"
+        pickFileWithHandle () {
+            this.removeFileObjects();
+            window.showOpenFilePicker({
+                multiple: false,
+                types: [{
+                    description: 'Scratch Project',
+                    accept: {
+                        'application/x.scratch.sb3': ['.sb3', '.sb2', '.sb']
+                    }
+                }]
+            })
+                .then(handles => {
+                    const handle = handles && handles[0];
+                    if (!handle) return;
+                    return handle.getFile().then(file => {
+                        this.fileReader = new FileReader();
+                        this.fileReader.onload = this.onload;
+                        this.fileHandle = handle;
+                        this.handleSelectedFile(file); // go to step 3
+                    });
+                })
+                .catch(error => {
+                    if (!error || error.name !== 'AbortError') {
+                        log.warn(error);
+                    }
+                });
         }
         // step 2: create a FileReader and an <input> element, and issue a
         // pseudo-click to it. That will open the file chooser dialog.
@@ -91,6 +136,12 @@ const SBFileUploaderHOC = function (WrappedComponent) {
         // step 3: user has picked a file using the file chooser dialog.
         // We don't actually load the file here, we only decide whether to do so.
         handleChange (e) {
+            const thisFileInput = e.target;
+            if (thisFileInput.files) { // Don't attempt to load if no file was selected
+                this.handleSelectedFile(thisFileInput.files[0]);
+            }
+        }
+        handleSelectedFile (file) {
             const {
                 intl,
                 isShowingWithoutId,
@@ -98,30 +149,27 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 projectChanged,
                 userOwnsProject
             } = this.props;
-            const thisFileInput = e.target;
-            if (thisFileInput.files) { // Don't attempt to load if no file was selected
-                this.fileToUpload = thisFileInput.files[0];
+            this.fileToUpload = file;
 
-                // If user owns the project, or user has changed the project,
-                // we must confirm with the user that they really intend to
-                // replace it. (If they don't own the project and haven't
-                // changed it, no need to confirm.)
-                let uploadAllowed = true;
-                if (userOwnsProject || (projectChanged && isShowingWithoutId)) {
-                    uploadAllowed = confirm( // eslint-disable-line no-alert
-                        intl.formatMessage(sharedMessages.replaceProjectWarning)
-                    );
-                }
-                if (uploadAllowed) {
-                    // cues step 4
-                    this.uploadRequested = true;
-                    this.props.requestProjectUpload(loadingState);
-                } else {
-                    // skips ahead to step 7
-                    this.removeFileObjects();
-                }
-                this.props.closeFileMenu();
+            // If user owns the project, or user has changed the project,
+            // we must confirm with the user that they really intend to
+            // replace it. (If they don't own the project and haven't
+            // changed it, no need to confirm.)
+            let uploadAllowed = true;
+            if (userOwnsProject || (projectChanged && isShowingWithoutId)) {
+                uploadAllowed = confirm( // eslint-disable-line no-alert
+                    intl.formatMessage(sharedMessages.replaceProjectWarning)
+                );
             }
+            if (uploadAllowed) {
+                // cues step 4
+                this.uploadRequested = true;
+                this.props.requestProjectUpload(loadingState);
+            } else {
+                // skips ahead to step 7
+                this.removeFileObjects();
+            }
+            this.props.closeFileMenu();
         }
         // step 4 is below, in mapDispatchToProps
 
@@ -153,9 +201,16 @@ const SBFileUploaderHOC = function (WrappedComponent) {
             if (this.fileReader) {
                 this.props.onLoadingStarted();
                 const filename = this.fileToUpload && this.fileToUpload.name;
+                // NW.js File objects carry an absolute path; Chromium gives a handle from the open dialog.
+                const saveSource = {
+                    handle: this.fileHandle,
+                    path: this.fileToUpload && this.fileToUpload.path
+                };
                 let loadingSuccess = false;
                 this.props.vm.loadProject(this.fileReader.result)
                     .then(() => {
+                        // Ctrl+S writes back to the opened .sb3.
+                        setProjectSaveFile(saveSource);
                         if (filename) {
                             const uploadedProjectTitle = this.getProjectTitleFromFilename(filename);
                             this.props.onSetProjectTitle(uploadedProjectTitle);
@@ -185,6 +240,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
             this.inputElement = null;
             this.fileReader = null;
             this.fileToUpload = null;
+            this.fileHandle = null;
             this.uploadRequested = false;
         }
         render () {
