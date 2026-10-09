@@ -24,6 +24,17 @@ import {ActionLaboratoryGetDataStart} from './actions/sensor_actions';
 
 
 
+/** Left edge of the code area: category menu + block palette. */
+const CODE_AREA_LEFT = 320;
+const CODE_AREA_TOP = 110;
+const CASCADE_STEP = 32;
+
+/**
+ * @param {number} index palette order
+ * @returns {Array<number>} [left, top]
+ */
+const cascadeCoords = index => [CODE_AREA_LEFT + (index * CASCADE_STEP), CODE_AREA_TOP + (index * CASCADE_STEP)];
+
 class SensorPallete extends Component {
 
 
@@ -68,11 +79,13 @@ class SensorPallete extends Component {
   render() {
 const showQuadcopterUi = isDesktopWithBluetooth() || this.props.is_copter_sim_activated;
 
- var initial_coords_robot = [200,200];
- var initial_coords_lab = [400,200];
- var initial_coords_quadcopter = [600,200];
- var initial_coords_otto = [800,200];
- var initial_coords_arduino = [900,200];
+ // A cascade over the code area (right of the block palette), not a row reaching the stage;
+ // DraggableWindowComponent moves a window back on screen if it does not fit.
+ var initial_coords_robot = cascadeCoords(0);
+ var initial_coords_lab = cascadeCoords(1);
+ var initial_coords_quadcopter = cascadeCoords(2);
+ var initial_coords_otto = cascadeCoords(3);
+ var initial_coords_arduino = cascadeCoords(4);
 
   return (
       <React.Fragment>

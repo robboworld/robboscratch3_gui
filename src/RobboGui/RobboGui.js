@@ -20,7 +20,6 @@ import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import RobboMenu from './RobboMenu';
 import PremiumUpdateProgress from './PremiumUpdateProgress';
 import LicenseActivationFeedback from './LicenseActivationFeedback';
-import FirmwareFlasherComponent from './FirmwareFlasherComponent';
 import DraggableWindowComponent from './DraggableWindowComponent';
 import SettingsWindowComponent from './SettingsWindowComponent';
 
@@ -31,14 +30,11 @@ import AboutWindowComponent from './AboutWindowComponent';
 import LicenseWindowComponent from './LicenseWindowComponent';
 
 import NewDraggableWindowComponent from './NewDraggableWindowComponent';
-import ProfilerWindowComponent from './ProfilerWindowComponent';
 import {
   ROBBO_POPUP_SIZE_ABOUT,
-  ROBBO_POPUP_SIZE_FIRMWARE,
   ROBBO_POPUP_SIZE_SETTINGS
 } from '../lib/robbo-popup-position';
 
-import IotConnectionComponent from './IotConnectionComponent';
 import {
   getSettingsFromStorage,
   applySettingsToDCA,
@@ -46,7 +42,6 @@ import {
   normalizeFullscreenRenderQuality,
   applySimulationStepMsToRuntime
 } from '../lib/settingsLoader';
-import { isRobboLinkMobileWebContext } from '../lib/platform';
 import { setFullscreenRenderQuality } from './reducers/settings';
 import {hydrateLicenseThunk} from './actions/licenseActions';
 import {LICENSE_UI_ENABLED} from '../lib/licensing/licenseUiEnabled';
@@ -284,13 +279,7 @@ class RobboGui extends Component {
   this.ACA =  this.props.vm.getACA();
 
   this.IOT = this.props.vm.getIOT();
-  const isMobileBridgeContext = isRobboLinkMobileWebContext();
-
-  var initial_coords_profiler = [300,300];
-
   var initial_coords_license = [380, 320];
-
-  var initial_coords_iot = [500,500];
 
   return (
 
@@ -304,17 +293,8 @@ class RobboGui extends Component {
 
          <SensorPallete RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} VM={this.props.vm} />
 
-         {!isMobileBridgeContext ? (
-           <DraggableWindowComponent
-             draggableWindowId={3}
-             centerOnCreate
-             estimatedPopupSize={ROBBO_POPUP_SIZE_FIRMWARE}
-           >
-
-              <FirmwareFlasherComponent DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
-
-            </DraggableWindowComponent>
-         ) : null}
+         {/* The firmware flasher (window 3), profiler and IoT windows have no menu entry:
+             not mounted. Firmware is flashed from the device search panel. */}
 
         <DraggableWindowComponent
           draggableWindowId={4}
@@ -344,11 +324,6 @@ class RobboGui extends Component {
 
          <SearchPanelComponent VM={this.props.vm} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
-          <NewDraggableWindowComponent draggableWindowId={"profiler-window"} initialCoords={initial_coords_profiler}>
-
-            <ProfilerWindowComponent />
-
-          </NewDraggableWindowComponent>
 
          
 

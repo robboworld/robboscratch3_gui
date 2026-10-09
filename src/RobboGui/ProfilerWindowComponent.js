@@ -9,6 +9,7 @@ import sharedStyles from './DevicePaletteShared.css';
 import formStyles from './RobboPaletteForm.css';
 import styles from './ProfilerWindowComponent.css';
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
+import {closeMessage} from './sensor-type-messages';
 
 
 const messages = defineMessages({
@@ -58,7 +59,8 @@ class ProfilerWindowComponent extends Component {
             <button
               type="button"
               className={sharedStyles.closeButton}
-              aria-label="Close"
+              aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
               onClick={this.onThisWindowClose.bind(this)}
             />
           </div>

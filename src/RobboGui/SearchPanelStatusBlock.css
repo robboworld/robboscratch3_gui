@@ -51,3 +51,10 @@
         transform: rotate(360deg);
     }
 }
+
+/* Reduced motion: spinners turn slowly instead of stopping (a frozen spinner looks hung). */
+@media (prefers-reduced-motion: reduce) {
+    .statusSpinner {
+        animation-duration: 3s;
+    }
+}

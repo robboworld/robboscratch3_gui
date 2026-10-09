@@ -54,42 +54,51 @@
 }
 
 
+/* Flash button: the shared calm action button (RobboPaletteForm.css action_button), not a gradient. */
 .device_flash_button {
-  min-height: 30px;
-  min-width: 130px;
-  background-color: #00af41;
-  background-image: -webkit-linear-gradient(top, #00af41, #008a00);
-  background-image: linear-gradient(to bottom, #00af41, #008a00);
-  border: none;
-  border-radius: 7px;
-  color: white;
   display: none;
+  min-height: 2rem;
+  min-width: 8rem;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid $motion-primary;
+  border-radius: $form-radius;
+  background-color: $motion-primary;
+  color: #fff;
   cursor: pointer;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: $popup-font-size;
   font-weight: bold;
 }
 
-.device_flash_button:focus,
-.device_flash_button:focus,
+.device_flash_button:hover {
+  background-color: #00963a;
+}
+
+.device_flash_button:focus {
+  outline: none;
+}
+
 .device_flash_button:focus-visible {
-  outline: 2px solid rgba(0, 175, 65, 0.65);
-  outline-offset: 1px;
+  outline: 2px solid $motion-primary;
+  outline-offset: 2px;
 }
 
-.device_flash_button_busy {
-  background-image: url(../../static/robbo_assets/searching.gif);
-  background-color: rgba(255, 193, 7, 0.35);
-  background-repeat: no-repeat;
-  background-position: center;
+/* Toggled from lib/device-status-dom.js by plain class names. */
+.device_flash_button:global(.device_flash_button_busy) {
+  border-color: rgba(255, 193, 7, 0.6);
+  background-color: rgba(255, 193, 7, 0.25);
   color: $text-primary;
+  cursor: default;
 }
 
-.device_flash_button_error {
-  background-color: #ff0000;
-  background-image: -webkit-linear-gradient(top, #ff0000, #ff0000);
-  background-image: linear-gradient(to bottom, #ff0000, #ff0000);
-  color: white;
+.device_flash_button:global(.device_flash_button_error) {
+  border-color: #e24b4a;
+  background-color: #e24b4a;
+  color: #fff;
+}
+
+.device_flash_button:global(.device_flash_button_error)::before {
+  content: "⚠ ";
 }
 
 .search_panel_device_status_icon {
@@ -101,18 +110,31 @@
     margin-top: 7px;
 }
 
+/* "Details" of the flashing log: a real button (keyboard, screen readers), shown by the code. */
 .search_panel_flashing_show_details {
-      display: none;
-      padding-left: 5px;
-      padding-right: 5px;
-      margin-bottom: 7px;
-      margin-top: 7px;
-      min-width: 30px;
-      min-height: 30px;
-      background-image: url("../../static/robbo_assets/show_details.svg");
-      background-repeat: no-repeat;
-      position: relative;
-      top: 20px;
+  display: none;
+  width: 2rem;
+  height: 2rem;
+  margin: 7px 5px;
+  padding: 0;
+  border: 1px solid rgba(87, 94, 117, 0.35);
+  border-radius: $form-radius;
+  background: transparent center / 1.25rem no-repeat url("../../static/robbo_assets/show_details.svg");
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.search_panel_flashing_show_details:hover {
+  background-color: rgba(87, 94, 117, 0.1);
+}
+
+.search_panel_flashing_show_details:focus {
+  outline: none;
+}
+
+.search_panel_flashing_show_details:focus-visible {
+  outline: 2px solid $motion-primary;
+  outline-offset: 1px;
 }
 
 .search_panel_flashing_status {
@@ -125,28 +147,20 @@
     min-height: 30px;
 }
 
-@media (max-height:900px) {
-
-  .search_panel_device_element {
-      display: inline-block;
-      padding-left: 3px;
-      padding-right: 3px;
-      margin-bottom: 7px;
-      margin-top: 7px;
-      min-width: 90px;
-      color: $text-primary;
-  }
+.search_panel_device_element {
+    display: inline-block;
+    padding-left: 5px;
+    padding-right: 5px;
+    margin-bottom: 7px;
+    margin-top: 7px;
+    min-width: 90px;
+    color: $text-primary;
 }
 
-@media (min-height:901px) {
-
-  .search_panel_device_element {
-      display: inline-block;
-      padding-left: 5px;
-      padding-right: 5px;
-      margin-bottom: 7px;
-      margin-top: 7px;
-      min-width: 90px;
-      color: $text-primary;
-  }
+/* Low screens: a bit tighter. */
+@media (max-height: 900px) {
+    .search_panel_device_element {
+        padding-left: 3px;
+        padding-right: 3px;
+    }
 }

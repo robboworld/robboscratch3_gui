@@ -9,6 +9,7 @@ import './RobboDeviceStatus.css';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 
 import {defineMessages, injectIntl} from 'react-intl';
+import {closeMessage} from './sensor-type-messages';
 
 const messages = defineMessages({
     flashing_status: {
@@ -46,7 +47,8 @@ class FirmwareFlasherFlashingStatusComponent extends Component {
                     <button
                         type="button"
                         className={sharedStyles.closeButton}
-                        aria-label="Close"
+                        aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
                         onClick={this.closeWindow.bind(this)}
                     />
                 </div>

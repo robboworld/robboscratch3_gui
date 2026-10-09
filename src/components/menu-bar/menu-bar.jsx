@@ -126,12 +126,12 @@ const messages = defineMessages({
     showRobboUi: {
         id: 'gui.menuBar.show_robbo_ui',
         description: 'Menu bar button to show ROBBO interface',
-        defaultMessage: 'Show ROBBO'
+        defaultMessage: 'Show the ROBBO devices bar'
     },
     hideRobboUi: {
         id: 'gui.menuBar.hide_robbo_ui',
         description: 'Menu bar button to hide ROBBO interface',
-        defaultMessage: 'Hide ROBBO'
+        defaultMessage: 'Hide the ROBBO devices bar'
     },
      new_project: {
         id: 'gui.menuBar.new_project',

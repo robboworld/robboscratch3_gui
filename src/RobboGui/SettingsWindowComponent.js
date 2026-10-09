@@ -24,6 +24,8 @@ import {
 } from '../lib/settingsLoader';
 import { setFullscreenRenderQuality, setSimSensorDebugOverlayEnabled } from './reducers/settings';
 import RobboSelect, { syncRobboSelectFromNative } from './RobboSelect';
+import {robboConfirm} from './RobboConfirmDialog';
+import {closeMessage} from './sensor-type-messages';
 import {
   showTransientButtonFeedback,
   clearTransientButtonFeedbackTimer,
@@ -38,7 +40,7 @@ const messages = defineMessages({
   settings_window: {
     id: 'gui.RobboGui.settings_window',
     description: ' ',
-    defaultMessage: 'Settings'
+    defaultMessage: 'Device settings'
   },
   uno_search_timeout: {
     id: 'gui.RobboGui.uno_search_timeout',
@@ -48,7 +50,7 @@ const messages = defineMessages({
   save_settings: {
     id: 'gui.RobboGui.save_settings',
     description: ' ',
-    defaultMessage: 'Save settings'
+    defaultMessage: 'Save'
   },
   settings_saved: {
     id: 'gui.RobboGui.settings_saved',
@@ -100,6 +102,56 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'Lower values run faster but increase CPU load.'
   },
+  devices_section_title: {
+    id: 'gui.RobboGui.settings_window.devices_section_title',
+    description: 'Settings window: section with the device search options',
+    defaultMessage: 'Devices'
+  },
+  display_section_title: {
+    id: 'gui.RobboGui.settings_window.display_section_title',
+    description: 'Settings window: section with the stage rendering options',
+    defaultMessage: 'Stage'
+  },
+  advanced_section_title: {
+    id: 'gui.RobboGui.settings_window.advanced_section_title',
+    description: 'Settings window: collapsed section with technical options',
+    defaultMessage: 'Advanced'
+  },
+  advanced_section_hint: {
+    id: 'gui.RobboGui.settings_window.advanced_section_hint',
+    description: 'Settings window: why the technical options are hidden',
+    defaultMessage: 'Change these only if devices are not found or the simulator is slow.'
+  },
+  reset_defaults: {
+    id: 'gui.RobboGui.settings_window.reset_defaults',
+    description: 'Settings window: restore default values',
+    defaultMessage: 'Reset'
+  },
+  reset_defaults_confirm: {
+    id: 'gui.RobboGui.settings_window.reset_defaults_confirm',
+    description: 'Question before restoring the default settings',
+    defaultMessage: 'Restore the default device and simulator settings?'
+  },
+  reset_defaults_yes: {
+    id: 'gui.RobboGui.settings_window.reset_defaults_yes',
+    description: 'Confirm button of the reset question',
+    defaultMessage: 'Reset'
+  },
+  reset_defaults_cancel: {
+    id: 'gui.RobboGui.settings_window.reset_defaults_cancel',
+    description: 'Cancel button of the reset question',
+    defaultMessage: 'Cancel'
+  },
+  unsaved_changes: {
+    id: 'gui.RobboGui.settings_window.unsaved_changes',
+    description: 'Settings window: there are changes that are not saved yet',
+    defaultMessage: 'Not saved'
+  },
+  number_range_error: {
+    id: 'gui.RobboGui.settings_window.number_range_error',
+    description: 'Settings window: the number is outside the allowed range',
+    defaultMessage: 'Enter a whole number from {min} to {max}'
+  },
   experimental_section_title: {
     id: 'gui.RobboGui.settings_window.experimental_section_title',
     description: ' ',
@@ -117,22 +169,22 @@ const messages_for_DCA_intervals = defineMessages({
   no_response_time: {
     id: 'gui.dca.no_response_time',
     description: ' ',
-    defaultMessage: 'NO RESPONSE TIME'
+    defaultMessage: 'Device response timeout (ms)'
   },
   no_start_timeout: {
     id: 'gui.dca.no_start_timeout',
     description: ' ',
-    defaultMessage: 'NO START TIMEOUT'
+    defaultMessage: 'First telemetry packet timeout (ms)'
   },
   device_handle_timeout: {
     id: 'gui.dca.device_handle_timeout',
     description: ' ',
-    defaultMessage: 'DEVICE HANDLE TIMEOUT'
+    defaultMessage: 'Full search cycle (ms)'
   },
   uno_timeout: {
     id: 'gui.dca.uno_timeout',
     description: ' ',
-    defaultMessage: 'UNO TIMEOUT'
+    defaultMessage: 'Switch to Scratchduino search after (ms)'
   },
   bluetooth_search_enabled: {
     id: 'gui.dca.bluetooth_search_enabled',
@@ -145,10 +197,17 @@ class SettingsWindowComponent extends Component {
   constructor (props) {
     super(props);
     this.state = {
-      [SAVE_BUTTON_FEEDBACK_KEY]: null
+      [SAVE_BUTTON_FEEDBACK_KEY]: null,
+      errors: {},
+      dirty: false,
+      advancedOpen: false,
+      maxes: null
     };
     this.onThisWindowClose = this.onThisWindowClose.bind(this);
     this.saveSettings = this.saveSettings.bind(this);
+    this.handleFormChange = this.handleFormChange.bind(this);
+    this.handleResetDefaults = this.handleResetDefaults.bind(this);
+    this.handleAdvancedToggle = this.handleAdvancedToggle.bind(this);
   }
 
   componentWillUnmount () {
@@ -157,6 +216,57 @@ class SettingsWindowComponent extends Component {
 
   onThisWindowClose () {
     this.props.onSettingsWindowClose(4);
+  }
+
+  handleFormChange () {
+    if (!this.state.dirty) this.setState({dirty: true});
+  }
+
+  /** Controlled <details>: the state also opens it when a field there has an error. */
+  handleAdvancedToggle (event) {
+    event.preventDefault();
+    this.setState(state => ({advancedOpen: !state.advancedOpen}));
+  }
+
+  handleResetDefaults () {
+    const {intl} = this.props;
+    robboConfirm({
+      message: intl.formatMessage(messages.reset_defaults_confirm),
+      confirmLabel: intl.formatMessage(messages.reset_defaults_yes),
+      cancelLabel: intl.formatMessage(messages.reset_defaults_cancel)
+    }).then(confirmed => {
+      if (!confirmed) return;
+      this.setDefaultsDCAValues();
+      this.saveSettings();
+    });
+  }
+
+  /**
+   * Connection timeouts typed by the teacher: a wrong value is shown at its field instead of
+   * being silently replaced by the default.
+   * @returns {{values: object, errors: object}} parsed values and error texts by input id
+   */
+  validateConnectionInputs () {
+    const max = this.DCA_maxes;
+    const {intl} = this.props;
+    const errors = {};
+    const read = (id, maxValue) => {
+      const el = this.getInput(id);
+      const raw = el ? String(el.value).trim() : '';
+      const value = Number(raw);
+      if (!raw || !Number.isInteger(value) || value < 1 || value > maxValue) {
+        errors[id] = intl.formatMessage(messages.number_range_error, {min: 1, max: maxValue});
+      }
+      return value;
+    };
+    const noResponse = read('raw-connection-1-settings-window-content-column-2', max.NO_RESPONSE_TIME_MAX);
+    const noStart = read('raw-connection-2-settings-window-content-column-2', max.NO_START_TIMEOUT_MAX);
+    const handle = read('raw-connection-3-settings-window-content-column-2', max.DEVICE_HANDLE_TIMEOUT_MAX);
+    // The Scratchduino switch happens inside the search cycle.
+    const uno = read('raw-connection-4-settings-window-content-column-2',
+      errors['raw-connection-3-settings-window-content-column-2'] ? max.DEVICE_HANDLE_TIMEOUT_MAX : handle);
+    const step = read('raw-simulation-step-ms-settings-window-content-column-2', 10);
+    return {values: {noResponse, noStart, handle, uno, step}, errors};
   }
 
   readSettings() {
@@ -176,48 +286,31 @@ class SettingsWindowComponent extends Component {
     return component.children && component.children[0] ? component.children[0] : null;
   }
 
-  saveDCASettings() {
-    const def = this.DCA_defaults;
-    const max = this.DCA_maxes;
-    const v = (id) => { const el = this.getInput(id); return Number(el != null ? el.value : undefined); };
-    let no_response_time = Math.round(v("raw-connection-1-settings-window-content-column-2"));
-    let no_start_timeout = Math.round(v("raw-connection-2-settings-window-content-column-2"));
-    let device_handle_timeout = Math.round(v("raw-connection-3-settings-window-content-column-2"));
-    let uno_search_timeout = Math.round(v("raw-connection-4-settings-window-content-column-2"));
-
-    if (typeof no_response_time !== 'number' || no_response_time <= 0 || no_response_time > max.NO_RESPONSE_TIME_MAX) {
-      no_response_time = def.NO_RESPONSE_TIME_DEFAULT;
-    }
-    if (typeof no_start_timeout !== 'number' || no_start_timeout <= 0 || no_start_timeout > max.NO_START_TIMEOUT_MAX) {
-      no_start_timeout = def.NO_START_TIMEOUT_DEFAULT;
-    }
-    if (typeof device_handle_timeout !== 'number' || device_handle_timeout <= 0 || device_handle_timeout > max.DEVICE_HANDLE_TIMEOUT_MAX) {
-      device_handle_timeout = def.DEVICE_HANDLE_TIMEOUT_DEFAULT;
-    }
-    if (typeof uno_search_timeout !== 'number' || uno_search_timeout <= 0 || uno_search_timeout > device_handle_timeout) {
-      uno_search_timeout = Math.round(device_handle_timeout / 2);
-      const unoInput = this.getInput("raw-connection-4-settings-window-content-column-2");
-      if (unoInput) unoInput.value = uno_search_timeout;
-    }
-
+  saveDCASettings(values) {
     return {
-      device_response_timeout: no_response_time,
-      device_no_start_timeout: no_start_timeout,
-      device_handle_timeout: device_handle_timeout,
-      device_uno_start_search_timeout: uno_search_timeout,
-      device_response_timeout_bluetooth: no_response_time,
-      device_no_start_timeout_bluetooth: no_start_timeout,
-      device_handle_timeout_bluetooth: device_handle_timeout,
-      device_uno_start_search_timeout_bluetooth: uno_search_timeout
+      device_response_timeout: values.noResponse,
+      device_no_start_timeout: values.noStart,
+      device_handle_timeout: values.handle,
+      device_uno_start_search_timeout: values.uno,
+      device_response_timeout_bluetooth: values.noResponse,
+      device_no_start_timeout_bluetooth: values.noStart,
+      device_handle_timeout_bluetooth: values.handle,
+      device_uno_start_search_timeout_bluetooth: values.uno
     };
   }
 
   saveSettings() {
+    const {values, errors} = this.validateConnectionInputs();
+    if (Object.keys(errors).length) {
+      // Errors are in the advanced section: open it so they are visible.
+      this.setState({errors, advancedOpen: true});
+      return;
+    }
     const fullscreenRenderQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
     const simulationStepMsInput = this.getInput("raw-simulation-step-ms-settings-window-content-column-2");
     const simSensorDebugOverlayInput = this.getInput("raw-sim-sensor-debug-overlay-settings-window-content-column-2");
     const settings_data = {
-      ...this.saveDCASettings(),
+      ...this.saveDCASettings(values),
       ...getFullscreenRenderQualityStorageData({
         fullscreen_render_quality: fullscreenRenderQualityInput ? fullscreenRenderQualityInput.value : undefined
       }),
@@ -247,6 +340,7 @@ class SettingsWindowComponent extends Component {
       this.saveSettingsData(settings_data_serialized);
     });
 
+    this.setState({errors: {}, dirty: false});
     showTransientButtonFeedback(this, {
       stateKey: SAVE_BUTTON_FEEDBACK_KEY,
       feedbackToken: SAVE_FEEDBACK_TOKEN
@@ -343,6 +437,7 @@ class SettingsWindowComponent extends Component {
     this.DCA_maxes = this.VM.DCA.getMaxValuesOfIntervals();
     this.DCA_defaults_bluetooth = this.VM.DCA.getDefaultValuesOfIntervalsBluetooth();
     this.DCA_maxes_bluetooth = this.VM.DCA.getMaxValuesOfIntervalsBluetooth();
+    this.setState({maxes: this.DCA_maxes});
 
     this.readSettings().then((result) => {
       const child0 = (id) => this.getInput(id);
@@ -421,22 +516,28 @@ class SettingsWindowComponent extends Component {
       SAVE_FEEDBACK_TOKEN
     );
 
+    const maxes = this.state.maxes;
+
     return (
       <div id="settings-window" className={classNames(sharedStyles.palette, styles.settings_window)}>
 
         <div id="settings-window-tittle" className={sharedStyles.header}>
           <span className={sharedStyles.headerTitle}>
-            {this.props.intl.formatMessage(messages.settings_window)}
+            {intl.formatMessage(messages.settings_window)}
           </span>
           <button
             type="button"
             className={sharedStyles.closeButton}
-            aria-label="Close"
+            aria-label={intl.formatMessage(closeMessage)}
             onClick={this.onThisWindowClose}
           />
         </div>
 
-        <div id="settings-window-content" className={classNames(sharedStyles.body, formStyles.palette_content, styles.settings_content)}>
+        <div
+          id="settings-window-content"
+          className={classNames(sharedStyles.body, formStyles.palette_content, styles.settings_content)}
+          onChange={this.handleFormChange}
+        >
 
           <div
             id="settings-window-content-raw-connection-title"
@@ -448,55 +549,11 @@ class SettingsWindowComponent extends Component {
               id="raw-connection-title-settings-window-content-column-1"
               className={formStyles.section_title}
             >
-              {this.props.intl.formatMessage(messages_for_DCA_intervals.device_connection_section)}
+              {intl.formatMessage(messages.devices_section_title)}
             </h3>
 
-            {isDesktopWithBluetooth() && (
-              <div id="settings-window-content-raw-bt-search" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30, formStyles.checkbox_row)}>
-                <div id="raw-bt-search-settings-window-content-column-1" className={formStyles.field_label}>
-                  {this.props.intl.formatMessage(messages_for_DCA_intervals.bluetooth_search_enabled)}
-                </div>
-                <div id="raw-bt-search-settings-window-content-column-2" className={formStyles.field_control}>
-                  <input type="checkbox" defaultChecked />
-                </div>
-              </div>
-            )}
-
-            <div id="settings-window-content-raw-connection-1" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
-              <div id="raw-connection-1-settings-window-content-column-1" className={formStyles.field_label}>
-                {this.props.intl.formatMessage(messages_for_DCA_intervals.no_response_time)}
-              </div>
-              <div id="raw-connection-1-settings-window-content-column-2" className={formStyles.field_control}>
-                <input type="number" />
-              </div>
-            </div>
-
-            <div id="settings-window-content-raw-connection-2" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
-              <div id="raw-connection-2-settings-window-content-column-1" className={formStyles.field_label}>
-                {this.props.intl.formatMessage(messages_for_DCA_intervals.no_start_timeout)}
-              </div>
-              <div id="raw-connection-2-settings-window-content-column-2" className={formStyles.field_control}>
-                <input type="number" />
-              </div>
-            </div>
-
-            <div id="settings-window-content-raw-connection-3" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
-              <div id="raw-connection-3-settings-window-content-column-1" className={formStyles.field_label}>
-                {this.props.intl.formatMessage(messages_for_DCA_intervals.device_handle_timeout)}
-              </div>
-              <div id="raw-connection-3-settings-window-content-column-2" className={formStyles.field_control}>
-                <input type="number" />
-              </div>
-            </div>
-
-            <div id="settings-window-content-raw-connection-4" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
-              <div id="raw-connection-4-settings-window-content-column-1" className={formStyles.field_label}>
-                {this.props.intl.formatMessage(messages_for_DCA_intervals.uno_timeout)}
-              </div>
-              <div id="raw-connection-4-settings-window-content-column-2" className={formStyles.field_control}>
-                <input type="number" />
-              </div>
-            </div>
+            {isDesktopWithBluetooth() && this.renderField('raw-bt-search', messages_for_DCA_intervals.bluetooth_search_enabled,
+              <input id="settings-input-raw-bt-search" type="checkbox" defaultChecked />, {checkbox: true})}
           </div>
 
           <div
@@ -509,82 +566,70 @@ class SettingsWindowComponent extends Component {
               id="raw-vm-section-title-settings-window-content-column-1"
               className={formStyles.section_title}
             >
-              {this.props.intl.formatMessage(messages.vm_section_title)}
+              {intl.formatMessage(messages.display_section_title)}
             </h3>
 
-            <div id="settings-window-content-raw-fullscreen-quality" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
-              <div id="raw-fullscreen-quality-settings-window-content-column-1" className={formStyles.field_label}>
-                <div>{this.props.intl.formatMessage(messages.fullscreen_render_quality)}</div>
-                <div className={formStyles.field_hint}>
-                  {this.props.intl.formatMessage(messages.fullscreen_quality_note)}
-                </div>
-              </div>
-              <div id="raw-fullscreen-quality-settings-window-content-column-2" className={formStyles.field_control}>
-                <RobboSelect
-                  defaultValue={FULLSCREEN_RENDER_QUALITY_DEFAULT}
-                  options={[
-                    {
-                      value: '1',
-                      label: this.props.intl.formatMessage(messages.fullscreen_quality_performance)
-                    },
-                    {
-                      value: '2',
-                      label: this.props.intl.formatMessage(messages.fullscreen_quality_balanced)
-                    },
-                    {
-                      value: '3',
-                      label: this.props.intl.formatMessage(messages.fullscreen_quality_quality)
-                    }
-                  ]}
-                />
-              </div>
-            </div>
-
-            <div id="settings-window-content-raw-simulation-step-ms" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30)}>
-              <div id="raw-simulation-step-ms-settings-window-content-column-1" className={formStyles.field_label}>
-                <div>{this.props.intl.formatMessage(messages.simulation_step_ms)}</div>
-                <div className={formStyles.field_hint}>
-                  {this.props.intl.formatMessage(messages.simulation_step_ms_hint)}
-                </div>
-              </div>
-              <div id="raw-simulation-step-ms-settings-window-content-column-2" className={formStyles.field_control}>
-                <input type="number" min="1" max="10" defaultValue={SIMULATION_STEP_MS_DEFAULT} />
-              </div>
-            </div>
+            {this.renderField('raw-fullscreen-quality', messages.fullscreen_render_quality, (
+              <RobboSelect
+                defaultValue={FULLSCREEN_RENDER_QUALITY_DEFAULT}
+                triggerAriaLabel={intl.formatMessage(messages.fullscreen_render_quality)}
+                options={[
+                  {value: '1', label: intl.formatMessage(messages.fullscreen_quality_performance)},
+                  {value: '2', label: intl.formatMessage(messages.fullscreen_quality_balanced)},
+                  {value: '3', label: intl.formatMessage(messages.fullscreen_quality_quality)}
+                ]}
+              />
+            ), {hint: messages.fullscreen_quality_note, noLabelFor: true})}
           </div>
 
-          <div
-            id="settings-window-content-raw-sim-sensor-debug-overlay-title"
-            className={classNames(formStyles.section, styles.settings_section)}
-            role="group"
-            aria-labelledby="raw-sim-sensor-debug-overlay-title-settings-window-content-column-1"
+          <details
+            className={classNames(formStyles.section, styles.settings_section, styles.advanced)}
+            open={this.state.advancedOpen}
           >
-            <h3
-              id="raw-sim-sensor-debug-overlay-title-settings-window-content-column-1"
-              className={formStyles.section_title}
+            <summary
+              className={classNames(formStyles.section_title, styles.advanced_summary)}
+              onClick={this.handleAdvancedToggle}
             >
-              {this.props.intl.formatMessage(messages.experimental_section_title)}
-            </h3>
+              {intl.formatMessage(messages.advanced_section_title)}
+            </summary>
+            <div className={formStyles.field_hint}>{intl.formatMessage(messages.advanced_section_hint)}</div>
 
-            <div id="settings-window-content-raw-sim-sensor-debug-overlay-row" className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30, formStyles.checkbox_row)}>
-              <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-1" className={formStyles.field_label}>
-                {this.props.intl.formatMessage(messages.sim_sensor_debug_overlay)}
-              </div>
-              <div id="raw-sim-sensor-debug-overlay-settings-window-content-column-2" className={formStyles.field_control}>
-                <input type="checkbox" defaultChecked={false} />
-              </div>
-            </div>
-          </div>
+            {this.renderNumberField('raw-connection-1', messages_for_DCA_intervals.no_response_time,
+              maxes && maxes.NO_RESPONSE_TIME_MAX)}
+            {this.renderNumberField('raw-connection-2', messages_for_DCA_intervals.no_start_timeout,
+              maxes && maxes.NO_START_TIMEOUT_MAX)}
+            {this.renderNumberField('raw-connection-3', messages_for_DCA_intervals.device_handle_timeout,
+              maxes && maxes.DEVICE_HANDLE_TIMEOUT_MAX)}
+            {this.renderNumberField('raw-connection-4', messages_for_DCA_intervals.uno_timeout,
+              maxes && maxes.DEVICE_HANDLE_TIMEOUT_MAX)}
+            {this.renderNumberField('raw-simulation-step-ms', messages.simulation_step_ms, 10,
+              {hint: messages.simulation_step_ms_hint, defaultValue: SIMULATION_STEP_MS_DEFAULT})}
+            {this.renderField('raw-sim-sensor-debug-overlay', messages.sim_sensor_debug_overlay,
+              <input id="settings-input-raw-sim-sensor-debug-overlay" type="checkbox" defaultChecked={false} />,
+              {checkbox: true})}
+          </details>
         </div>
 
         <div
           id="settings-window-content-raw-3"
           className={classNames(formStyles.footer, styles.settings_footer, styles.settings_footer_outside)}
         >
-          <div id="raw-13-settings-window-content-column-1" className={formStyles.footer_actions}>
+          <div id="raw-13-settings-window-content-column-1" className={classNames(formStyles.footer_actions, styles.footer_row)}>
             <button
               type="button"
-              className={classNames(formStyles.action_button, formStyles.footer_action_button)}
+              className={classNames(formStyles.action_button, styles.reset_button)}
+              onClick={this.handleResetDefaults}
+            >
+              {intl.formatMessage(messages.reset_defaults)}
+            </button>
+            {this.state.dirty ? (
+              <span className={styles.unsaved} role="status">{intl.formatMessage(messages.unsaved_changes)}</span>
+            ) : null}
+            <button
+              type="button"
+              className={classNames(formStyles.action_button, styles.save_button, {
+                [styles.save_button_dirty]: this.state.dirty
+              })}
               onClick={this.saveSettings}
             >
               {renderTransientActionLabel({
@@ -599,6 +644,60 @@ class SettingsWindowComponent extends Component {
         </div>
       </div>
     );
+  }
+
+  /**
+   * One settings row; the label is a real <label>, so clicking the text toggles a checkbox.
+   * @param {string} key row key: ids "<key>-settings-window-content-column-1/2", input "settings-input-<key>"
+   * @param {object} labelMessage react-intl message
+   * @param {React.Element} control input
+   * @param {object} [options] checkbox, hint (message), noLabelFor (custom control)
+   * @returns {React.Element} row
+   */
+  renderField (key, labelMessage, control, options = {}) {
+    const {intl} = this.props;
+    const controlId = `${key}-settings-window-content-column-2`;
+    const error = this.state.errors[controlId];
+    const LabelTag = options.noLabelFor ? 'div' : 'label';
+    const labelProps = options.noLabelFor ? {} : {htmlFor: `settings-input-${key}`};
+    return (
+      <div
+        id={`settings-window-content-${key}`}
+        className={classNames(formStyles.field_row, formStyles.field_row_ratio_70_30,
+          {[formStyles.checkbox_row]: options.checkbox})}
+      >
+        <LabelTag
+          id={`${key}-settings-window-content-column-1`}
+          className={formStyles.field_label}
+          {...labelProps}
+        >
+          <div>{intl.formatMessage(labelMessage)}</div>
+          {options.hint ? <div className={formStyles.field_hint}>{intl.formatMessage(options.hint)}</div> : null}
+          {error ? <div className={styles.field_error} role="alert">{error}</div> : null}
+        </LabelTag>
+        <div
+          id={controlId}
+          className={classNames(formStyles.field_control, {[styles.field_control_error]: error})}
+        >
+          {control}
+        </div>
+      </div>
+    );
+  }
+
+  renderNumberField (key, labelMessage, maxValue, options = {}) {
+    return this.renderField(key, labelMessage, (
+      <input
+        id={`settings-input-${key}`}
+        type="number"
+        min="1"
+        max={maxValue || null}
+        step="1"
+        inputMode="numeric"
+        defaultValue={options.defaultValue}
+        aria-invalid={Boolean(this.state.errors[`${key}-settings-window-content-column-2`])}
+      />
+    ), options);
   }
 }
 

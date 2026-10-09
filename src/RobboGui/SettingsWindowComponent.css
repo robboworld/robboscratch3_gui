@@ -1,3 +1,4 @@
+@import "../css/colors.css";
 @import "../css/units.css";
 
 .settings_window {
@@ -20,4 +21,79 @@
     box-sizing: border-box;
     margin-top: 0;
     padding: 0 12px 12px;
+}
+
+/* "For advanced users": technical timeouts, collapsed by default. */
+.advanced > .advanced_summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.advanced > .advanced_summary::-webkit-details-marker {
+    display: none;
+}
+
+.advanced > .advanced_summary::before {
+    content: "▸ ";
+}
+
+.advanced[open] > .advanced_summary::before {
+    content: "▾ ";
+}
+
+.advanced:not([open]) > .advanced_summary {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.advanced > .field_row,
+.advanced > div + div {
+    margin-top: 10px;
+}
+
+.field_error {
+    margin-top: 0.25rem;
+    color: #a32d2d;
+    font-size: 0.75rem;
+    font-weight: normal;
+}
+
+.field_control_error input {
+    border-color: #e24b4a;
+    outline: 1px solid #e24b4a;
+}
+
+.footer_row {
+    box-sizing: border-box;
+    align-items: center;
+    gap: 0.5rem;
+    /* formStyles.footer sets no side padding: align the buttons with the sections. */
+    padding: 0 12px 12px;
+}
+
+.reset_button {
+    margin-right: auto;
+    background-color: transparent;
+}
+
+.unsaved {
+    color: #854f0b;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.save_button {
+    min-width: 7rem;
+}
+
+/* Unsaved changes: the save button stands out. */
+.save_button_dirty {
+    border-color: $motion-primary;
+    background-color: $motion-primary;
+    color: #fff;
+}
+
+.save_button_dirty:hover {
+    background-color: #00963a;
 }

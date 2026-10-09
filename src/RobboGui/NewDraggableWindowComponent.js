@@ -8,6 +8,9 @@ import {DragSource} from 'react-dnd';
 
 import {ActionDropNewDraggableWindow} from './actions/sensor_actions';
 import {ActionCreateNewDraggableWindow} from './actions/sensor_actions';
+import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
+import {registerEscapeClosable} from '../lib/robbo-popup-escape';
+import {clampPopupToViewport} from '../lib/robbo-popup-position';
 import RobboPopupTransition from './RobboPopupTransition';
 import {
     ROBBO_POPUP_Z_INDEX_BASE,
@@ -53,6 +56,20 @@ class NewDraggableWindowComponent extends Component {
         };
         this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
         this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
+        this.keepOnScreen = this.keepOnScreen.bind(this);
+    }
+
+    /** Same as DraggableWindowComponent: a window never stays off screen. */
+    keepOnScreen () {
+        const windowId = this.props.draggableWindowId;
+        const w = this.props.draggable_window[windowId];
+        const node = document.getElementById(`draggable_window_id-${windowId}`);
+        if (!w || !w.isShowing || !node || this.props.isDragging) return;
+        const rect = node.getBoundingClientRect();
+        const pos = clampPopupToViewport(w.position_top, w.position_left, rect.width, rect.height);
+        if (pos.top !== w.position_top || pos.left !== w.position_left) {
+            this.props.onCreateDraggableWindow(pos.top, pos.left, windowId);
+        }
     }
 
     componentDidUpdate (prevProps) {
@@ -61,12 +78,15 @@ class NewDraggableWindowComponent extends Component {
         const nextWindow = this.props.draggable_window[windowId];
         if (nextWindow && prevWindow && !prevWindow.isShowing && nextWindow.isShowing) {
             this.setState({popupZIndex: raiseRobboPopupZIndex()});
+            window.requestAnimationFrame(this.keepOnScreen);
         }
         handlePopupDragFollowLifecycle(this, prevProps, this.props.isDragging);
     }
 
     componentWillUnmount () {
         stopPopupDragFollow(this);
+        window.removeEventListener('resize', this.keepOnScreen);
+        if (this.unregisterEscape) this.unregisterEscape();
     }
 
     handlePopupMouseDown () {
@@ -95,6 +115,15 @@ class NewDraggableWindowComponent extends Component {
 
     componentDidMount () {
         attachEmptyDragPreview(this.props.connectDragPreview);
+        window.addEventListener('resize', this.keepOnScreen);
+        this.unregisterEscape = registerEscapeClosable({
+            isOpen: () => {
+                const w = this.props.draggable_window[this.props.draggableWindowId];
+                return Boolean(w && w.isShowing);
+            },
+            getZIndex: () => this.state.popupZIndex,
+            close: () => this.props.onCloseNewDraggableWindow(this.props.draggableWindowId)
+        });
         const coords = this._resolveMountCoords();
         if (coords) {
             this.props.onCreateDraggableWindow(coords.top, coords.left, this.props.draggableWindowId);
@@ -156,6 +185,9 @@ const mapStateToProps = state => ({
 const mapDispatchToProps = dispatch => ({
     onCreateDraggableWindow: (top, left, draggable_window_id) => {
         dispatch(ActionCreateNewDraggableWindow(top, left, draggable_window_id));
+    },
+    onCloseNewDraggableWindow: draggable_window_id => {
+        dispatch(ActionTriggerNewDraggableWindow(draggable_window_id));
     }
 });
 

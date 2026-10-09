@@ -1,4 +1,5 @@
 import React, {Component} from 'react';
+import {robboConfirm} from './RobboConfirmDialog';
 import {connect} from 'react-redux';
 import {defineMessages, injectIntl} from 'react-intl';
 import classNames from 'classnames';
@@ -74,6 +75,16 @@ const messages = defineMessages({
     deactivate_license: {
         id: 'gui.licenseWindow.deactivate_license',
         defaultMessage: 'Deactivate'
+    },
+    deactivate_yes: {
+        id: 'gui.licenseWindow.deactivate_yes',
+        description: 'Confirm button of the licence deactivation question',
+        defaultMessage: 'Deactivate'
+    },
+    deactivate_cancel: {
+        id: 'gui.licenseWindow.deactivate_cancel',
+        description: 'Cancel button of the licence deactivation question',
+        defaultMessage: 'Keep licence'
     },
     deactivate_confirm: {
         id: 'gui.licenseWindow.deactivate_confirm',
@@ -199,14 +210,18 @@ class LicenseWindowComponent extends Component {
     }
 
     onDeactivateClick () {
-        const confirmed = window.confirm(
-            this.props.intl.formatMessage(messages.deactivate_confirm)
-        );
-        if (!confirmed) {
-            return;
-        }
-        this.setState({licenseKeyDraft: '', showKeyForm: false});
-        this.props.onClearLicense();
+        robboConfirm({
+            message: this.props.intl.formatMessage(messages.deactivate_confirm),
+            confirmLabel: this.props.intl.formatMessage(messages.deactivate_yes),
+            cancelLabel: this.props.intl.formatMessage(messages.deactivate_cancel),
+            danger: true
+        }).then(confirmed => {
+            if (!confirmed) {
+                return;
+            }
+            this.setState({licenseKeyDraft: '', showKeyForm: false});
+            this.props.onClearLicense();
+        });
     }
 
     onOpenAccountClick () {

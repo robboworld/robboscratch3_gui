@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import PropTypes from 'prop-types';
+import {defineMessages, injectIntl, intlShape} from 'react-intl';
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import styles from './MenuBarDevicePreview.css';
@@ -9,11 +10,104 @@ import {batteryColorLevel, worseBatteryLevel} from '../lib/copter-colors';
 
 const DEVICE_IS_READY = 6;
 
+const messages = defineMessages({
+    connected: {
+        id: 'gui.RobboGui.MenuBarDevice.connected',
+        description: 'Menu bar device button tooltip: the device is connected',
+        defaultMessage: '{device}: connected'
+    },
+    notConnected: {
+        id: 'gui.RobboGui.MenuBarDevice.notConnected',
+        description: 'Menu bar device button tooltip: no device connected',
+        defaultMessage: '{device}: not connected'
+    },
+    searching: {
+        id: 'gui.RobboGui.MenuBarDevice.searching',
+        description: 'Menu bar device button tooltip: device search in progress',
+        defaultMessage: '{device}: searching…'
+    }
+});
+
 const CONNECTED_DEVICES_BY_TYPE = {
     robot: 'ConnectedRobots',
     lab: 'ConnectedLaboratories',
     otto: 'ConnectedOttos',
     arduino: 'ConnectedArduinos'
+};
+
+const COPTER_PROPELLER = 'M -0.42 -0.32 L -2.02 -0.76 C -4.81 -1.36 -6.66 -1.44 -6.7 -0.4 ' +
+    'C -6.66 1.44 -4.81 1.36 -2.02 0.76 L -0.42 0.32 Z M 0.42 0.32 L 2.02 0.76 C 4.81 1.36 6.66 1.44 6.7 0.4 ' +
+    'C 6.66 -1.44 4.81 -1.36 2.02 -0.76 L 0.42 -0.32 Z';
+const COPTER_ARMS = ['M12 12L8.25 8.25', 'M24 12L27.75 8.25', 'M12 24L8.25 27.75', 'M24 24L27.75 27.75'];
+const COPTER_PLUG = 'M10.83 13.8h0.89a0.28 0.28 0 0 1 0.28 0.28v7.84a0.28 0.28 0 0 1-0.28 0.28h-0.89' +
+    'a0.28 0.28 0 0 1-0.28-0.28v-7.84a0.28 0.28 0 0 1 0.28-0.28z';
+const COPTER_ROTORS = [[7.1, 7.1, -45], [28.9, 7.1, 45], [7.1, 28.9, 45], [28.9, 28.9, -45]];
+/** Inner area of the copter body that holds the charge (viewBox units of menu_icon_quadcopter.svg). */
+const BODY_FILL = {x: 13.5, y: 13.5, width: 9, height: 9};
+
+/**
+ * menu_icon_quadcopter.svg drawn inline: its body is a battery filled left to right with the
+ * lowest charge of the copters in use (the plug on the left is the battery contact).
+ * @param {number} percent lowest charge
+ * @param {string} level 'ok' | 'warning' | 'critical'
+ * @returns {React.Element} icon
+ */
+const renderCopterBatteryIcon = (percent, level) => {
+    const value = Math.max(0, Math.min(100, Number(percent) || 0));
+    return (
+        <svg
+            className={styles.copterIcon}
+            // Same crop as the 110 % background-size of the other device icons.
+            viewBox="1.64 1.64 32.73 32.73"
+            aria-hidden="true"
+        >
+            <g
+                stroke="currentColor"
+                strokeWidth="2.15"
+                strokeLinecap="round"
+            >
+                {COPTER_ARMS.map(d => (
+                    <path
+                        key={d}
+                        d={d}
+                    />
+                ))}
+            </g>
+            <g fill="currentColor">
+                {COPTER_ROTORS.map(([x, y, angle]) => (
+                    <g
+                        key={`${x}-${y}`}
+                        transform={`translate(${x} ${y}) rotate(${angle})`}
+                    >
+                        <path d={COPTER_PROPELLER} />
+                        <circle r="1.05" />
+                    </g>
+                ))}
+                <path d={COPTER_PLUG} />
+            </g>
+            <rect
+                x="12.6"
+                y="12.6"
+                width="10.8"
+                height="10.8"
+                rx="1.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.2"
+            />
+            <rect
+                className={classNames(styles.copterCharge, {
+                    [styles.copterChargeWarning]: level === 'warning',
+                    [styles.copterChargeLow]: level === 'critical'
+                })}
+                x={BODY_FILL.x}
+                y={BODY_FILL.y}
+                width={BODY_FILL.width * value / 100}
+                height={BODY_FILL.height}
+                rx="0.8"
+            />
+        </svg>
+    );
 };
 
 class MenuBarDevicePreview extends Component {
@@ -158,6 +252,12 @@ class MenuBarDevicePreview extends Component {
         const {searching} = this.state;
         // The simulated copter is always "connected": status comes from QCA only for real hardware.
         const connected = simulated || this.state.connected;
+        const showBattery = deviceType === 'quadcopter' && this.state.copterBattery !== null;
+        // The state in words in the tooltip and for screen readers (the icon shows it by colour).
+        let stateMessage = connected ? messages.connected : messages.notConnected;
+        if (searching) stateMessage = messages.searching;
+        const stateTitle = this.props.intl.formatMessage(stateMessage, {device: title});
+        const fullTitle = showBattery ? `${stateTitle} · ${this.state.copterBattery}\u00a0%` : stateTitle;
 
         return (
             <button
@@ -168,25 +268,19 @@ class MenuBarDevicePreview extends Component {
                     [styles.disconnected]: !connected,
                     [styles.searching]: searching
                 })}
-                title={title}
-                aria-label={title}
+                title={fullTitle}
+                aria-label={fullTitle}
                 onClick={this.props.onOpenPalette}
             >
-                <span className={styles.previewIcon} aria-hidden="true" />
-                {deviceType === 'quadcopter' && this.state.copterBattery !== null ? (
-                    <span className={styles.copterBadge} aria-hidden="true">
-                        <span className={styles.copterBadgeBar}>
-                            <span
-                                className={classNames(styles.copterBadgeFill, {
-                                    [styles.copterBadgeLow]: this.state.copterBatteryLevel === 'critical',
-                                    [styles.copterBadgeWarning]: this.state.copterBatteryLevel === 'warning'
-                                })}
-                                style={{width: `${this.state.copterBattery}%`}}
-                            />
-                        </span>
-                        {this.state.copterCount > 1 ? (
-                            <span className={styles.copterBadgeCount}>{this.state.copterCount}</span>
-                        ) : null}
+                {showBattery ?
+                    renderCopterBatteryIcon(this.state.copterBattery, this.state.copterBatteryLevel) :
+                    <span className={styles.previewIcon} aria-hidden="true" />}
+                {showBattery && this.state.copterCount > 1 ? (
+                    <span
+                        className={styles.copterCount}
+                        aria-hidden="true"
+                    >
+                        {this.state.copterCount}
                     </span>
                 ) : null}
             </button>
@@ -201,6 +295,7 @@ MenuBarDevicePreview.propTypes = {
     vm: PropTypes.shape({runtime: PropTypes.object}),
     idPrefix: PropTypes.string.isRequired,
     index: PropTypes.number.isRequired,
+    intl: intlShape.isRequired,
     title: PropTypes.string.isRequired,
     statusApi: PropTypes.object,
     onOpenPalette: PropTypes.func.isRequired
@@ -212,7 +307,7 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
     }
 });
 
-export default connect(
+export default injectIntl(connect(
     null,
     mapDispatchToProps
-)(MenuBarDevicePreview);
+)(MenuBarDevicePreview));

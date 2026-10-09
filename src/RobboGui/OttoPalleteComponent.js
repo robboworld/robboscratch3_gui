@@ -5,11 +5,14 @@ import sharedStyles from './DevicePaletteShared.css';
 import formStyles from './RobboPaletteForm.css';
 import rowStyles from './DevicePaletteRows.css';
 import SensorDataBlockComponent from './SensorDataBlockComponent';
-import { getPaletteSensorValueNode } from './sensor-palette-dom';
+import { getPaletteSensorValueNode, setPaletteSensorTextValue } from './sensor-palette-dom';
+import DevicePaletteStatus, {DevicePaletteStatusDot} from './DevicePaletteStatus';
+import {getDeviceLinkKind, isDeviceLinkLive} from './device-link-status';
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 
 import {defineMessages, injectIntl} from 'react-intl';
+import {closeMessage} from './sensor-type-messages';
 
 const messages = defineMessages({
     sound_level: {
@@ -45,8 +48,10 @@ class OttoPalleteComponent extends Component {
             clearInterval(this.getDataLoopInterval);
         }
         this.getDataLoopInterval = setInterval(() => {
-            sound_sensor_value_field.innerHTML = this.props.OCA.get_sound();
-            distanse_sensor_value_field.innerHTML = this.props.OCA.get_dist();
+            // No robot: show "---", not the API defaults (-1, 0).
+            const live = isDeviceLinkLive(getDeviceLinkKind(this.props.OCA, 'ConnectedOttos', false));
+            setPaletteSensorTextValue(sound_sensor_value_field, live ? this.props.OCA.get_sound() : '---');
+            setPaletteSensorTextValue(distanse_sensor_value_field, live ? this.props.OCA.get_dist() : '---');
         }, 50);
     }
 
@@ -66,16 +71,25 @@ class OttoPalleteComponent extends Component {
             <div id="otto-1" className={classNames(sharedStyles.palette, sharedStyles.device_palette)}>
                 <div id="otto-tittle" className={sharedStyles.header}>
                     <span className={sharedStyles.headerTitle}>
+                        <DevicePaletteStatusDot
+                            api={this.props.OCA}
+                            connectedKey="ConnectedOttos"
+                        />
                         {this.props.intl.formatMessage(messages.otto)}
                     </span>
                     <button
                         type="button"
                         className={sharedStyles.closeButton}
-                        aria-label="Close"
+                        aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
                         onClick={this.onThisWindowClose.bind(this)}
                     />
                 </div>
                 <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
+                    <DevicePaletteStatus
+                        api={this.props.OCA}
+                        connectedKey="ConnectedOttos"
+                    />
                     <div className={rowStyles.palette_device_list}>
                     <SensorDataBlockComponent
                         key={`otto-${this.props.ottoIndex}-sound-level`}
@@ -84,7 +98,7 @@ class OttoPalleteComponent extends Component {
                         sensorType="analog"
                         sensorFieldText={this.props.intl.formatMessage(messages.sound_level)}
                         sensorName="sound_level"
-                        sensorData="-1"
+                        sensorData={null}
                     />
                     <SensorDataBlockComponent
                         key={`otto-${this.props.ottoIndex}-distanse`}
@@ -93,7 +107,7 @@ class OttoPalleteComponent extends Component {
                         sensorType="analog"
                         sensorFieldText={this.props.intl.formatMessage(messages.distance)}
                         sensorName="distanse"
-                        sensorData="0"
+                        sensorData={null}
                     />
                     </div>
                     </div>

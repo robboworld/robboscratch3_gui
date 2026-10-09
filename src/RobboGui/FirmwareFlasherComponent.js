@@ -15,6 +15,7 @@ import FirmwareFlasherDeviceComponent from './FirmwareFlasherDeviceComponent';
 import FirmwareFlasherFlashingStatusComponent from './FirmwareFlasherFlashingStatusComponent';
 
 import DraggableWindowComponent from './DraggableWindowComponent';
+import {closeMessage} from './sensor-type-messages';
 
 
   const messages = defineMessages({
@@ -106,7 +107,8 @@ class FirmwareFlasherComponent extends Component {
               <button
                   type="button"
                   className={sharedStyles.closeButton}
-                  aria-label="Close"
+                  aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
                   onClick={this.onThisWindowClose.bind(this)}
               />
           </div>

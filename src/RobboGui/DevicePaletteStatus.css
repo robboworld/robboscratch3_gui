@@ -1,0 +1,114 @@
+@import "../css/colors.css";
+
+/* Device palette status: a dot in the header, a line with "Find device" only when not connected. */
+.statusLine {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Header dot (before the palette title). */
+/* Drawn inside its own box (no outer shadow): the title span clips overflow. */
+.dot {
+    display: inline-block;
+    box-sizing: border-box;
+    width: 0.75rem;
+    height: 0.75rem;
+    margin-right: 0.4rem;
+    border-radius: 50%;
+    vertical-align: middle;
+}
+
+.dot_ready {
+    border: 2px solid #bfe8d9;
+    background-color: #1d9e75;
+}
+
+.dot_connecting,
+.dot_searching {
+    background-color: #ef9f27;
+    animation: device-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.dot_off {
+    border: 2px solid #a0a4b0;
+    background-color: transparent;
+}
+
+.dot_sim {
+    background-color: #378add;
+}
+
+@keyframes device-dot-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dot_connecting,
+    .dot_searching {
+        animation: none;
+    }
+}
+
+/* Wide "Search" button: the main action while the device is not connected. */
+.findButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    min-height: 2.25rem;
+    padding: 0 0.75rem 0 2rem;
+    border: 1px solid $motion-primary;
+    border-radius: 0.375rem;
+    background: rgba(0, 175, 65, 0.08) 0.75rem center / 1rem no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5L21 21'/%3E%3C/svg%3E");
+    color: #0f8a3a;
+    font-size: 0.875rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.findButton:hover:not(:disabled) {
+    background-color: rgba(0, 175, 65, 0.16);
+}
+
+.findButton:focus {
+    outline: none;
+}
+
+.findButton:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+/* Searching: no magnifier, a spinner next to the text instead. */
+.findButtonBusy {
+    padding-left: 0.75rem;
+    border-color: rgba(87, 94, 117, 0.3);
+    background-image: none;
+    background-color: rgba(87, 94, 117, 0.06);
+    color: #575e75;
+    cursor: default;
+}
+
+.spinner {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid rgba(87, 94, 117, 0.25);
+    border-top-color: #575e75;
+    border-radius: 50%;
+    animation: device-search-spin 0.8s linear infinite;
+}
+
+@keyframes device-search-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spinner {
+        animation-duration: 3s;
+    }
+}

@@ -1,7 +1,10 @@
+import ReactDOM from 'react-dom';
 import {getEmptyImage} from 'react-dnd-html5-backend';
+import {clampPopupToViewport} from './robbo-popup-position';
 
 /**
- * @typedef {{windowTop: number, windowLeft: number, pointerX: number, pointerY: number}} PopupDragAnchor
+ * @typedef {{windowTop: number, windowLeft: number, pointerX: number, pointerY: number,
+ *   width: number, height: number}} PopupDragAnchor
  */
 
 /**
@@ -14,11 +17,26 @@ import {getEmptyImage} from 'react-dnd-html5-backend';
 export function capturePopupDragAnchor (props, monitor, component, getWindowPosition) {
     const {top, left} = getWindowPosition(props);
     const initialClient = monitor.getInitialClientOffset();
+    // Popup size, so a drag or drop keeps it on screen.
+    let width = 0;
+    let height = 0;
+    try {
+        const node = component ? ReactDOM.findDOMNode(component) : null;
+        if (node && node.getBoundingClientRect) {
+            const rect = node.getBoundingClientRect();
+            width = rect.width;
+            height = rect.height;
+        }
+    } catch (e) {
+        // Unmounted: no clamping by size.
+    }
     const anchor = {
         windowTop: top,
         windowLeft: left,
         pointerX: initialClient != null ? initialClient.x : 0,
-        pointerY: initialClient != null ? initialClient.y : 0
+        pointerY: initialClient != null ? initialClient.y : 0,
+        width,
+        height
     };
     if (component) {
         component._popupDragAnchor = anchor;
@@ -36,10 +54,12 @@ export function resolvePopupPositionFromPointer (clientX, clientY, anchor) {
     if (!anchor) {
         return null;
     }
-    return {
-        top: Math.round(anchor.windowTop + (clientY - anchor.pointerY)),
-        left: Math.round(anchor.windowLeft + (clientX - anchor.pointerX))
-    };
+    return clampPopupToViewport(
+        anchor.windowTop + (clientY - anchor.pointerY),
+        anchor.windowLeft + (clientX - anchor.pointerX),
+        anchor.width || 0,
+        anchor.height || 0
+    );
 }
 
 /**
@@ -57,17 +77,11 @@ export function resolvePopupDropPosition (monitor, item) {
     const diff = monitor.getDifferenceFromInitialOffset();
     const initialSource = monitor.getInitialSourceClientOffset();
     if (diff && initialSource) {
-        return {
-            top: Math.round(initialSource.y + diff.y),
-            left: Math.round(initialSource.x + diff.x)
-        };
+        return clampPopupToViewport(initialSource.y + diff.y, initialSource.x + diff.x, 0, 0);
     }
     const coords = monitor.getSourceClientOffset();
     if (coords) {
-        return {
-            top: Math.round(coords.y),
-            left: Math.round(coords.x)
-        };
+        return clampPopupToViewport(coords.y, coords.x, 0, 0);
     }
     return null;
 }

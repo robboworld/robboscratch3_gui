@@ -8,8 +8,10 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
     border: 1px solid rgba(0, 175, 65, 0.45);
-    border-radius: 2px;
+    border-radius: 0.25rem;
     background-color: rgba(0, 175, 65, 0.1);
     cursor: pointer;
     line-height: 0;
@@ -26,10 +28,13 @@
     border-color: $motion-primary;
 }
 
-.sensor_choose_icon:focus,
+.sensor_choose_icon:focus {
+    outline: none;
+}
+
 .sensor_choose_icon:focus-visible {
-    outline: 1px solid $motion-primary;
-    outline-offset: 0;
+    outline: 2px solid $motion-primary;
+    outline-offset: 1px;
 }
 
 .sensor_choose_icon img {

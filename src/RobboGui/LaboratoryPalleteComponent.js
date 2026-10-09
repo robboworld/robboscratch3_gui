@@ -6,12 +6,15 @@ import formStyles from './RobboPaletteForm.css';
 import rowStyles from './DevicePaletteRows.css';
 import SensorDataBlockComponent from './SensorDataBlockComponent';
 import SensorComponent from './SensorComponent';
-import { getPaletteSensorValueNode } from './sensor-palette-dom';
+import { getPaletteSensorValueNode, setPaletteSensorTextValue } from './sensor-palette-dom';
+import DevicePaletteStatus, {DevicePaletteStatusDot} from './DevicePaletteStatus';
+import {getDeviceLinkKind, isDeviceLinkLive} from './device-link-status';
 import {ActionLaboratoryGetDataStart} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionSetLCALocal}  from './actions/sensor_actions';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import {closeMessage} from './sensor-type-messages';
 
 
 
@@ -96,6 +99,12 @@ class LaboratoryPalleteComponent extends Component {
     var sensors_values_field_list =   this.sensors_values_field_list;
 
     if (this.props.draggable_window[2].isShowing == true){
+
+        // No laboratory: show "---", not the API defaults.
+        if (!isDeviceLinkLive(getDeviceLinkKind(this.props.LCA, 'ConnectedLaboratories', false))) {
+          sensors_values_field_list.forEach(cell => setPaletteSensorTextValue(cell, '---'));
+          return;
+        }
 
         let sensor_data;
 
@@ -261,16 +270,25 @@ class LaboratoryPalleteComponent extends Component {
 
             <div id="lab-tittle" className={sharedStyles.header}>
                 <span className={sharedStyles.headerTitle}>
+                    <DevicePaletteStatusDot
+                        api={this.props.LCA}
+                        connectedKey="ConnectedLaboratories"
+                    />
                     {this.props.intl.formatMessage(messages.laboratory)}
                 </span>
                 <button
                     type="button"
                     className={sharedStyles.closeButton}
-                    aria-label="Close"
+                    aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
                     onClick={this.onThisWindowClose.bind(this)}
                 />
             </div>
             <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
+            <DevicePaletteStatus
+                api={this.props.LCA}
+                connectedKey="ConnectedLaboratories"
+            />
             <div className={rowStyles.palette_device_list}>
             {
 
@@ -284,7 +302,7 @@ class LaboratoryPalleteComponent extends Component {
 
                                                     {
 
-                                                      let sensor_data =- "";
+                                                      let sensor_data = "";
 
                                                       if (sensor.sensor_data == "false"){
 

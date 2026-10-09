@@ -13,6 +13,7 @@ import {
     beginSearchButtonFeedbackSession,
     subscribeSearchButtonFeedback
 } from './search-button-feedback';
+import {subscribeDeviceSearchRequest} from './device-link-status';
 import {
     clearTransientButtonFeedbackTimer,
     TRANSIENT_BUTTON_FEEDBACK_MS
@@ -72,23 +73,11 @@ class MenuBarDeviceControls extends Component {
         this.unsubscribeSearchFeedback = null;
         this.searchDevices = this.searchDevices.bind(this);
         this.triggerSensorsPalette = this.triggerSensorsPalette.bind(this);
-        this.handleCopterEscape = this.handleCopterEscape.bind(this);
-    }
-
-    /** Esc lands every copter in the air (also from the "Land all" button of the copter palette). */
-    handleCopterEscape (event) {
-        if (event.key !== 'Escape' || event.defaultPrevented) return;
-        const target = event.target;
-        const tag = target && target.tagName ? target.tagName.toLowerCase() : '';
-        if (tag === 'input' || tag === 'textarea' || (target && target.isContentEditable)) return;
-        const qca = this.props.vm && this.props.vm.getQCA && this.props.vm.getQCA();
-        if (qca && typeof qca.isAnyCopterAirborne === 'function' && qca.isAnyCopterAirborne()) {
-            qca.landAllCopters();
-        }
     }
 
     componentDidMount () {
-        document.addEventListener('keydown', this.handleCopterEscape);
+        // "Find device" in a device palette runs the same search as this button.
+        this.unsubscribeSearchRequest = subscribeDeviceSearchRequest(this.searchDevices);
         this.unsubscribeSearchFeedback = subscribeSearchButtonFeedback(kind => {
             if (kind === 'idle') {
                 if (this.state.searchBusy) {
@@ -114,7 +103,7 @@ class MenuBarDeviceControls extends Component {
     }
 
     componentWillUnmount () {
-        document.removeEventListener('keydown', this.handleCopterEscape);
+        if (this.unsubscribeSearchRequest) this.unsubscribeSearchRequest();
         if (this.unsubscribeSearchFeedback) {
             this.unsubscribeSearchFeedback();
             this.unsubscribeSearchFeedback = null;
@@ -263,6 +252,14 @@ class MenuBarDeviceControls extends Component {
                         {searchFeedbackLabel || searchButtonLabel}
                     </span>
                 </button>
+                {/* The search result is announced to screen readers (the button label alone is not). */}
+                <span
+                    className={styles.visuallyHidden}
+                    role="status"
+                    aria-live="polite"
+                >
+                    {searchFeedbackLabel || ''}
+                </span>
                 {this.renderDevicePreviews()}
             </div>
         );

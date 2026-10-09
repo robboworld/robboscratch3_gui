@@ -23,6 +23,7 @@ import {
     ROBBO_POPUP_Z_INDEX_BASE,
     raiseRobboPopupZIndex
 } from '../lib/robbo-popup-z-index';
+import {closeMessage} from './sensor-type-messages';
 
 /** Same gate as RobboGui.searchDevices → searchQuadcopterDevices() */
 function shouldProbeQuadcopterOnDeviceSearch(QCA) {
@@ -478,7 +479,8 @@ class SearchPanelComponent extends Component {
             <button
                 type="button"
                 className={styles.search_panel_close}
-                aria-label="Close"
+                aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
                 onClick={this.onThisWindowClose}
             />
           </div>

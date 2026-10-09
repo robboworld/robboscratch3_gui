@@ -67,22 +67,39 @@
 }
 
 .about_update_icon_button {
+    min-width: 1.5rem;
+    min-height: 1.5rem;
     margin: 0;
     padding: 0;
     border: none;
+    border-radius: 0.75rem;
     background: transparent;
     cursor: pointer;
-    line-height: 0;
+    line-height: 1.3;
 }
 
 .about_update_icon_button:focus {
     outline: none;
 }
 
+.about_update_icon_button:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+/* The update error in words next to the icon, not only in the tooltip. */
+.about_update_error_text {
+    max-width: 16rem;
+    color: #854f0b;
+    font-size: 0.75rem;
+    text-align: left;
+}
+
 .about_update_icon {
     display: inline-block;
-    width: 1.375rem;
-    height: 1.375rem;
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
     border-radius: 50%;
     background-repeat: no-repeat;
     background-position: center;
@@ -274,4 +291,49 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* Reduced motion: spinners turn slowly instead of stopping (a frozen spinner looks hung). */
+@media (prefers-reduced-motion: reduce) {
+    .about_update_spinner {
+        animation-duration: 3s;
+    }
+}
+
+/* "System" header with the copy icon on the right. */
+.about_title_with_action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.about_copy_icon_button {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: $form-radius;
+    background: transparent center / 1rem no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23575e75' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='12' height='12' rx='2'/%3E%3Cpath d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/%3E%3C/svg%3E");
+    cursor: pointer;
+}
+
+.about_copy_icon_button:hover {
+    border-color: rgba(0, 175, 65, 0.45);
+    background-color: rgba(0, 175, 65, 0.08);
+}
+
+.about_copy_icon_button:focus {
+    outline: none;
+}
+
+.about_copy_icon_button:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 1px;
+}
+
+/* Copied: a check mark for a moment. */
+.about_copy_icon_done {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300af41' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
 }
