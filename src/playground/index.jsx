@@ -14,6 +14,7 @@ import analytics from '../lib/analytics';
 import AppStateHOC from '../lib/app-state-hoc.jsx';
 import BrowserModalComponent from '../components/browser-modal/browser-modal.jsx';
 import supportedBrowser from '../lib/supported-browser';
+import hideLoadingSplash from '../lib/loading-splash';
 
 import styles from './index.css';
 
@@ -30,6 +31,7 @@ if (supportedBrowser()) {
     require('./render-gui.jsx').default(appTarget);
 
 } else {
+    hideLoadingSplash();
     BrowserModalComponent.setAppElement(appTarget);
     const WrappedBrowserModalComponent = AppStateHOC(BrowserModalComponent, true /* localesOnly */);
     const handleBack = () => {};

@@ -78,6 +78,51 @@
     <% } %>
   </head>
   <body>
+    <% if (htmlWebpackPlugin.options.loadingSplash) { %>
+    <% var splash = htmlWebpackPlugin.options.loadingSplash; %>
+    <!-- Static copy of components/loader: visible from the first paint while lib.min.js and
+         gui.js download and run; removed by lib/loading-splash.js when the React Loader mounts. -->
+    <style>
+      #app-loading-splash {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5000;
+        display: flex; justify-content: center; align-items: center;
+        background-color: #00af41; color: #383838; text-align: center;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      #app-loading-splash .splash-blocks { width: 125px; height: 150px; margin: 50px auto 0; }
+      #app-loading-splash .splash-blocks img { display: block; position: relative; height: 30%; margin-top: -4px; }
+      #app-loading-splash .splash-top { animation: app-splash-top 1.5s ease infinite; }
+      #app-loading-splash .splash-middle { animation: app-splash-middle 1.5s ease infinite; }
+      #app-loading-splash .splash-bottom { animation: app-splash-bottom 1.5s ease infinite; }
+      /* The title and message lines stay empty: the locale is only known to the app. */
+      #app-loading-splash .splash-title { font-size: 2rem; font-weight: bold; margin: 0.75rem 0; }
+      #app-loading-splash .splash-message { height: 30px; }
+      @keyframes app-splash-top {
+        0% { transform: translateY(50px); opacity: 0; }
+        33% { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes app-splash-middle {
+        0%, 33% { transform: translateY(50px); opacity: 0; }
+        66% { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes app-splash-bottom {
+        0%, 66% { transform: translateY(50px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+      }
+    </style>
+    <noscript><style>#app-loading-splash { display: none; }</style></noscript>
+    <div id="app-loading-splash" aria-busy="true">
+      <div>
+        <div class="splash-blocks">
+          <img class="splash-top" src="<%= splash.top %>" alt="">
+          <img class="splash-middle" src="<%= splash.middle %>" alt="">
+          <img class="splash-bottom" src="<%= splash.bottom %>" alt="">
+        </div>
+        <div class="splash-title">&nbsp;</div>
+        <div class="splash-message"></div>
+      </div>
+    </div>
+    <% } %>
     <% if (htmlWebpackPlugin.options.seo && htmlWebpackPlugin.options.seo.enabled) { %>
     <% var seoBody = htmlWebpackPlugin.options.seo; %>
     <noscript>
