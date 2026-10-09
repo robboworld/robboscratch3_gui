@@ -3,12 +3,14 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import sharedStyles from './DevicePaletteShared.css';
 import styles from './QuadcopterPalleteComponent.css';
+import RobboSelect from './RobboSelect';
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {getDefaultSimulationCopterSpriteJson} from '../lib/robbo-simulation-copter-sprite';
 import {batteryColorLevel, copterColor} from '../lib/copter-colors';
 
 import {defineMessages, injectIntl} from 'react-intl';
+import {closeMessage} from './sensor-type-messages';
 
 const messages = defineMessages({
     copters: {
@@ -38,7 +40,7 @@ const messages = defineMessages({
     },
     landAll: {
         id: 'gui.RobboGui.QuadcopterPalette.landAll',
-        description: 'Land every connected copter (also Esc)',
+        description: 'Land every connected copter',
         defaultMessage: 'Land all'
     },
     compactView: {
@@ -109,7 +111,7 @@ const messages = defineMessages({
     factoryReset: {
         id: 'gui.RobboGui.QuadcopterPalette.factoryReset',
         description: 'Menu item: factory radio settings',
-        defaultMessage: 'Restore factory settings'
+        defaultMessage: 'Restore factory settings…'
     },
     more: {
         id: 'gui.RobboGui.QuadcopterPalette.more',
@@ -341,6 +343,66 @@ const messages = defineMessages({
         description: 'Move a found copter to this computer group',
         defaultMessage: 'Move to my group'
     },
+    groupLocked: {
+        id: 'gui.RobboGui.QuadcopterPalette.groupLocked',
+        description: 'The group cannot be changed while a copter flies',
+        defaultMessage: 'Land the copters to change the group'
+    },
+    copterSettings: {
+        id: 'gui.RobboGui.QuadcopterPalette.copterSettings',
+        description: 'Copter card menu title',
+        defaultMessage: 'Copter settings'
+    },
+    paletteSettings: {
+        id: 'gui.RobboGui.QuadcopterPalette.paletteSettings',
+        description: 'Toolbar menu title',
+        defaultMessage: 'Settings'
+    },
+    needsConnection: {
+        id: 'gui.RobboGui.QuadcopterPalette.needsConnection',
+        description: 'Why a copter menu item is disabled',
+        defaultMessage: 'Available when the copter is connected and on the ground'
+    },
+    numberLabel: {
+        id: 'gui.RobboGui.QuadcopterPalette.numberLabel',
+        description: 'Copter menu: the number of the copter (choose another to renumber)',
+        defaultMessage: 'Number'
+    },
+    factoryResetConfirm: {
+        id: 'gui.RobboGui.QuadcopterPalette.factoryResetConfirm',
+        description: 'Asked before the factory reset',
+        defaultMessage: 'The copter forgets its number and group. Reset?'
+    },
+    resetYes: {
+        id: 'gui.RobboGui.QuadcopterPalette.resetYes',
+        description: 'Confirms the factory reset',
+        defaultMessage: 'Reset'
+    },
+    cancel: {
+        id: 'gui.RobboGui.QuadcopterPalette.cancel',
+        description: 'Cancels the factory reset',
+        defaultMessage: 'Cancel'
+    },
+    searching: {
+        id: 'gui.RobboGui.QuadcopterPalette.searching',
+        description: 'Search button while copters are being searched',
+        defaultMessage: 'Searching…'
+    },
+    powerOffConfirm: {
+        id: 'gui.RobboGui.QuadcopterPalette.powerOffConfirm',
+        description: 'Asked before switching a copter off by radio',
+        defaultMessage: 'Switch off copter {number}? It is switched on again only with its own button.'
+    },
+    powerOffYes: {
+        id: 'gui.RobboGui.QuadcopterPalette.powerOffYes',
+        description: 'Confirms switching the copter off',
+        defaultMessage: 'Switch off'
+    },
+    land: {
+        id: 'gui.RobboGui.QuadcopterPalette.land',
+        description: 'Land the only connected copter',
+        defaultMessage: 'Land'
+    },
     meters: {
         id: 'gui.RobboGui.QuadcopterPalette.meters',
         description: ' ',
@@ -392,11 +454,19 @@ const writeCompact = value => {
     }
 };
 
-// Fixed width (monospace): the palette window must not resize while the copter moves.
 /** `menuFor` value of the toolbar ⋯ menu (cards use their copter id). */
 const TOOLBAR_MENU = 'toolbar';
+const NOTICE_RANK = {danger: 0, warning: 1, info: 2};
 
-const formatCoord = value => (Number(value) || 0).toFixed(2).padStart(6);
+/**
+ * Two decimals; a tiny negative drift is shown as 0.00, not -0.00.
+ * @param {number} value metres
+ * @returns {string} formatted value
+ */
+const formatCoord = value => {
+    const rounded = Math.round((Number(value) || 0) * 100) / 100;
+    return (rounded === 0 ? 0 : rounded).toFixed(2);
+};
 
 class QuadcopterPalleteComponent extends Component {
     constructor (props) {
@@ -407,6 +477,8 @@ class QuadcopterPalleteComponent extends Component {
             simCopters: [],
             compact: readCompact(),
             menuFor: null,
+            confirmReset: null,
+            confirmPowerOff: null,
             renumbering: {},
             startPoses: readStartPoses(),
             lost: null
@@ -421,6 +493,9 @@ class QuadcopterPalleteComponent extends Component {
         this.handleGroupChange = this.handleGroupChange.bind(this);
         this.handleAddSimCopter = this.handleAddSimCopter.bind(this);
         this.handleRecoverFirmware = this.handleRecoverFirmware.bind(this);
+        this.handleDocumentMouseDown = this.handleDocumentMouseDown.bind(this);
+        this.handleDocumentKeyDown = this.handleDocumentKeyDown.bind(this);
+        this.setMenuRef = this.setMenuRef.bind(this);
     }
 
     componentDidMount () {
@@ -430,16 +505,58 @@ class QuadcopterPalleteComponent extends Component {
         }
         this.syncSimulator();
         this.simTimer = setInterval(() => this.syncSimulator(), SIM_POLL_MS);
+        document.addEventListener('mousedown', this.handleDocumentMouseDown);
+        document.addEventListener('keydown', this.handleDocumentKeyDown);
     }
 
     componentWillUnmount () {
         if (this.unsubscribeCopters) this.unsubscribeCopters();
         if (this.simTimer) clearInterval(this.simTimer);
+        document.removeEventListener('mousedown', this.handleDocumentMouseDown);
+        document.removeEventListener('keydown', this.handleDocumentKeyDown);
         this.handleMapPointerUp();
     }
 
     handleCopterList (copters) {
-        this.setState({copters: copters || []});
+        const list = copters || [];
+        this.setState(state => ({
+            copters: list,
+            // The copter got another number or vanished: its menu has nothing to act on.
+            menuFor: state.menuFor === null || state.menuFor === TOOLBAR_MENU ||
+                list.some(c => c.id === state.menuFor && c.enabled && !c.isNew) ? state.menuFor : null
+        }));
+    }
+
+    setMenuRef (element) {
+        this.menuElement = element;
+    }
+
+    /**
+     * A click outside the open menu closes it (the ⋯ buttons toggle it themselves).
+     * @param {MouseEvent} event mousedown anywhere in the document
+     */
+    handleDocumentMouseDown (event) {
+        if (this.state.menuFor === null) return;
+        const target = event.target;
+        if (this.menuElement && this.menuElement.contains(target)) return;
+        // RobboSelect renders its list in a portal outside the menu.
+        if (target && target.closest && target.closest('[data-copter-menu-toggle], [role="listbox"]')) return;
+        this.setState({menuFor: null, confirmReset: null});
+    }
+
+    /**
+     * Escape closes an open ⋯ menu first; the palette itself closes on the next Escape.
+     * @param {KeyboardEvent} event keydown
+     */
+    handleDocumentKeyDown (event) {
+        if (event.key !== 'Escape' || this.state.menuFor === null) return;
+        if (document.querySelector('[role="listbox"]')) return;
+        event.preventDefault();
+        this.setState({menuFor: null, confirmReset: null});
+    }
+
+    toggleMenu (menuFor) {
+        this.setState(state => ({menuFor: state.menuFor === menuFor ? null : menuFor, confirmReset: null}));
     }
 
     handleFindLost () {
@@ -513,21 +630,27 @@ class QuadcopterPalleteComponent extends Component {
     handleGroupChange (event) {
         const group = Number(event.target.value);
         this.props.QCA.setRadioGroup(group).then(changed => {
-            if (changed) this.props.QCA.searchQuadcopterDevices();
+            if (changed) {
+                // Found channels are relative to the old group.
+                this.setState({lost: null});
+                this.props.QCA.searchQuadcopterDevices();
+            }
             this.forceUpdate();
         });
     }
 
     handleToggleEnabled (copter) {
+        if (copter.enabled) this.setState({menuFor: null});
         this.props.QCA.setCopterEnabled(copter.id, !copter.enabled);
     }
 
     handleRestart (copter) {
+        this.setState({menuFor: null});
         this.props.QCA.copter(copter.id).rebootCopter();
     }
 
     handleAssignNumber (copter, number) {
-        if (!number) return;
+        if (!number || Number(number) === copter.number) return;
         this.setState(state => ({
             menuFor: null,
             renumbering: Object.assign({}, state.renumbering, {[copter.id]: true})
@@ -546,13 +669,19 @@ class QuadcopterPalleteComponent extends Component {
         this.forceUpdate();
     }
 
+    /** Switching off cannot be undone by radio: the copter is switched on with its own button. */
+    handleAskPowerOff (copter) {
+        this.setState({menuFor: null, confirmReset: null, confirmPowerOff: copter.id});
+    }
+
     handlePowerOff (copter) {
+        this.setState({confirmPowerOff: null});
         this.setState({menuFor: null});
         this.props.QCA.copter(copter.id).powerOffCopter();
     }
 
     handleFactoryReset (copter) {
-        this.setState({menuFor: null});
+        this.setState({menuFor: null, confirmReset: null});
         this.props.QCA.resetCopterToFactory(copter.id);
     }
 
@@ -665,10 +794,13 @@ class QuadcopterPalleteComponent extends Component {
     /**
      * @param {?number} percent battery percent, null when unknown
      * @param {object} [battery] battery state of a real copter: level, minutes, vbat (smoothed)
-     * @returns {React.Element} bar, percent, voltage and remaining minutes
+     * @param {boolean} [detailed] add voltage, remaining minutes and capacity
+     * @returns {React.Element} bar and percent (plus details)
      */
-    renderBattery (percent, battery) {
-        if (percent === null || percent === undefined) return <span className={styles.battery}>{'—'}</span>;
+    renderBattery (percent, battery, detailed) {
+        if (percent === null || percent === undefined) {
+            return <span className={styles.battery}><span className={styles.muted}>{'—'}</span></span>;
+        }
         const {intl} = this.props;
         const value = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
         const resolved = batteryColorLevel(value, battery && battery.level);
@@ -685,82 +817,123 @@ class QuadcopterPalleteComponent extends Component {
                         style={{width: `${value}%`}}
                     />
                 </span>
-                <span className={styles.batteryText}>{`${value} %`}</span>
-                {this.state.compact || vbat === null ? null : (
+                <span className={styles.batteryText}>{`${value}\u00a0%`}</span>
+                {!detailed || vbat === null ? null : (
                     <span className={classNames(styles.muted, styles.batteryVolts)}>
                         {intl.formatMessage(messages.volts, {volts: vbat.toFixed(2)})}
                     </span>
                 )}
-                {this.state.compact ? null : (
-                    <span className={classNames(styles.muted, styles.batteryMinutes)}>
+                {detailed ? (
+                    // The flight time comes from the battery capacity chosen in the copter menu.
+                    <span
+                        className={classNames(styles.muted, styles.batteryMinutes)}
+                        title={battery && battery.capacityMah ?
+                            intl.formatMessage(messages.batteryMah, {mah: battery.capacityMah}) : null}
+                    >
                         {intl.formatMessage(messages.minutesLeft, {minutes})}
                     </span>
-                )}
-                {this.state.compact || !battery || !battery.capacityMah ? null : (
-                    // The flight time comes from the chosen capacity: a wrong choice must be visible.
-                    <span className={styles.muted}>
-                        {intl.formatMessage(messages.batteryMah, {mah: battery.capacityMah})}
-                    </span>
-                )}
+                ) : null}
             </span>
         );
     }
 
     /**
-     * ✓ ready, ⚠ something to look at, ✗ cannot fly — from the same checks as the notices.
-     * @returns {React.Element} readiness mark
+     * ready / warning (something to look at) / blocked (cannot fly) — from the same checks as the notices.
+     * @param {object} copter copter list entry
+     * @returns {string} readiness kind
      */
-    renderReadiness (copter) {
-        const {intl} = this.props;
+    copterReadiness (copter) {
         const sup = copter.supervisor;
         const battery = copter.battery || {};
-        let kind = 'ready';
         if (!copter.connected || (sup && (sup.isLocked || sup.isTumbled || sup.isCrashed)) ||
             battery.level === 'critical' || (sup && sup.canFly === false && !copter.flying)) {
-            kind = 'blocked';
-        } else if (battery.level === 'warning' ||
-            (copter.linkQuality !== null && copter.linkQuality < WEAK_LINK_PERCENT)) {
-            kind = 'warning';
+            return 'blocked';
         }
-        const title = intl.formatMessage({
-            ready: messages.readyToFly, warning: messages.needsAttention, blocked: messages.cannotFly
-        }[kind]);
+        if (battery.level === 'warning' ||
+            (copter.linkQuality !== null && copter.linkQuality < WEAK_LINK_PERCENT)) {
+            return 'warning';
+        }
+        return 'ready';
+    }
+
+    /**
+     * @param {object} copter copter list entry
+     * @returns {string} colour of the status pill
+     */
+    copterStatusKind (copter) {
+        const sup = copter.supervisor;
+        if (copter.searching || copter.rebooting) return 'searching';
+        if (!copter.connected) return 'problem';
+        if (sup && (sup.isLocked || sup.isTumbled || sup.isCrashed)) return 'problem';
+        return copter.flying ? 'flying' : 'ground';
+    }
+
+    renderStatus (kind, text) {
         return (
-            <span
-                className={classNames(styles.readiness, styles[`readiness_${kind}`])}
-                title={title}
-            >
-                {{ready: '✓', warning: '!', blocked: '✕'}[kind]}
-            </span>
+            <span className={classNames(styles.status, styles[`status_${kind}`])}>{text}</span>
         );
     }
 
     renderLinkBars (quality) {
-        if (quality === null || quality === undefined) return null;
+        if (quality === null || quality === undefined) return <span className={styles.link} />;
         const bars = Math.max(0, Math.min(4, Math.round(quality / 25)));
         return (
             <span
-                className={classNames(styles.linkBars, {[styles.linkWeak]: quality < WEAK_LINK_PERCENT})}
+                className={classNames(styles.link, {[styles.linkWeak]: quality < WEAK_LINK_PERCENT})}
                 title={this.props.intl.formatMessage(messages.linkQuality, {quality})}
             >
-                {[1, 2, 3, 4].map(i => (
+                <span className={styles.linkBars}>
+                    {[1, 2, 3, 4].map(i => (
+                        <span
+                            key={i}
+                            className={classNames(styles.linkBar, {[styles.linkBarOn]: i <= bars})}
+                            style={{height: `${i * 25}%`}}
+                        />
+                    ))}
+                </span>
+                <span className={styles.linkText}>{`${Math.round(quality)}\u00a0%`}</span>
+            </span>
+        );
+    }
+
+    renderCoords (x, y, z) {
+        return (
+            <span className={styles.coords}>
+                {[['x', x], ['y', y], ['z', z]].map(([axis, value]) => (
                     <span
-                        key={i}
-                        className={classNames(styles.linkBar, {[styles.linkBarOn]: i <= bars})}
-                        style={{height: `${i * 25}%`}}
-                    />
+                        key={axis}
+                        className={styles.coord}
+                    >
+                        <span className={styles.coordAxis}>{axis}</span>
+                        {formatCoord(value)}
+                    </span>
                 ))}
             </span>
         );
     }
 
-    renderNumberBadge (number) {
+    /**
+     * @param {?number} number copter number, null for a factory copter
+     * @param {string} [readiness] adds the readiness dot: 'ready' | 'warning' | 'blocked'
+     * @returns {React.Element} coloured number badge
+     */
+    renderNumberBadge (number, readiness) {
+        const {intl} = this.props;
+        const title = readiness ? intl.formatMessage({
+            ready: messages.readyToFly, warning: messages.needsAttention, blocked: messages.cannotFly
+        }[readiness]) : null;
         return (
             <span
                 className={styles.numberBadge}
                 style={{backgroundColor: copterColor(number)}}
+                title={title}
             >
                 {number || '?'}
+                {readiness ? (
+                    <span className={classNames(styles.readiness, styles[`readiness_${readiness}`])}>
+                        {{ready: '✓', warning: '!', blocked: '✕'}[readiness]}
+                    </span>
+                ) : null}
             </span>
         );
     }
@@ -770,8 +943,9 @@ class QuadcopterPalleteComponent extends Component {
             <div
                 key={i}
                 className={classNames(styles.attention, styles[`attention_${notice.kind}`])}
+                role={notice.kind === 'danger' ? 'alert' : 'status'}
             >
-                <span>{notice.text}</span>
+                <span className={styles.attentionText}>{notice.text}</span>
                 {notice.action ? (
                     <button
                         type="button"
@@ -785,135 +959,265 @@ class QuadcopterPalleteComponent extends Component {
         ));
     }
 
+    /**
+     * Compact view: only the most important notice, so the list stays one line per copter.
+     * @param {Array<object>} notices from {@link copterAttention}
+     * @returns {?Array<React.Element>} notices to show
+     */
+    renderCardAttention (notices) {
+        if (!this.state.compact) return this.renderAttention(notices);
+        if (notices.length === 0) return null;
+        const top = notices.slice().sort((a, b) => NOTICE_RANK[a.kind] - NOTICE_RANK[b.kind])[0];
+        return this.renderAttention([top]);
+    }
+
+    renderMoreButton (menuFor) {
+        const {intl} = this.props;
+        return (
+            <button
+                type="button"
+                data-copter-menu-toggle
+                className={classNames(styles.iconButton, styles.moreButton,
+                    {[styles.iconButtonActive]: this.state.menuFor === menuFor})}
+                title={intl.formatMessage(messages.more)}
+                aria-label={intl.formatMessage(messages.more)}
+                aria-expanded={this.state.menuFor === menuFor}
+                onClick={() => this.toggleMenu(menuFor)}
+            />
+        );
+    }
+
     renderCopterMenu (copter) {
         const {intl, QCA} = this.props;
         const free = QCA.getFreeCopterNumbers();
+        // Number and factory settings are written into the copter by radio: connected and on the ground.
+        const canRewrite = copter.connected && !copter.flying;
+        const rewriteHint = canRewrite ? null : intl.formatMessage(messages.needsConnection);
+        const numbers = [copter.number].concat(free.filter(n => n !== copter.number));
+        const batteryMah = QCA.getCopterBattery(copter.id);
+        const confirming = this.state.confirmReset === copter.id;
+        const compact = this.state.compact;
+        const locked = Boolean(copter.supervisor && copter.supervisor.isLocked);
+        const canPowerOff = copter.connected && !copter.flying;
         return (
-            <div className={styles.menu}>
-                <label className={styles.menuRow}>
-                    <span>{intl.formatMessage(messages.changeNumber)}</span>
-                    <select
-                        value=""
-                        onChange={e => this.handleAssignNumber(copter, e.target.value)}
-                    >
-                        <option value="">—</option>
-                        {free.map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
+            <div
+                ref={this.setMenuRef}
+                className={styles.menu}
+            >
+                <div className={styles.menuTitle}>{intl.formatMessage(messages.copterSettings)}</div>
+                <label className={classNames(styles.menuRow, {[styles.menuRowDisabled]: copter.flying})}>
+                    <span>{intl.formatMessage(messages.useOnThisComputer)}</span>
+                    <input
+                        type="checkbox"
+                        checked
+                        disabled={copter.flying}
+                        onChange={() => this.handleToggleEnabled(copter)}
+                    />
                 </label>
-                <label className={styles.menuRow}>
+                <div
+                    className={classNames(styles.menuRow, {[styles.menuRowDisabled]: !canRewrite})}
+                    title={rewriteHint}
+                >
+                    <span>{intl.formatMessage(messages.numberLabel)}</span>
+                    {canRewrite && free.length > 0 ? (
+                        <span className={styles.menuSelect}>
+                            <RobboSelect
+                                // Uncontrolled: remount when the number changes outside.
+                                key={copter.number}
+                                defaultValue={copter.number}
+                                options={numbers.map(n => ({value: n, label: `№ ${n}`}))}
+                                matchTriggerWidth
+                                triggerAriaLabel={intl.formatMessage(messages.changeNumber)}
+                                onChange={e => this.handleAssignNumber(copter, e.target.value)}
+                            />
+                        </span>
+                    ) : (
+                        <span className={styles.menuValue}>{`№ ${copter.number}`}</span>
+                    )}
+                </div>
+                <div className={styles.menuRow}>
                     <span>{intl.formatMessage(messages.battery)}</span>
-                    <select
-                        value={QCA.getCopterBattery(copter.id)}
-                        onChange={e => this.handleBatteryChange(copter, e.target.value)}
+                    <span className={styles.menuSelect}>
+                        <RobboSelect
+                            key={batteryMah}
+                            defaultValue={batteryMah}
+                            options={QCA.getBatteryCapacities().map(mah => ({
+                                value: mah,
+                                label: intl.formatMessage(messages.batteryMah, {mah})
+                            }))}
+                            matchTriggerWidth
+                            triggerAriaLabel={intl.formatMessage(messages.battery)}
+                            onChange={e => this.handleBatteryChange(copter, e.target.value)}
+                        />
+                    </span>
+                </div>
+                <div className={styles.menuSeparator} />
+                {/* Only actions without a button in the copter row (compact view hides them). */}
+                {compact && !locked ? (
+                    <button
+                        type="button"
+                        className={styles.menuItem}
+                        onClick={() => this.handleRestart(copter)}
                     >
-                        {QCA.getBatteryCapacities().map(mah => (
-                            <option
-                                key={mah}
-                                value={mah}
-                            >
-                                {intl.formatMessage(messages.batteryMah, {mah})}
-                            </option>
-                        ))}
-                    </select>
-                </label>
+                        {intl.formatMessage(messages.restart)}
+                    </button>
+                ) : null}
+                {compact ? (
+                    <button
+                        type="button"
+                        className={styles.menuItem}
+                        disabled={!canPowerOff}
+                        title={canPowerOff ? null : rewriteHint}
+                        onClick={() => this.handleAskPowerOff(copter)}
+                    >
+                        {intl.formatMessage(messages.powerOff)}
+                    </button>
+                ) : null}
+                {confirming ? (
+                    <div className={styles.menuConfirm}>
+                        <span className={styles.menuConfirmText}>
+                            {intl.formatMessage(messages.factoryResetConfirm)}
+                        </span>
+                        <button
+                            type="button"
+                            className={classNames(styles.confirmButton, styles.confirmDanger)}
+                            onClick={() => this.handleFactoryReset(copter)}
+                        >
+                            {intl.formatMessage(messages.resetYes)}
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.confirmButton}
+                            onClick={() => this.setState({confirmReset: null})}
+                        >
+                            {intl.formatMessage(messages.cancel)}
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        type="button"
+                        className={classNames(styles.menuItem, styles.menuItemDanger)}
+                        disabled={!canRewrite}
+                        title={rewriteHint}
+                        onClick={() => this.setState({confirmReset: copter.id})}
+                    >
+                        {intl.formatMessage(messages.factoryReset)}
+                    </button>
+                )}
+                {compact ? null : <div className={styles.menuInfo}>{copter.uri}</div>}
+            </div>
+        );
+    }
+
+    renderPowerOffConfirm (copter) {
+        const {intl} = this.props;
+        const canPowerOff = copter.connected && !copter.flying;
+        return (
+            <div
+                className={classNames(styles.attention, styles.attention_danger)}
+                role="alert"
+            >
+                <span className={styles.attentionText}>
+                    {intl.formatMessage(messages.powerOffConfirm, {number: copter.number})}
+                </span>
                 <button
                     type="button"
-                    className={styles.menuItem}
-                    onClick={() => this.handleFactoryReset(copter)}
+                    className={classNames(styles.confirmButton, styles.confirmDanger)}
+                    disabled={!canPowerOff}
+                    onClick={() => this.handlePowerOff(copter)}
                 >
-                    {intl.formatMessage(messages.factoryReset)}
+                    {intl.formatMessage(messages.powerOffYes)}
                 </button>
-                <div className={styles.menuInfo}>{copter.uri}</div>
+                <button
+                    type="button"
+                    className={styles.confirmButton}
+                    onClick={() => this.setState({confirmPowerOff: null})}
+                >
+                    {intl.formatMessage(messages.cancel)}
+                </button>
             </div>
         );
     }
 
     renderCopterCard (copter) {
         const {intl} = this.props;
-        const sup = copter.supervisor;
-        const locked = Boolean(sup && sup.isLocked);
+        const compact = this.state.compact;
+        const name = intl.formatMessage(messages.copterNumber, {number: copter.number});
         if (!copter.enabled) {
             return (
                 <div key={copter.id} className={classNames(styles.card, styles.cardDisabled)}>
                     <div className={styles.cardRow}>
                         {this.renderNumberBadge(copter.number)}
-                        <input
-                            type="checkbox"
-                            className={styles.switch}
-                            checked={false}
-                            title={intl.formatMessage(messages.useOnThisComputer)}
-                            onChange={() => this.handleToggleEnabled(copter)}
-                        />
-                        <span className={styles.muted}>{intl.formatMessage(messages.notUsedHere)}</span>
+                        <label className={styles.cardMain}>
+                            <input
+                                type="checkbox"
+                                className={styles.switch}
+                                checked={false}
+                                onChange={() => this.handleToggleEnabled(copter)}
+                            />
+                            <span className={styles.muted}>{intl.formatMessage(messages.notUsedHere)}</span>
+                        </label>
                     </div>
                 </div>
             );
         }
-        const notices = this.copterAttention(copter);
-        const t = copter.telemetry;
+        const sup = copter.supervisor;
+        const locked = Boolean(sup && sup.isLocked);
+        const t = copter.telemetry || {};
+        const battery = copter.connected ? copter.battery : null;
         return (
             <div key={copter.id} className={styles.card}>
                 <div className={styles.cardRow}>
-                    {this.renderNumberBadge(copter.number)}
-                    <input
-                        type="checkbox"
-                        className={styles.switch}
-                        checked
-                        title={intl.formatMessage(messages.useOnThisComputer)}
-                        onChange={() => this.handleToggleEnabled(copter)}
-                    />
-                    {this.renderReadiness(copter)}
-                    {copter.connected ?
-                        this.renderBattery(copter.battery && copter.battery.percent, copter.battery) :
-                        <span className={styles.battery} />}
-                    <span className={classNames(styles.status, {[styles.statusFlying]: copter.flying})}>
-                        {this.copterStatus(copter)}
+                    {this.renderNumberBadge(copter.number, this.copterReadiness(copter))}
+                    <span className={styles.cardMain}>
+                        {compact ? null : <span className={styles.copterName}>{name}</span>}
+                        {this.renderStatus(this.copterStatusKind(copter), this.copterStatus(copter))}
                     </span>
-                    {this.state.compact ? null : (
-                        <span className={styles.coords}>
-                            {`${formatCoord(t.x)}  ${formatCoord(t.y)}  ${formatCoord(t.z)}`}
-                        </span>
-                    )}
-                    {this.state.compact ? null : this.renderLinkBars(copter.linkQuality)}
+                    {compact ? this.renderBattery(battery && battery.percent, battery) : null}
                     <span className={styles.cardActions}>
                         <button
                             type="button"
-                            className={styles.identifyButton}
+                            className={classNames(styles.iconButton, styles.identifyButton,
+                                {[styles.identifyColored]: compact})}
+                            style={compact ? {backgroundColor: copterColor(copter.number)} : null}
                             title={intl.formatMessage(messages.identify)}
                             aria-label={intl.formatMessage(messages.identify)}
                             disabled={!copter.connected}
                             onClick={() => this.props.QCA.copter(copter.id).identifyCopter()}
                         />
-                        <button
-                            type="button"
-                            className={classNames(styles.restartButton, {[styles.restartButtonBlinking]: locked})}
-                            title={intl.formatMessage(messages.restart)}
-                            aria-label={intl.formatMessage(messages.restart)}
-                            onClick={() => this.handleRestart(copter)}
-                        />
-                        <button
-                            type="button"
-                            className={styles.powerButton}
-                            title={intl.formatMessage(messages.powerOff)}
-                            aria-label={intl.formatMessage(messages.powerOff)}
-                            disabled={!copter.connected || copter.flying}
-                            onClick={() => this.handlePowerOff(copter)}
-                        />
-                        <button
-                            type="button"
-                            className={styles.moreButton}
-                            title={intl.formatMessage(messages.more)}
-                            aria-label={intl.formatMessage(messages.more)}
-                            onClick={() => this.setState(state => ({
-                                menuFor: state.menuFor === copter.id ? null : copter.id
-                            }))}
-                        >
-                            {'⋯'}
-                        </button>
+                        {compact && !locked ? null : (
+                            <button
+                                type="button"
+                                className={classNames(styles.iconButton, styles.restartButton,
+                                    {[styles.restartButtonBlinking]: locked})}
+                                title={intl.formatMessage(messages.restart)}
+                                aria-label={intl.formatMessage(messages.restart)}
+                                onClick={() => this.handleRestart(copter)}
+                            />
+                        )}
+                        {compact ? null : (
+                            <button
+                                type="button"
+                                className={classNames(styles.iconButton, styles.powerButton)}
+                                title={intl.formatMessage(messages.powerOff)}
+                                aria-label={intl.formatMessage(messages.powerOff)}
+                                disabled={!copter.connected || copter.flying}
+                                onClick={() => this.handleAskPowerOff(copter)}
+                            />
+                        )}
+                        {this.renderMoreButton(copter.id)}
                     </span>
                 </div>
+                {compact ? null : (
+                    <div className={styles.cardMetrics}>
+                        {this.renderBattery(battery && battery.percent, battery, true)}
+                        {this.renderLinkBars(copter.connected ? copter.linkQuality : null)}
+                        {this.renderCoords(t.x, t.y, t.z)}
+                    </div>
+                )}
                 {this.state.menuFor === copter.id ? this.renderCopterMenu(copter) : null}
-                {this.state.compact ? null : this.renderAttention(notices)}
+                {this.state.confirmPowerOff === copter.id ? this.renderPowerOffConfirm(copter) : null}
+                {this.renderCardAttention(this.copterAttention(copter))}
             </div>
         );
     }
@@ -944,10 +1248,12 @@ class QuadcopterPalleteComponent extends Component {
             <div key="new" className={classNames(styles.card, styles.cardNew)}>
                 <div className={styles.cardRow}>
                     {this.renderNumberBadge(null)}
-                    <span className={styles.newTitle}>{intl.formatMessage(messages.newCopter)}</span>
-                    {!copter.connected && !copter.numbering ? (
-                        <span className={styles.muted}>{intl.formatMessage(messages.newCopterWaiting)}</span>
-                    ) : null}
+                    <span className={styles.cardMain}>
+                        <span className={styles.copterName}>{intl.formatMessage(messages.newCopter)}</span>
+                        {!copter.connected && !copter.numbering ? (
+                            <span className={styles.muted}>{intl.formatMessage(messages.newCopterWaiting)}</span>
+                        ) : null}
+                    </span>
                 </div>
                 {this.renderAttention(notices)}
             </div>
@@ -955,35 +1261,49 @@ class QuadcopterPalleteComponent extends Component {
     }
 
     renderSimCopter (copter) {
+        const {intl} = this.props;
+        const compact = this.state.compact;
         const low = copter.batteryPercent < 20;
+        let readiness = 'ready';
+        if (copter.batteryPercent <= 0) readiness = 'blocked';
+        else if (low) readiness = 'warning';
         return (
             <div key={copter.id} className={styles.card}>
                 <div className={styles.cardRow}>
-                    {this.renderNumberBadge(copter.number)}
-                    {this.renderBattery(copter.batteryPercent)}
-                    <span className={classNames(styles.status, {[styles.statusFlying]: copter.flying})}>
-                        {this.props.intl.formatMessage(copter.flying ? messages.statusFlying : messages.statusGround)}
+                    {this.renderNumberBadge(copter.number, readiness)}
+                    <span className={styles.cardMain}>
+                        {compact ? null : (
+                            <span className={styles.copterName}>
+                                {intl.formatMessage(messages.copterNumber, {number: copter.number})}
+                            </span>
+                        )}
+                        {this.renderStatus(copter.flying ? 'flying' : 'ground',
+                            intl.formatMessage(copter.flying ? messages.statusFlying : messages.statusGround))}
                     </span>
-                    {this.state.compact ? null : (
-                        <span className={styles.coords}>
-                            {`${formatCoord(copter.x)}  ${formatCoord(copter.y)}  ${formatCoord(copter.z)}`}
+                    {compact ? this.renderBattery(copter.batteryPercent) : (
+                        <span className={styles.cardActions}>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="1"
+                                className={styles.chargeSlider}
+                                title={intl.formatMessage(messages.battery)}
+                                value={Math.round(copter.batteryPercent)}
+                                onChange={e => this.handleSimCharge(copter, e.target.value)}
+                            />
                         </span>
                     )}
-                    <span className={styles.cardActions}>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            className={styles.chargeSlider}
-                            value={Math.round(copter.batteryPercent)}
-                            onChange={e => this.handleSimCharge(copter, e.target.value)}
-                        />
-                    </span>
                 </div>
-                {low && !this.state.compact ? this.renderAttention([{
+                {compact ? null : (
+                    <div className={styles.cardMetrics}>
+                        {this.renderBattery(copter.batteryPercent, null, true)}
+                        {this.renderCoords(copter.x, copter.y, copter.z)}
+                    </div>
+                )}
+                {low ? this.renderAttention([{
                     kind: copter.batteryPercent <= 0 ? 'danger' : 'warning',
-                    text: this.props.intl.formatMessage(messages.attentionLowBattery)
+                    text: intl.formatMessage(messages.attentionLowBattery)
                 }]) : null}
             </div>
         );
@@ -994,9 +1314,33 @@ class QuadcopterPalleteComponent extends Component {
         if (blocks) blocks.getController(copter.number).simChargeTo(value);
     }
 
+    renderViewSwitch () {
+        const {intl} = this.props;
+        const compact = this.state.compact;
+        return (
+            <span className={styles.viewSwitch}>
+                <button
+                    type="button"
+                    className={classNames(styles.viewButton, styles.viewCompact, {[styles.viewButtonOn]: compact})}
+                    title={intl.formatMessage(messages.compactView)}
+                    aria-label={intl.formatMessage(messages.compactView)}
+                    aria-pressed={compact}
+                    onClick={compact ? null : this.handleToggleCompact}
+                />
+                <button
+                    type="button"
+                    className={classNames(styles.viewButton, styles.viewDetailed, {[styles.viewButtonOn]: !compact})}
+                    title={intl.formatMessage(messages.detailedView)}
+                    aria-label={intl.formatMessage(messages.detailedView)}
+                    aria-pressed={!compact}
+                    onClick={compact ? this.handleToggleCompact : null}
+                />
+            </span>
+        );
+    }
+
     renderHeaderTools () {
         const {intl, QCA} = this.props;
-        const compactLabel = intl.formatMessage(this.state.compact ? messages.detailedView : messages.compactView);
         if (this.state.simulated) {
             return (
                 <div className={styles.toolbar}>
@@ -1008,97 +1352,100 @@ class QuadcopterPalleteComponent extends Component {
                         {`+ ${intl.formatMessage(messages.addCopter)}`}
                     </button>
                     <span className={styles.spacer} />
-                    <button
-                        type="button"
-                        className={styles.textButton}
-                        onClick={this.handleToggleCompact}
-                    >
-                        {compactLabel}
-                    </button>
+                    {this.renderViewSwitch()}
                 </div>
             );
         }
         const group = QCA.getRadioGroup();
+        const compact = this.state.compact;
+        const inUse = this.state.copters.filter(c => c.connected && c.enabled && !c.isNew).length;
+        const searching = this.state.copters.some(c => c.searching && !c.connected);
         return (
             <div className={styles.toolbar}>
                 <button
                     type="button"
-                    className={styles.textButton}
+                    className={classNames(styles.textButton, styles.searchButton,
+                        {[styles.searchButtonBusy]: searching})}
+                    disabled={searching}
                     onClick={this.handleSearch}
                 >
-                    {intl.formatMessage(messages.search)}
-                </button>
-                <button
-                    type="button"
-                    className={styles.textButton}
-                    title={intl.formatMessage(messages.findLost)}
-                    disabled={Boolean(this.state.lost && this.state.lost.searching)}
-                    onClick={this.handleFindLost}
-                >
-                    {'?'}
-                </button>
-                <span className={styles.spacer} />
-                <button
-                    type="button"
-                    className={styles.textButton}
-                    onClick={this.handleToggleCompact}
-                >
-                    {compactLabel}
-                </button>
-                <button
-                    type="button"
-                    className={classNames(styles.textButton, styles.landAllButton)}
-                    title="Esc"
-                    onClick={this.handleLandAll}
-                >
-                    {intl.formatMessage(messages.landAll)}
+                    {intl.formatMessage(searching ? messages.searching : messages.search)}
                 </button>
                 {group === 1 ? null : (
-                    <span className={styles.muted}>{intl.formatMessage(messages.group, {group})}</span>
+                    <span className={styles.groupChip}>{intl.formatMessage(messages.group, {group})}</span>
                 )}
-                <button
-                    type="button"
-                    className={styles.moreButton}
-                    title={intl.formatMessage(messages.more)}
-                    aria-label={intl.formatMessage(messages.more)}
-                    onClick={() => this.setState(state => ({
-                        menuFor: state.menuFor === TOOLBAR_MENU ? null : TOOLBAR_MENU
-                    }))}
-                >
-                    {'⋯'}
-                </button>
+                <span className={styles.spacer} />
+                {this.renderViewSwitch()}
+                {compact ? this.renderMoreButton(TOOLBAR_MENU) : null}
+                {/* Nothing to land without copters (a copter that lost the link mid-air still counts). */}
+                {inUse > 0 || QCA.isAnyCopterAirborne() ? (
+                    <button
+                        type="button"
+                        // Compact view: the safety button gets its own full-width row.
+                        className={classNames(styles.textButton, styles.landAllButton,
+                            {[styles.landAllWide]: compact})}
+                        onClick={this.handleLandAll}
+                    >
+                        {intl.formatMessage(inUse > 1 ? messages.landAll : messages.land)}
+                    </button>
+                ) : null}
+                {compact ? null : this.renderMoreButton(TOOLBAR_MENU)}
             </div>
         );
     }
 
     /**
-     * Group (radio channel) of this computer: only needed with several computers in one room,
-     * so it lives in the toolbar menu.
+     * Group (radio channel) of this computer and the search on other channels: only needed with
+     * several computers in one room, so they live in the toolbar menu.
      * @returns {React.Element} the toolbar menu
      */
     renderToolbarMenu () {
         const {intl, QCA} = this.props;
         const channels = QCA.getRadioGroupChannels();
+        const airborne = QCA.isAnyCopterAirborne();
+        const searching = Boolean(this.state.lost && this.state.lost.searching);
+        const group = QCA.getRadioGroup();
         return (
-            <div className={classNames(styles.menu, styles.toolbarMenu)}>
-                <label className={styles.menuRow}>
+            <div
+                ref={this.setMenuRef}
+                className={classNames(styles.menu, styles.toolbarMenu)}
+            >
+                <div className={styles.menuTitle}>{intl.formatMessage(messages.paletteSettings)}</div>
+                <div className={classNames(styles.menuRow, {[styles.menuRowDisabled]: airborne})}>
                     <span>{intl.formatMessage(messages.groupSetting)}</span>
-                    <select
-                        value={QCA.getRadioGroup()}
-                        onChange={this.handleGroupChange}
-                        disabled={QCA.isAnyCopterAirborne()}
-                    >
-                        {channels.map((channel, i) => (
-                            <option
-                                key={channel}
-                                value={i + 1}
-                            >
-                                {intl.formatMessage(messages.group, {group: i + 1})}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <div className={styles.menuHint}>{intl.formatMessage(messages.groupHint)}</div>
+                    {airborne ? (
+                        <span className={styles.menuValue}>{intl.formatMessage(messages.group, {group})}</span>
+                    ) : (
+                        <span className={styles.menuSelect}>
+                            <RobboSelect
+                                // Uncontrolled: remount when the group changes.
+                                key={group}
+                                defaultValue={group}
+                                matchTriggerWidth
+                                options={channels.map((channel, i) => ({
+                                    value: i + 1,
+                                    label: intl.formatMessage(messages.group, {group: i + 1})
+                                }))}
+                                triggerAriaLabel={intl.formatMessage(messages.groupSetting)}
+                                onChange={this.handleGroupChange}
+                            />
+                        </span>
+                    )}
+                </div>
+                <div className={styles.menuHint}>
+                    {intl.formatMessage(airborne ? messages.groupLocked : messages.groupHint)}
+                </div>
+                <div className={styles.menuSeparator} />
+                <button
+                    type="button"
+                    className={classNames(styles.textButton, styles.searchButton, styles.menuButton)}
+                    disabled={searching || airborne}
+                    title={airborne ? intl.formatMessage(messages.groupLocked) : null}
+                    onClick={this.handleFindLost}
+                >
+                    {intl.formatMessage(messages.findLost)}
+                </button>
+                {this.renderLostCopters()}
             </div>
         );
     }
@@ -1330,7 +1677,8 @@ class QuadcopterPalleteComponent extends Component {
         return (
             <div
                 id="quadcopter-1"
-                className={classNames(sharedStyles.palette, sharedStyles.device_palette, styles.quadcopter_palette)}
+                className={classNames(sharedStyles.palette, styles.quadcopter_palette,
+                    this.state.compact ? styles.paletteCompact : styles.paletteDetailed)}
             >
                 <div
                     id="quadcopter-tittle"
@@ -1342,18 +1690,20 @@ class QuadcopterPalleteComponent extends Component {
                     <button
                         type="button"
                         className={sharedStyles.closeButton}
-                        aria-label="Close"
+                        aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
                         onClick={this.onThisWindowClose.bind(this)}
                     />
                 </div>
-                <div className={sharedStyles.body}>
-                    {this.renderHeaderTools()}
-                    {!this.state.simulated && this.state.menuFor === TOOLBAR_MENU ? this.renderToolbarMenu() : null}
-                    {this.renderSummary()}
+                <div className={classNames(sharedStyles.body, styles.body)}>
+                    <div className={styles.stickyTop}>
+                        {this.renderHeaderTools()}
+                        {!this.state.simulated && this.state.menuFor === TOOLBAR_MENU ? this.renderToolbarMenu() : null}
+                    </div>
+                    {this.state.compact ? null : this.renderSummary()}
                     {this.renderMiniMap()}
                     {this.renderSwarmHint()}
                     {this.renderGlobalAttention()}
-                    {this.renderLostCopters()}
                     <div className={styles.list}>{list}</div>
                 </div>
             </div>

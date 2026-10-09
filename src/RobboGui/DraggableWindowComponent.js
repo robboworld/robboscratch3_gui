@@ -6,13 +6,14 @@ import styles from './DraggableWindowComponent.css';
 import {ItemTypes} from './drag_constants';
 import {DragSource} from 'react-dnd';
 
-import {ActionDropDraggableWindow} from './actions/sensor_actions';
+import {ActionDropDraggableWindow, ActionTriggerDraggableWindow} from './actions/sensor_actions';
+import {registerEscapeClosable} from '../lib/robbo-popup-escape';
 import RobboPopupTransition from './RobboPopupTransition';
 import {
     ROBBO_POPUP_Z_INDEX_BASE,
     raiseRobboPopupZIndex
 } from '../lib/robbo-popup-z-index';
-import {getViewportCenteredCoords} from '../lib/robbo-popup-position';
+import {clampPopupToViewport, getViewportCenteredCoords} from '../lib/robbo-popup-position';
 import {
     attachEmptyDragPreview,
     collectPopupDragSource,
@@ -52,6 +53,23 @@ class DraggableWindowComponent extends Component {
         };
         this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
         this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
+        this.keepOnScreen = this.keepOnScreen.bind(this);
+    }
+
+    /**
+     * Fixed start coordinates and a smaller program window can leave a palette off screen
+     * (e.g. Arduino at x=900 on a 1024 px laptop): move it back inside.
+     */
+    keepOnScreen () {
+        const windowId = this.props.draggableWindowId;
+        const w = this.props.draggable_window[windowId];
+        const node = document.getElementById(`draggable_window_id-${windowId}`);
+        if (!w || !w.isShowing || !node || this.props.isDragging) return;
+        const rect = node.getBoundingClientRect();
+        const pos = clampPopupToViewport(w.position_top, w.position_left, rect.width, rect.height);
+        if (pos.top !== w.position_top || pos.left !== w.position_left) {
+            this.props.onCreateDraggableWindow(pos.top, pos.left, windowId);
+        }
     }
 
     componentDidUpdate (prevProps) {
@@ -60,12 +78,16 @@ class DraggableWindowComponent extends Component {
         const nextWindow = this.props.draggable_window[windowId];
         if (nextWindow && prevWindow && !prevWindow.isShowing && nextWindow.isShowing) {
             this.setState({popupZIndex: raiseRobboPopupZIndex()});
+            // After layout: the size is known only once the window is shown.
+            window.requestAnimationFrame(this.keepOnScreen);
         }
         handlePopupDragFollowLifecycle(this, prevProps, this.props.isDragging);
     }
 
     componentWillUnmount () {
         stopPopupDragFollow(this);
+        window.removeEventListener('resize', this.keepOnScreen);
+        if (this.unregisterEscape) this.unregisterEscape();
     }
 
     handlePopupMouseDown () {
@@ -94,6 +116,15 @@ class DraggableWindowComponent extends Component {
 
     componentDidMount () {
         attachEmptyDragPreview(this.props.connectDragPreview);
+        window.addEventListener('resize', this.keepOnScreen);
+        this.unregisterEscape = registerEscapeClosable({
+            isOpen: () => {
+                const w = this.props.draggable_window[this.props.draggableWindowId];
+                return Boolean(w && w.isShowing);
+            },
+            getZIndex: () => this.state.popupZIndex,
+            close: () => this.props.onCloseDraggableWindow(this.props.draggableWindowId)
+        });
         const coords = this._resolveMountCoords();
         if (coords) {
             this.props.onCreateDraggableWindow(coords.top, coords.left, this.props.draggableWindowId);
@@ -155,6 +186,9 @@ const mapStateToProps = state => ({
 const mapDispatchToProps = dispatch => ({
     onCreateDraggableWindow: (top, left, draggable_window_id) => {
         dispatch(ActionDropDraggableWindow(top, left, draggable_window_id));
+    },
+    onCloseDraggableWindow: draggable_window_id => {
+        dispatch(ActionTriggerDraggableWindow(draggable_window_id));
     }
 });
 

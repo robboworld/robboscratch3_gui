@@ -97,11 +97,16 @@
     background-color: rgba(0, 175, 65, 0.12);
 }
 
+.optionActive {
+    background-color: rgba(0, 175, 65, 0.12);
+}
+
 .optionSelected {
     background-color: rgba(0, 175, 65, 0.18);
     font-weight: bold;
 }
 
+.optionSelected.optionActive,
 .optionSelected:hover {
     background-color: rgba(0, 175, 65, 0.22);
 }

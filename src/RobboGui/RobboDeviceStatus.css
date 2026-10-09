@@ -25,3 +25,44 @@
     padding: 6px 8px;
     color: $text-primary;
 }
+
+/*
+ * Firmware flashing progress (lib/flash-status-phase.js): a bar under the phase text.
+ * Known percent — width from --flash-progress; unknown — a moving stripe.
+ */
+:global(.robbo_flash_progress) {
+    position: relative;
+    padding-bottom: 12px;
+}
+
+:global(.robbo_flash_progress)::after {
+    content: "";
+    position: absolute;
+    right: 8px;
+    bottom: 5px;
+    left: 8px;
+    height: 4px;
+    border-radius: 2px;
+    background:
+        linear-gradient(90deg, rgba(0, 175, 65, 0.85), rgba(0, 175, 65, 0.85)) 0 0 / 30% 100% no-repeat,
+        rgba(0, 0, 0, 0.08);
+    animation: robbo-flash-indeterminate 1.4s ease-in-out infinite;
+}
+
+:global(.robbo_flash_progress_known)::after {
+    background:
+        linear-gradient(90deg, rgba(0, 175, 65, 0.85), rgba(0, 175, 65, 0.85)) 0 0 / var(--flash-progress, 0%) 100% no-repeat,
+        rgba(0, 0, 0, 0.08);
+    animation: none;
+}
+
+@keyframes robbo-flash-indeterminate {
+    0% { background-position: -30% 0, 0 0; }
+    100% { background-position: 130% 0, 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :global(.robbo_flash_progress)::after {
+        animation: none;
+    }
+}

@@ -24,8 +24,7 @@ import {
 import {
   showTransientButtonFeedback,
   clearTransientButtonFeedbackTimer,
-  isTransientButtonFeedbackActive,
-  renderTransientActionLabel
+  isTransientButtonFeedbackActive
 } from '../lib/transient-button-feedback';
 import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
 import {getErrorJournalFilePath, getErrorJournalText} from '../lib/error-journal';
@@ -33,6 +32,7 @@ import {
   premiumAutoUpdateCheckThunk,
   premiumStartUpdateThunk
 } from './actions/licenseActions';
+import {closeMessage} from './sensor-type-messages';
 
 const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
@@ -364,6 +364,7 @@ class AboutWindowComponent extends Component {
             className={classNames(styles.about_update_icon, styles.about_update_icon_error)}
             aria-hidden="true"
           />
+          <span className={styles.about_update_error_text}>{errorText}</span>
         </button>
       );
     }
@@ -714,7 +715,8 @@ class AboutWindowComponent extends Component {
           <button
             type="button"
             className={sharedStyles.closeButton}
-            aria-label="Close"
+            aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
             onClick={this.onThisWindowClose}
           />
         </div>
@@ -741,24 +743,6 @@ class AboutWindowComponent extends Component {
                 </div>
                 {updateIndicator}
               </div>
-              <button
-                type="button"
-                id="about-window-copy-system-info"
-                className={classNames(
-                  formStyles.action_button,
-                  formStyles.footer_action_button,
-                  styles.about_button
-                )}
-                onClick={() => this.onCopySystemInfoClick(systemInfoText)}
-              >
-                {renderTransientActionLabel({
-                  feedbackActive: copyFeedbackActive,
-                  defaultMessage: messages.copy_system_info,
-                  successMessage: messages.copied_to_clipboard,
-                  intl,
-                  labelClassName: formStyles.action_button_label
-                })}
-              </button>
               {!profilingEnabled ? (
                 <button
                   type="button"
@@ -851,8 +835,19 @@ class AboutWindowComponent extends Component {
 
           {infoRows.length > 0 ? (
             <div className={classNames(formStyles.section, styles.about_section)}>
-              <h3 className={classNames(formStyles.section_title, styles.about_section_title)}>
-                {intl.formatMessage(messages.system_section)}
+              <h3 className={classNames(formStyles.section_title, styles.about_section_title, styles.about_title_with_action)}>
+                <span>{intl.formatMessage(messages.system_section)}</span>
+                {/* Copies the system information and the error journal for support. */}
+                <button
+                  type="button"
+                  id="about-window-copy-system-info"
+                  className={classNames(styles.about_copy_icon_button, {
+                    [styles.about_copy_icon_done]: copyFeedbackActive
+                  })}
+                  title={intl.formatMessage(copyFeedbackActive ? messages.copied_to_clipboard : messages.copy_system_info)}
+                  aria-label={intl.formatMessage(copyFeedbackActive ? messages.copied_to_clipboard : messages.copy_system_info)}
+                  onClick={() => this.onCopySystemInfoClick(systemInfoText)}
+                />
               </h3>
               <div className={styles.about_info_list}>
                 {infoRows.map(row => this.renderInfoRow(row.id, row.label, row.value))}

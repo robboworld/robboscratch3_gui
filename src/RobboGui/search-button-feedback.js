@@ -5,9 +5,21 @@ const EVENT_SEARCH_IDLE = 'rs3-search-idle';
 /** One connected/error label per search attempt (ignore duplicate state 7→8, multiple rows). */
 let sessionTerminalFeedbackSent = false;
 
+const EVENT_SEARCH_STARTED = 'rs3-search-started';
+
 /** Call when a new device search starts (menu bar or DCA scan). */
 export function beginSearchButtonFeedbackSession () {
     sessionTerminalFeedbackSent = false;
+    document.dispatchEvent(new CustomEvent(EVENT_SEARCH_STARTED));
+}
+
+/**
+ * @param {function} handler called when a search session starts (menu bar search)
+ * @returns {function} unsubscribe
+ */
+export function subscribeSearchStarted (handler) {
+    document.addEventListener(EVENT_SEARCH_STARTED, handler);
+    return () => document.removeEventListener(EVENT_SEARCH_STARTED, handler);
 }
 
 /**

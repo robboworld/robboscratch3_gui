@@ -30,10 +30,8 @@ export function setPaletteSensorTextValue (valueEl, text, colorClassName) {
   if (colorClassName) {
     valueEl.classList.remove(colorClassName);
   }
-  valueEl.style.removeProperty('border');
-  valueEl.style.removeProperty('background-color');
-  valueEl.style.removeProperty('min-width');
-  valueEl.style.removeProperty('min-height');
+  valueEl.style.removeProperty('--sensor-color');
+  valueEl.removeAttribute('title');
   valueEl.textContent = text == null ? '---' : String(text);
 }
 
@@ -43,13 +41,14 @@ export function setPaletteSensorTextValue (valueEl, text, colorClassName) {
  * @param {number} g
  * @param {number} b
  * @param {string} colorClassName CSS module class for color swatch mode
+ * @param {string} [label] colour name shown next to the swatch
  */
-export function setPaletteSensorColorValue (valueEl, r, g, b, colorClassName) {
+export function setPaletteSensorColorValue (valueEl, r, g, b, colorClassName, label) {
   if (!valueEl || !colorClassName) {
     return;
   }
-  valueEl.textContent = '';
   valueEl.classList.add(colorClassName);
-  valueEl.style.border = '1px solid rgba(0, 0, 0, 0.25)';
-  valueEl.style.backgroundColor = `rgb(${r},${g},${b})`;
+  valueEl.style.setProperty('--sensor-color', `rgb(${r},${g},${b})`);
+  valueEl.textContent = label || '';
+  valueEl.title = `R ${r} · G ${g} · B ${b}`;
 }

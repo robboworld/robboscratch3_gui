@@ -32,6 +32,7 @@ import {
   isTransientButtonFeedbackActive,
   renderTransientActionLabel
 } from '../lib/transient-button-feedback';
+import {closeMessage} from './sensor-type-messages';
 
 const APPLY_FEEDBACK_TOKEN = 'applied';
 const APPLY_BUTTON_FEEDBACK_KEY = 'applyButtonFeedback';
@@ -92,6 +93,11 @@ const messages = defineMessages({
     id: 'gui.ColorCorrectorTable.title',
     description: 'Color corrector window title',
     defaultMessage: 'Color corrector {sensorNumber}'
+  },
+  mbright: {
+      id: 'gui.ColorCorrectorTable.bright',
+      description: 'Color corrector column: brightness',
+      defaultMessage: 'Bright'
   },
   mautocor: {
       id: 'gui.ColorCorrectorTable.auto_correction',
@@ -813,7 +819,8 @@ class ColorCorrectorTableComponent extends Component {
 								<button
 										type="button"
 										className={sharedStyles.closeButton}
-										aria-label="Close"
+										aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
 										onClick={this.onThisWindowClose}
 								/>
 						</div>
@@ -983,7 +990,7 @@ class ColorCorrectorTableComponent extends Component {
 
 
 																	)} >
-																			Bright
+																			{this.props.intl.formatMessage(messages.mbright)}
 
 																</div>
 

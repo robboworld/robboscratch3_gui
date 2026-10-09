@@ -79,6 +79,26 @@ const messages = defineMessages({
         description: ' ',
         defaultMessage: 'Disable laboratory external sensors'
     }, 
+    robot_sim: {
+        id: 'gui.RobboMenu.robot_sim',
+        description: 'Menu checkbox: robot simulation is on when checked',
+        defaultMessage: 'Robot simulation'
+    },
+    copter_sim: {
+        id: 'gui.RobboMenu.copter_sim',
+        description: 'Menu checkbox: copter simulation is on when checked',
+        defaultMessage: 'Copter simulation'
+    },
+    extension_pack_toggle: {
+        id: 'gui.RobboMenu.extension_pack_toggle',
+        description: 'Menu checkbox: extended robot sensor pack is on when checked',
+        defaultMessage: 'Extended robot sensor pack'
+    },
+    lab_ext_sensors_toggle: {
+        id: 'gui.RobboMenu.lab_ext_sensors_toggle',
+        description: 'Menu checkbox: laboratory external sensors are on when checked',
+        defaultMessage: 'Laboratory external sensors'
+    },
     trigger_logging:{
 
       id: 'gui.RobboMenu.trigger_logging',
@@ -97,7 +117,7 @@ const messages = defineMessages({
 
       id: 'gui.RobboMenu.trigger_settings_window',
       description: ' ',
-      defaultMessage: 'Settings'
+      defaultMessage: 'Device settings'
 
     },
     trigger_about_window:{
@@ -193,7 +213,6 @@ class RobboMenu extends Component {
   constructor(){
     super();
 
-    this.is_lab_ext_enabled = false;
     this.state = {
       menuCoords: null,
       popupZIndex: ROBBO_POPUP_Z_INDEX_BASE
@@ -202,7 +221,69 @@ class RobboMenu extends Component {
     this.boundUpdateMenuCoords = this.updateMenuCoords.bind(this);
     this.handlePopupMouseDown = this.handlePopupMouseDown.bind(this);
     this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
+    this.handleKeyDown = this.handleKeyDown.bind(this);
 
+  }
+
+  /** The menu closes after opening a window (toggles stay open to show the new check mark). */
+  closeMenu () {
+    if (this.props.robbo_menu.isShowing) this.props.onTriggerRobboMenu();
+  }
+
+  /** Escape closes, arrows move between the items (WAI-ARIA menu). */
+  handleKeyDown (event) {
+    if (!this.props.robbo_menu.isShowing) return;
+    if (event.key === 'Escape') {
+      // The menu takes this Escape: the window under it stays open.
+      event.preventDefault();
+      this.closeMenu();
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const menu = document.getElementById('robbo-menu');
+    if (!menu) return;
+    const items = Array.from(menu.querySelectorAll('[role^="menuitem"]'));
+    if (!items.length) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement);
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    const next = current === -1 ? (step > 0 ? 0 : items.length - 1) : (current + step + items.length) % items.length;
+    items[next].focus();
+  }
+
+  renderItem (id, label, onClick, checked) {
+    const isToggle = typeof checked === 'boolean';
+    return (
+      <button
+        type="button"
+        id={id}
+        role={isToggle ? 'menuitemcheckbox' : 'menuitem'}
+        aria-checked={isToggle ? checked : null}
+        className={styles.robbo_menu_item}
+        onClick={onClick}
+      >
+        {isToggle ? (
+          <span
+            className={classNames(styles.check, {[styles.checkOn]: checked})}
+            aria-hidden="true"
+          >
+            {checked ? '✓' : ''}
+          </span>
+        ) : null}
+        <span>{label}</span>
+      </button>
+    );
+  }
+
+  /**
+   * @param {function} action opens a window
+   * @returns {function} click handler that also closes the menu
+   */
+  openAndClose (action) {
+    return () => {
+      action();
+      this.closeMenu();
+    };
   }
 
   _handleTransitionEntered () {
@@ -213,6 +294,7 @@ class RobboMenu extends Component {
   componentDidMount(){
 
        document.addEventListener('click', this.boundCloseRobboMenu);
+       document.addEventListener('keydown', this.handleKeyDown);
        window.addEventListener('resize', this.boundUpdateMenuCoords);
 
   }
@@ -230,6 +312,7 @@ class RobboMenu extends Component {
 
   componentWillUnmount(){
     document.removeEventListener('click', this.boundCloseRobboMenu);
+    document.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('resize', this.boundUpdateMenuCoords);
   }
 
@@ -363,8 +446,6 @@ class RobboMenu extends Component {
     }
     const LCA = this.props.VM && this.props.VM.getLCA();
     this.props.onTriggerLabExtSensors(LCA);
-
-    this.is_lab_ext_enabled = !this.is_lab_ext_enabled;
 
   }
 
@@ -572,6 +653,7 @@ class RobboMenu extends Component {
   const isCopterSimActive = runtime ? runtime.sim_copter_ac === true : this.props.settings.is_copter_sim_activated;
   const isExtensionPackActivated = this.props.extension_pack.is_extension_pack_activated === true;
   const isMenuShowing = this.props.robbo_menu.isShowing;
+  const intl = this.props.intl;
 
   return (
       <RobboPopupTransition
@@ -580,6 +662,7 @@ class RobboMenu extends Component {
       >
       <div
            id="robbo-menu"
+           role="menu"
            className={styles.robbo_menu}
            style={{
              ...(this.state.menuCoords || {}),
@@ -589,128 +672,40 @@ class RobboMenu extends Component {
            onMouseDown={isMenuShowing ? this.handlePopupMouseDown : undefined}
       >
 
-          <div id="trigger-sim-en" onClick={this.triggerSimEn.bind(this)} className={classNames(
-                        {[styles.robbo_menu_item]: true}
-                      )}>{isRobotSimActive ? this.props.intl.formatMessage(messages.sim_disable) : this.props.intl.formatMessage(messages.sim_enable)}</div>
-
-          <div id="trigger-copter-sim-en" onClick={this.triggerCopterSimEn.bind(this)} className={classNames(
-                        {[styles.robbo_menu_item]: true}
-                      )}>{isCopterSimActive ? this.props.intl.formatMessage(messages.copter_sim_disable) : this.props.intl.formatMessage(messages.copter_sim_enable)}</div>
+          {this.renderItem('trigger-sim-en', intl.formatMessage(messages.robot_sim),
+            this.triggerSimEn.bind(this), isRobotSimActive)}
+          {this.renderItem('trigger-copter-sim-en', intl.formatMessage(messages.copter_sim),
+            this.triggerCopterSimEn.bind(this), isCopterSimActive)}
 
           <hr className={styles.hrDevider}/>
 
-          <div id="trigger-extension-pack" onClick={this.triggerExtensionPack.bind(this)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{ (this.props.extension_pack.is_extension_pack_activated)?this.props.intl.formatMessage(messages.extension_pack_disable):this.props.intl.formatMessage(messages.extension_pack_enable)  }</div>
-
-                        <div id="trigger-lab-ext-sensors" onClick={this.triggerLabExtSensors.bind(this)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{ (this.is_lab_ext_enabled)?this.props.intl.formatMessage(messages.lab_ext_sensors_disable):this.props.intl.formatMessage(messages.lab_ext_sensors_enable)  } </div>
-
-                 {/*   <div id="trigger-logging" onClick={this.triggerLogging.bind(this)} className={classNames(
-
-                      {[styles.robbo_menu_item]: true}
-
-                    )}> {this.props.intl.formatMessage(messages.trigger_logging)} </div> */}
-
-                {/*  <div id="trigger-firmware-flasher" onClick={this.triggerFirmwareFlasher.bind(this)} className={classNames(
-
-                      {[styles.robbo_menu_item]: true}
-
-                    )}> {this.props.intl.formatMessage(messages.trigger_firmware_flasher)} </div> */}
-
-
-
+          {this.renderItem('trigger-extension-pack', intl.formatMessage(messages.extension_pack_toggle),
+            this.triggerExtensionPack.bind(this), isExtensionPackActivated)}
+          {this.renderItem('trigger-lab-ext-sensors', intl.formatMessage(messages.lab_ext_sensors_toggle),
+            this.triggerLabExtSensors.bind(this), this.props.settings.is_lab_ext_enabled === true)}
 
           {isExtensionPackActivated ? (
             <React.Fragment>
-                  <hr className={styles.hrDevider}/>
-
-          <div id="trigger-color-corrector-table-0" onClick={this.triggerColorCorrectorTable.bind(this,0)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}> {this.props.intl.formatMessage(messages.color_sensor_correction1)} </div>
-
-          <div id="trigger-color-corrector-table-1" onClick={this.triggerColorCorrectorTable.bind(this,1)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{this.props.intl.formatMessage(messages.color_sensor_correction2)} </div>
-
-          <div id="trigger-color-corrector-table-2" onClick={this.triggerColorCorrectorTable.bind(this,2)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{this.props.intl.formatMessage(messages.color_sensor_correction3)} </div>
-
-          <div id="trigger-color-corrector-table-3" onClick={this.triggerColorCorrectorTable.bind(this,3)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}> {this.props.intl.formatMessage(messages.color_sensor_correction4)} </div>
-
-          <div id="trigger-color-corrector-table-4" onClick={this.triggerColorCorrectorTable.bind(this,4)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{this.props.intl.formatMessage(messages.color_sensor_correction5)} </div>
+              <hr className={styles.hrDevider}/>
+              {[0, 1, 2, 3, 4].map(index => (
+                <React.Fragment key={index}>
+                  {this.renderItem(`trigger-color-corrector-table-${index}`,
+                    intl.formatMessage(messages[`color_sensor_correction${index + 1}`]),
+                    this.openAndClose(() => this.triggerColorCorrectorTable(index)))}
+                </React.Fragment>
+              ))}
             </React.Fragment>
           ) : null}
 
-          <hr className={styles.hrDevider}/>    
+          <hr className={styles.hrDevider}/>
 
-               {/*  <div id="enable-profiling" onClick={this.enableProfiling.bind(this)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{"Enable profiling"} </div>
-
-                 <div id="disable-profiling" onClick={this.disableProfiling.bind(this)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{"Disable profiling"} </div>     
-
-             <div id="trigger-profiler-window" onClick={this.triggerProfilerWindow.bind(this)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{"Trigger profiler window"} </div>   */}  
-
-           {/*  <div id="trigger-iot-connection" onClick={this.triggerIotConnectionWindow.bind(this)} className={classNames(
- 
-                         { [styles.robbo_menu_item]: true }
- 
-                        )}>{this.props.intl.formatMessage(messages.iot_connection)}</div>   */}  
-
-
-
-               <div id="trigger-settings-window" onClick={this.triggerSettingsWindow.bind(this)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{this.props.intl.formatMessage(messages.trigger_settings_window)} </div>           
-
-              {LICENSE_UI_ENABLED ? (
-              <div id="trigger-license-window" onClick={this.triggerLicenseWindow.bind(this)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{this.props.intl.formatMessage(messages.trigger_license_window)} </div>
-              ) : null}
-
-
-              <div id="trigger-about-window" onClick={this.triggerAboutWindow.bind(this)} className={classNames(
-
-                        {[styles.robbo_menu_item]: true}
-
-                      )}>{this.props.intl.formatMessage(messages.trigger_about_window)} </div>
-
+          {this.renderItem('trigger-settings-window', intl.formatMessage(messages.trigger_settings_window),
+            this.openAndClose(this.triggerSettingsWindow.bind(this)))}
+          {LICENSE_UI_ENABLED ? this.renderItem('trigger-license-window',
+            intl.formatMessage(messages.trigger_license_window),
+            this.openAndClose(this.triggerLicenseWindow.bind(this))) : null}
+          {this.renderItem('trigger-about-window', intl.formatMessage(messages.trigger_about_window),
+            this.openAndClose(this.triggerAboutWindow.bind(this)))}
 
       </div>
       </RobboPopupTransition>

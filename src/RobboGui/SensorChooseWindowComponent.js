@@ -7,6 +7,9 @@ import  styles from './SensorChooseWindowComponent.css';
 import sharedStyles from './DevicePaletteShared.css';
 
 import PropTypes from 'prop-types';
+import {defineMessages, injectIntl} from 'react-intl';
+import {closeMessage, sensorTypeMessages} from './sensor-type-messages';
+import {registerEscapeClosable} from '../lib/robbo-popup-escape';
 import { ItemTypes } from './drag_constants';
 import { DragSource } from 'react-dnd';
 import {
@@ -23,6 +26,24 @@ import {
     stopPopupDragFollow,
     wrapPopupDragSource
 } from '../lib/robbo-popup-drag-position';
+
+const messages = defineMessages({
+    title: {id: 'gui.RobboGui.SensorChoose.title', description: 'Sensor type window title', defaultMessage: 'Sensor type'}
+});
+
+const ROBOT_SENSORS = ['nosensor', 'line', 'led', 'light', 'touch', 'proximity', 'ultrasonic', 'color'];
+const LAB_SENSORS = ['nosensor', 'clamps', 'temperature'];
+
+/**
+ * @param {string} deviceName 'robot' | 'lab'
+ * @param {string} callerType 'ANALOG' | 'DIGITAL'
+ * @returns {Array<string>} sensors that fit the port
+ */
+const sensorChoices = (deviceName, callerType) => {
+    if (deviceName === 'robot') return ROBOT_SENSORS;
+    // A digital lab port cannot read the temperature sensor.
+    return callerType === 'DIGITAL' ? LAB_SENSORS.filter(name => name !== 'temperature') : LAB_SENSORS;
+};
 
 const SensorChooseWindowSource = wrapPopupDragSource({
     beginDrag () {
@@ -60,10 +81,19 @@ class SensorChooseWindowComponent extends Component {
 
   componentDidMount () {
     attachEmptyDragPreview(this.props.connectDragPreview);
+    this.unregisterEscape = registerEscapeClosable({
+      isOpen: () => this.props.isShowing,
+      getZIndex: () => this.state.popupZIndex,
+      close: () => this.props.onClose()
+    });
   }
 
   componentDidUpdate (prevProps) {
-    if (!prevProps.isShowing && this.props.isShowing) {
+    // Clicking another port raises its palette first: the window must come back on top.
+    const switched = prevProps.CallerSensorId !== this.props.CallerSensorId ||
+      prevProps.SensorCallerDeviceName !== this.props.SensorCallerDeviceName ||
+      prevProps.top !== this.props.top || prevProps.left !== this.props.left;
+    if (this.props.isShowing && (!prevProps.isShowing || switched)) {
       this.setState({popupZIndex: raiseRobboPopupZIndex()});
     }
     handlePopupDragFollowLifecycle(this, prevProps, this.props.isDragging);
@@ -71,6 +101,7 @@ class SensorChooseWindowComponent extends Component {
 
   componentWillUnmount () {
     stopPopupDragFollow(this);
+    if (this.unregisterEscape) this.unregisterEscape();
   }
 
   handlePopupMouseDown () {
@@ -88,11 +119,8 @@ class SensorChooseWindowComponent extends Component {
       this.state.dragFollowLeft
     );
 
-    //let showing_state = isShowing? styles.sensor_choose_window.window_show: styles.sensor_choose_window.window_hide;
-  //  let final_state = isDragging? styles.sensor_choose_window.window_show.window_drag:showing_state;
-    var i = 0;
-
-
+             const sensorNames = sensorChoices(SensorCallerDeviceName, CallerSensorType);
+             const intl = this.props.intl;
 
              return (
                 <RobboPopupTransition
@@ -108,93 +136,43 @@ class SensorChooseWindowComponent extends Component {
                               left: `${position.left}px`,
                               zIndex: isShowing ? this.state.popupZIndex : undefined
                               }}
+                        role="dialog"
+                        aria-label={intl.formatMessage(messages.title)}
                         aria-hidden={!isShowing}
                         onMouseDown={isShowing ? this.handlePopupMouseDown : undefined}
                 >
 
                   <div className={sharedStyles.header}>
                       <span className={sharedStyles.headerTitle}>
-                          Sensor type
+                          {intl.formatMessage(messages.title)}
                       </span>
+                      <button
+                          type="button"
+                          className={sharedStyles.closeButton}
+                          aria-label={intl.formatMessage(closeMessage)}
+                          onClick={this.props.onClose}
+                      />
                   </div>
 
                   <div className={classNames(sharedStyles.body, styles.sensor_choose_window_components_block)}>
-
-                    {
-
-
-                      (() => {
-
-                        let elements = [];
-                        let sensor_names = (SensorCallerDeviceName == "robot")? ["nosensor","line","led","light","touch","proximity","ultrasonic","color"]:["nosensor","clamps","temperature"];
-
-                      //  console.log("SensorCallerDeviceName: " + SensorCallerDeviceName + " CallerSensorType: " + CallerSensorType)
-
-                        if ((SensorCallerDeviceName !== "robot") && (CallerSensorType == "DIGITAL")) {
-
-                              sensor_names = sensor_names.filter(
-
-                                  (element,index) => {
-
-                                    //  console.log("element: " + element);
-                                        return  (element !== "temperature")
-                                  }
-
-                              );
-
-                        }
-
-                           sensor_names.map((sensor_name, index) =>
-
-                                {
-
-                                  elements.push(<SensorChooseWindowComponentElement deviceName={`${SensorCallerDeviceName}`} sensorName={`${sensor_name}`} key={`SensorChooseWindowComponentElement-${index}`} sensorPictureUrl={`./static/robbo_assets/32/${SensorCallerDeviceName}_sensor_${sensor_name}.png`}
-                                    CallerSensorId={CallerSensorId}/>);
-
-
-                                });
-
-
-
-
-
-
-
-
-
-
-                        return elements;
-
-                      })()
-
-
-
-
-                    }
-
-
-
-
+                    {sensorNames.map(sensorName => (
+                      <SensorChooseWindowComponentElement
+                        key={`${SensorCallerDeviceName}-${sensorName}`}
+                        deviceName={SensorCallerDeviceName}
+                        sensorName={sensorName}
+                        label={intl.formatMessage(sensorTypeMessages[sensorName])}
+                        selected={sensorName === this.props.currentSensorName}
+                        sensorPictureUrl={`./static/robbo_assets/32/${SensorCallerDeviceName}_sensor_${sensorName}.png`}
+                        CallerSensorId={CallerSensorId}
+                      />
+                    ))}
                   </div>
-
-
 
                 </div>
                 )}
                 </RobboPopupTransition>
             );
-
-
-
-
-
-
-
-    };
-
-
-
-
+    }
   }
 
 
@@ -206,9 +184,31 @@ class SensorChooseWindowComponent extends Component {
     left: PropTypes.number.isRequired,
     CallerSensorId: PropTypes.number.isRequired,
     SensorCallerDeviceName: PropTypes.string.isRequired,
-    CallerSensorType: PropTypes.string.isRequired
+    CallerSensorType: PropTypes.string.isRequired,
+    currentSensorName: PropTypes.string,
+    onClose: PropTypes.func.isRequired
 
   };
 
 
-export default DragSource(ItemTypes.SENSOR_CHOOSE_WINDOW, SensorChooseWindowSource, collect)(SensorChooseWindowComponent);
+/** Sensor now set on the calling port: highlighted in the window. */
+const findCurrentSensorName = (state, ownProps) => {
+    const list = ownProps.SensorCallerDeviceName === 'robot' ?
+        state.scratchGui.robot_sensors :
+        state.scratchGui.lab_external_sensors;
+    const sensor = (list || []).find(item => item.sensor_id === ownProps.CallerSensorId);
+    return sensor ? sensor.sensor_name : null;
+};
+
+const mapStateToProps = (state, ownProps) => ({
+    currentSensorName: findCurrentSensorName(state, ownProps)
+});
+
+const mapDispatchToProps = dispatch => ({
+    onClose: () => dispatch({type: 'HIDE_SENSOR_CHOOSE_WINDOW'})
+});
+
+export default injectIntl(connect(
+    mapStateToProps,
+    mapDispatchToProps
+)(DragSource(ItemTypes.SENSOR_CHOOSE_WINDOW, SensorChooseWindowSource, collect)(SensorChooseWindowComponent)));

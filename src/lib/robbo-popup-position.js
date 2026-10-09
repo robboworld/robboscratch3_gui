@@ -38,3 +38,28 @@ export function getCenteredPopupInitialCoords (size) {
     const {left, top} = getViewportCenteredCoords(size.width, size.height);
     return [left, top];
 }
+
+/** Part of a popup that must stay on screen when it is larger than the viewport (header to drag it back). */
+const POPUP_MIN_VISIBLE = 48;
+
+/**
+ * Keep a popup inside the viewport: whole when it fits, otherwise its top-left corner
+ * (the header, to drag it) stays on screen.
+ * @param {number} top
+ * @param {number} left
+ * @param {number} width popup width (0 when unknown)
+ * @param {number} height popup height (0 when unknown)
+ * @param {number} [margin=8]
+ * @returns {{top: number, left: number}} clamped position
+ */
+export function clampPopupToViewport (top, left, width, height, margin = 8) {
+    if (typeof window === 'undefined') return {top, left};
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const maxLeft = Math.max(margin, vw - Math.max(width, POPUP_MIN_VISIBLE) - margin);
+    const maxTop = Math.max(margin, vh - Math.max(Math.min(height, vh - (margin * 2)), POPUP_MIN_VISIBLE) - margin);
+    return {
+        top: Math.round(Math.max(margin, Math.min(top, maxTop))),
+        left: Math.round(Math.max(margin, Math.min(left, maxLeft)))
+    };
+}

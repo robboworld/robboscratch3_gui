@@ -29,7 +29,11 @@ switch (action.type) {
 
   sensors_choose_window_state = Object.assign({}, state);;
 
-  sensors_choose_window_state.sensors_choose_window_showing = !sensors_choose_window_state.sensors_choose_window_showing;
+  // Another port while the window is open: switch to it instead of closing.
+  sensors_choose_window_state.sensors_choose_window_showing =
+    !state.sensors_choose_window_showing ||
+    state.sensors_choose_window_sensor_caller !== action.payload.caller_sensor_id ||
+    state.sensors_choose_window_sensor_caller_device_name !== action.payload.sensor_caller_device_name;
   sensors_choose_window_state.sensors_choose_window_sensor_caller = action.payload.caller_sensor_id;
   sensors_choose_window_state.sensors_choose_window_sensor_caller_device_name = action.payload.sensor_caller_device_name;
   sensors_choose_window_state.sensors_choose_window_sensor_caller_type= action.payload.sensor_caller_type;

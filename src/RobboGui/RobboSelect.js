@@ -8,14 +8,18 @@ import styles from './RobboSelect.css';
  * Custom list styling; keeps a hidden native <select> as first child for
  * SettingsWindowComponent getInput() / .value assignment.
  */
+let nextListId = 0;
+
 export default class RobboSelect extends Component {
   constructor (props) {
     super(props);
     this.state = {
       open: false,
       syncRevision: 0,
-      listPosition: null
+      listPosition: null,
+      activeIndex: -1
     };
+    this.listId = `robbo-select-${nextListId++}`;
     this.rootRef = React.createRef();
     this.triggerRef = React.createRef();
     this.selectRef = React.createRef();
@@ -23,6 +27,7 @@ export default class RobboSelect extends Component {
     this.onNativeSelectChange = this.onNativeSelectChange.bind(this);
     this.onNativeSelectSync = this.onNativeSelectSync.bind(this);
     this.updateListPosition = this.updateListPosition.bind(this);
+    this.onTriggerKeyDown = this.onTriggerKeyDown.bind(this);
   }
 
   componentDidMount () {
@@ -118,6 +123,15 @@ export default class RobboSelect extends Component {
       return null;
     }
     const anchorRect = anchorEl.getBoundingClientRect();
+    if (this.props.matchTriggerWidth) {
+      // Compact fields (device palettes): the list is exactly as wide as the field.
+      return {
+        top: anchorRect.bottom + 2,
+        left: anchorRect.left,
+        width: anchorRect.width,
+        maxHeight: this.props.listMaxHeightPx ? Number(this.props.listMaxHeightPx) : null
+      };
+    }
     const contentWidth = this.measureListContentWidth();
     const minWidth = 8.5 * 16; /* ~8.5rem */
     let width = Math.max(Math.ceil(anchorRect.width), contentWidth, minWidth);
@@ -198,7 +212,44 @@ export default class RobboSelect extends Component {
   }
 
   toggleOpen () {
-    this.setState(prev => ({ open: !prev.open }));
+    this.setState(prev => ({ open: !prev.open, activeIndex: this.getSelectedIndex() }));
+  }
+
+  getSelectedIndex () {
+    const currentValue = this.getCurrentValue();
+    return this.props.options.findIndex(opt => String(opt.value) === String(currentValue));
+  }
+
+  /**
+   * Keyboard like a native select (WAI-ARIA listbox): arrows open the list and move the
+   * highlight, Enter / Space pick, Escape / Tab close.
+   */
+  onTriggerKeyDown (event) {
+    const count = this.props.options.length;
+    if (!count) return;
+    const key = event.key;
+    if (!this.state.open) {
+      if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter' || key === ' ') {
+        event.preventDefault();
+        this.setState({ open: true, activeIndex: Math.max(0, this.getSelectedIndex()) });
+      }
+      return;
+    }
+    const move = index => {
+      event.preventDefault();
+      this.setState({ activeIndex: Math.max(0, Math.min(count - 1, index)) });
+    };
+    const active = this.state.activeIndex;
+    if (key === 'ArrowDown') move(active + 1);
+    else if (key === 'ArrowUp') move(active - 1);
+    else if (key === 'Home') move(0);
+    else if (key === 'End') move(count - 1);
+    else if (key === 'Enter' || key === ' ') {
+      event.preventDefault();
+      if (active >= 0) this.selectOption(this.props.options[active].value);
+    } else if (key === 'Escape' || key === 'Tab') {
+      this.setState({ open: false });
+    }
   }
 
   renderList () {
@@ -219,6 +270,7 @@ export default class RobboSelect extends Component {
           styles.list,
           listPosition.maxHeight && styles.listScrollable
         )}
+        id={this.listId}
         role="listbox"
         style={{
           position: 'fixed',
@@ -229,17 +281,20 @@ export default class RobboSelect extends Component {
           right: 'auto'
         }}
       >
-        {options.map(opt => {
+        {options.map((opt, index) => {
           const isSelected = String(opt.value) === String(currentValue);
           return (
             <li
               key={opt.value}
+              id={`${this.listId}-${index}`}
               role="option"
               aria-selected={isSelected}
               className={classNames(
                 styles.option,
-                isSelected && styles.optionSelected
+                isSelected && styles.optionSelected,
+                index === this.state.activeIndex && styles.optionActive
               )}
+              onMouseEnter={() => this.setState({ activeIndex: index })}
               onMouseDown={event => {
                 event.preventDefault();
                 this.selectOption(opt.value);
@@ -293,8 +348,12 @@ export default class RobboSelect extends Component {
           className={classNames(formStyles.field_select_trigger, styles.trigger)}
           aria-haspopup="listbox"
           aria-expanded={this.state.open}
+          aria-controls={this.state.open ? this.listId : undefined}
+          aria-activedescendant={this.state.open && this.state.activeIndex >= 0 ?
+            `${this.listId}-${this.state.activeIndex}` : undefined}
           aria-label={triggerAriaLabel}
           onClick={() => this.toggleOpen()}
+          onKeyDown={this.onTriggerKeyDown}
         >
           <span className={styles.triggerLabel}>
             {selected ? selected.label : ''}

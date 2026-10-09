@@ -6,6 +6,8 @@ import formStyles from './RobboPaletteForm.css';
 import rowStyles from './DevicePaletteRows.css';
 import SensorDataBlockComponent from './SensorDataBlockComponent';
 import SensorComponent from './SensorComponent';
+import DevicePaletteStatus, {DevicePaletteStatusDot} from './DevicePaletteStatus';
+import {getDeviceLinkKind, isDeviceLinkLive} from './device-link-status';
 import {
   getPaletteSensorValueNode,
   setPaletteSensorColorValue,
@@ -19,6 +21,7 @@ import {ActionHideNoneScratchduinoBlocks} from './actions/sensor_actions';
 import {ActionShowRobboBlocks} from './actions/sensor_actions';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
+import {closeMessage} from './sensor-type-messages';
 
 
 
@@ -61,7 +64,17 @@ const messages = defineMessages({
         id: 'gui.RobboGui.false',
         description: ' ',
         defaultMessage: 'false'
-    }
+    },
+    color_red: {id: 'gui.RobboGui.RobotPalette.color_red', description: 'Colour sensor reading', defaultMessage: 'red'},
+    color_magenta: {id: 'gui.RobboGui.RobotPalette.color_magenta', description: 'Colour sensor reading', defaultMessage: 'magenta'},
+    color_yellow: {id: 'gui.RobboGui.RobotPalette.color_yellow', description: 'Colour sensor reading', defaultMessage: 'yellow'},
+    color_green: {id: 'gui.RobboGui.RobotPalette.color_green', description: 'Colour sensor reading', defaultMessage: 'green'},
+    color_blue: {id: 'gui.RobboGui.RobotPalette.color_blue', description: 'Colour sensor reading', defaultMessage: 'blue'},
+    color_cyan: {id: 'gui.RobboGui.RobotPalette.color_cyan', description: 'Colour sensor reading', defaultMessage: 'cyan'},
+    color_black: {id: 'gui.RobboGui.RobotPalette.color_black', description: 'Colour sensor reading', defaultMessage: 'black'},
+    color_gray: {id: 'gui.RobboGui.RobotPalette.color_gray', description: 'Colour sensor reading', defaultMessage: 'gray'},
+    color_white: {id: 'gui.RobboGui.RobotPalette.color_white', description: 'Colour sensor reading', defaultMessage: 'white'},
+    color_other: {id: 'gui.RobboGui.RobotPalette.color_other', description: 'Colour sensor reading not in the list', defaultMessage: 'other'}
 
   });
 
@@ -177,6 +190,12 @@ componentDidUpdate(){
 
           const isSimulation = Boolean(this.props.VM && this.props.VM.runtime && this.props.VM.runtime.sim_ac);
           const primitives = isSimulation ? this.props.VM.runtime._primitives : null;
+
+          // No robot: show "---", not the API defaults (-1, "false").
+          if (!isDeviceLinkLive(getDeviceLinkKind(this.props.RCA, 'ConnectedRobots', isSimulation))) {
+            sensors_values_field_list.forEach(cell => setPaletteSensorTextValue(cell, '---', rowStyles.telemetry_value_color));
+            return;
+          }
           const hasLiveSensorData = Boolean(
             this.props.RCA &&
             typeof this.props.RCA.getSensorsData === 'function' &&
@@ -211,6 +230,8 @@ componentDidUpdate(){
 
             let sensor_data;
 
+            // One failing sensor must not stop the others (the loop runs every 50 ms).
+            try {
             if (this.props.robot_sensors[index].sensor_name === 'color') {
               if (isSimulation && primitives && primitives.getSensorDataFromLastUtil) {
                 sensor_data = primitives.getSensorDataFromLastUtil(index);
@@ -224,7 +245,8 @@ componentDidUpdate(){
                   sensor_data[0],
                   sensor_data[1],
                   sensor_data[2],
-                  colorValueClass
+                  colorValueClass,
+                  this.colorName(index, sensor_data, isSimulation)
                 );
               } else {
                 setPaletteSensorTextValue(valueCell, '---', colorValueClass);
@@ -244,6 +266,13 @@ componentDidUpdate(){
                 setPaletteSensorTextValue(valueCell, '---', colorValueClass);
               }
             }
+            } catch (e) {
+              setPaletteSensorTextValue(valueCell, '---', colorValueClass);
+              if (!this.loggedSensorError) {
+                this.loggedSensorError = true;
+                console.error('[robot palette] sensor read failed', index, e);
+              }
+            }
           }
 
 
@@ -252,6 +281,26 @@ componentDidUpdate(){
 
 
 
+  }
+
+  /**
+   * Same colour names as the "colour is …" block.
+   * @param {number} index sensor index
+   * @param {Array<number>} rgb reading
+   * @param {boolean} isSimulation stage colour instead of the hardware sensor
+   * @returns {string} localized colour name
+   */
+  colorName (index, rgb, isSimulation) {
+    let key = null;
+    try {
+      key = isSimulation ?
+        this.props.RCA.colorFilterFromRGB(rgb[0], rgb[1], rgb[2], index, 765, true) :
+        this.props.RCA.colorFilter(index, true);
+    } catch (e) {
+      key = null;
+    }
+    const message = typeof key === 'string' ? messages[`color_${key}`] : null;
+    return this.props.intl.formatMessage(message || messages.color_other);
   }
 
   robotGetDataStart(){
@@ -299,9 +348,8 @@ componentDidUpdate(){
 
   }else{
 
-    //  sensor_data =this.props.robot_special_sensors[2].sensor_data;
-
-    sensor_data = this.props.intl.formatMessage(messages.false);
+    // Unknown until the robot reports it.
+    sensor_data = '---';
 
   }
 
@@ -315,16 +363,27 @@ componentDidUpdate(){
 
             <div id="robot-tittle" className={sharedStyles.header}>
                 <span className={sharedStyles.headerTitle}>
+                    <DevicePaletteStatusDot
+                        api={this.props.RCA}
+                        connectedKey="ConnectedRobots"
+                        simulated={this.isRobotSimulationActive()}
+                    />
                     {this.props.intl.formatMessage(messages.robot)}
                 </span>
                 <button
                     type="button"
                     className={sharedStyles.closeButton}
-                    aria-label="Close"
+                    aria-label={this.props.intl.formatMessage(closeMessage)}
+                    title={this.props.intl.formatMessage(closeMessage)}
                     onClick={this.onThisWindowClose.bind(this)}
                 />
             </div>
             <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
+            <DevicePaletteStatus
+                api={this.props.RCA}
+                connectedKey="ConnectedRobots"
+                simulated={this.isRobotSimulationActive()}
+            />
             <div className={rowStyles.palette_device_list}>
             <SensorDataBlockComponent key={this.props.robot_special_sensors[0].sensor_id} sensorId={this.props.robot_special_sensors[0].sensor_id}
                                deviceName={this.props.robot_special_sensors[0].sensor_device_name} sensorType={this.props.robot_special_sensors[0].sensor_type}
