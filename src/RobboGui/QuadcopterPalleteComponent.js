@@ -251,6 +251,26 @@ const messages = defineMessages({
         description: 'Link quality below 50 %',
         defaultMessage: 'Weak connection — move the Crazyradio closer'
     },
+    attentionLostInAir: {
+        id: 'gui.RobboGui.QuadcopterPalette.attentionLostInAir',
+        description: 'Link lost while flying: the copter hovers by itself and is searched again',
+        defaultMessage: 'Connection lost in flight — the copter hovers by itself, searching…'
+    },
+    attentionWeakLinkLanding: {
+        id: 'gui.RobboGui.QuadcopterPalette.attentionWeakLinkLanding',
+        description: 'The copter is landed because the radio link stayed weak',
+        defaultMessage: 'Weak connection — the copter is landing'
+    },
+    attentionLandedAfterLinkLoss: {
+        id: 'gui.RobboGui.QuadcopterPalette.attentionLandedAfterLinkLoss',
+        description: 'The link was lost in flight; after reconnecting the copter was landed',
+        defaultMessage: 'The connection was lost in flight — the copter was landed'
+    },
+    attentionLowBatteryLanding: {
+        id: 'gui.RobboGui.QuadcopterPalette.attentionLowBatteryLanding',
+        description: 'The copter is landed because the battery is empty',
+        defaultMessage: 'Battery empty — the copter is landing'
+    },
     attentionReconnecting: {
         id: 'gui.RobboGui.QuadcopterPalette.attentionReconnecting',
         description: 'Lost copter is being searched again automatically',
@@ -592,10 +612,19 @@ class QuadcopterPalleteComponent extends Component {
             out.push({kind: battery.level === 'critical' ? 'danger' : 'warning',
                 text: intl.formatMessage(messages.attentionLowBattery)});
         }
-        if (copter.connected && copter.linkQuality !== null && copter.linkQuality < WEAK_LINK_PERCENT) {
+        const errorCode = copter.lastError && copter.lastError.code;
+        if (copter.connected && errorCode === 'landedAfterLinkLoss') {
+            out.push({kind: 'warning', text: intl.formatMessage(messages.attentionLandedAfterLinkLoss)});
+        } else if (copter.safetyLanding && errorCode === 'weakLinkLanding') {
+            out.push({kind: 'warning', text: intl.formatMessage(messages.attentionWeakLinkLanding)});
+        } else if (copter.safetyLanding && errorCode === 'quadcopterLowBatteryLanding') {
+            out.push({kind: 'danger', text: intl.formatMessage(messages.attentionLowBatteryLanding)});
+        } else if (copter.connected && copter.linkQuality !== null && copter.linkQuality < WEAK_LINK_PERCENT) {
             out.push({kind: 'warning', text: intl.formatMessage(messages.attentionWeakLink)});
         }
-        if (!copter.connected && (copter.reconnecting || copter.searching) && copter.state !== 'disconnected') {
+        if (!copter.connected && copter.lostInAir) {
+            out.push({kind: 'danger', text: intl.formatMessage(messages.attentionLostInAir)});
+        } else if (!copter.connected && (copter.reconnecting || copter.searching) && copter.state !== 'disconnected') {
             out.push({kind: 'warning', text: intl.formatMessage(messages.attentionReconnecting)});
         } else if (!copter.connected && !copter.searching && copter.state === 'lost') {
             out.push({kind: 'warning', text: intl.formatMessage(messages.attentionLinkLost)});
