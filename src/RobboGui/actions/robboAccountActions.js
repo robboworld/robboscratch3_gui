@@ -18,6 +18,7 @@ import {
     oidcLogoutUrl,
     oidcStartUrl,
     canonicalizeLoopbackEditorHost,
+    CLOUD_PROJECT_URL_PARAMS,
     resolveEditorLogoutReturnTo
 } from '../../lib/robbo-account/robboAccountConfig';
 import {
@@ -260,8 +261,9 @@ function clearProjectPageIdFromUrl () {
         return;
     }
     const params = queryString.parse(window.location.search);
-    delete params.projectPageId;
-    delete params.projectRef;
+    CLOUD_PROJECT_URL_PARAMS.forEach(name => {
+        delete params[name];
+    });
     const search = queryString.stringify(params);
     const hash = window.location.hash || '';
     const qs = search ? `?${search}` : '';
@@ -606,36 +608,49 @@ export function startOidcRegisterThunk (returnTo) {
     };
 }
 
+/**
+ * Leave through the IdP logout and come back to a clean editor: without the cloud project
+ * params (see resolveEditorLogoutReturnTo) and without the autosaved copy of the user's
+ * project, which would otherwise be restored for the next visitor of this browser.
+ * @returns {Promise<void>} resolves once the redirect has been started
+ */
 function performSignOut () {
     const returnTo = resolveEditorLogoutReturnTo();
     clearAccessTokenMemory();
-    // Keep account/project chrome until the browser navigates away — clearing Redux
-    // here made the header jump to “Sign in” before the logout redirect finished.
-    navigateTop(oidcLogoutUrl(returnTo, {skipIdp: false}));
+    return removeSnapshot()
+        .catch(err => {
+            log.warn('clear draft snapshot before logout failed', err);
+        })
+        .then(() => {
+            // Keep account/project chrome until the browser navigates away — clearing Redux
+            // here made the header jump to “Sign in” before the logout redirect finished.
+            navigateTop(oidcLogoutUrl(returnTo, {skipIdp: false}));
+        });
 }
 
 export function signOutThunk () {
     return function () {
-        performSignOut();
+        return performSignOut();
     };
 }
 
-/** Sign out after discarding the current unsaved editor contents. */
-export function signOutDiscardThunk () {
-    return function () {
-        return removeSnapshot()
-            .catch(err => {
-                log.warn('clear draft snapshot before logout failed', err);
-            })
-            .then(() => {
-                performSignOut();
-            });
-    };
-}
+/** Sign out after discarding the current unsaved editor contents (the draft goes either way). */
+export const signOutDiscardThunk = signOutThunk;
 
+/**
+ * Signed out in another tab (LK, LMS or another editor): drop the cloud project from this
+ * editor too. Unsaved edits stay on screen (the user can still download them), only the
+ * link to the account project goes away.
+ * @returns {function} thunk → Promise<void>
+ */
 export function handleRemoteSignOutThunk () {
-    return function (dispatch) {
+    return function (dispatch, getState) {
         clearAccessTokenMemory();
         dispatch({type: ROBBO_ACCOUNT_SIGN_OUT});
+        if (getState().scratchGui.projectChanged) {
+            clearProjectPageIdFromUrl();
+            return Promise.resolve();
+        }
+        return dispatch(resetEditorToDefaultThunk());
     };
 }

@@ -3,6 +3,8 @@
  * Matches frontend/src/config.js conventions in robbo_personal_account.
  */
 
+import queryString from 'query-string';
+
 function trimTrailingSlash (url) {
     return (url || '').trim().replace(/\/$/, '');
 }
@@ -140,10 +142,20 @@ export function oidcStartUrl (returnTo, prompt) {
     return start.toString();
 }
 
+/** Query params that open a cloud project from the account; dropped on sign-out. */
+export const CLOUD_PROJECT_URL_PARAMS = ['projectPageId', 'projectRef'];
+
 export function resolveEditorLogoutReturnTo () {
     if (typeof window !== 'undefined' && window.location) {
+        // Same editor page, but not the signed-in user's cloud project: a guest would get it
+        // reopened (or the "project not available" screen with Sign in).
         const {protocol, host, pathname, search, hash} = window.location;
-        return `${protocol}//${host}${pathname}${search}${hash}`;
+        const params = queryString.parse(search);
+        CLOUD_PROJECT_URL_PARAMS.forEach(name => {
+            delete params[name];
+        });
+        const qs = queryString.stringify(params);
+        return `${protocol}//${host}${pathname}${qs ? `?${qs}` : ''}${hash}`;
     }
     const port = envString('PORT') || '8601';
     return `${currentProtocol()}//${currentHostname()}:${port}/`;
