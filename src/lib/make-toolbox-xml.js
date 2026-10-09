@@ -560,6 +560,14 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
       <label text="Stage selected: no quadcopter blocks"></label>
       ` : `
 
+  <block type="copter_with_copters">
+      <value name="COPTERS">
+          <shadow type="copter_copters_menu">
+              <field name="COPTERS">1</field>
+          </shadow>
+      </value>
+  </block>
+
   <block type="copter_fly_up">
 
       </block>
@@ -641,8 +649,24 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
 
       </block>
 
+      <block type="copter_charge_battery">
+          <value name="PERCENT">
+              <shadow type="math_number">
+                  <field name="NUM">100</field>
+              </shadow>
+          </value>
+      </block>
+
       <block type="copter_is_flying">
 
+      </block>
+
+      <block type="copter_value_of">
+          <value name="COPTER">
+              <shadow type="copter_copters_menu">
+                  <field name="COPTERS">1</field>
+              </shadow>
+          </value>
       </block>
 
       <block type="copter_fly_to_coords">

@@ -14958,22 +14958,22 @@
         "variables": {},
         "costumes": [
             {
-                "assetId": "robbo_quadcopter_topdown",
+                "assetId": "robbo_quadcopter_topdown_v2",
                 "name": "idle",
                 "bitmapResolution": 2,
-                "md5ext": "robbo_quadcopter_topdown.png",
+                "md5ext": "robbo_quadcopter_topdown_v2.png",
                 "dataFormat": "png",
-                "rotationCenterX": 688,
-                "rotationCenterY": 384
+                "rotationCenterX": 32,
+                "rotationCenterY": 32
             },
             {
-                "assetId": "robbo_quadcopter_topdown_spinning",
+                "assetId": "robbo_quadcopter_topdown_v2_spinning",
                 "name": "flying",
                 "bitmapResolution": 2,
-                "md5ext": "robbo_quadcopter_topdown_spinning.png",
+                "md5ext": "robbo_quadcopter_topdown_v2_spinning.png",
                 "dataFormat": "png",
-                "rotationCenterX": 688,
-                "rotationCenterY": 384
+                "rotationCenterX": 32,
+                "rotationCenterY": 32
             }
         ],
         "sounds": [],

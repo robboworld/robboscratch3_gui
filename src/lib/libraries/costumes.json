@@ -11066,12 +11066,12 @@
             "quadcopter",
             "simulation"
         ],
-        "assetId": "robbo_quadcopter_topdown",
+        "assetId": "robbo_quadcopter_topdown_v2",
         "bitmapResolution": 2,
         "dataFormat": "png",
-        "md5ext": "robbo_quadcopter_topdown.png",
-        "rotationCenterX": 688,
-        "rotationCenterY": 384
+        "md5ext": "robbo_quadcopter_topdown_v2.png",
+        "rotationCenterX": 32,
+        "rotationCenterY": 32
     },
     {
         "name": "Robbo quadcopter flying",
@@ -11080,11 +11080,11 @@
             "quadcopter",
             "simulation"
         ],
-        "assetId": "robbo_quadcopter_topdown_spinning",
+        "assetId": "robbo_quadcopter_topdown_v2_spinning",
         "bitmapResolution": 2,
         "dataFormat": "png",
-        "md5ext": "robbo_quadcopter_topdown_spinning.png",
-        "rotationCenterX": 688,
-        "rotationCenterY": 384
+        "md5ext": "robbo_quadcopter_topdown_v2_spinning.png",
+        "rotationCenterX": 32,
+        "rotationCenterY": 32
     }
 ]

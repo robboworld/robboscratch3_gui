@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Renderer from 'scratch-render';
 import VM from 'scratch-vm';
+import {copterColor} from '../lib/copter-colors';
 import { connect } from 'react-redux';
 
 import layout, { STAGE_DISPLAY_SIZES } from '../lib/layout-constants';
@@ -107,6 +108,8 @@ class Stage extends React.Component {
         this.updateRect();
         this.applyStageSize();
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
+        // Copter number badges follow sprites being added / removed.
+        this.props.vm.addListener('targetsUpdate', this.syncSensorDebugOverlayLoop);
         this.syncSensorDebugOverlayLoop();
     }
     shouldComponentUpdate(nextProps, nextState) {
@@ -171,6 +174,7 @@ class Stage extends React.Component {
         this.detachRectEvents();
         this.stopColorPickingLoop();
         this.props.vm.runtime.removeListener('QUESTION', this.questionListener);
+        this.props.vm.removeListener('targetsUpdate', this.syncSensorDebugOverlayLoop);
         this.stopSensorDebugOverlay();
     }
     questionListener(question) {
@@ -489,13 +493,18 @@ class Stage extends React.Component {
         const runtime = this.props.vm && this.props.vm.runtime;
         // Overlay only when user enabled it in Settings AND simulation is on (Redux + runtime).
         // No RAF / no getSimSensorDebugData unless all are true — keeps idle editor light.
-        return Boolean(
-            this.sensorDebugCanvas &&
-            runtime &&
-            runtime.sim_ac &&
-            this.props.isSimActivated &&
-            this.props.simSensorDebugOverlayEnabled
-        );
+        return Boolean(this.sensorDebugCanvas && runtime &&
+            (this.shouldDrawRobotSensors(runtime) || this.getCopterBadgeControllers(runtime).length > 0));
+    }
+    shouldDrawRobotSensors(runtime) {
+        return Boolean(runtime.sim_ac && this.props.isSimActivated && this.props.simSensorDebugOverlayEnabled);
+    }
+    /** Several simulator copters: number badges show which sprite is copter N. */
+    getCopterBadgeControllers(runtime) {
+        const blocks = runtime.sim_copter_ac && runtime._copterBlocks;
+        if (!blocks) return [];
+        const controllers = blocks.getSimControllers();
+        return controllers.length > 1 ? controllers : [];
     }
     startSensorDebugOverlay() {
         if (this.sensorDebugOverlayRaf === null) {
@@ -539,13 +548,31 @@ class Stage extends React.Component {
 
                 const runtime = this.props.vm && this.props.vm.runtime;
                 const primitives = runtime && runtime._primitives ? runtime._primitives : null;
-                if (primitives && typeof primitives.getSimSensorDebugData === 'function') {
+                const nativeSize = this.renderer.getNativeSize();
+                const toCanvas = (sx, sy) => ({
+                    x: (sx / nativeSize[0]) * width + (width / 2),
+                    y: ((-sy) / nativeSize[1]) * height + (height / 2)
+                });
+                this.getCopterBadgeControllers(runtime).forEach(controller => {
+                    const target = controller._getSimCopterTarget();
+                    if (!target) return;
+                    const bounds = target.getBounds();
+                    const corner = bounds ? toCanvas(bounds.right, bounds.top) : toCanvas(target.x, target.y);
+                    ctx.fillStyle = copterColor(controller.simNumber);
+                    ctx.beginPath();
+                    ctx.arc(corner.x, corner.y, 9, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(String(controller.simNumber), corner.x, corner.y + 0.5);
+                    ctx.textAlign = 'start';
+                    ctx.textBaseline = 'alphabetic';
+                });
+                if (this.shouldDrawRobotSensors(runtime) &&
+                    primitives && typeof primitives.getSimSensorDebugData === 'function') {
                     const sensors = primitives.getSimSensorDebugData();
-                    const nativeSize = this.renderer.getNativeSize();
-                    const toCanvas = (sx, sy) => ({
-                        x: (sx / nativeSize[0]) * width + (width / 2),
-                        y: ((-sy) / nativeSize[1]) * height + (height / 2)
-                    });
                     sensors.forEach((sensor, idx) => {
                         const start = toCanvas(sensor.startX, sensor.startY);
                         const end = toCanvas(sensor.endX, sensor.endY);

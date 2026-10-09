@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import styles from './MenuBarDevicePreview.css';
+import {batteryColorLevel, worseBatteryLevel} from '../lib/copter-colors';
 
 const DEVICE_IS_READY = 6;
 
@@ -20,7 +21,10 @@ class MenuBarDevicePreview extends Component {
         super(props);
         this.state = {
             connected: false,
-            searching: false
+            searching: false,
+            copterCount: 0,
+            copterBattery: null,
+            copterBatteryLevel: 'ok'
         };
         this.handleStatusChange = this.handleStatusChange.bind(this);
         this.syncInitialConnectionState = this.syncInitialConnectionState.bind(this);
@@ -51,6 +55,32 @@ class MenuBarDevicePreview extends Component {
         }
 
         this.syncInitialConnectionState();
+        if (deviceType === 'quadcopter') {
+            this.syncCopterSummary();
+            this.copterSummaryTimer = setInterval(() => this.syncCopterSummary(), 500);
+        }
+    }
+
+    /** Copters in use and their lowest battery, for the badge on the icon. */
+    syncCopterSummary () {
+        const {statusApi, simulated, vm} = this.props;
+        let batteries = [];
+        const blocks = simulated && vm && vm.runtime && vm.runtime._copterBlocks;
+        if (blocks) {
+            batteries = blocks.getSimControllers().map(c => ({percent: Number(c.sim_battery) || 0}));
+        } else if (statusApi && typeof statusApi.getCopters === 'function') {
+            batteries = statusApi.getCopters()
+                .filter(c => c.connected && c.enabled && c.battery && c.battery.percent !== null)
+                .map(c => c.battery);
+        }
+        const percents = batteries.map(b => b.percent);
+        const copterBattery = percents.length ? Math.round(Math.min.apply(null, percents)) : null;
+        const copterBatteryLevel = batteries.reduce((worst, b) =>
+            worseBatteryLevel(worst, batteryColorLevel(b.percent, b.level)), 'ok');
+        if (copterBattery !== this.state.copterBattery || percents.length !== this.state.copterCount ||
+            copterBatteryLevel !== this.state.copterBatteryLevel) {
+            this.setState({copterBattery, copterBatteryLevel, copterCount: percents.length});
+        }
     }
 
     syncInitialConnectionState () {
@@ -77,6 +107,7 @@ class MenuBarDevicePreview extends Component {
     }
 
     componentWillUnmount () {
+        if (this.copterSummaryTimer) clearInterval(this.copterSummaryTimer);
         const {statusApi, deviceType} = this.props;
         if (!statusApi) return;
 
@@ -123,8 +154,10 @@ class MenuBarDevicePreview extends Component {
     }
 
     render () {
-        const {deviceType, idPrefix, index, title} = this.props;
-        const {connected, searching} = this.state;
+        const {deviceType, idPrefix, index, title, simulated} = this.props;
+        const {searching} = this.state;
+        // The simulated copter is always "connected": status comes from QCA only for real hardware.
+        const connected = simulated || this.state.connected;
 
         return (
             <button
@@ -140,6 +173,22 @@ class MenuBarDevicePreview extends Component {
                 onClick={this.props.onOpenPalette}
             >
                 <span className={styles.previewIcon} aria-hidden="true" />
+                {deviceType === 'quadcopter' && this.state.copterBattery !== null ? (
+                    <span className={styles.copterBadge} aria-hidden="true">
+                        <span className={styles.copterBadgeBar}>
+                            <span
+                                className={classNames(styles.copterBadgeFill, {
+                                    [styles.copterBadgeLow]: this.state.copterBatteryLevel === 'critical',
+                                    [styles.copterBadgeWarning]: this.state.copterBatteryLevel === 'warning'
+                                })}
+                                style={{width: `${this.state.copterBattery}%`}}
+                            />
+                        </span>
+                        {this.state.copterCount > 1 ? (
+                            <span className={styles.copterBadgeCount}>{this.state.copterCount}</span>
+                        ) : null}
+                    </span>
+                ) : null}
             </button>
         );
     }
@@ -148,6 +197,8 @@ class MenuBarDevicePreview extends Component {
 MenuBarDevicePreview.propTypes = {
     deviceType: PropTypes.oneOf(['robot', 'lab', 'quadcopter', 'otto', 'arduino']).isRequired,
     draggableWindowId: PropTypes.number.isRequired,
+    simulated: PropTypes.bool,
+    vm: PropTypes.shape({runtime: PropTypes.object}),
     idPrefix: PropTypes.string.isRequired,
     index: PropTypes.number.isRequired,
     title: PropTypes.string.isRequired,
