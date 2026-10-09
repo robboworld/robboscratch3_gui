@@ -50,6 +50,7 @@ import CloudProjectNotFound from '../components/cloud-project-not-found/cloud-pr
 import RobboSimulatorVmSync from './robbo-simulator-vm-sync.jsx';
 import {setIsScratchDesktop} from '../lib/isScratchDesktop.js';
 import hideLoadingSplash from '../lib/loading-splash';
+import {preloadPaintEditor} from '../lib/paint-editor-loader';
 
 import {DragDropContext} from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
@@ -124,6 +125,10 @@ class GUI extends React.Component {
                 this.props.blocksPaletteFlyoutWidth !== prevProps.blocksPaletteFlyoutWidth ||
                 this.props.isRobboUiHidden !== prevProps.isRobboUiHidden)) {
             this.scheduleDebouncedAutoSave();
+        }
+        if (this.props.isShowingProject && !prevProps.isShowingProject && !this.props.isPlayerOnly) {
+            // The editor is up: fetch the costume editor in the background (not in the first load).
+            preloadPaintEditor();
         }
         if (this.props.isShowingProject && !prevProps.isShowingProject) {
             // this only notifies container when a project changes from not yet loaded to loaded

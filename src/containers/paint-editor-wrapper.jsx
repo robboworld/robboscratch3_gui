@@ -2,9 +2,12 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
-import PaintEditor from 'scratch-paint';
+
+import {loadPaintEditor} from '../lib/paint-editor-loader';
 
 import {connect} from 'react-redux';
+
+import log from '../lib/log';
 
 class PaintEditorWrapper extends React.Component {
     constructor (props) {
@@ -13,11 +16,27 @@ class PaintEditorWrapper extends React.Component {
             'handleUpdateImage',
             'handleUpdateName'
         ]);
+        // scratch-paint is a separate chunk (lib/paint-editor-loader): empty until it arrives.
+        this.state = {PaintEditor: null};
     }
-    shouldComponentUpdate (nextProps) {
-        return this.props.imageId !== nextProps.imageId ||
+    componentDidMount () {
+        this.mounted = true;
+        loadPaintEditor()
+            .then(PaintEditor => {
+                if (this.mounted) this.setState({PaintEditor});
+            })
+            .catch(err => {
+                log.error('Failed to load the paint editor', err);
+            });
+    }
+    shouldComponentUpdate (nextProps, nextState) {
+        return this.state.PaintEditor !== nextState.PaintEditor ||
+            this.props.imageId !== nextProps.imageId ||
             this.props.rtl !== nextProps.rtl ||
             this.props.name !== nextProps.name;
+    }
+    componentWillUnmount () {
+        this.mounted = false;
     }
     handleUpdateName (name) {
         this.props.vm.renameCostume(this.props.selectedCostumeIndex, name);
@@ -39,7 +58,8 @@ class PaintEditorWrapper extends React.Component {
         }
     }
     render () {
-        if (!this.props.imageId) return null;
+        const {PaintEditor} = this.state;
+        if (!this.props.imageId || !PaintEditor) return null;
         const {
             selectedCostumeIndex,
             vm,

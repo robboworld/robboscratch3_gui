@@ -124,7 +124,8 @@ const base = {
     },
     output: {
         library: 'GUI',
-        filename: '[name].js'
+        filename: '[name].js',
+        chunkFilename: '[name].js'
     },
     externals: {
         React: 'react',
@@ -221,7 +222,9 @@ module.exports = [
         },
         optimization: {
             splitChunks: {
-                chunks: 'all',
+                // Start-up code only: with chunks: 'all' and a fixed name, dynamic import() chunks
+                // (lazy locales, see reducers/locales.js) were merged back into lib.min.js.
+                chunks: 'initial',
                 name: 'lib.min'
             },
             runtimeChunk: {
@@ -248,6 +251,8 @@ module.exports = [
                     sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null,
                     seo: webSeo,
                     loadingSplash,
+                    // index.ejs adds the scripts itself, after downloading them for the progress bar
+                    inject: false,
                     yandexMetrika: isProduction ? 93772324 : null
                 })
             ],
@@ -287,6 +292,11 @@ module.exports = [
                 new CopyWebpackPlugin([{
                     from: 'node_modules/scratch-blocks/media',
                     to: 'static/blocks-media'
+                }]),
+                // Music extension samples: the VM fetches them from here (scratch3_music SAMPLES_PATH)
+                new CopyWebpackPlugin([{
+                    from: 'node_modules/scratch-vm/src/extensions/scratch3_music/assets',
+                    to: 'static/extensions/music'
                 }]),
                 new CopyWebpackPlugin([{
                     from: 'extensions/**',
@@ -339,6 +349,11 @@ module.exports = [
                 new CopyWebpackPlugin([{
                     from: 'node_modules/scratch-blocks/media',
                     to: 'static/blocks-media'
+                }]),
+                // Music extension samples: the VM fetches them from here (scratch3_music SAMPLES_PATH)
+                new CopyWebpackPlugin([{
+                    from: 'node_modules/scratch-vm/src/extensions/scratch3_music/assets',
+                    to: 'static/extensions/music'
                 }]),
                 new CopyWebpackPlugin([{
                     from: isProduction ? 'extension-worker.js' : 'extension-worker.{js,js.map}',
