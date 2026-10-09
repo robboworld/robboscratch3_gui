@@ -9,13 +9,27 @@ function trimTrailingSlash (url) {
     return (url || '').trim().replace(/\/$/, '');
 }
 
-function envString (key) {
+// webpack DefinePlugin bakes in only literal `process.env.NAME` references: a lookup by a
+// computed key (process.env[key]) always came back empty in the web bundle, so the URLs given
+// at build time (ROBBO_ACCOUNT_API_URL, …) were silently ignored.
+function buildEnv () {
     try {
-        if (typeof process !== 'undefined' && process.env && process.env[key]) {
-            return String(process.env[key]).trim();
-        }
-    } catch (e) { /* ignore */ }
-    return '';
+        return {
+            ROBBO_ACCOUNT_API_URL: process.env.ROBBO_ACCOUNT_API_URL,
+            ROBBO_ACCOUNT_LK_URL: process.env.ROBBO_ACCOUNT_LK_URL,
+            ROBBO_LMS_URL: process.env.ROBBO_LMS_URL,
+            RS3_ACTIVATION_BASE_URL: process.env.RS3_ACTIVATION_BASE_URL,
+            RS3_ACCOUNT_BASE_URL: process.env.RS3_ACCOUNT_BASE_URL,
+            PORT: process.env.PORT
+        };
+    } catch (e) {
+        return {};
+    }
+}
+
+function envString (key) {
+    const value = buildEnv()[key];
+    return value ? String(value).trim() : '';
 }
 
 function currentHostname () {
