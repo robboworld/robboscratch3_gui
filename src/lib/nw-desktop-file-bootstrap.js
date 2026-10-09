@@ -1,6 +1,6 @@
 /**
  * NW.js desktop: detect .sb3/.sb2/.sb in command line; subscribe to second-instance open (file association).
- * Must run before React. Sets window.__ROBBO_NW_PENDING_PROJECT__ = { data: ArrayBuffer, title: string }.
+ * Must run before React. Sets window.__ROBBO_NW_PENDING_PROJECT__ = { data: ArrayBuffer, path: string, title: string }.
  */
 import {
     collectNwArgv,

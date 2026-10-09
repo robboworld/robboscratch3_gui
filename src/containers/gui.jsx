@@ -41,6 +41,15 @@ import {
     removeSnapshot as removeSessionSnapshot,
     saveSnapshot as saveSessionSnapshot
 } from '../lib/project-session-store';
+import {
+    clearProjectSaveTarget,
+    subscribeProjectSaveTarget
+} from '../lib/project-save-target';
+import {
+    setDraftError,
+    setDraftSaved,
+    setSaveTarget
+} from '../reducers/project-save-status';
 import storage from '../lib/storage';
 import vmListenerHOC from '../lib/vm-listener-hoc.jsx';
 import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
@@ -72,6 +81,9 @@ const setProjectIdMetadata = projectId => {
 const AUTOSAVE_DEBOUNCE_MS = 1000;
 /** While changes are continuous, flush at least this often (ms). */
 const AUTOSAVE_MAX_WAIT_MS = 10000;
+/** A running program moves sprites and changes variables every frame: snapshot it less often (ms). */
+const RUNTIME_AUTOSAVE_DEBOUNCE_MS = 2000;
+const RUNTIME_AUTOSAVE_MAX_WAIT_MS = 30000;
 
 class GUI extends React.Component {
     constructor (props) {
@@ -79,18 +91,29 @@ class GUI extends React.Component {
         bindAll(this, [
             'autoSaveProject',
             'handlePageHide',
-            'handleVmProjectChanged',
-            'startProjectAutosaving'
+            'handleProjectLoaded',
+            'handleProjectRunStart',
+            'handleProjectRunStop',
+            'handleRuntimeStateChanged',
+            'handleSaveTargetChanged',
+            'handleVmProjectChanged'
         ]);
         this.isAutoSaving = false;
-        this.projectChangeToken = 0;
-        this.lastAutoSavedChangeToken = 0;
+        this.autoSaveQueued = false;
+        this.lastAutoSavedProjectJson = null;
+        this.lastAutoSavedMetadataKey = null;
+        this.runtimeAutoSaveTimer = null;
+        this.unsubscribeSaveTarget = null;
         this.didClearBrokenSnapshot = false;
-        this.lastAutoSavedLayout = null;
         this.scheduleDebouncedAutoSave = debounce(
             () => this.autoSaveProject(),
             AUTOSAVE_DEBOUNCE_MS,
             {maxWait: AUTOSAVE_MAX_WAIT_MS}
+        );
+        this.scheduleRuntimeAutoSave = debounce(
+            () => this.autoSaveProject(),
+            RUNTIME_AUTOSAVE_DEBOUNCE_MS,
+            {maxWait: RUNTIME_AUTOSAVE_MAX_WAIT_MS}
         );
     }
 
@@ -100,15 +123,17 @@ class GUI extends React.Component {
         this.props.onVmInit(this.props.vm);
         setProjectIdMetadata(this.props.projectId);
         this.props.vm.on('PROJECT_CHANGED', this.handleVmProjectChanged);
+        // Program results (sprite positions, costumes, variables) do not emit PROJECT_CHANGED.
+        this.props.vm.on('targetsUpdate', this.handleRuntimeStateChanged);
+        this.props.vm.on('PROJECT_RUN_START', this.handleProjectRunStart);
+        this.props.vm.on('PROJECT_RUN_STOP', this.handleProjectRunStop);
+        this.props.vm.runtime.on('PROJECT_LOADED', this.handleProjectLoaded);
+        this.unsubscribeSaveTarget = subscribeProjectSaveTarget(this.handleSaveTargetChanged);
         if (typeof document !== 'undefined') {
             document.addEventListener('visibilitychange', this.handlePageHide);
         }
         if (typeof window !== 'undefined') {
             window.addEventListener('pagehide', this.handlePageHide);
-        }
-
-        if (!this.props.isError) {
-            this.startProjectAutosaving();
         }
     }
     componentDidUpdate (prevProps) {
@@ -118,11 +143,18 @@ class GUI extends React.Component {
             }
             setProjectIdMetadata(this.props.projectId);
         }
+        // Layout, title and meta.robboSimulator (sensors, simulators) are saved in the snapshot
+        // but do not emit PROJECT_CHANGED.
         if (this.props.isShowingProject &&
             (this.props.isRightPanelHidden !== prevProps.isRightPanelHidden ||
                 this.props.isBlocksPaletteCollapsed !== prevProps.isBlocksPaletteCollapsed ||
                 this.props.blocksPaletteFlyoutWidth !== prevProps.blocksPaletteFlyoutWidth ||
-                this.props.isRobboUiHidden !== prevProps.isRobboUiHidden)) {
+                this.props.isRobboUiHidden !== prevProps.isRobboUiHidden ||
+                this.props.projectTitle !== prevProps.projectTitle ||
+                this.props.autosaveRobotSensorsKey !== prevProps.autosaveRobotSensorsKey ||
+                this.props.autosaveSimActivated !== prevProps.autosaveSimActivated ||
+                this.props.autosaveCopterSimActivated !== prevProps.autosaveCopterSimActivated ||
+                this.props.autosaveExtensionPackActivated !== prevProps.autosaveExtensionPackActivated)) {
             this.scheduleDebouncedAutoSave();
         }
         if (this.props.isShowingProject && !prevProps.isShowingProject) {
@@ -136,11 +168,19 @@ class GUI extends React.Component {
         }
     }
     componentWillUnmount () {
-        if (this.scheduleDebouncedAutoSave) {
-            this.scheduleDebouncedAutoSave.flush();
-            this.scheduleDebouncedAutoSave.cancel();
-        }
+        this.scheduleDebouncedAutoSave.flush();
+        this.scheduleDebouncedAutoSave.cancel();
+        this.scheduleRuntimeAutoSave.cancel();
+        this.stopRuntimeAutoSaveTimer();
         this.props.vm.removeListener('PROJECT_CHANGED', this.handleVmProjectChanged);
+        this.props.vm.removeListener('targetsUpdate', this.handleRuntimeStateChanged);
+        this.props.vm.removeListener('PROJECT_RUN_START', this.handleProjectRunStart);
+        this.props.vm.removeListener('PROJECT_RUN_STOP', this.handleProjectRunStop);
+        this.props.vm.runtime.removeListener('PROJECT_LOADED', this.handleProjectLoaded);
+        if (this.unsubscribeSaveTarget) {
+            this.unsubscribeSaveTarget();
+            this.unsubscribeSaveTarget = null;
+        }
         if (typeof document !== 'undefined') {
             document.removeEventListener('visibilitychange', this.handlePageHide);
         }
@@ -150,9 +190,38 @@ class GUI extends React.Component {
     }
     handleVmProjectChanged () {
         if (this.props.isShowingProject) {
-            this.projectChangeToken += 1;
             this.scheduleDebouncedAutoSave();
         }
+    }
+    handleRuntimeStateChanged () {
+        if (this.props.isShowingProject) {
+            this.scheduleRuntimeAutoSave();
+        }
+    }
+    handleProjectRunStart () {
+        // Variables can change without any targetsUpdate: check the running program periodically.
+        if (!this.runtimeAutoSaveTimer) {
+            this.runtimeAutoSaveTimer = setInterval(this.handleRuntimeStateChanged, RUNTIME_AUTOSAVE_MAX_WAIT_MS);
+        }
+    }
+    handleProjectRunStop () {
+        this.stopRuntimeAutoSaveTimer();
+        this.handleRuntimeStateChanged();
+    }
+    stopRuntimeAutoSaveTimer () {
+        if (this.runtimeAutoSaveTimer) {
+            clearInterval(this.runtimeAutoSaveTimer);
+            this.runtimeAutoSaveTimer = null;
+        }
+    }
+    handleProjectLoaded () {
+        // A different project is open: "Save" must not overwrite the previous file.
+        // Loaders that know the source set the target again after vm.loadProject resolves.
+        clearProjectSaveTarget();
+        this.props.onSaveTargetChanged(null);
+    }
+    handleSaveTargetChanged (target) {
+        this.props.onSaveTargetChanged(target);
     }
     handlePageHide (event) {
         if (typeof document !== 'undefined' &&
@@ -162,79 +231,74 @@ class GUI extends React.Component {
             event.type === 'visibilitychange') {
             return;
         }
-        if (this.scheduleDebouncedAutoSave) {
-            this.scheduleDebouncedAutoSave.flush();
-        }
+        this.scheduleDebouncedAutoSave.flush();
+        this.scheduleRuntimeAutoSave.flush();
+        // Unchanged project is skipped inside (compared with the last snapshot).
         this.autoSaveProject();
+    }
+    getSnapshotMetadata () {
+        return {
+            title: this.props.projectTitle,
+            layout: {
+                isRightPanelHidden: this.props.isRightPanelHidden,
+                isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed,
+                blocksPaletteFlyoutWidth: this.props.blocksPaletteFlyoutWidth,
+                isRobboUiHidden: this.props.isRobboUiHidden
+            }
+        };
     }
     autoSaveProject (options) {
         const force = options && options.force === true;
-        const nextChangeToken = this.projectChangeToken;
 
-        if (this.isAutoSaving || !this.props.isShowingProject) {
+        if (!this.props.isShowingProject ||
+            this.props.isPlayerOnly ||
+            typeof this.props.vm.saveProjectSb3_auto !== 'function') {
             return Promise.resolve(false);
         }
 
-        if (this.props.isPlayerOnly || typeof this.props.vm.saveProjectSb3_auto !== 'function') {
+        if (this.isAutoSaving) {
+            // The project may change while the snapshot is written: check again afterwards.
+            this.autoSaveQueued = true;
             return Promise.resolve(false);
         }
 
-        const hasPendingVmChanges = nextChangeToken > this.lastAutoSavedChangeToken;
-        const hasPendingLayoutChanges = this.hasLayoutChangedSinceLastSave();
-        if (!force && !hasPendingVmChanges && !hasPendingLayoutChanges) {
+        const metadata = this.getSnapshotMetadata();
+        const metadataKey = JSON.stringify(metadata);
+        let projectJson;
+        try {
+            projectJson = this.props.vm.toJSON();
+        } catch (e) {
+            return Promise.resolve(false);
+        }
+        // Serializing is cheap compared to zipping every costume and sound: skip unchanged projects.
+        if (!force &&
+            projectJson === this.lastAutoSavedProjectJson &&
+            metadataKey === this.lastAutoSavedMetadataKey) {
             return Promise.resolve(false);
         }
 
         this.isAutoSaving = true;
-        const savedUpToToken = nextChangeToken;
-
         return this.props.vm.saveProjectSb3_auto()
-            .then(blob => saveSessionSnapshot({
-                blob,
-                metadata: {
-                    title: this.props.projectTitle,
-                    layout: {
-                        isRightPanelHidden: this.props.isRightPanelHidden,
-                        isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed,
-                        blocksPaletteFlyoutWidth: this.props.blocksPaletteFlyoutWidth,
-                        isRobboUiHidden: this.props.isRobboUiHidden
-                    }
-                }
-            }))
+            .then(blob => saveSessionSnapshot({blob, metadata})
+                .catch(error => {
+                    this.props.onDraftError();
+                    return Promise.reject(error);
+                }))
             .then(() => {
-                this.lastAutoSavedChangeToken = savedUpToToken;
-                this.lastAutoSavedLayout = {
-                    isRightPanelHidden: this.props.isRightPanelHidden,
-                    isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed,
-                    blocksPaletteFlyoutWidth: this.props.blocksPaletteFlyoutWidth,
-                    isRobboUiHidden: this.props.isRobboUiHidden
-                };
+                this.lastAutoSavedProjectJson = projectJson;
+                this.lastAutoSavedMetadataKey = metadataKey;
+                this.props.onDraftSaved(Date.now());
                 return true;
             })
             .catch(() => false)
             .then(result => {
                 this.isAutoSaving = false;
-                if (result &&
-                    this.props.isShowingProject &&
-                    (this.projectChangeToken > this.lastAutoSavedChangeToken ||
-                        this.hasLayoutChangedSinceLastSave())) {
-                    return this.autoSaveProject();
+                if (this.autoSaveQueued) {
+                    this.autoSaveQueued = false;
+                    this.scheduleDebouncedAutoSave();
                 }
                 return result;
             });
-    }
-    hasLayoutChangedSinceLastSave () {
-        const saved = this.lastAutoSavedLayout;
-        if (!saved) {
-            return true;
-        }
-        return saved.isRightPanelHidden !== this.props.isRightPanelHidden ||
-            saved.isBlocksPaletteCollapsed !== this.props.isBlocksPaletteCollapsed ||
-            saved.blocksPaletteFlyoutWidth !== this.props.blocksPaletteFlyoutWidth ||
-            saved.isRobboUiHidden !== this.props.isRobboUiHidden;
-    }
-    startProjectAutosaving () {
-        // Session snapshot is driven by PROJECT_CHANGED + debounce (see handleVmProjectChanged).
     }
     clearBrokenSnapshot () {
         removeSessionSnapshot()
@@ -244,9 +308,9 @@ class GUI extends React.Component {
 
 
         if (this.props.isError) {
-            if (this.scheduleDebouncedAutoSave) {
-                this.scheduleDebouncedAutoSave.cancel();
-            }
+            this.scheduleDebouncedAutoSave.cancel();
+            this.scheduleRuntimeAutoSave.cancel();
+            this.stopRuntimeAutoSaveTimer();
 
             this.props.alert.error(<div>{`Error in Scratch GUI:  ${this.props.error}`}</div>, {timeout: 0});
             if (!this.didClearBrokenSnapshot) {
@@ -260,12 +324,19 @@ class GUI extends React.Component {
         const {
             /* eslint-disable no-unused-vars */
             assetHost,
+            autosaveCopterSimActivated,
+            autosaveExtensionPackActivated,
+            autosaveRobotSensorsKey,
+            autosaveSimActivated,
             cloudHost,
             error,
             isError,
             isScratchDesktop,
             isShowingProject,
+            onDraftError,
+            onDraftSaved,
             onProjectLoaded,
+            onSaveTargetChanged,
             onStorageInit,
             onUpdateProjectId,
             onVmInit,
@@ -297,6 +368,10 @@ class GUI extends React.Component {
 
 GUI.propTypes = {
     assetHost: PropTypes.string,
+    autosaveCopterSimActivated: PropTypes.bool,
+    autosaveExtensionPackActivated: PropTypes.bool,
+    autosaveRobotSensorsKey: PropTypes.string,
+    autosaveSimActivated: PropTypes.bool,
     children: PropTypes.node,
     cloudHost: PropTypes.string,
     error: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
@@ -304,6 +379,7 @@ GUI.propTypes = {
     intl: intlShape,
     isError: PropTypes.bool,
     isLoading: PropTypes.bool,
+    isPlayerOnly: PropTypes.bool,
     isBlocksWorkspaceLayoutPending: PropTypes.bool,
     isScratchDesktop: PropTypes.bool,
     isShowingProject: PropTypes.bool,
@@ -313,7 +389,10 @@ GUI.propTypes = {
     isRobboUiHidden: PropTypes.bool,
     isTotallyNormal: PropTypes.bool,
     loadingStateVisible: PropTypes.bool,
+    onDraftError: PropTypes.func,
+    onDraftSaved: PropTypes.func,
     onProjectLoaded: PropTypes.func,
+    onSaveTargetChanged: PropTypes.func,
     onSeeCommunity: PropTypes.func,
     onStorageInit: PropTypes.func,
     onUpdateProjectId: PropTypes.func,
@@ -331,16 +410,35 @@ GUI.defaultProps = {
     isScratchDesktop: false,
     isTotallyNormal: false,
     onStorageInit: storageInstance => storageInstance.addOfficialScratchWebStores(),
+    onDraftError: () => {},
+    onDraftSaved: () => {},
     onProjectLoaded: () => {},
+    onSaveTargetChanged: () => {},
     onUpdateProjectId: () => {},
     onVmInit: (/* vm */) => {}
 };
+
+/**
+ * Sensor setup saved in meta.robboSimulator. robot_sensors also carries live sensor readings,
+ * so compare only the saved fields.
+ * @param {Array} sensors robot_sensors state
+ * @returns {string} key that changes only when the saved setup changes
+ */
+const getRobotSensorsSaveKey = sensors => (Array.isArray(sensors) ? sensors : [])
+    .map(sensor => (sensor ?
+        `${sensor.sensor_name}:${sensor.sensor_active ? 1 : 0}:${sensor.is_sensor_version_new ? 1 : 0}` :
+        ''))
+    .join('|');
 
 const mapStateToProps = state => {
     const loadingState = state.scratchGui.projectState.loadingState;
     return {
         activeTabIndex: state.scratchGui.editorTab.activeTabIndex,
         alertsVisible: state.scratchGui.alerts.visible,
+        autosaveCopterSimActivated: state.scratchGui.settings.is_copter_sim_activated === true,
+        autosaveExtensionPackActivated: state.scratchGui.extension_pack.is_extension_pack_activated === true,
+        autosaveRobotSensorsKey: getRobotSensorsSaveKey(state.scratchGui.robot_sensors),
+        autosaveSimActivated: state.scratchGui.settings.is_sim_activated === true,
         backdropLibraryVisible: state.scratchGui.modals.backdropLibrary,
         blocksTabVisible: state.scratchGui.editorTab.activeTabIndex === BLOCKS_TAB_INDEX,
         cardsVisible: state.scratchGui.cards.visible,
@@ -374,6 +472,9 @@ const mapStateToProps = state => {
 };
 
 const mapDispatchToProps = dispatch => ({
+    onDraftError: () => dispatch(setDraftError()),
+    onDraftSaved: time => dispatch(setDraftSaved(time)),
+    onSaveTargetChanged: target => dispatch(setSaveTarget(target)),
     onExtensionButtonClick: () => dispatch(openExtensionLibrary()),
     onActivateTab: tab => dispatch(activateTab(tab)),
     onActivateCostumesTab: () => dispatch(activateTab(COSTUMES_TAB_INDEX)),

@@ -8,6 +8,7 @@ import queryString from 'query-string';
 import log from './log';
 import {downloadProjectSb3, getProjectPage} from './robbo-account/robboAccountClient';
 import {setCloudProjectPageId} from '../RobboGui/actions/robboAccountActions';
+import {setProjectSaveTarget} from './project-save-target';
 import {
     LoadingState,
     LoadingStates,
@@ -143,6 +144,8 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
                             this.props.onUpdateProjectTitle(title);
                             document.title = title;
                         }
+                        // Ctrl+S saves back to this cloud project.
+                        setProjectSaveTarget({kind: 'cloud', name: title});
                         this.props.onCloudLoadFinished(LoadingState.LOADING_VM_FILE_UPLOAD, true);
                     };
                     if (!sb3.ok || !sb3.buffer) {

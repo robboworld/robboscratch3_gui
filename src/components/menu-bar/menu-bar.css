@@ -148,6 +148,20 @@
     padding: 0 0.75rem;
 }
 
+/* File menu item with its keyboard shortcut on the right. */
+.menu-item-with-shortcut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.menu-shortcut {
+    font-weight: normal;
+    opacity: 0.65;
+}
+
 .menu-bar-menu {
     position: absolute;
     top: 100%;
