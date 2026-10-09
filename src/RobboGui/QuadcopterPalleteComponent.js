@@ -343,6 +343,16 @@ const messages = defineMessages({
         description: 'Move a found copter to this computer group',
         defaultMessage: 'Move to my group'
     },
+    adopting: {
+        id: 'gui.RobboGui.QuadcopterPalette.adopting',
+        description: 'A found copter is being moved to this group',
+        defaultMessage: 'Moving {name} to your group…'
+    },
+    adoptFailed: {
+        id: 'gui.RobboGui.QuadcopterPalette.adoptFailed',
+        description: 'Moving a found copter to this group failed',
+        defaultMessage: 'Could not move {name} — try again'
+    },
     groupLocked: {
         id: 'gui.RobboGui.QuadcopterPalette.groupLocked',
         description: 'The group cannot be changed while a copter flies',
@@ -567,10 +577,15 @@ class QuadcopterPalleteComponent extends Component {
     }
 
     handleAdopt (lost) {
-        this.setState(state => ({
-            lost: Object.assign({}, state.lost, {list: state.lost.list.filter(item => item !== lost)})
-        }));
-        this.props.QCA.adoptLostCopter(lost);
+        const setStatus = status => this.setState(state => {
+            if (!state.lost) return null;
+            const list = status === 'done' ?
+                state.lost.list.filter(item => item !== lost) :
+                state.lost.list.map(item => (item === lost ? Object.assign(item, {status}) : item));
+            return {lost: Object.assign({}, state.lost, {list})};
+        });
+        setStatus('adopting');
+        this.props.QCA.adoptLostCopter(lost).then(ok => setStatus(ok ? 'done' : 'failed'));
     }
 
     startPoseKey (copter) {
@@ -1632,17 +1647,22 @@ class QuadcopterPalleteComponent extends Component {
         if (lost.list.length === 0) {
             return this.renderAttention([{kind: 'info', text: intl.formatMessage(messages.lostNone)}]);
         }
-        return this.renderAttention(lost.list.map(item => ({
-            kind: 'info',
-            text: intl.formatMessage(messages.lostFound, {
-                name: item.number ?
-                    intl.formatMessage(messages.copterNumber, {number: item.number}) :
-                    intl.formatMessage(messages.newCopter),
-                channel: item.channel
-            }),
-            actionLabel: intl.formatMessage(messages.adopt),
-            action: () => this.handleAdopt(item)
-        })));
+        return this.renderAttention(lost.list.map(item => {
+            const name = item.number ?
+                intl.formatMessage(messages.copterNumber, {number: item.number}) :
+                intl.formatMessage(messages.newCopter);
+            if (item.status === 'adopting') {
+                return {kind: 'info', text: intl.formatMessage(messages.adopting, {name})};
+            }
+            return {
+                kind: item.status === 'failed' ? 'warning' : 'info',
+                text: item.status === 'failed' ?
+                    intl.formatMessage(messages.adoptFailed, {name}) :
+                    intl.formatMessage(messages.lostFound, {name, channel: item.channel}),
+                actionLabel: intl.formatMessage(messages.adopt),
+                action: () => this.handleAdopt(item)
+            };
+        }));
     }
 
     renderGlobalAttention () {
