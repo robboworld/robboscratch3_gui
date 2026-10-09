@@ -393,12 +393,22 @@ export function startDeviceLinkThunk () {
  * @returns {function}
  */
 export function hydrateLicenseThunk () {
-    return function (dispatch) {
+    return function (dispatch, getState) {
         try {
             if (typeof localStorage !== 'undefined') {
                 const base = readPersistedActivationBase();
                 const token = readPersistedToken();
                 const storedFp = localStorage.getItem(LS_BOUND_FP) || '';
+
+                // Called again on every device search: when this licence is already loaded,
+                // do not reload the addon (that restarts the update check in "About").
+                const current = typeof getState === 'function' && getState().scratchGui &&
+                    getState().scratchGui.license;
+                // A failed addon load (addonError) is still retried.
+                if (current && token && current.signedOfflineToken === token &&
+                    (current.addonReady || (current.status === 'valid_offline' && !current.addonError))) {
+                    return Promise.resolve();
+                }
 
                 dispatch(persistActivationBaseUrlThunk(base));
 
