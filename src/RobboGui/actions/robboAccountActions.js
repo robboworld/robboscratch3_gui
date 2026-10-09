@@ -14,7 +14,10 @@ import {
     clearAccessTokenMemory
 } from '../../lib/robbo-account/robboAccountClient';
 import {
+    bffLogoutClearUrl,
+    idpLogoutUrl,
     lmsRegisterUrl,
+    lmsSharesEditorSite,
     oidcLogoutUrl,
     oidcStartUrl,
     canonicalizeLoopbackEditorHost,
@@ -46,6 +49,8 @@ import {removeSnapshot} from '../../lib/project-session-store';
 import storage from '../../lib/storage';
 
 const UUID_RE = /^[0-9a-fA-F-]{36}$/;
+// The page title from index.html: a cloud project replaces it with its own name.
+const DEFAULT_DOCUMENT_TITLE = typeof document === 'undefined' ? '' : document.title;
 
 function parseUrlProjectPageId () {
     if (typeof window === 'undefined') {
@@ -279,6 +284,9 @@ export function resetEditorToDefaultThunk () {
         const vm = getState().scratchGui.vm;
         dispatch(setCloudProjectPageId(''));
         clearProjectPageIdFromUrl();
+        if (typeof document !== 'undefined' && DEFAULT_DOCUMENT_TITLE) {
+            document.title = DEFAULT_DOCUMENT_TITLE;
+        }
         return removeSnapshot()
             .then(() => storage.load(storage.AssetType.Project, 0, storage.DataFormat.JSON))
             .then(projectAsset => {
@@ -608,20 +616,56 @@ export function startOidcRegisterThunk (returnTo) {
     };
 }
 
+const BACKGROUND_SIGN_OUT_UNAVAILABLE = 'background_sign_out_unavailable';
+
 /**
- * Leave through the IdP logout and come back to a clean editor: without the cloud project
- * params (see resolveEditorLogoutReturnTo) and without the autosaved copy of the user's
- * project, which would otherwise be restored for the next visitor of this browser.
- * @returns {Promise<void>} resolves once the redirect has been started
+ * Sign out of the LMS and the ЛК session without leaving the editor. The LMS request is
+ * opaque (no CORS), so success is judged by the ЛК session being gone afterwards.
+ * @returns {Promise<void>} rejects when the editor still has to go through the IdP page
  */
-function performSignOut () {
+function signOutInBackground () {
+    if (!lmsSharesEditorSite() || typeof fetch !== 'function') {
+        return Promise.reject(new Error(BACKGROUND_SIGN_OUT_UNAVAILABLE));
+    }
+    return fetch(idpLogoutUrl(), {mode: 'no-cors', credentials: 'include', cache: 'no-store'})
+        .then(() => fetch(bffLogoutClearUrl(), {credentials: 'include', cache: 'no-store'}))
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`bff_logout_clear_http_${res.status}`);
+            }
+            return getSessionStatus();
+        })
+        .then(status => {
+            if (status && status.authenticated) {
+                throw new Error('bff_session_still_active');
+            }
+        });
+}
+
+/**
+ * Sign out of the account (ЛК and LMS — otherwise the next person at this computer is signed
+ * straight back in) and leave a clean editor: no cloud project, no autosaved copy of the
+ * user's project, which would otherwise be restored for the next visitor of this browser.
+ * Stays on the page when the LMS shares the editor's site; otherwise goes through the IdP
+ * logout page and comes back (see resolveEditorLogoutReturnTo).
+ * @param {function} dispatch redux dispatch
+ * @returns {Promise<void>} resolves once signed out here or the redirect has been started
+ */
+function performSignOut (dispatch) {
     const returnTo = resolveEditorLogoutReturnTo();
     clearAccessTokenMemory();
     return removeSnapshot()
         .catch(err => {
             log.warn('clear draft snapshot before logout failed', err);
         })
+        .then(signOutInBackground)
         .then(() => {
+            dispatch({type: ROBBO_ACCOUNT_SIGN_OUT});
+            return dispatch(resetEditorToDefaultThunk());
+        }, err => {
+            if (err.message !== BACKGROUND_SIGN_OUT_UNAVAILABLE) {
+                log.warn('background sign-out failed, leaving through the IdP page', err);
+            }
             // Keep account/project chrome until the browser navigates away — clearing Redux
             // here made the header jump to “Sign in” before the logout redirect finished.
             navigateTop(oidcLogoutUrl(returnTo, {skipIdp: false}));
@@ -629,8 +673,8 @@ function performSignOut () {
 }
 
 export function signOutThunk () {
-    return function () {
-        return performSignOut();
+    return function (dispatch) {
+        return performSignOut(dispatch);
     };
 }
 
@@ -645,6 +689,10 @@ export const signOutDiscardThunk = signOutThunk;
  */
 export function handleRemoteSignOutThunk () {
     return function (dispatch, getState) {
+        // Already signed out here (this tab's own sign-out): the session watch only caught up.
+        if ((getState().scratchGui.robboAccount || {}).sessionStatus !== 'authenticated') {
+            return Promise.resolve();
+        }
         clearAccessTokenMemory();
         dispatch({type: ROBBO_ACCOUNT_SIGN_OUT});
         if (getState().scratchGui.projectChanged) {
