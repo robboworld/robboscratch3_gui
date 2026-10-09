@@ -179,6 +179,31 @@ export function bffLogoutClearUrl () {
     return `${resolveApiBase()}/auth/oidc/logout/clear`;
 }
 
+/**
+ * Whether the LMS is on the editor page's site (lk.edu.robbo.ru and online.robbo.ru are both
+ * robbo.ru). Only then does a background request to the LMS carry its session cookie: browsers
+ * may block it cross-site (scratch.ru, localhost against local.openedx.io).
+ * @returns {boolean} true when a background LMS logout can work from this page
+ */
+export function lmsSharesEditorSite () {
+    if (typeof window === 'undefined' || !window.location) {
+        return false;
+    }
+    let lmsHost;
+    try {
+        lmsHost = new URL(resolveLmsBase()).hostname;
+    } catch (e) {
+        return false;
+    }
+    const pageHost = window.location.hostname || '';
+    if (pageHost.indexOf('.') < 0 || lmsHost.indexOf('.') < 0) {
+        return false;
+    }
+    const site = host => host.split('.').slice(-2)
+        .join('.');
+    return site(pageHost) === site(lmsHost);
+}
+
 /** LMS /logout with redirect (clears Tutor session in a top-level window or popup). */
 export function idpLogoutUrl (returnTo) {
     const target = returnTo || bffLogoutClearUrl();
