@@ -81,6 +81,11 @@ const messages = defineMessages({
         description: 'All 15 numbers of the group are taken',
         defaultMessage: 'All numbers in the group are taken — switch the copter to another group'
     },
+    attentionNumberedAsFactory: {
+        id: 'gui.RobboGui.QuadcopterPalette.attentionNumberedAsFactory',
+        description: 'A numbered copter answers on the factory address (its flight controller has not set the radio up)',
+        defaultMessage: 'This is copter {number}: it answers as a new one — restart it'
+    },
     attentionNumberFailed: {
         id: 'gui.RobboGui.QuadcopterPalette.attentionNumberFailed',
         description: 'Automatic number assignment failed',
@@ -255,6 +260,16 @@ const messages = defineMessages({
         id: 'gui.RobboGui.QuadcopterPalette.attentionLostInAir',
         description: 'Link lost while flying: the copter hovers by itself and is searched again',
         defaultMessage: 'Connection lost in flight — the copter hovers by itself, searching…'
+    },
+    swarmHint: {
+        id: 'gui.RobboGui.QuadcopterPalette.swarmHint',
+        description: 'Shown before a swarm takes off: how to place the copters',
+        defaultMessage: 'Before a swarm flight: noses in one direction, at least 1 m apart, a floor with a pattern — over a plain floor the copters drift'
+    },
+    attentionLostInAirLanding: {
+        id: 'gui.RobboGui.QuadcopterPalette.attentionLostInAirLanding',
+        description: 'Link lost while flying; the landing sent at the loss got through',
+        defaultMessage: 'Connection lost in flight — the copter is landing, searching…'
     },
     attentionWeakLinkLanding: {
         id: 'gui.RobboGui.QuadcopterPalette.attentionWeakLinkLanding',
@@ -622,7 +637,9 @@ class QuadcopterPalleteComponent extends Component {
         } else if (copter.connected && copter.linkQuality !== null && copter.linkQuality < WEAK_LINK_PERCENT) {
             out.push({kind: 'warning', text: intl.formatMessage(messages.attentionWeakLink)});
         }
-        if (!copter.connected && copter.lostInAir) {
+        if (!copter.connected && copter.lostInAirLanding) {
+            out.push({kind: 'warning', text: intl.formatMessage(messages.attentionLostInAirLanding)});
+        } else if (!copter.connected && copter.lostInAir) {
             out.push({kind: 'danger', text: intl.formatMessage(messages.attentionLostInAir)});
         } else if (!copter.connected && (copter.reconnecting || copter.searching) && copter.state !== 'disconnected') {
             out.push({kind: 'warning', text: intl.formatMessage(messages.attentionReconnecting)});
@@ -904,7 +921,14 @@ class QuadcopterPalleteComponent extends Component {
     renderNewCopter (copter) {
         const {intl, QCA} = this.props;
         const notices = this.copterAttention(copter).filter(n => n.kind !== 'warning');
-        if (!copter.numbering) {
+        if (copter.connected && copter.numberedAs) {
+            notices.unshift({
+                kind: 'warning',
+                text: intl.formatMessage(messages.attentionNumberedAsFactory, {number: copter.numberedAs}),
+                actionLabel: intl.formatMessage(messages.restart),
+                action: () => this.handleRestart(copter)
+            });
+        } else if (!copter.numbering) {
             if (copter.numberingFailed) {
                 notices.unshift({
                     kind: 'warning',
@@ -1211,6 +1235,19 @@ class QuadcopterPalleteComponent extends Component {
         );
     }
 
+    /**
+     * Before a swarm takes off: each copter knows only its own start point and nose (Flow deck),
+     * so the formation holds only if they are placed alike (09.10.2026: two copters nearly collided
+     * while their own estimates kept 0.8 m apart).
+     * @returns {?React.Element} hint, or null in flight / with one copter
+     */
+    renderSwarmHint () {
+        if (this.state.simulated || this.state.compact) return null;
+        const swarm = this.state.copters.filter(c => c.connected && c.enabled && !c.isNew);
+        if (swarm.length < 2 || swarm.some(c => c.flying)) return null;
+        return <div className={styles.swarmHint}>{this.props.intl.formatMessage(messages.swarmHint)}</div>;
+    }
+
     renderSummary () {
         const {intl} = this.props;
         let list;
@@ -1314,6 +1351,7 @@ class QuadcopterPalleteComponent extends Component {
                     {!this.state.simulated && this.state.menuFor === TOOLBAR_MENU ? this.renderToolbarMenu() : null}
                     {this.renderSummary()}
                     {this.renderMiniMap()}
+                    {this.renderSwarmHint()}
                     {this.renderGlobalAttention()}
                     {this.renderLostCopters()}
                     <div className={styles.list}>{list}</div>
