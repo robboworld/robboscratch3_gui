@@ -9,6 +9,7 @@ const FILE_SAVE_START = 'scratch-gui/project-save-status/FILE_SAVE_START';
 const FILE_SAVE_SUCCESS = 'scratch-gui/project-save-status/FILE_SAVE_SUCCESS';
 const FILE_SAVE_FAILURE = 'scratch-gui/project-save-status/FILE_SAVE_FAILURE';
 const FILE_SAVE_CANCEL = 'scratch-gui/project-save-status/FILE_SAVE_CANCEL';
+const SET_RESTORED_DRAFT = 'scratch-gui/project-save-status/SET_RESTORED_DRAFT';
 
 const initialState = {
     /** Time of the last successful draft write (ms) or null. */
@@ -21,7 +22,9 @@ const initialState = {
     /** Time of the last successful save to file / cloud (ms) or null. */
     fileSavedAt: null,
     isSavingFile: false,
-    fileError: false
+    fileError: false,
+    /** Session draft opened at start: {title, savedAt} for the notice under the save button, or null. */
+    restoredDraft: null
 };
 
 const reducer = function (state, action) {
@@ -59,6 +62,10 @@ const reducer = function (state, action) {
         return Object.assign({}, state, {
             isSavingFile: false,
             fileError: true
+        });
+    case SET_RESTORED_DRAFT:
+        return Object.assign({}, state, {
+            restoredDraft: action.draft || null
         });
     case FILE_SAVE_CANCEL:
         return Object.assign({}, state, {
@@ -101,6 +108,11 @@ const fileSaveCancelled = () => ({
     type: FILE_SAVE_CANCEL
 });
 
+const setRestoredDraft = draft => ({
+    type: SET_RESTORED_DRAFT,
+    draft
+});
+
 export {
     reducer as default,
     initialState as projectSaveStatusInitialState,
@@ -109,6 +121,7 @@ export {
     fileSaveSucceeded,
     setDraftError,
     setDraftSaved,
+    setRestoredDraft,
     setSaveTarget,
     startFileSave
 };

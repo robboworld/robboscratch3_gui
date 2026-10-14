@@ -26,7 +26,8 @@ let isSaving = false;
  * Save the project: "Save" (Ctrl+S) writes to the current file or cloud project,
  * "Save as" (Ctrl+Shift+S) always asks for a location.
  * @param {{saveAs: boolean}} options saveAs — always ask for a location
- * @returns {function} redux thunk resolving with the save result (or undefined on error)
+ * @returns {function} redux thunk resolving with the save result: {method} (aborted when cancelled),
+ *     null / undefined when saving failed
  */
 const saveProjectThunk = options => (dispatch, getState) => {
     const saveAs = !!(options && options.saveAs);
@@ -36,7 +37,11 @@ const saveProjectThunk = options => (dispatch, getState) => {
     const gui = getState().scratchGui;
     const target = getProjectSaveTarget();
     if (!saveAs && target && target.kind === 'cloud') {
-        return dispatch(saveToCloudThunk({asCopy: false}));
+        return dispatch(saveToCloudThunk({asCopy: false}))
+            .then(() => {
+                const account = getState().scratchGui.robboAccount || {};
+                return account.saveStatus === 'success' ? {method: 'cloud'} : null;
+            });
     }
 
     const vm = gui.vm;

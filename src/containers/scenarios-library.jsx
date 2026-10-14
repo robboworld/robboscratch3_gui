@@ -10,6 +10,7 @@ import Modal from '../containers/modal.jsx';
 import Loader from '../components/loader/loader.jsx';
 import analytics from '../lib/analytics';
 import log from '../lib/log';
+import confirmReplaceProject from '../lib/confirm-replace-project';
 import {
     LoadingStates,
     getIsLoadingUpload,
@@ -176,6 +177,12 @@ class ScenariosLibrary extends React.Component {
             });
     }
     handleItemSelect (item) {
+        this.props.onConfirmReplaceProject(this.props.intl)
+            .then(confirmed => {
+                if (confirmed) this.startScenarioLoad(item);
+            });
+    }
+    startScenarioLoad (item) {
         this.pendingScenarioItem = item;
         this.props.requestProjectUpload(this.props.loadingState);
         analytics.event({
@@ -279,6 +286,7 @@ ScenariosLibrary.propTypes = {
     isLoadingUpload: PropTypes.bool,
     loadingState: PropTypes.oneOf(LoadingStates),
     onLoadingFinished: PropTypes.func.isRequired,
+    onConfirmReplaceProject: PropTypes.func.isRequired,
     onLoadingStarted: PropTypes.func.isRequired,
     onRequestClose: PropTypes.func,
     onUpdateProjectTitle: PropTypes.func,
@@ -301,6 +309,7 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = (dispatch, ownProps) => ({
     requestProjectUpload: loadingState => dispatch(requestProjectUpload(loadingState)),
+    onConfirmReplaceProject: intl => dispatch(confirmReplaceProject(intl)),
     onLoadingStarted: () => dispatch(openLoadingProject()),
     onLoadingFinished: (loadingState, success) => {
         dispatch(onLoadedProject(loadingState, ownProps.canSave, success));

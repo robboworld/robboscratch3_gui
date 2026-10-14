@@ -32,7 +32,7 @@ class RobboConfirmDialog extends Component {
     }
 
     render () {
-        const {title, message, confirmLabel, cancelLabel, danger, onAnswer} = this.props;
+        const {title, message, confirmLabel, cancelLabel, alternativeLabel, danger, onAnswer} = this.props;
         return (
             <div className={styles.overlay}>
                 <div
@@ -57,6 +57,15 @@ class RobboConfirmDialog extends Component {
                                 {cancelLabel}
                             </button>
                         ) : null}
+                        {alternativeLabel ? (
+                            <button
+                                type="button"
+                                className={styles.button}
+                                onClick={() => onAnswer('alternative')}
+                            >
+                                {alternativeLabel}
+                            </button>
+                        ) : null}
                         <button
                             type="button"
                             ref={this.setConfirmRef}
@@ -73,6 +82,7 @@ class RobboConfirmDialog extends Component {
 }
 
 RobboConfirmDialog.propTypes = {
+    alternativeLabel: PropTypes.string,
     cancelLabel: PropTypes.string,
     confirmLabel: PropTypes.string.isRequired,
     danger: PropTypes.bool,
@@ -88,9 +98,10 @@ RobboConfirmDialog.propTypes = {
  * @param {string} options.message question; "\n" starts a new line
  * @param {string} options.confirmLabel verb of the action, e.g. "Update firmware"
  * @param {string} [options.cancelLabel] e.g. "Not now"; no cancel button when omitted
+ * @param {string} [options.alternativeLabel] third answer, e.g. "Don't save"; resolves 'alternative'
  * @param {string} [options.title] header
  * @param {boolean} [options.danger] red confirm button
- * @returns {Promise<boolean>} true when confirmed
+ * @returns {Promise<(boolean|string)>} true when confirmed, false on cancel / Esc, 'alternative'
  */
 const robboConfirm = options => new Promise(resolve => {
     const host = document.createElement('div');
