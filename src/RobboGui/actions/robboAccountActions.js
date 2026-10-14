@@ -132,6 +132,44 @@ function setProjectPageIdInUrl (projectPageId) {
     window.history.replaceState(null, '', `${window.location.pathname}?${search}${hash}`);
 }
 
+/** True while a cloud project loads into the VM: its PROJECT_LOADED keeps the cloud binding. */
+let cloudProjectLoading = false;
+
+/**
+ * vm.loadProject for a project from the cloud (see {@link detachCloudProjectThunk}).
+ * @param {VirtualMachine} vm - the VM
+ * @param {ArrayBuffer} buffer - the .sb3
+ * @returns {Promise} vm.loadProject result
+ */
+export function loadProjectFromCloud (vm, buffer) {
+    cloudProjectLoading = true;
+    const done = () => {
+        cloudProjectLoading = false;
+    };
+    return vm.loadProject(buffer).then(result => {
+        done();
+        return result;
+    }, err => {
+        done();
+        throw err;
+    });
+}
+
+/**
+ * Another project was opened (file, scenario, "New"): it is not the cloud project any more, so
+ * "Save to cloud" and Ctrl+S must not overwrite the cloud copy with it.
+ * @returns {function} thunk
+ */
+export function detachCloudProjectThunk () {
+    return function (dispatch, getState) {
+        if (cloudProjectLoading) return;
+        const account = getState().scratchGui.robboAccount || {};
+        if (!account.cloudProjectPageId) return;
+        dispatch(setCloudProjectPageId(''));
+        clearProjectPageIdFromUrl();
+    };
+}
+
 /**
  * Load a cloud project into the VM (metadata + optional .sb3).
  * @param {string} projectPageId
@@ -182,6 +220,8 @@ export function loadCloudProjectIntoEditorThunk (projectPageId, options = {}) {
                     }
                 }
                 if (!sb3.ok || !sb3.buffer) {
+                    // Ctrl+S saves back to this cloud project.
+                    setProjectSaveTarget({kind: 'cloud', name: title});
                     dispatch(setProjectUnchanged());
                     dispatch(closeLoadingProject());
                     return projectPageId;
@@ -197,7 +237,9 @@ export function loadCloudProjectIntoEditorThunk (projectPageId, options = {}) {
                     });
                 }
                 dispatch(uploadAction);
-                return vm.loadProject(sb3.buffer).then(() => {
+                return loadProjectFromCloud(vm, sb3.buffer).then(() => {
+                    // A loaded project clears the save target (gui.jsx handleProjectLoaded).
+                    setProjectSaveTarget({kind: 'cloud', name: title});
                     dispatch(setProjectUnchanged());
                     // canSave false: playground must not auto-push to Scratch servers.
                     dispatch(onLoadedProject(LoadingState.LOADING_VM_FILE_UPLOAD, false, true));

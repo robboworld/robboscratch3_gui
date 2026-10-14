@@ -16,6 +16,7 @@ import {
 import {canonicalizeLoopbackEditorHost} from './robbo-account/robboAccountConfig';
 import {
     checkSessionThunk,
+    loadProjectFromCloud,
     setCloudProjectAccessBlocked,
     setCloudProjectPageId
 } from '../RobboGui/actions/robboAccountActions';
@@ -272,7 +273,7 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
                         return null;
                     }
                     this.props.dispatchProjectUpload(action);
-                    return this.props.vm.loadProject(buffer).then(() => {
+                    return loadProjectFromCloud(this.props.vm, buffer).then(() => {
                         this._holdingLoader = false;
                         this.props.onCloudLoadFinished(LoadingState.LOADING_VM_FILE_UPLOAD, true);
                         saveToCloud();
