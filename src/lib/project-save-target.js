@@ -10,6 +10,13 @@
  * Without a target "Save" falls back to "Save as".
  */
 
+import {isNwRuntime} from './nw-open-project-utils';
+import {
+    getPersistenceValue,
+    isIndexedDbAvailable,
+    setPersistenceValue
+} from './project-persistence-db';
+
 let currentTarget = null;
 const listeners = [];
 
@@ -70,7 +77,85 @@ const setProjectSaveFile = source => {
     }
 };
 
+const DRAFT_HANDLE_KEY = 'project-session-save-handle-v1';
+/** A restored draft is applied only to the project load that follows right after (ms). */
+const PENDING_RESTORE_TTL_MS = 60000;
+let pendingRestore = null;
+
+/**
+ * Describe the target for the session draft metadata. A file handle is stored under its own
+ * IndexedDB key (rememberDraftFileHandle) so a failed clone never breaks the draft itself.
+ * @param {?object} target current target
+ * @returns {?object} {kind, name, path?} or null (cloud projects reopen from the URL)
+ */
+const describeSaveTargetForDraft = target => {
+    if (!target) return null;
+    if (target.kind === 'path') return {kind: 'path', name: target.name, path: target.path};
+    if (target.kind === 'handle') return {kind: 'handle', name: target.name};
+    return null;
+};
+
+const rememberDraftFileHandle = target => {
+    if (!target || target.kind !== 'handle' || !isIndexedDbAvailable()) {
+        return Promise.resolve();
+    }
+    return setPersistenceValue(DRAFT_HANDLE_KEY, target.handle).catch(() => {});
+};
+
+/**
+ * Target of a restored draft: the path must still exist, the handle must match the saved name.
+ * @param {?object} saved describeSaveTargetForDraft() result from the snapshot metadata
+ * @returns {Promise<?object>} target or null
+ */
+const restoreSaveTargetFromDraft = saved => {
+    if (!saved || !isSb3FileName(saved.name)) {
+        return Promise.resolve(null);
+    }
+    if (saved.kind === 'path') {
+        try {
+            if (isNwRuntime() && saved.path && window.nw.require('fs').existsSync(saved.path)) {
+                return Promise.resolve({kind: 'path', path: saved.path, name: saved.name});
+            }
+        } catch (e) {
+            // Unreadable path: fall back to "Save as".
+        }
+        return Promise.resolve(null);
+    }
+    if (saved.kind === 'handle' && isIndexedDbAvailable()) {
+        return getPersistenceValue(DRAFT_HANDLE_KEY)
+            .then(handle => (handle && handle.name === saved.name &&
+                typeof handle.createWritable === 'function' ?
+                {kind: 'handle', handle, name: handle.name} :
+                null))
+            .catch(() => null);
+    }
+    return Promise.resolve(null);
+};
+
+/**
+ * The session draft is about to be loaded: remember its file and info for the notice.
+ * Consumed by the next PROJECT_LOADED (takePendingRestoredDraft in gui.jsx).
+ * @param {{target: ?object, title: string, savedAt: ?number}} info restored draft
+ */
+const setPendingRestoredDraft = info => {
+    pendingRestore = Object.assign({at: Date.now()}, info);
+};
+
+const takePendingRestoredDraft = () => {
+    const info = pendingRestore;
+    pendingRestore = null;
+    if (!info || Date.now() - info.at > PENDING_RESTORE_TTL_MS) {
+        return null;
+    }
+    return info;
+};
+
 export {
+    describeSaveTargetForDraft,
+    rememberDraftFileHandle,
+    restoreSaveTargetFromDraft,
+    setPendingRestoredDraft,
+    takePendingRestoredDraft,
     clearProjectSaveTarget,
     getProjectSaveTarget,
     isSb3FileName,

@@ -43,14 +43,22 @@ import {
 } from '../lib/project-session-store';
 import {
     clearProjectSaveTarget,
-    subscribeProjectSaveTarget
+    describeSaveTargetForDraft,
+    getProjectSaveTarget,
+    rememberDraftFileHandle,
+    setProjectSaveTarget,
+    subscribeProjectSaveTarget,
+    takePendingRestoredDraft
 } from '../lib/project-save-target';
+import {setProjectChanged} from '../reducers/project-changed';
 import {
     setDraftError,
     setDraftSaved,
+    setRestoredDraft,
     setSaveTarget
 } from '../reducers/project-save-status';
 import storage from '../lib/storage';
+import {isNwRuntime} from '../lib/nw-open-project-utils';
 import vmListenerHOC from '../lib/vm-listener-hoc.jsx';
 import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
 import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
@@ -84,6 +92,8 @@ const AUTOSAVE_MAX_WAIT_MS = 10000;
 /** A running program moves sprites and changes variables every frame: snapshot it less often (ms). */
 const RUNTIME_AUTOSAVE_DEBOUNCE_MS = 2000;
 const RUNTIME_AUTOSAVE_MAX_WAIT_MS = 30000;
+/** Desktop: how long closing the window waits for the last draft (ms). */
+const NW_CLOSE_SAVE_TIMEOUT_MS = 2000;
 
 class GUI extends React.Component {
     constructor (props) {
@@ -91,6 +101,7 @@ class GUI extends React.Component {
         bindAll(this, [
             'autoSaveProject',
             'handlePageHide',
+            'handleNwWindowClose',
             'handleProjectLoaded',
             'handleProjectRunStart',
             'handleProjectRunStop',
@@ -99,7 +110,11 @@ class GUI extends React.Component {
             'handleVmProjectChanged'
         ]);
         this.isAutoSaving = false;
+        this.autoSavePromise = null;
         this.autoSaveQueued = false;
+        this.nwWindow = null;
+        this.isClosingNwWindow = false;
+        this.restoredDraftHasUnsavedChanges = false;
         this.lastAutoSavedProjectJson = null;
         this.lastAutoSavedMetadataKey = null;
         this.runtimeAutoSaveTimer = null;
@@ -135,6 +150,14 @@ class GUI extends React.Component {
         if (typeof window !== 'undefined') {
             window.addEventListener('pagehide', this.handlePageHide);
         }
+        if (isNwRuntime()) {
+            try {
+                this.nwWindow = window.nw.Window.get();
+                this.nwWindow.on('close', this.handleNwWindowClose);
+            } catch (e) {
+                this.nwWindow = null;
+            }
+        }
     }
     componentDidUpdate (prevProps) {
         if (this.props.projectId !== prevProps.projectId) {
@@ -151,6 +174,7 @@ class GUI extends React.Component {
                 this.props.blocksPaletteFlyoutWidth !== prevProps.blocksPaletteFlyoutWidth ||
                 this.props.isRobboUiHidden !== prevProps.isRobboUiHidden ||
                 this.props.projectTitle !== prevProps.projectTitle ||
+                this.props.projectChanged !== prevProps.projectChanged ||
                 this.props.autosaveRobotSensorsKey !== prevProps.autosaveRobotSensorsKey ||
                 this.props.autosaveSimActivated !== prevProps.autosaveSimActivated ||
                 this.props.autosaveCopterSimActivated !== prevProps.autosaveCopterSimActivated ||
@@ -161,6 +185,12 @@ class GUI extends React.Component {
             // this only notifies container when a project changes from not yet loaded to loaded
             // At this time the project view in www doesn't need to know when a project is unloaded
             this.props.onProjectLoaded();
+            if (this.restoredDraftHasUnsavedChanges) {
+                this.restoredDraftHasUnsavedChanges = false;
+                // vmManagerHOC marks the loaded project unchanged in a setTimeout queued right after
+                // this update; the nested setTimeout runs after it.
+                setTimeout(() => setTimeout(() => this.props.onSetProjectChanged()));
+            }
             this.autoSaveProject({force: true});
         }
         if (this.props.shouldStopProject && !prevProps.shouldStopProject) {
@@ -186,6 +216,10 @@ class GUI extends React.Component {
         }
         if (typeof window !== 'undefined') {
             window.removeEventListener('pagehide', this.handlePageHide);
+        }
+        if (this.nwWindow) {
+            this.nwWindow.removeListener('close', this.handleNwWindowClose);
+            this.nwWindow = null;
         }
     }
     handleVmProjectChanged () {
@@ -215,13 +249,35 @@ class GUI extends React.Component {
         }
     }
     handleProjectLoaded () {
+        const restored = takePendingRestoredDraft();
+        if (restored) {
+            // Session draft opened at start: keep its file for Ctrl+S and show what was opened.
+            if (restored.target) {
+                setProjectSaveTarget(restored.target);
+            } else {
+                clearProjectSaveTarget();
+                this.props.onSaveTargetChanged(null);
+            }
+            // The draft had changes not saved to a file: tell what was opened, keep the dot on "File"
+            // and the question before New / opening another project. A draft equal to its saved
+            // file needs no notice: the user just sees the file again.
+            this.restoredDraftHasUnsavedChanges = restored.hasUnsavedChanges === true;
+            this.props.onDraftRestored(this.restoredDraftHasUnsavedChanges ?
+                {title: restored.title, savedAt: restored.savedAt} :
+                null);
+            return;
+        }
         // A different project is open: "Save" must not overwrite the previous file.
         // Loaders that know the source set the target again after vm.loadProject resolves.
         clearProjectSaveTarget();
         this.props.onSaveTargetChanged(null);
+        this.props.onDraftRestored(null);
     }
     handleSaveTargetChanged (target) {
         this.props.onSaveTargetChanged(target);
+        rememberDraftFileHandle(target);
+        // The draft remembers its file: Ctrl+S after a restart writes there.
+        this.scheduleDebouncedAutoSave();
     }
     handlePageHide (event) {
         if (typeof document !== 'undefined' &&
@@ -236,9 +292,38 @@ class GUI extends React.Component {
         // Unchanged project is skipped inside (compared with the last snapshot).
         this.autoSaveProject();
     }
+    handleNwWindowClose () {
+        // NW.js does not wait for pagehide work: write the last draft, then close (at most ~2 s).
+        const win = this.nwWindow;
+        const closeNow = () => {
+            try {
+                win.close(true);
+            } catch (e) {
+                // The window is already gone.
+            }
+        };
+        if (this.isClosingNwWindow) {
+            closeNow();
+            return;
+        }
+        this.isClosingNwWindow = true;
+        let save;
+        try {
+            this.scheduleDebouncedAutoSave.cancel();
+            this.scheduleRuntimeAutoSave.cancel();
+            this.stopRuntimeAutoSaveTimer();
+            save = Promise.resolve(this.autoSavePromise).then(() => this.autoSaveProject());
+        } catch (e) {
+            save = Promise.resolve();
+        }
+        const timeout = new Promise(resolve => setTimeout(resolve, NW_CLOSE_SAVE_TIMEOUT_MS));
+        Promise.race([save, timeout]).then(closeNow, closeNow);
+    }
     getSnapshotMetadata () {
         return {
             title: this.props.projectTitle,
+            hasUnsavedChanges: this.props.projectChanged === true,
+            saveTarget: describeSaveTargetForDraft(getProjectSaveTarget()),
             layout: {
                 isRightPanelHidden: this.props.isRightPanelHidden,
                 isBlocksPaletteCollapsed: this.props.isBlocksPaletteCollapsed,
@@ -278,7 +363,7 @@ class GUI extends React.Component {
         }
 
         this.isAutoSaving = true;
-        return this.props.vm.saveProjectSb3_auto()
+        this.autoSavePromise = this.props.vm.saveProjectSb3_auto()
             .then(blob => saveSessionSnapshot({blob, metadata})
                 .catch(error => {
                     this.props.onDraftError();
@@ -293,12 +378,14 @@ class GUI extends React.Component {
             .catch(() => false)
             .then(result => {
                 this.isAutoSaving = false;
-                if (this.autoSaveQueued) {
+                this.autoSavePromise = null;
+                if (this.autoSaveQueued && !this.isClosingNwWindow) {
                     this.autoSaveQueued = false;
                     this.scheduleDebouncedAutoSave();
                 }
                 return result;
             });
+        return this.autoSavePromise;
     }
     clearBrokenSnapshot () {
         removeSessionSnapshot()
@@ -334,9 +421,11 @@ class GUI extends React.Component {
             isScratchDesktop,
             isShowingProject,
             onDraftError,
+            onDraftRestored,
             onDraftSaved,
             onProjectLoaded,
             onSaveTargetChanged,
+            onSetProjectChanged,
             onStorageInit,
             onUpdateProjectId,
             onVmInit,
@@ -390,9 +479,11 @@ GUI.propTypes = {
     isTotallyNormal: PropTypes.bool,
     loadingStateVisible: PropTypes.bool,
     onDraftError: PropTypes.func,
+    onDraftRestored: PropTypes.func,
     onDraftSaved: PropTypes.func,
     onProjectLoaded: PropTypes.func,
     onSaveTargetChanged: PropTypes.func,
+    onSetProjectChanged: PropTypes.func,
     onSeeCommunity: PropTypes.func,
     onStorageInit: PropTypes.func,
     onUpdateProjectId: PropTypes.func,
@@ -411,9 +502,11 @@ GUI.defaultProps = {
     isTotallyNormal: false,
     onStorageInit: storageInstance => storageInstance.addOfficialScratchWebStores(),
     onDraftError: () => {},
+    onDraftRestored: () => {},
     onDraftSaved: () => {},
     onProjectLoaded: () => {},
     onSaveTargetChanged: () => {},
+    onSetProjectChanged: () => {},
     onUpdateProjectId: () => {},
     onVmInit: (/* vm */) => {}
 };
@@ -473,7 +566,9 @@ const mapStateToProps = state => {
 
 const mapDispatchToProps = dispatch => ({
     onDraftError: () => dispatch(setDraftError()),
+    onDraftRestored: draft => dispatch(setRestoredDraft(draft)),
     onDraftSaved: time => dispatch(setDraftSaved(time)),
+    onSetProjectChanged: () => dispatch(setProjectChanged()),
     onSaveTargetChanged: target => dispatch(setSaveTarget(target)),
     onExtensionButtonClick: () => dispatch(openExtensionLibrary()),
     onActivateTab: tab => dispatch(activateTab(tab)),

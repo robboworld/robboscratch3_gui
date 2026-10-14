@@ -26,6 +26,10 @@ import {
     restoreValidSnapshot
 } from './project-session-store';
 import {readPersistedLayoutVisibility} from './layout-visibility-persistence';
+import {
+    restoreSaveTargetFromDraft,
+    setPendingRestoredDraft
+} from './project-save-target';
 import storage from './storage';
 import validate from 'scratch-parser';
 const isDefaultProjectId = projectId => projectId === null || typeof projectId === 'undefined' ||
@@ -138,6 +142,23 @@ const ProjectFetcherHOC = function (WrappedComponent) {
             }
 
             return restoreValidSnapshot(input => this.validateProject(input))
+                .then(restoredSnapshot => {
+                    if (!restoredSnapshot) {
+                        return null;
+                    }
+                    const metadata = restoredSnapshot.metadata || {};
+                    // Ctrl+S after a restart writes to the draft's file; the notice tells what was opened.
+                    return restoreSaveTargetFromDraft(metadata.saveTarget)
+                        .then(target => {
+                            setPendingRestoredDraft({
+                                target,
+                                hasUnsavedChanges: metadata.hasUnsavedChanges === true,
+                                title: metadata.title || '',
+                                savedAt: metadata.updatedAt || null
+                            });
+                            return restoredSnapshot;
+                        });
+                })
                 .then(restoredSnapshot => {
                     if (restoredSnapshot) {
                         if (restoredSnapshot.metadata && restoredSnapshot.metadata.title) {

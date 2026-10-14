@@ -23,7 +23,8 @@ import ProjectTitleInput from './project-title-input.jsx';
 import AuthorInfo from './author-info.jsx';
 import AccountNav from '../../containers/account-nav.jsx';
 import LoginDropdown from './login-dropdown.jsx';
-import ProjectSaveButton from './project-save-button.jsx';
+import FileMenuRestoredNotice from './file-menu-restored-notice.jsx';
+import FileMenuSaveMark from './file-menu-save-mark.jsx';
 import DeletionRestorer from '../../containers/deletion-restorer.jsx';
 import TurboMode from '../../containers/turbo-mode.jsx';
 import MenuBarHOC from '../../containers/menu-bar-hoc.jsx';
@@ -74,6 +75,8 @@ import {
 
 import collectMetadata from '../../lib/collect-metadata';
 import {saveProjectThunk} from '../../lib/project-save-actions';
+import confirmReplaceProject from '../../lib/confirm-replace-project';
+import {getSaveStatusTitle} from '../../lib/project-save-status-text';
 
 import styles from './menu-bar.css';
 
@@ -338,36 +341,16 @@ class MenuBar extends React.Component {
         }
     }
     handleClickNew () {
-        // let readyToReplaceProject = true;
-        // // if the project is dirty, and user owns the project, we will autosave.
-        // // but if they are not logged in and can't save, user should consider
-        // // downloading or logging in first.
-        // // Note that if user is logged in and editing someone else's project,
-        // // they'll lose their work.
-        // if (this.props.projectChanged && !this.props.canCreateNew) {
-        //     readyToReplaceProject = confirm( // eslint-disable-line no-alert
-        //         this.props.intl.formatMessage(messages.confirmNav)
-        //     );
-        // }
-        // this.props.onRequestCloseFile();
-        // if (readyToReplaceProject) {
-        //     //this.props.onClickNew(this.props.canSave && this.props.canCreateNew);
-        //     this.props.onClickNew(false); //modified_by_Yaroslav
-        // }
-        // this.props.onRequestCloseFile();
-
-    window.document.title = this.props.intl.formatMessage(messages.new_project);
-
-    storage
-      .load(storage.AssetType.Project, 0, storage.DataFormat.JSON)
-      .then((projectAsset) => {
-
         this.props.onRequestCloseFile();
-        this.props.vm.loadProject(projectAsset.data);
-      //  this.props.onRequestCloseFile();
-
-      })
-      .catch(err => console.error("Project load error: " + err));
+        this.props.onConfirmReplaceProject(this.props.intl)
+            .then(confirmed => {
+                if (!confirmed) return null;
+                window.document.title = this.props.intl.formatMessage(messages.new_project);
+                return storage
+                    .load(storage.AssetType.Project, 0, storage.DataFormat.JSON)
+                    .then(projectAsset => this.props.vm.loadProject(projectAsset.data));
+            })
+            .catch(err => console.error(`Project load error: ${err}`)); // eslint-disable-line no-console
     }
 
     handleClickRemix () {
@@ -629,13 +612,23 @@ class MenuBar extends React.Component {
                                 })}
                                 onMouseUp={this.props.onClickFile}
                             >
-                                <span className={styles.menuBarItemContent}>
-                                    <img
-                                        alt=""
-                                        className={styles.menuBarItemIcon}
-                                        draggable={false}
-                                        src={fileIcon}
-                                    />
+                                <span
+                                    className={styles.menuBarItemContent}
+                                    title={getSaveStatusTitle(
+                                        this.props.intl,
+                                        this.props.saveStatus,
+                                        this.props.projectChanged
+                                    )}
+                                >
+                                    <span className={styles.fileIconWrap}>
+                                        <img
+                                            alt=""
+                                            className={styles.menuBarItemIcon}
+                                            draggable={false}
+                                            src={fileIcon}
+                                        />
+                                        <FileMenuSaveMark />
+                                    </span>
                                     <span className={styles.menuBarItemLabel}>
                                         <FormattedMessage
                                             defaultMessage="File"
@@ -725,6 +718,7 @@ class MenuBar extends React.Component {
                                         </MenuSection>
                                     ) : null}
                                 </MenuBarMenu>
+                                <FileMenuRestoredNotice />
                             </div>
                         )}
                         <div
@@ -837,7 +831,6 @@ class MenuBar extends React.Component {
                                 </MenuBarMenu>
                             </div>
                         )}
-                        {this.props.canManageFiles ? <ProjectSaveButton /> : null}
                     </div>
                     <Divider className={classNames(styles.divider)} />
 
@@ -1070,6 +1063,7 @@ MenuBar.propTypes = {
     onOpenTipLibrary: PropTypes.func,
     onOpenScenariosLibrary: PropTypes.func,
     onProjectTelemetryEvent: PropTypes.func,
+    onConfirmReplaceProject: PropTypes.func,
     onSaveProject: PropTypes.func,
     onSaveProjectAs: PropTypes.func,
     onSaveToCloud: PropTypes.func,
@@ -1091,7 +1085,16 @@ MenuBar.propTypes = {
     onTriggerRobboMenu: PropTypes.func,
     onUpdateCloudProjectTitle: PropTypes.func,
     onUpdateProjectTitle: PropTypes.func,
+    projectChanged: PropTypes.bool,
     projectTitle: PropTypes.string,
+    saveStatus: PropTypes.shape({
+        draftError: PropTypes.bool,
+        fileError: PropTypes.bool,
+        fileSavedAt: PropTypes.number,
+        isSavingFile: PropTypes.bool,
+        targetKind: PropTypes.string,
+        targetName: PropTypes.string
+    }),
     renderLogin: PropTypes.func,
     robboAccountUser: PropTypes.object,
     sessionExists: PropTypes.bool,
@@ -1127,8 +1130,10 @@ const mapStateToProps = (state, ownProps) => {
         locale: state.locales.locale,
         loginMenuOpen: loginMenuOpen(state),
         modeMenuOpen: modeMenuOpen(state),
+        projectChanged: state.scratchGui.projectChanged,
         projectTitle: state.scratchGui.projectTitle,
         robboAccountUser: robboAccount.user,
+        saveStatus: state.scratchGui.projectSaveStatus,
         sessionExists: state.session && typeof state.session.session !== 'undefined',
         settingsMenuOpen: settingsMenuOpen(state),
         username: user ? user.username : null,
@@ -1168,6 +1173,7 @@ const mapDispatchToProps = dispatch => ({
     onClickSave: () => dispatch(manualUpdateProject()),
     onClickSaveAsCopy: () => dispatch(saveProjectAsCopy()),
     onSaveToCloud: opts => dispatch(saveToCloudThunk(opts)),
+    onConfirmReplaceProject: intl => dispatch(confirmReplaceProject(intl)),
     onSaveProject: () => dispatch(saveProjectThunk({saveAs: false})),
     onSaveProjectAs: () => dispatch(saveProjectThunk({saveAs: true})),
     onSignOut: () => dispatch(signOutThunk()),

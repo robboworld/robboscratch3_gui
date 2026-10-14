@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import {defineMessages, intlShape, injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import log from '../lib/log';
-import sharedMessages from './shared-messages';
+import confirmReplaceProject from './confirm-replace-project';
 import {isNwRuntime} from './nw-open-project-utils';
 import {setProjectSaveFile} from './project-save-target';
 
@@ -142,34 +142,20 @@ const SBFileUploaderHOC = function (WrappedComponent) {
             }
         }
         handleSelectedFile (file) {
-            const {
-                intl,
-                isShowingWithoutId,
-                loadingState,
-                projectChanged,
-                userOwnsProject
-            } = this.props;
             this.fileToUpload = file;
-
-            // If user owns the project, or user has changed the project,
-            // we must confirm with the user that they really intend to
-            // replace it. (If they don't own the project and haven't
-            // changed it, no need to confirm.)
-            let uploadAllowed = true;
-            if (userOwnsProject || (projectChanged && isShowingWithoutId)) {
-                uploadAllowed = confirm( // eslint-disable-line no-alert
-                    intl.formatMessage(sharedMessages.replaceProjectWarning)
-                );
-            }
-            if (uploadAllowed) {
-                // cues step 4
-                this.uploadRequested = true;
-                this.props.requestProjectUpload(loadingState);
-            } else {
-                // skips ahead to step 7
-                this.removeFileObjects();
-            }
             this.props.closeFileMenu();
+            // When the project has changes not saved to a file, ask "Save" / "Don't save" / "Cancel".
+            this.props.onConfirmReplaceProject(this.props.intl)
+                .then(uploadAllowed => {
+                    if (uploadAllowed && this.fileToUpload === file) {
+                        // cues step 4
+                        this.uploadRequested = true;
+                        this.props.requestProjectUpload(this.props.loadingState);
+                    } else if (this.fileToUpload === file) {
+                        // skips ahead to step 7
+                        this.removeFileObjects();
+                    }
+                });
         }
         // step 4 is below, in mapDispatchToProps
 
@@ -252,6 +238,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 isShowingWithoutId,
                 loadingState,
                 onLoadingFinished,
+                onConfirmReplaceProject,
                 onLoadingStarted,
                 onSetProjectTitle,
                 projectChanged,
@@ -280,6 +267,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
         isShowingWithoutId: PropTypes.bool,
         loadingState: PropTypes.oneOf(LoadingStates),
         onLoadingFinished: PropTypes.func,
+        onConfirmReplaceProject: PropTypes.func,
         onLoadingStarted: PropTypes.func,
         onSetProjectTitle: PropTypes.func,
         projectChanged: PropTypes.bool,
@@ -313,6 +301,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
             dispatch(closeFileMenu());
         },
         // show project loading screen
+        onConfirmReplaceProject: intl => dispatch(confirmReplaceProject(intl)),
         onLoadingStarted: () => dispatch(openLoadingProject()),
         onSetProjectTitle: title => dispatch(setProjectTitle(title)),
         // step 4: transition the project state so we're ready to handle the new

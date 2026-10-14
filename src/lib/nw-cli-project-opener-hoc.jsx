@@ -20,6 +20,7 @@ import {openLoadingProject, closeLoadingProject} from '../reducers/modals';
 import {closeFileMenu} from '../reducers/menus';
 import {setProjectTitle} from '../reducers/project-title';
 import {setProjectSaveFile} from './project-save-target';
+import confirmReplaceProject from './confirm-replace-project';
 
 const messages = defineMessages({
     loadError: {
@@ -33,6 +34,7 @@ const NW_CLI_PROP_KEYS = [
     'dispatchProjectUpload',
     'intl',
     'loadingState',
+    'onConfirmReplaceProject',
     'onNwLoadFinished',
     'onUpdateProjectTitle',
     'openLoadingProject'
@@ -85,17 +87,24 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
             if (!p) {
                 return;
             }
+            let read = null;
             try {
-                const read = readProjectFromAbsolutePath(p);
-                if (!read) {
-                    return;
-                }
-                window.__ROBBO_NW_PENDING_PROJECT__ = read;
-                this._nwRetryCount = 0;
-                this.tryConsumePending();
+                read = readProjectFromAbsolutePath(p);
             } catch (e) {
                 log.warn(e);
             }
+            if (!read) {
+                return;
+            }
+            // The bootstrap already queued the file: hold it until the user answers.
+            delete window.__ROBBO_NW_PENDING_PROJECT__;
+            this.props.onConfirmReplaceProject(this.props.intl)
+                .then(confirmed => {
+                    if (!confirmed) return;
+                    window.__ROBBO_NW_PENDING_PROJECT__ = read;
+                    this._nwRetryCount = 0;
+                    this.tryConsumePending();
+                });
         }
         _canAcceptFileLoad (loadingState) {
             return loadingState === LoadingState.NOT_LOADED ||
@@ -171,6 +180,7 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
         dispatchProjectUpload: PropTypes.func,
         intl: intlShape.isRequired,
         loadingState: PropTypes.oneOf(LoadingStates).isRequired,
+        onConfirmReplaceProject: PropTypes.func,
         onNwLoadFinished: PropTypes.func,
         onUpdateProjectTitle: PropTypes.func,
         openLoadingProject: PropTypes.func,
@@ -187,6 +197,7 @@ const nwCliProjectOpenerHOC = function (WrappedComponent) {
     const mapDispatchToProps = (dispatch, ownProps) => ({
         dispatchProjectUpload: action => dispatch(action),
         openLoadingProject: () => dispatch(openLoadingProject()),
+        onConfirmReplaceProject: intl => dispatch(confirmReplaceProject(intl)),
         onNwLoadFinished: (loadingState, success) => {
             dispatch(onLoadedProject(loadingState, ownProps.canSave, success));
             dispatch(closeLoadingProject());

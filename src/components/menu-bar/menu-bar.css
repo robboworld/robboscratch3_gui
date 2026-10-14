@@ -87,6 +87,25 @@
     display: block;
 }
 
+/* File icon with the save status mark in its corner. */
+.file-icon-wrap {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+}
+
+.file-icon-wrap .menu-bar-item-icon {
+    margin: 0;
+}
+
+[dir="ltr"] .file-icon-wrap {
+    margin-right: 0.375rem;
+}
+
+[dir="rtl"] .file-icon-wrap {
+    margin-left: 0.375rem;
+}
+
 [dir="ltr"] .menu-bar-item-icon {
     margin-right: 0.375rem;
 }
