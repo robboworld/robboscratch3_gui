@@ -58,6 +58,7 @@ import {
     setSaveTarget
 } from '../reducers/project-save-status';
 import storage from '../lib/storage';
+import {detachCloudProjectThunk} from '../RobboGui/actions/robboAccountActions';
 import {isNwRuntime} from '../lib/nw-open-project-utils';
 import vmListenerHOC from '../lib/vm-listener-hoc.jsx';
 import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
@@ -283,6 +284,8 @@ class GUI extends React.Component {
         // Loaders that know the source set the target again after vm.loadProject resolves.
         clearProjectSaveTarget();
         this.props.onSaveTargetChanged(null);
+        // Nor the cloud project, unless it is the one being loaded.
+        this.props.onDetachCloudProject();
         this.props.onDraftRestored(null);
     }
     handleSaveTargetChanged (target) {
@@ -440,6 +443,7 @@ class GUI extends React.Component {
             onDraftRestored,
             onDraftSaved,
             isRobboAccountAuthenticated,
+            onDetachCloudProject,
             onProjectLoaded,
             onSaveTargetChanged,
             onSetProjectChanged,
@@ -497,6 +501,7 @@ GUI.propTypes = {
     isRobboUiHidden: PropTypes.bool,
     isTotallyNormal: PropTypes.bool,
     loadingStateVisible: PropTypes.bool,
+    onDetachCloudProject: PropTypes.func,
     onDraftError: PropTypes.func,
     onDraftRestored: PropTypes.func,
     onDraftSaved: PropTypes.func,
@@ -586,6 +591,7 @@ const mapStateToProps = state => {
 };
 
 const mapDispatchToProps = dispatch => ({
+    onDetachCloudProject: () => dispatch(detachCloudProjectThunk()),
     onDraftError: () => dispatch(setDraftError()),
     onDraftRestored: draft => dispatch(setRestoredDraft(draft)),
     onDraftSaved: time => dispatch(setDraftSaved(time)),
