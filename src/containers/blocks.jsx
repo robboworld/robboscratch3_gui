@@ -90,6 +90,7 @@ class Blocks extends React.Component {
             'handleExtensionAdded',
             'handleBlocksInfoUpdate',
             'onTargetsUpdate',
+            'updateCopterNumbers',
             'onVisualReport',
             'onWorkspaceUpdate',
             'onWorkspaceMetricsChange',
@@ -147,6 +148,9 @@ class Blocks extends React.Component {
         };
         this.onTargetsUpdate = debounce(this.onTargetsUpdate, 100);
         this.toolboxUpdateQueue = [];
+        /** Copter numbers the quadcopter palette was built for (see updateCopterNumbers). */
+        this._copterNumbers = [];
+        this._unsubscribeCopters = null;
     }
     componentDidMount () {
         this.ScratchBlocks = VMScratchBlocks(this.props.vm, this.props.useCatBlocks);
@@ -224,6 +228,10 @@ class Blocks extends React.Component {
         addFunctionListener(this.workspace, 'zoom', this.onWorkspaceMetricsChange);
 
         this.attachVM();
+        const qca = typeof this.props.vm.getQCA === 'function' ? this.props.vm.getQCA() : null;
+        if (qca && typeof qca.subscribeCopters === 'function') {
+            this._unsubscribeCopters = qca.subscribeCopters(this.updateCopterNumbers);
+        }
         // Only update blocks/vm locale when visible to avoid sizing issues
         // If locale changes while not visible it will get handled in didUpdate
         if (this.props.isVisible) {
@@ -358,6 +366,10 @@ class Blocks extends React.Component {
     }
     componentWillUnmount () {
         this.detachVM();
+        if (this._unsubscribeCopters) {
+            this._unsubscribeCopters();
+            this._unsubscribeCopters = null;
+        }
         // The whole GUI remounts on locale change: drop deferred work that would touch the disposed workspace.
         this.onTargetsUpdate.cancel();
         this.toolboxUpdateQueue = [];
@@ -514,7 +526,36 @@ class Blocks extends React.Component {
         });
     }
 
+    /**
+     * Copter numbers in the project: connected copters (or simulator sprites). The copter menu
+     * lists them, swarm blocks show from two copters.
+     * @param {Array<object>} [copters] `QCA.getCopters()` list from the subscription
+     * @returns {Array<number>} numbers
+     */
+    readCopterNumbers (copters) {
+        const copterBlocks = this.props.vm.runtime._copterBlocks;
+        const numbers = copterBlocks && typeof copterBlocks.getKnownCopterNumbers === 'function' ?
+            copterBlocks.getKnownCopterNumbers(copters) : [];
+        if (this.ScratchBlocks && this.ScratchBlocks.Blocks.quadcopter) {
+            this.ScratchBlocks.Blocks.quadcopter.copterNumbers = numbers;
+        }
+        return numbers;
+    }
+    /**
+     * Rebuild the palette when the copters in the project change (a copter connected, a sprite
+     * added): the number list is short and changes rarely.
+     * @param {Array<object>} [copters] `QCA.getCopters()` list from the subscription
+     */
+    updateCopterNumbers (copters) {
+        const numbers = this.readCopterNumbers(copters);
+        if (numbers.join(',') === this._copterNumbers.join(',')) return;
+        const toolboxXML = this.getToolboxXML();
+        if (toolboxXML) {
+            this.props.updateToolboxState(toolboxXML);
+        }
+    }
     onTargetsUpdate () {
+        this.updateCopterNumbers();
         if (this.props.vm.editingTarget && this.workspace && this.workspace.getFlyout()) {
             ['glide', 'move', 'set'].forEach(prefix => {
                 this.updateToolboxBlockValue(`${prefix}x`, Math.round(this.props.vm.editingTarget.x).toString());
@@ -561,6 +602,8 @@ class Blocks extends React.Component {
         config.robot_is_scratchduino      = this.props.robbo_settings.robot_is_scratchduino;
         config.is_sim_activated           = this.props.robbo_settings.is_sim_activated;
         config.is_copter_sim_activated    = this.props.robbo_settings.is_copter_sim_activated;
+        config.copterNumbers              = this.readCopterNumbers();
+        this._copterNumbers               = config.copterNumbers;
         config.robbo_ui_hidden            = this.props.isRobboUiHidden;
         config.locale = this.props.locale;
         config.messages = this.props.messages;
