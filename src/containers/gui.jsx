@@ -51,6 +51,7 @@ import {
     takePendingRestoredDraft
 } from '../lib/project-save-target';
 import {setProjectChanged} from '../reducers/project-changed';
+import {setProjectTitle} from '../reducers/project-title';
 import {
     setDraftError,
     setDraftSaved,
@@ -115,6 +116,7 @@ class GUI extends React.Component {
         this.nwWindow = null;
         this.isClosingNwWindow = false;
         this.restoredDraftHasUnsavedChanges = false;
+        this.restoredDraftTitle = null;
         this.lastAutoSavedProjectJson = null;
         this.lastAutoSavedMetadataKey = null;
         this.runtimeAutoSaveTimer = null;
@@ -191,6 +193,13 @@ class GUI extends React.Component {
                 // this update; the nested setTimeout runs after it.
                 setTimeout(() => setTimeout(() => this.props.onSetProjectChanged()));
             }
+            if (this.restoredDraftTitle) {
+                const title = this.restoredDraftTitle;
+                this.restoredDraftTitle = null;
+                // TitledHOC (a parent, updated after this component) resets the title of a loaded
+                // default project to "Scratch Project"; the draft's title is applied after that.
+                setTimeout(() => this.props.onRestoreProjectTitle(title));
+            }
             this.autoSaveProject({force: true});
         }
         if (this.props.shouldStopProject && !prevProps.shouldStopProject) {
@@ -262,6 +271,7 @@ class GUI extends React.Component {
             // and the question before New / opening another project. A draft equal to its saved
             // file needs no notice: the user just sees the file again.
             this.restoredDraftHasUnsavedChanges = restored.hasUnsavedChanges === true;
+            this.restoredDraftTitle = restored.title || null;
             this.props.onDraftRestored(this.restoredDraftHasUnsavedChanges ?
                 {title: restored.title, savedAt: restored.savedAt} :
                 null);
@@ -426,6 +436,7 @@ class GUI extends React.Component {
             onProjectLoaded,
             onSaveTargetChanged,
             onSetProjectChanged,
+            onRestoreProjectTitle,
             onStorageInit,
             onUpdateProjectId,
             onVmInit,
@@ -484,6 +495,7 @@ GUI.propTypes = {
     onProjectLoaded: PropTypes.func,
     onSaveTargetChanged: PropTypes.func,
     onSetProjectChanged: PropTypes.func,
+    onRestoreProjectTitle: PropTypes.func,
     onSeeCommunity: PropTypes.func,
     onStorageInit: PropTypes.func,
     onUpdateProjectId: PropTypes.func,
@@ -507,6 +519,7 @@ GUI.defaultProps = {
     onProjectLoaded: () => {},
     onSaveTargetChanged: () => {},
     onSetProjectChanged: () => {},
+    onRestoreProjectTitle: () => {},
     onUpdateProjectId: () => {},
     onVmInit: (/* vm */) => {}
 };
@@ -569,6 +582,7 @@ const mapDispatchToProps = dispatch => ({
     onDraftRestored: draft => dispatch(setRestoredDraft(draft)),
     onDraftSaved: time => dispatch(setDraftSaved(time)),
     onSetProjectChanged: () => dispatch(setProjectChanged()),
+    onRestoreProjectTitle: title => dispatch(setProjectTitle(title)),
     onSaveTargetChanged: target => dispatch(setSaveTarget(target)),
     onExtensionButtonClick: () => dispatch(openExtensionLibrary()),
     onActivateTab: tab => dispatch(activateTab(tab)),

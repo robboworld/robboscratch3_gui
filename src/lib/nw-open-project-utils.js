@@ -49,10 +49,12 @@ export const isScratchProjectPath = filePath => {
 
 /**
  * Parse project path from NW App "open" cmdline (may contain spaces, NW flags).
- * @param {string} cmdline full command line string
+ * NW.js 0.111 passes an array with the command line as its only item; older versions — a string.
+ * @param {(string|string[])} args full command line
  * @returns {string|null} absolute or relative path
  */
-export const parseProjectPathFromCmdline = cmdline => {
+export const parseProjectPathFromCmdline = args => {
+    const cmdline = Array.isArray(args) ? args.join(' ') : args;
     if (!cmdline || typeof cmdline !== 'string') {
         return null;
     }
@@ -78,14 +80,11 @@ export const parseProjectPathFromCmdline = cmdline => {
         return null;
     }
 
+    // An unquoted path with spaces is split into tokens: walk back to the token that starts it.
+    const isPathStart = token => token.startsWith('/') || /^[A-Za-z]:\\/.test(token);
     let startTok = endTok;
-    while (startTok > 0) {
-        const prev = tokens[startTok - 1];
-        if (prev.startsWith('-') || /^--[^\s]+=/.test(prev)) {
-            break;
-        }
-        if (prev.startsWith('/') || /^[A-Za-z]:\\/.test(prev)) {
-            startTok--;
+    while (startTok > 0 && !isPathStart(tokens[startTok])) {
+        if (tokens[startTok - 1].startsWith('-')) {
             break;
         }
         startTok--;
