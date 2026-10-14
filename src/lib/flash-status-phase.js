@@ -139,7 +139,16 @@ const STEP_BY_PHASE = {
     done: 5
 };
 
+/**
+ * The flash is over only on «END. Port closed» (DCA writes it after the version check, the flasher when it does
+ * not verify). «Port closed, reopening (…)» in the middle of flashing is not the end.
+ * @param {string} status raw flasher line
+ * @returns {boolean} the flash finished successfully
+ */
+export const isFlashDone = status => status.indexOf('END. Port closed') !== -1;
+
 const WAIT_PATTERN = /Wait about ([\d.]+) secs/;
+const BLOCK_PATTERN = /Block (\d+)\/(\d+)/;
 const DIAGNOSTIC_PATTERN = /Start downloading diagnostic for .*?(?:\s(\d+)\/(\d+))?$/;
 const DEVICE_ID_PATTERN = /Device ID is:\s*(-?\d+)/;
 /** Writing usually takes a bit longer than the flasher estimate; stop the bar short of 100 %. */
@@ -156,7 +165,9 @@ export const createFlashProgress = () => ({
     attempt: null,
     total: null,
     deviceId: null,
-    recognized: false
+    recognized: false,
+    block: 0,
+    blockTotal: 0
 });
 
 /**
@@ -167,7 +178,7 @@ export const createFlashProgress = () => ({
  */
 export const flashPhaseOf = (status, progress) => {
     if (status.indexOf('Error') !== -1) return 'error';
-    if (status.indexOf('Port closed') !== -1 && status.indexOf('reopening') === -1) return 'done';
+    if (isFlashDone(status)) return 'done';
     if (status.indexOf('Verifying') !== -1 || status.indexOf('verification') !== -1) return 'verify';
     const diagnostic = !!(progress && progress.diagnostic);
     if (status.indexOf('Uploading') !== -1 || status.indexOf('Block') !== -1) {
@@ -209,12 +220,21 @@ const trackDevice = (status, progress) => {
     if (status.indexOf('Start downloading firmware') !== -1) progress.diagnostic = false;
 };
 
+/** The flash window root around the status element (data-flash-window), or null. */
+const flashWindowOf = el => {
+    for (let node = el; node && node.getAttribute; node = node.parentNode) {
+        if (node.hasAttribute('data-flash-window')) return node;
+    }
+    return null;
+};
+
 const deviceNameOf = (progress, intl) => {
     const message = progress.deviceId === null ? null : DEVICE_NAME_BY_ID[progress.deviceId];
     return message ? intl.formatMessage(message) : null;
 };
 
 const pendingPercent = progress => {
+    if (progress.blockTotal) return Math.round(progress.block / progress.blockTotal * 100);
     if (!progress.startedAt || !(progress.expectedMs > 0)) return null;
     return Math.min(MAX_PENDING_PERCENT,
         Math.round((Date.now() - progress.startedAt) / progress.expectedMs * 100));
@@ -233,6 +253,14 @@ export const applyFlashStatus = (el, status, intl, progress) => {
     if (wait) {
         progress.startedAt = Date.now();
         progress.expectedMs = Number(wait[1]) * 1000;
+        progress.block = 0;
+        progress.blockTotal = 0;
+    }
+    // Flashers that count blocks give the exact percent; the time estimate is only a fallback.
+    const block = BLOCK_PATTERN.exec(status);
+    if (block) {
+        progress.block = Number(block[1]);
+        progress.blockTotal = Number(block[2]);
     }
     trackDevice(status, progress);
     const phase = flashPhaseOf(status, progress);
@@ -266,10 +294,10 @@ export const applyFlashStatus = (el, status, intl, progress) => {
     }
     el.textContent = text;
     // The window draws its step track from these attributes (FirmwareFlasherFlashingStatusComponent.css).
-    const flashWindow = el.closest('[data-flash-window]');
+    const flashWindow = flashWindowOf(el);
     if (flashWindow) {
-        if (STEP_BY_PHASE[phase]) flashWindow.dataset.flashStep = String(STEP_BY_PHASE[phase]);
-        flashWindow.dataset.flashPhase = phase;
+        if (STEP_BY_PHASE[phase]) flashWindow.setAttribute('data-flash-step', String(STEP_BY_PHASE[phase]));
+        flashWindow.setAttribute('data-flash-phase', phase);
     }
     el.classList.toggle('robbo_flash_progress', phase !== 'done' && phase !== 'error');
     el.classList.toggle('robbo_flash_progress_known', percent !== null);
@@ -297,8 +325,8 @@ export const applyFlashConnected = (el, intl, progress) => {
  * @param {?HTMLElement} el status element of the flash log
  */
 export const resetFlashWindow = el => {
-    const flashWindow = el && el.closest('[data-flash-window]');
+    const flashWindow = flashWindowOf(el);
     if (!flashWindow) return;
-    delete flashWindow.dataset.flashStep;
-    delete flashWindow.dataset.flashPhase;
+    flashWindow.removeAttribute('data-flash-step');
+    flashWindow.removeAttribute('data-flash-phase');
 };

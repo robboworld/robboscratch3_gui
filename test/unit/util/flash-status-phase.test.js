@@ -102,13 +102,23 @@ describe('flash status phases', () => {
         flashWindow.appendChild(el);
         const progress = createFlashProgress();
         applyFlashStatus(el, `${P}Start downloading diagnostic for otto_nulllab(115200) 2/3`, intl, progress);
-        expect(flashWindow.dataset.flashStep).toBe('1');
+        expect(flashWindow.getAttribute('data-flash-step')).toBe('1');
         applyFlashStatus(el, `${P}Device ID is:5`, intl, progress);
-        expect(flashWindow.dataset.flashStep).toBe('2');
+        expect(flashWindow.getAttribute('data-flash-step')).toBe('2');
         applyFlashStatus(el, `${P}Error! PLS reload RS and try again`, intl, progress);
-        expect(flashWindow.dataset.flashStep).toBe('2');
-        expect(flashWindow.dataset.flashPhase).toBe('error');
+        expect(flashWindow.getAttribute('data-flash-step')).toBe('2');
+        expect(flashWindow.getAttribute('data-flash-phase')).toBe('error');
         resetFlashWindow(el);
-        expect(flashWindow.dataset.flashStep).toBeUndefined();
+        expect(flashWindow.hasAttribute('data-flash-step')).toBe(false);
+    });
+
+    test('block counters give the exact write percent', () => {
+        const el = document.createElement('div');
+        const progress = createFlashProgress();
+        progress.deviceId = 0;
+        applyFlashStatus(el, `${P}Wait about 17.25 secs`, intl, progress);
+        applyFlashStatus(el, `${P}Block 35/69`, intl, progress);
+        expect(el.textContent).toBe('writeDevice|{"device":"deviceRobot","percent":51}');
+        expect(flashPhaseOf(`${P}Port closed, reopening (baud)...`, progress)).toBe('prepare');
     });
 });

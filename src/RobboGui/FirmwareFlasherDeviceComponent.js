@@ -13,6 +13,7 @@ import './RobboDeviceStatus.css';
 
 import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
 import { isRobboLinkMobileWebContext } from '../lib/platform';
+import {isFlashDone} from '../lib/flash-status-phase';
 
 
 
@@ -184,7 +185,7 @@ class FirmwareFlasherDeviceComponent extends Component {
 
         //  console.log(`flashingStatusComponent.scrollTop: ${flashingLogComponent.scrollTop} `);
 
-        if ((status.indexOf("Port closed") !== -1)) {
+        if (isFlashDone(status)) {
 
           setFlashLogStatusTone(flashingStatusComponent, 'success');
 
