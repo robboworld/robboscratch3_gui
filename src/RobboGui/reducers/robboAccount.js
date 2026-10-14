@@ -8,15 +8,27 @@ export const ROBBO_ACCOUNT_SAVE_START = 'ROBBO_ACCOUNT_SAVE_START';
 export const ROBBO_ACCOUNT_SAVE_SUCCESS = 'ROBBO_ACCOUNT_SAVE_SUCCESS';
 export const ROBBO_ACCOUNT_SAVE_FAILURE = 'ROBBO_ACCOUNT_SAVE_FAILURE';
 export const ROBBO_ACCOUNT_CLEAR_SAVE_STATUS = 'ROBBO_ACCOUNT_CLEAR_SAVE_STATUS';
+export const ROBBO_ACCOUNT_TITLE_SAVE_SUCCESS = 'ROBBO_ACCOUNT_TITLE_SAVE_SUCCESS';
 export const ROBBO_ACCOUNT_SIGN_OUT = 'ROBBO_ACCOUNT_SIGN_OUT';
+export const ROBBO_ACCOUNT_SET_CLOUD_PROJECT_ACCESS_BLOCKED = 'ROBBO_ACCOUNT_SET_CLOUD_PROJECT_ACCESS_BLOCKED';
+
+function applyLmsPasswordFallback (next, payload, prevState) {
+    if (payload && typeof payload.lmsPasswordFallback === 'boolean') {
+        next.lmsPasswordFallback = payload.lmsPasswordFallback;
+    } else {
+        next.lmsPasswordFallback = prevState.lmsPasswordFallback;
+    }
+}
 
 export function robboAccountInitialState () {
     return {
         sessionStatus: 'idle', // idle | loading | authenticated | anonymous | error
         user: null, // {email, edxUserId, sub, role, displayName}
         cloudProjectPageId: '',
-        saveStatus: 'idle', // idle | saving | success | error
-        saveError: ''
+        saveStatus: 'idle', // idle | saving | success | title_success | error
+        saveError: '',
+        lmsPasswordFallback: false,
+        cloudProjectAccessBlocked: false
     };
 }
 
@@ -36,12 +48,14 @@ export default function robboAccountReducer (state, action) {
         const next = immutable_copy(state);
         next.sessionStatus = 'authenticated';
         next.user = action.payload.user || null;
+        applyLmsPasswordFallback(next, action.payload, state);
         return next;
     }
     case ROBBO_ACCOUNT_SESSION_FAILURE: {
         const next = immutable_copy(state);
         next.sessionStatus = action.payload && action.payload.anonymous ? 'anonymous' : 'error';
         next.user = null;
+        applyLmsPasswordFallback(next, action.payload, state);
         return next;
     }
     case ROBBO_ACCOUNT_SET_CLOUD_PROJECT: {
@@ -70,14 +84,27 @@ export default function robboAccountReducer (state, action) {
         next.saveError = (action.payload && action.payload.message) || 'save_failed';
         return next;
     }
+    case ROBBO_ACCOUNT_TITLE_SAVE_SUCCESS: {
+        const next = immutable_copy(state);
+        next.saveStatus = 'title_success';
+        next.saveError = '';
+        return next;
+    }
     case ROBBO_ACCOUNT_CLEAR_SAVE_STATUS: {
         const next = immutable_copy(state);
         next.saveStatus = 'idle';
         next.saveError = '';
         return next;
     }
+    case ROBBO_ACCOUNT_SET_CLOUD_PROJECT_ACCESS_BLOCKED: {
+        const next = immutable_copy(state);
+        next.cloudProjectAccessBlocked = !!(action.payload && action.payload.blocked);
+        return next;
+    }
     case ROBBO_ACCOUNT_SIGN_OUT: {
-        return robboAccountInitialState();
+        const next = robboAccountInitialState();
+        next.sessionStatus = 'anonymous';
+        return next;
     }
     default:
         return state;

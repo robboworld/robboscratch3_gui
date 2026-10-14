@@ -82,7 +82,7 @@ import styles from './menu-bar.css';
 
 import helpIcon from '../../lib/assets/icon--tutorials.svg';
 import mystuffIcon from './icon--mystuff.png';
-import profileIcon from './icon--profile.png';
+import profileIcon from './icon--account.svg';
 import remixIcon from './icon--remix.svg';
 import dropdownCaret from './dropdown-caret.svg';
 import aboutIcon from './icon--about.svg';
@@ -98,12 +98,18 @@ import {setRobboUiHidden} from '../../reducers/layout-visibility';
 import storage from '../../lib/storage';
 import {
     checkSessionThunk,
+    handleRemoteSignOutThunk,
     saveToCloudThunk,
+    signOutDiscardThunk,
     signOutThunk,
+    startOidcLoginThunk,
+    startOidcRegisterThunk,
     updateCloudProjectTitleThunk
 } from '../../RobboGui/actions/robboAccountActions';
+import LogoutUnsavedModal from '../../RobboGui/LogoutUnsavedModal.jsx';
+import {startBffSessionWatch} from '../../lib/robbo-account/authEcosystemSync';
+import {shouldPromptSaveBeforeLeave} from '../../lib/robbo-account/editorContent';
 import {
-    loginUrl,
     myProjectsUrl,
     projectPageUrl,
     resolveLkBase
@@ -145,7 +151,12 @@ const messages = defineMessages({
     signIn: {
         id: 'gui.menuBar.robboSignIn',
         defaultMessage: 'Sign in',
-        description: 'Menu bar link to sign in to Robbo account'
+        description: 'Menu bar link to sign in via Open edX'
+    },
+    register: {
+        id: 'gui.menuBar.robboRegister',
+        defaultMessage: 'Register',
+        description: 'Menu bar link to Open edX registration'
     },
     myStuff: {
         id: 'gui.menuBar.robboMyStuff',
@@ -181,6 +192,11 @@ const messages = defineMessages({
         id: 'gui.menuBar.robboSavedToCloud',
         defaultMessage: 'Saved',
         description: 'Shown after successful cloud save'
+    },
+    titleChanged: {
+        id: 'gui.menuBar.robboTitleChanged',
+        defaultMessage: 'Title changed',
+        description: 'Shown after the project title was updated'
     },
     saveToCloudError: {
         id: 'gui.menuBar.robboSaveToCloudError',
@@ -266,6 +282,14 @@ AboutButton.propTypes = {
 class MenuBar extends React.Component {
     constructor (props) {
         super(props);
+        this.state = {
+            unsavedModalOpen: false,
+            unsavedModalSaving: false,
+            unsavedModalSaveFailed: false,
+            unsavedModalAction: null,
+            titleChangedAck: false
+        };
+        this._titleChangedTimer = null;
         bindAll(this, [
             'handleClickNew',
             'handleClickRemix',
@@ -279,14 +303,19 @@ class MenuBar extends React.Component {
             'handleClickSaveToFile',
             'handleClickSaveAsToFile',
             'restoreOptionMessage',
-            'handleClickSignIn',
             'handleClickSignOut',
+            'handleLogoutUnsavedCancel',
+            'handleLogoutUnsavedDiscard',
+            'handleLogoutUnsavedSave',
             'handleClickMyStuff',
             'handleClickAccountHome',
             'handleClickSeeProjectPage',
             'handleClickSaveToCloud',
             'handleClickSaveAsCloudCopy',
-            'handleUpdateCloudProjectTitle'
+            'handleUpdateCloudProjectTitle',
+            'flashTitleChanged',
+            'handleClickSignIn',
+            'handleClickRegister'
         ]);
     }
     componentDidMount () {
@@ -294,19 +323,115 @@ class MenuBar extends React.Component {
         if (AUTH_UI_ENABLED && this.props.onCheckSession) {
             this.props.onCheckSession();
         }
+        this._stopSessionWatch = startBffSessionWatch({
+            isAuthenticated: () => this.props.isRobboAccountAuthenticated,
+            onSessionLost: () => {
+                if (this.props.onRemoteSignOut) {
+                    this.props.onRemoteSignOut();
+                }
+            }
+        });
     }
     componentWillUnmount () {
         document.removeEventListener('keydown', this.handleKeyPress);
+        if (this._stopSessionWatch) {
+            this._stopSessionWatch();
+        }
+        if (this._titleChangedTimer) {
+            clearTimeout(this._titleChangedTimer);
+            this._titleChangedTimer = null;
+        }
     }
-    handleClickSignIn () {
-        const returnTo = (typeof window !== 'undefined' && window.top && window.top.location) ?
-            window.top.location.href :
-            (typeof window !== 'undefined' ? window.location.href : '');
-        navigateTop(loginUrl(returnTo));
+    needsUnsavedLeavePrompt () {
+        return shouldPromptSaveBeforeLeave({
+            authenticated: this.props.isRobboAccountAuthenticated,
+            projectChanged: this.props.projectChanged
+        });
+    }
+    openUnsavedModal (action) {
+        this.setState({
+            unsavedModalOpen: true,
+            unsavedModalSaving: false,
+            unsavedModalSaveFailed: false,
+            unsavedModalAction: action
+        });
+    }
+    closeUnsavedModal () {
+        this.setState({
+            unsavedModalOpen: false,
+            unsavedModalSaving: false,
+            unsavedModalSaveFailed: false,
+            unsavedModalAction: null
+        });
+    }
+    navigateToProjectPage () {
+        const id = this.props.cloudProjectPageId;
+        if (id) {
+            navigateTop(projectPageUrl(id));
+        }
     }
     handleClickSignOut () {
+        if (this.props.onRequestCloseAccount) {
+            this.props.onRequestCloseAccount();
+        }
+        if (this.needsUnsavedLeavePrompt()) {
+            this.openUnsavedModal('logout');
+            return;
+        }
         if (this.props.onSignOut) {
             this.props.onSignOut();
+        }
+    }
+    handleLogoutUnsavedCancel () {
+        this.closeUnsavedModal();
+    }
+    handleLogoutUnsavedDiscard () {
+        const action = this.state.unsavedModalAction;
+        this.closeUnsavedModal();
+        if (action === 'projectPage') {
+            this.navigateToProjectPage();
+            return;
+        }
+        if (this.props.onSignOutDiscard) {
+            this.props.onSignOutDiscard();
+        }
+    }
+    handleLogoutUnsavedSave () {
+        if (!this.props.onSaveToCloud) {
+            return;
+        }
+        const action = this.state.unsavedModalAction;
+        this.setState({
+            unsavedModalSaving: true,
+            unsavedModalSaveFailed: false
+        });
+        this.props.onSaveToCloud({asCopy: false})
+            .then(saved => {
+                if (saved) {
+                    this.closeUnsavedModal();
+                    if (action === 'projectPage') {
+                        this.navigateToProjectPage();
+                        return;
+                    }
+                    if (this.props.onSignOut) {
+                        this.props.onSignOut();
+                    }
+                    return;
+                }
+                this.setState({
+                    unsavedModalSaving: false,
+                    unsavedModalSaveFailed: true
+                });
+            });
+    }
+    handleClickSignIn () {
+        if (this.props.onStartOidcLogin) {
+            this.props.onStartOidcLogin();
+        }
+    }
+    handleClickRegister () {
+        if (this.props.onStartOidcRegister) {
+            this.props.onStartOidcRegister();
         }
     }
     handleClickMyStuff () {
@@ -316,10 +441,14 @@ class MenuBar extends React.Component {
         navigateTop(`${resolveLkBase()}/home`);
     }
     handleClickSeeProjectPage () {
-        const id = this.props.cloudProjectPageId;
-        if (id) {
-            navigateTop(projectPageUrl(id));
+        if (!this.props.cloudProjectPageId) {
+            return;
         }
+        if (this.needsUnsavedLeavePrompt()) {
+            this.openUnsavedModal('projectPage');
+            return;
+        }
+        this.navigateToProjectPage();
     }
     handleClickSaveToCloud () {
         this.props.onRequestCloseFile();
@@ -333,11 +462,26 @@ class MenuBar extends React.Component {
             this.props.onSaveToCloud({asCopy: true});
         }
     }
+    flashTitleChanged () {
+        if (this._titleChangedTimer) {
+            clearTimeout(this._titleChangedTimer);
+        }
+        this.setState({titleChangedAck: true});
+        this._titleChangedTimer = setTimeout(() => {
+            this.setState({titleChangedAck: false});
+            this._titleChangedTimer = null;
+        }, 2500);
+    }
     handleUpdateCloudProjectTitle (newTitle) {
+        const previous = (this.props.projectTitle || '').trim();
+        const next = (newTitle || '').trim();
         if (this.props.onUpdateCloudProjectTitle) {
             this.props.onUpdateCloudProjectTitle(newTitle);
         } else if (this.props.onUpdateProjectTitle) {
             this.props.onUpdateProjectTitle(newTitle);
+        }
+        if (next !== previous) {
+            this.flashTitleChanged();
         }
     }
     handleClickNew () {
@@ -358,9 +502,14 @@ class MenuBar extends React.Component {
         this.props.onRequestCloseFile();
     }
     handleClickSave () {
-
-        this.props.onClickSave();
         this.props.onRequestCloseFile();
+        if (this.props.isRobboAccountAuthenticated && this.props.onSaveToCloud) {
+            this.props.onSaveToCloud({asCopy: false});
+            return;
+        }
+        if (this.props.onClickSave) {
+            this.props.onClickSave();
+        }
     }
     handleClickSaveAsCopy () {
         this.props.onClickSaveAsCopy();
@@ -424,6 +573,12 @@ class MenuBar extends React.Component {
         if (this.props.canSave) {
             // Project from a Scratch project server.
             this.props.onClickSave();
+            return;
+        }
+        if (!event.shiftKey && this.props.isRobboAccountAuthenticated && this.props.onSaveToCloud &&
+            !(this.props.saveStatus && this.props.saveStatus.targetKind)) {
+            // Signed in and the project is not saved anywhere yet: Ctrl+S creates the cloud project.
+            this.props.onSaveToCloud({asCopy: false});
             return;
         }
         if (!this.props.canManageFiles) {
@@ -832,7 +987,6 @@ class MenuBar extends React.Component {
                             </div>
                         )}
                     </div>
-                    <Divider className={classNames(styles.divider)} />
 
                     <button
                         type="button"
@@ -876,22 +1030,35 @@ class MenuBar extends React.Component {
                         </div>
                     ) : null}
 
-                    {this.props.cloudProjectPageId ? (
-                        <div className={classNames(styles.menuBarItem, styles.growable)}>
+                    {this.props.isRobboAccountAuthenticated ? (
+                        <div className={classNames(styles.menuBarItem, styles.projectTitleItem)}>
                             <ProjectTitleInput
-                                className={classNames(styles.titleFieldGrowable)}
                                 onUpdateProjectTitle={this.handleUpdateCloudProjectTitle}
                             />
                         </div>
                     ) : null}
-                    {AUTH_UI_ENABLED && this.props.cloudProjectPageId ? (
+                    {AUTH_UI_ENABLED && this.props.isRobboAccountAuthenticated && this.props.cloudProjectPageId ? (
                         <div className={classNames(styles.menuBarItem)}>
                             <CommunityButton onClick={this.handleClickSeeProjectPage} />
+                        </div>
+                    ) : null}
+                    {AUTH_UI_ENABLED && this.props.isRobboAccountAuthenticated && this.props.projectChanged &&
+                    this.props.cloudSaveStatus !== 'saving' && this.props.cloudSaveStatus !== 'error' ? (
+                        <div
+                            className={classNames(styles.menuBarItem, styles.saveNowLink)}
+                            onClick={this.handleClickSaveToCloud}
+                        >
+                            {saveNowMessage}
                         </div>
                     ) : null}
                     {AUTH_UI_ENABLED && this.props.cloudSaveStatus === 'saving' ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatus)}>
                             {this.props.intl.formatMessage(messages.savingToCloud)}
+                        </div>
+                    ) : null}
+                    {(this.state.titleChangedAck || this.props.cloudSaveStatus === 'title_success') ? (
+                        <div className={classNames(styles.menuBarItem, styles.cloudSaveStatus)}>
+                            {this.props.intl.formatMessage(messages.titleChanged)}
                         </div>
                     ) : null}
                     {AUTH_UI_ENABLED && this.props.cloudSaveStatus === 'success' ? (
@@ -963,7 +1130,7 @@ class MenuBar extends React.Component {
                                     src={dropdownCaret}
                                 />
                                 <MenuBarMenu
-                                    className={classNames(styles.menuBarMenu)}
+                                    className={classNames(styles.menuBarMenu, styles.accountMenuDropdown)}
                                     open={this.props.accountMenuOpen}
                                     place={this.props.isRtl ? 'right' : 'left'}
                                     onRequestClose={this.props.onRequestCloseAccount}
@@ -980,17 +1147,35 @@ class MenuBar extends React.Component {
                             </div>
                         </React.Fragment>
                     ) : (
-                        <div
-                            className={classNames(styles.menuBarItem, styles.hoverable)}
-                            onClick={this.handleClickSignIn}
-                        >
-                            {this.props.intl.formatMessage(messages.signIn)}
-                        </div>
+                        <React.Fragment>
+                            <div
+                                className={classNames(styles.menuBarItem, styles.hoverable)}
+                                onMouseUp={this.handleClickRegister}
+                            >
+                                {this.props.intl.formatMessage(messages.register)}
+                            </div>
+                            <div
+                                className={classNames(styles.menuBarItem, styles.hoverable)}
+                                onMouseUp={this.handleClickSignIn}
+                            >
+                                {this.props.intl.formatMessage(messages.signIn)}
+                            </div>
+                        </React.Fragment>
                     )}
                 </div>
                 ) : null}
 
                 {aboutButton}
+                <LogoutUnsavedModal
+                    isOpen={this.state.unsavedModalOpen}
+                    isSaving={this.state.unsavedModalSaving}
+                    projectTitle={this.props.projectTitle}
+                    saveFailed={this.state.unsavedModalSaveFailed}
+                    variant={this.state.unsavedModalAction === 'projectPage' ? 'projectPage' : 'logout'}
+                    onCancel={this.handleLogoutUnsavedCancel}
+                    onDiscard={this.handleLogoutUnsavedDiscard}
+                    onSave={this.handleLogoutUnsavedSave}
+                />
             </Box>
         );
     }
@@ -1058,6 +1243,7 @@ MenuBar.propTypes = {
     onClickSaveAsCopy: PropTypes.func,
     onClickSettings: PropTypes.func,
     onCheckSession: PropTypes.func,
+    onRemoteSignOut: PropTypes.func,
     onLogOut: PropTypes.func,
     onOpenRegistration: PropTypes.func,
     onOpenTipLibrary: PropTypes.func,
@@ -1070,6 +1256,7 @@ MenuBar.propTypes = {
     onSetRobboUiHidden: PropTypes.func,
     onSignOut: PropTypes.func,
     onRequestCloseAbout: PropTypes.func,
+    onSignOutDiscard: PropTypes.func,
     onRequestCloseAccount: PropTypes.func,
     onRequestCloseEdit: PropTypes.func,
     onRequestCloseFile: PropTypes.func,
@@ -1081,6 +1268,8 @@ MenuBar.propTypes = {
     onSetTimeTravelMode: PropTypes.func,
     onShare: PropTypes.func,
     onStartSelectingFileUpload: PropTypes.func,
+    onStartOidcLogin: PropTypes.func,
+    onStartOidcRegister: PropTypes.func,
     onToggleLoginOpen: PropTypes.func,
     onTriggerRobboMenu: PropTypes.func,
     onUpdateCloudProjectTitle: PropTypes.func,
@@ -1154,6 +1343,7 @@ const mapDispatchToProps = dispatch => ({
     onOpenTipLibrary: () => dispatch(openTipsLibrary()),
     onOpenScenariosLibrary: () => dispatch(openScenariosLibrary()),
     onCheckSession: () => dispatch(checkSessionThunk()),
+    onRemoteSignOut: () => dispatch(handleRemoteSignOutThunk()),
     onClickAccount: () => dispatch(openAccountMenu()),
     onRequestCloseAccount: () => dispatch(closeAccountMenu()),
     onClickFile: () => dispatch(openFileMenu()),
@@ -1177,6 +1367,9 @@ const mapDispatchToProps = dispatch => ({
     onSaveProject: () => dispatch(saveProjectThunk({saveAs: false})),
     onSaveProjectAs: () => dispatch(saveProjectThunk({saveAs: true})),
     onSignOut: () => dispatch(signOutThunk()),
+    onSignOutDiscard: () => dispatch(signOutDiscardThunk()),
+    onStartOidcLogin: () => dispatch(startOidcLoginThunk()),
+    onStartOidcRegister: () => dispatch(startOidcRegisterThunk()),
     onUpdateCloudProjectTitle: title => dispatch(updateCloudProjectTitleThunk(title)),
     onSeeCommunity: () => dispatch(setPlayer(true)),
     onSetTimeTravelMode: mode => dispatch(setTimeTravel(mode)),

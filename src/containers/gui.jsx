@@ -65,8 +65,11 @@ import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
 import systemPreferencesHOC from '../lib/system-preferences-hoc.jsx';
 
 import GUIComponent from '../components/gui/gui.jsx';
+import CloudProjectNotFound from '../components/cloud-project-not-found/cloud-project-not-found.jsx';
 import RobboSimulatorVmSync from './robbo-simulator-vm-sync.jsx';
 import {setIsScratchDesktop} from '../lib/isScratchDesktop.js';
+import hideLoadingSplash from '../lib/loading-splash';
+import {preloadPaintEditor} from '../lib/paint-editor-loader';
 
 import {DragDropContext} from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
@@ -160,6 +163,11 @@ class GUI extends React.Component {
         }
     }
     componentDidUpdate (prevProps) {
+        // Normally the Loader removes the static loading screen; this covers a project shown
+        // (or failed) without the Loader ever mounting, so the screen never hides the editor.
+        if (this.props.isShowingProject || this.props.isError) {
+            hideLoadingSplash();
+        }
         if (this.props.projectId !== prevProps.projectId) {
             if (this.props.projectId !== null) {
                 this.props.onUpdateProjectId(this.props.projectId);
@@ -180,6 +188,10 @@ class GUI extends React.Component {
                 this.props.autosaveCopterSimActivated !== prevProps.autosaveCopterSimActivated ||
                 this.props.autosaveExtensionPackActivated !== prevProps.autosaveExtensionPackActivated)) {
             this.scheduleDebouncedAutoSave();
+        }
+        if (this.props.isShowingProject && !prevProps.isShowingProject && !this.props.isPlayerOnly) {
+            // The editor is up: fetch the costume editor in the background (not in the first load).
+            preloadPaintEditor();
         }
         if (this.props.isShowingProject && !prevProps.isShowingProject) {
             // this only notifies container when a project changes from not yet loaded to loaded
@@ -408,6 +420,9 @@ class GUI extends React.Component {
             throw new Error(
                 `Error in Scratch GUI [location=${window.location}]: ${this.props.error}`);
         }
+        if (this.props.cloudProjectAccessBlocked) {
+            return <CloudProjectNotFound />;
+        }
         const {
             /* eslint-disable no-unused-vars */
             assetHost,
@@ -416,6 +431,7 @@ class GUI extends React.Component {
             autosaveRobotSensorsKey,
             autosaveSimActivated,
             cloudHost,
+            cloudProjectAccessBlocked,
             error,
             isError,
             isScratchDesktop,
@@ -423,6 +439,7 @@ class GUI extends React.Component {
             onDraftError,
             onDraftRestored,
             onDraftSaved,
+            isRobboAccountAuthenticated,
             onProjectLoaded,
             onSaveTargetChanged,
             onSetProjectChanged,
@@ -463,12 +480,14 @@ GUI.propTypes = {
     autosaveSimActivated: PropTypes.bool,
     children: PropTypes.node,
     cloudHost: PropTypes.string,
+    cloudProjectAccessBlocked: PropTypes.bool,
     error: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
     fetchingProject: PropTypes.bool,
     intl: intlShape,
     isError: PropTypes.bool,
     isLoading: PropTypes.bool,
     isPlayerOnly: PropTypes.bool,
+    isRobboAccountAuthenticated: PropTypes.bool,
     isBlocksWorkspaceLayoutPending: PropTypes.bool,
     isScratchDesktop: PropTypes.bool,
     isShowingProject: PropTypes.bool,
@@ -538,6 +557,7 @@ const mapStateToProps = state => {
         connectionModalVisible: state.scratchGui.modals.connectionModal,
         costumeLibraryVisible: state.scratchGui.modals.costumeLibrary,
         costumesTabVisible: state.scratchGui.editorTab.activeTabIndex === COSTUMES_TAB_INDEX,
+        cloudProjectAccessBlocked: (state.scratchGui.robboAccount || {}).cloudProjectAccessBlocked,
         error: state.scratchGui.projectState.error,
         isError: getIsError(loadingState),
         isFullScreen: state.scratchGui.mode.isFullScreen,
@@ -548,6 +568,7 @@ const mapStateToProps = state => {
         isRobboUiHidden: state.scratchGui.layoutVisibility.isRobboUiHidden,
         isBlocksWorkspaceLayoutPending: state.scratchGui.layoutVisibility.isBlocksWorkspaceLayoutPending,
         isRtl: state.locales.isRtl,
+        isRobboAccountAuthenticated: (state.scratchGui.robboAccount || {}).sessionStatus === 'authenticated',
         projectChanged: state.scratchGui.projectChanged,
         isShowingProject: getIsShowingProject(loadingState),
         loadingStateVisible: state.scratchGui.modals.loadingProject,

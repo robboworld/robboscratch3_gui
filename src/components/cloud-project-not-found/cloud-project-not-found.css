@@ -1,0 +1,130 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+@import "../../css/typography.css";
+
+.page {
+    box-sizing: border-box;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    background: linear-gradient(160deg, #f4f8fc 0%, #e8eef5 55%, #f7f9fc 100%);
+}
+
+.card {
+    width: 100%;
+    max-width: 34rem;
+    padding: 2.5rem 2rem 2rem;
+    border-radius: 1rem;
+    background: $ui-white;
+    box-shadow: 0 12px 40px rgba(15, 35, 64, 0.08);
+    text-align: center;
+}
+
+.logo-row {
+    margin-bottom: 1.25rem;
+}
+
+.logo-wordmark {
+    display: inline-flex;
+    align-items: center;
+    color: $motion-primary;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.logo-reg {
+    font-size: 0.45em;
+    font-weight: 700;
+    margin-left: 0.06em;
+    vertical-align: super;
+}
+
+.illustration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 10.5rem;
+    height: 10.5rem;
+    margin: 0 auto 1.25rem;
+}
+
+.illustration-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.title {
+    margin: 0 0 0.75rem;
+    color: $text-primary;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.body {
+    margin: 0 auto 1.75rem;
+    max-width: 28rem;
+    color: $text-primary-transparent;
+    font-size: 1rem;
+    line-height: 1.55;
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.65rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.button-primary {
+    border: none;
+    background: $motion-primary;
+    color: $ui-white;
+}
+
+.button-primary:hover {
+    background: $motion-tertiary;
+}
+
+.button-secondary {
+    border: 1px solid rgba(0, 145, 234, 0.35);
+    background: $ui-white;
+    color: $motion-primary;
+}
+
+.button-secondary:hover {
+    background: rgba(0, 145, 234, 0.06);
+}
+
+.button-link {
+    border: none;
+    background: transparent;
+    color: $motion-primary;
+}
+
+.button-link:hover {
+    color: $motion-tertiary;
+    text-decoration: underline;
+}

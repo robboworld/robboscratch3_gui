@@ -2,3 +2,13 @@
 .login {
     padding: .625rem;
 }
+
+.login-menu-dropdown {
+    left: auto;
+    right: 0;
+}
+
+[dir="rtl"] .login-menu-dropdown {
+    left: 0;
+    right: auto;
+}
