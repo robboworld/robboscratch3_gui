@@ -11,11 +11,38 @@ import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {defineMessages, injectIntl} from 'react-intl';
 import {closeMessage} from './sensor-type-messages';
 
+const STEP_MESSAGE_KEYS = ['stepBoard', 'stepDevice', 'stepWrite', 'stepCheck'];
+
 const messages = defineMessages({
     flashing_status: {
         id: 'gui.FirmwareFlasherFlashingStatusComponent.flashing_status',
         description: ' ',
-        defaultMessage: 'Firmware process log'
+        defaultMessage: 'Firmware update'
+    },
+    stepBoard: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepBoard',
+        description: 'Flash window step track: connecting to the board bootloader',
+        defaultMessage: 'Board'
+    },
+    stepDevice: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepDevice',
+        description: 'Flash window step track: recognizing which device it is',
+        defaultMessage: 'Device'
+    },
+    stepWrite: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepWrite',
+        description: 'Flash window step track: writing the firmware',
+        defaultMessage: 'Writing'
+    },
+    stepCheck: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepCheck',
+        description: 'Flash window step track: checking the written firmware',
+        defaultMessage: 'Check'
+    },
+    details: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.details',
+        description: 'Collapsible block with the raw technical lines of the firmware flasher',
+        defaultMessage: 'Details'
     }
 });
 
@@ -36,6 +63,7 @@ class FirmwareFlasherFlashingStatusComponent extends Component {
             <div
                 id={`firmware-flasher-flashing-status-component-${componentId}`}
                 className={classNames(sharedStyles.palette, styles.flashing_status_window)}
+                data-flash-window
             >
                 <div
                     id={`firmware-flasher-flashing-status-component-${componentId}-tittle`}
@@ -55,15 +83,40 @@ class FirmwareFlasherFlashingStatusComponent extends Component {
 
                 <div className={classNames(sharedStyles.body, formStyles.palette_body)}>
                     <div className={formStyles.section}>
+                    {/* Steps repeat the status line for the eye; the status line speaks for the screen reader. */}
+                    <ol
+                        className={styles.flashing_steps}
+                        aria-hidden="true"
+                    >
+                        {STEP_MESSAGE_KEYS.map(key => (
+                            <li
+                                key={key}
+                                className={styles.flashing_step}
+                            >
+                                <span className={styles.flashing_step_dot} />
+                                <span className={styles.flashing_step_label}>
+                                    {this.props.intl.formatMessage(messages[key])}
+                                </span>
+                            </li>
+                        ))}
+                    </ol>
                     <div
                         id={`firmware-flasher-flashing-status-component-${componentId}-log-status`}
                         className={styles.flashing_status_log_status}
+                        role="status"
+                        aria-live="polite"
                     />
 
-                    <div
-                        id={`firmware-flasher-flashing-status-component-${componentId}-log-content`}
-                        className={formStyles.log_panel}
-                    />
+                    {/* Raw flasher lines are for support; the status line above speaks plainly. */}
+                    <details className={styles.flashing_status_details}>
+                        <summary className={styles.flashing_status_details_summary}>
+                            {this.props.intl.formatMessage(messages.details)}
+                        </summary>
+                        <div
+                            id={`firmware-flasher-flashing-status-component-${componentId}-log-content`}
+                            className={formStyles.log_panel}
+                        />
+                    </details>
                     </div>
                 </div>
             </div>
