@@ -435,7 +435,11 @@ class SearchPanelComponent extends Component {
 
     void this.state.uiRev;
 
-    const firmwareFlashWindows = showFirmwareUi ? this.state.devices.map((device, index) => (
+    // Flash windows follow the row index; the search after a flash empties the device list for a moment, and an
+    // unmounted window would take «Done» away. Keep as many windows as there have ever been rows.
+    this._flashWindowCount = Math.max(this._flashWindowCount || 0, this.state.devices.length);
+    const flashWindowSlots = Array.from({length: this._flashWindowCount});
+    const firmwareFlashWindows = showFirmwareUi ? flashWindowSlots.map((slot, index) => (
       <DraggableWindowComponent key={index + 'devices-list-draggable'} draggableWindowId={7 + index}>
         <FirmwareFlasherFlashingStatusComponent
           key={index + 'devices-list-status'}

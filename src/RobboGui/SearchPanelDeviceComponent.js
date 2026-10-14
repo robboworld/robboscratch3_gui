@@ -21,7 +21,13 @@ import { applyRobboPopupZIndex } from '../lib/robbo-popup-z-index';
 import { resolveCf2FirmwareVersionLabel, parseCf2FlashToolLine } from '../lib/crazyflie-flash-ui';
 import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
 import {setFlashButtonVisualMode, setFlashLogStatusTone} from '../lib/device-status-dom';
-import {applyFlashConnected, applyFlashStatus, createFlashProgress, resetFlashWindow} from '../lib/flash-status-phase';
+import {
+    applyFlashConnected,
+    applyFlashStatus,
+    createFlashProgress,
+    isFlashDone,
+    resetFlashWindow
+} from '../lib/flash-status-phase';
 import {hydrateLicenseThunk} from './actions/licenseActions';
 
 const messages = defineMessages({
@@ -434,6 +440,9 @@ const AUTO_RETRY_START_DELAY_MS = 800;
 const askedUnknownDevicePorts = new Set();
 // How long «Done» stays in the flash log window before it closes on its own.
 const FLASH_DONE_HIDE_DELAY_MS = 4000;
+// Flash windows holding «Done»: draggableWindowId → {timer, progress}. Module-level, not per row: the search after
+// flashing recreates the device rows, and a new row must neither close the window early nor lose «connected».
+const flashDoneHolds = new Map();
 
 class SearchPanelDeviceComponent extends Component {
 
@@ -1043,7 +1052,7 @@ class SearchPanelDeviceComponent extends Component {
 
     componentWillUnmount() {
         this._debugMounted = false;
-        this._clearFlashDoneHideTimer();
+        // A pending «Done» timer still closes the flash window: the row is recreated by the search after flashing.
         if (this._quadcopterFlashHideTimer != null) {
             clearTimeout(this._quadcopterFlashHideTimer);
             this._quadcopterFlashHideTimer = null;
@@ -1606,9 +1615,10 @@ class SearchPanelDeviceComponent extends Component {
                 return;
             }
             unlockMenuBarSearch();
-            if (this._flashDoneHideTimer != null && this._flashProgress) {
+            const doneHold = flashDoneHolds.get(this.props.draggableWindowId);
+            if (doneHold) {
                 const {statusEl} = getFirmwareFlashLogElements(this.props.flashingStatusComponentId);
-                applyFlashConnected(statusEl, this.props.intl, this._flashProgress);
+                applyFlashConnected(statusEl, this.props.intl, doneHold.progress);
             }
             let result = this.firmware_version_differs_cb_result;
             if (!this.firmware_version_differs && info_field) {
@@ -1840,7 +1850,7 @@ class SearchPanelDeviceComponent extends Component {
 
     flashingHideDetails() {
         // «Done» is still on screen: the timer closes the window (reconnect events would close it at once).
-        if (this._flashDoneHideTimer != null) return;
+        if (flashDoneHolds.has(this.props.draggableWindowId)) return;
         const windowState = this.props.draggable_window && this.props.draggable_window[this.props.draggableWindowId];
         if (windowState && windowState.isShowing === true) {
             this._logFlashFlow('flashWindow', 'hide', { reason: 'ui_state_change' });
@@ -1886,7 +1896,7 @@ class SearchPanelDeviceComponent extends Component {
         var search_device_button = document.getElementById(`robbo_search_devices`);
         var flashing_button = document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
 
-        if ((status.indexOf("Port closed") !== -1)) {
+        if (isFlashDone(status)) {
 
             setFlashLogStatusTone(flashingStatusComponent, 'success');
 
@@ -1948,9 +1958,10 @@ class SearchPanelDeviceComponent extends Component {
     }
 
     _clearFlashDoneHideTimer() {
-        if (this._flashDoneHideTimer != null) {
-            clearTimeout(this._flashDoneHideTimer);
-            this._flashDoneHideTimer = null;
+        const hold = flashDoneHolds.get(this.props.draggableWindowId);
+        if (hold) {
+            clearTimeout(hold.timer);
+            flashDoneHolds.delete(this.props.draggableWindowId);
         }
     }
 
@@ -2004,11 +2015,25 @@ class SearchPanelDeviceComponent extends Component {
 
         // Иконку не трогаем через innerHTML — она управляется React по deviceState (state 10 приходит из disco() в VM)
         var cId = this.props.flashingStatusComponentId;
-        const {statusEl: flashingStatusComponent, logEl: flashingLogComponent} = getFirmwareFlashLogElements(cId);
-
-        if (flashingStatusComponent) flashingStatusComponent.innerHTML = "";
-        if (flashingLogComponent) flashingLogComponent.innerHTML = "";
-        resetFlashWindow(flashingStatusComponent);
+        // The hidden flash window is unmounted (RobboPopupTransition); after a click it mounts only once this handler
+        // returns. So the window elements are looked up for every status line, and the details log is kept here
+        // and replayed into a freshly mounted window.
+        const flashLogLines = [];
+        const flashWindowElements = () => {
+            const els = getFirmwareFlashLogElements(cId);
+            if (els.logEl && els.logEl.dataset.flashSession !== String(currentSessionId)) {
+                els.logEl.innerHTML = '';
+                els.logEl.dataset.flashSession = String(currentSessionId);
+                flashLogLines.forEach(line => createDiv(els.logEl, null, null, null, null, {margin: '10px'}, line, null));
+            }
+            if (els.statusEl && els.statusEl.dataset.flashSession !== String(currentSessionId)) {
+                els.statusEl.innerHTML = '';
+                els.statusEl.dataset.flashSession = String(currentSessionId);
+                resetFlashWindow(els.statusEl);
+            }
+            return els;
+        };
+        flashWindowElements();
 
         var config = this._buildFlashConfig(flashMode);
         config.device.flash_session_id = currentSessionId;
@@ -2032,25 +2057,28 @@ class SearchPanelDeviceComponent extends Component {
         const flashProgress = createFlashProgress();
         // A known device is named in the phases right away; an unknown one once the flasher recognizes it.
         if (this.deviceId >= 0) flashProgress.deviceId = this.deviceId;
-        this._flashProgress = flashProgress;
-        const flashLogDetails = flashingLogComponent && flashingLogComponent.closest('details');
-        if (flashLogDetails) flashLogDetails.open = false;
+        const initialLog = flashWindowElements().logEl;
+        const initialDetails = initialLog && initialLog.closest('details');
+        if (initialDetails) initialDetails.open = false;
         var statusCallback = (status) => {
             if (!this.flashSessionActive || this._activeFlashSessionId !== currentSessionId) {
                 this._logFlashFlow('statusCallback', 'ignored_stale_session', { status, callbackSessionId: currentSessionId }, true);
                 return;
             }
             this._logFlashFlow('statusCallback', 'status', { status });
+            const {statusEl: flashingStatusComponent, logEl: flashingLogComponent} = flashWindowElements();
+            const flashLogDetails = flashingLogComponent && flashingLogComponent.closest('details');
 
             // Raw lines to the details log, the phase in plain words to the status line.
-            if (flashingLogComponent && status.indexOf("Uploading") === -1) {
-                createDiv(flashingLogComponent, null, null, null, null, styles, status, null);
+            if (status.indexOf("Uploading") === -1 && !/Block \d+\/\d+/.test(status)) {
+                flashLogLines.push(status);
+                if (flashingLogComponent) createDiv(flashingLogComponent, null, null, null, null, styles, status, null);
             }
             applyFlashStatus(flashingStatusComponent, status, this.props.intl, flashProgress);
 
             if (flashingLogComponent) flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
 
-            if ((status.indexOf("Port closed") !== -1)) {
+            if (isFlashDone(status)) {
                 setFlashLogStatusTone(flashingStatusComponent, 'success');
                 if (search_device_button) search_device_button.removeAttribute("disabled");
                 if (flashing_button) {
@@ -2065,13 +2093,20 @@ class SearchPanelDeviceComponent extends Component {
                 // Явно скрываем окно и очищаем DOM-поля, чтобы поведение стало
                 // как на Desktop. Окно закрывается не сразу: ребёнок должен увидеть «Готово».
                 this._clearFlashDoneHideTimer();
-                this._flashDoneHideTimer = setTimeout(() => {
-                    this._flashDoneHideTimer = null;
-                    if (this.flashSessionActive) return;
-                    try {
-                        this.flashingHideDetails();
-                    } catch (_) { }
-                }, FLASH_DONE_HIDE_DELAY_MS);
+                const windowId = this.props.draggableWindowId;
+                const onHideWindow = this.props.onHideFlashingStatusWindow;
+                flashDoneHolds.set(windowId, {
+                    progress: flashProgress,
+                    timer: setTimeout(() => {
+                        flashDoneHolds.delete(windowId);
+                        if (this.flashSessionActive) return;
+                        // The action toggles the window, and this row may be gone with stale props: hide only
+                        // a window that is still on screen (the child may have closed it already).
+                        const flashWindow = document.getElementById(`draggable_window_id-${windowId}`);
+                        const shown = flashWindow && flashWindow.getAttribute('aria-hidden') !== 'true';
+                        if (shown && onHideWindow) onHideWindow(windowId);
+                    }, FLASH_DONE_HIDE_DELAY_MS)
+                });
                 if (status_field) {
                     status_field.innerHTML = this.props.intl.formatMessage(messages.device_connected);
                 }
@@ -2154,6 +2189,8 @@ class SearchPanelDeviceComponent extends Component {
                     return;
                 }
                 this._logFlashFlow('onVerifyFailure', 'triggered', verifyContext, true);
+                const flashingLogComponent = flashWindowElements().logEl;
+                flashLogLines.push(this.props.intl.formatMessage(messages.otto_flash_retry_arduino_log));
                 if (flashingLogComponent) {
                     createDiv(flashingLogComponent, null, null, null, null, styles, this.props.intl.formatMessage(messages.otto_flash_retry_arduino_log), null);
                     flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
@@ -2373,10 +2410,12 @@ class SearchPanelDeviceComponent extends Component {
                     </div>
                 ) : null}
 
+                {/* Otto: the button flashes like the question does — 'auto' tries the Null Lab (LGT) board and falls
+                    back to Nano by itself; the plain mode fails on an LGT board. */}
                 {showFlashButton && (
                     <div id={`search-panel-device-flash-button-element-${this.props.Id}`} className={styles.search_panel_device_element}>
 
-                        <button id={`search-panel-device-flash-button-${this.props.Id}`} className={styles.device_flash_button} onClick={() => this.flashDevice()}>{this.props.intl.formatMessage(messages.flash_device)} </button>
+                        <button id={`search-panel-device-flash-button-${this.props.Id}`} className={styles.device_flash_button} onClick={() => this.flashDevice(this.deviceId === 5 ? 'auto' : undefined)}>{this.props.intl.formatMessage(messages.flash_device)} </button>
 
                     </div>
                 )}
