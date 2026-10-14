@@ -502,56 +502,26 @@ return `
 
 };
 
-const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadcopter category
+/**
+ * Quadcopter category. Swarm blocks (`copters [N] do`, `[X] of copter [N]`) show only with two or
+ * more copters; with one copter the value block has no copter input.
+ * @param {boolean} isStage stage selected
+ * @param {?object} copters {numbers: copter numbers in the project, isSim: simulator mode}
+ * @returns {string} category XML
+ */
+const quadcopter = function (isStage, copters) { //modified_by_Yaroslav  //quadcopter category
+  const numbers = (copters && copters.numbers) || [];
+  const isSim = Boolean(copters && copters.isSim);
+  const isSwarm = numbers.length > 1;
+  const firstCopter = String(numbers.length > 0 ? numbers[0] : 1);
+  const number = value => `<shadow type="math_number"><field name="NUM">${value}</field></shadow>`;
+  const copterMenu = `<shadow type="copter_copters_menu"><field name="COPTERS">${firstCopter}</field></shadow>`;
 
-  const stageSelected = ScratchBlocks.ScratchMsgs.translate(
-      'MOTION_STAGE_SELECTED',
-      'Stage selected: no motion blocks'
-  );
-
-  //эти блоки доделать и вернуть
-
-  let removed_block = `<block type="copter_fly_for_time_with_speed">
-          <value name="SECONDS">
-              <shadow type="math_number">
-                  <field name="NUM">1</field>
-              </shadow>
-          </value>
-          <value name="X_SPEED">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-          <value name="Y_SPEED">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-
-      </block>`;
-
-      let removed_block_2 = `<block type="copter_fly_for_seconds_to_coords">
-          <value name="SECONDS">
-              <shadow type="math_number">
-                  <field name="NUM">1</field>
-              </shadow>
-          </value>
-          <value name="X_COORD">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-          <value name="Y_COORD">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-          <value name="Z_COORD">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-      </block>`;
+  const valueBlock = isSwarm ? `
+      <block type="copter_value_of">
+          <value name="COPTER">${copterMenu}</value>
+      </block>` : `
+      <block type="copter_value"></block>`;
 
   return `
   <category name="%{BKY_CATEGORY_QUADCOPTER}" id="quadcopter" colour="#383838" secondaryColour="#383838">
@@ -559,153 +529,47 @@ const quadcopter = function (isStage, targetId){ //modified_by_Yaroslav  //quadc
   ${isStage ? `
       <label text="Stage selected: no quadcopter blocks"></label>
       ` : `
-
-  <block type="copter_with_copters">
-      <value name="COPTERS">
-          <shadow type="copter_copters_menu">
-              <field name="COPTERS">1</field>
-          </shadow>
-      </value>
-  </block>
-
-  <block type="copter_fly_up">
-
+      <block type="copter_fly_up"></block>
+      <block type="copter_land"></block>
+      <block type="copter_fly">
+          <value name="DIRECTION"><shadow type="copter_directions"/></value>
+          <value name="AMOUNT">${number(0.4)}</value>
       </block>
-
-      <block type="copter_land">
-
-      </block>
-
-      <block type="copter_stop">
-
-      </block>
-
-      <block type="copter_fly_distance">
-          <value name="DIRECTION">
-              <shadow type="copter_directions"/>
-          </value>
-          <value name="METERS">
-              <shadow type="math_number">
-                  <field name="NUM">0.4</field>
-              </shadow>
-          </value>
-      </block>
-
-      <block type="copter_fly_time">
-          <value name="DIRECTION">
-              <shadow type="copter_directions"/>
-          </value>
-          <value name="SECONDS">
-              <shadow type="math_number">
-                  <field name="NUM">1</field>
-              </shadow>
-          </value>
-      </block>
-
-      <block type="copter_move_axis_to">
-          <value name="AXIS">
-              <shadow type="copter_axes"/>
-          </value>
-          <value name="COORD">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-      </block>
-
-      <block type="copter_set_speed">
-          <value name="SPEED">
-              <shadow type="math_number">
-                  <field name="NUM">0.5</field>
-              </shadow>
-          </value>
-      </block>
-
-      <block type="copter_speed">
-
-      </block>
-
-      <block type="copter_x_coord">
-
-      </block>
-
-      <block type="copter_y_coord">
-
-      </block>
-
-      <block type="copter_z_coord">
-
-      </block>
-
-      <block type="copter_yaw">
-
-      </block>
-
-      <block type="copter_reset_local_position">
-
-      </block>
-
-      <block type="copter_battery">
-
-      </block>
-
-      <block type="copter_charge_battery">
-          <value name="PERCENT">
-              <shadow type="math_number">
-                  <field name="NUM">100</field>
-              </shadow>
-          </value>
-      </block>
-
-      <block type="copter_is_flying">
-
-      </block>
-
-      <block type="copter_value_of">
-          <value name="COPTER">
-              <shadow type="copter_copters_menu">
-                  <field name="COPTERS">1</field>
-              </shadow>
-          </value>
-      </block>
-
-      <block type="copter_fly_to_coords">
-        <value name="X_COORD">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-          <value name="Y_COORD">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-          <value name="Z_COORD">
-              <shadow type="math_number">
-                  <field name="NUM">0</field>
-              </shadow>
-          </value>
-      </block>
-
       <block type="copter_rotate">
-          <value name="SIDE">
-              <shadow type="copter_turn_sides"/>
-          </value>
-        <value name="DEGREES">
-              <shadow type="math_number">
-                  <field name="NUM">45</field>
-              </shadow>
-          </value>
-
+          <value name="SIDE"><shadow type="copter_turn_sides"/></value>
+          <value name="DEGREES">${number(45)}</value>
       </block>
+      <block type="copter_move_axis_to">
+          <value name="AXIS"><shadow type="copter_axes"/></value>
+          <value name="COORD">${number(0)}</value>
+      </block>
+      <block type="copter_fly_to_coords">
+          <value name="X_COORD">${number(0)}</value>
+          <value name="Y_COORD">${number(0)}</value>
+          <value name="Z_COORD">${number(0.5)}</value>
+      </block>
+      <block type="copter_set_speed">
+          <value name="SPEED">${number(0.5)}</value>
+      </block>
+      <block type="copter_stop"></block>
 
+      ${blockSeparator}
+      ${valueBlock}
+      <block type="copter_is_flying"></block>
+      ${isSim ? `
+      <block type="copter_charge_battery">
+          <value name="PERCENT">${number(100)}</value>
+      </block>` : ''}
+      ${isSwarm ? `
+
+      ${blockSeparator}
+      <block type="copter_with_copters">
+          <value name="COPTERS">${copterMenu}</value>
+      </block>` : ''}
       `}
       ${categorySeparator}
   </category>
   `;
-
-
-
 };
 
 const laboratory  = function (isStage, targetId,isExternalSensorsActivated) {  //modified_by_Yaroslav  //laboratory category
@@ -1832,7 +1696,10 @@ const makeToolboxXML = function (isInitialSetup, isStage = true, targetId, categ
     const robboCategories = robbo_ui_hidden ? [] : [
         robot(false, targetId,isExtensionPackActivated,is_sim_activated,robot_is_scratchduino),gap, //modified_by_Yaroslav //toolbox generator main
         laboratory(false, targetId,isExternalSensorsActivated),gap, //modified_by_Yaroslav
-        ...(showQuadcopterInUi ? [quadcopter(isStage, targetId), gap] : []), //modified_by_Yaroslav
+        ...(showQuadcopterInUi ? [quadcopter(isStage, {
+            numbers: (config && config.copterNumbers) || [],
+            isSim: is_copter_sim_activated
+        }), gap] : []), //modified_by_Yaroslav
         otto(false, targetId), gap,
         newcat(false),gap
        // iotBlocks(isStage, targetId),
