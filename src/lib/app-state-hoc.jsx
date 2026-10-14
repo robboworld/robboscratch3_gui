@@ -10,6 +10,7 @@ import {setPlayer, setFullScreen} from '../reducers/mode.js';
 
 import locales from 'scratch-l10n';
 import {resolveStartupLocale} from './detect-locale';
+import {registerPaintStore} from './paint-editor-loader';
 import log from './log';
 
 import { Provider as AlertProvider } from 'react-alert';
@@ -62,7 +63,6 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
                     initPlayer,
                     initTelemetryModal
                 } = guiRedux;
-                const {ScratchPaintReducer} = require('scratch-paint');
 
                 let initializedGui = guiInitialState;
                 if (props.isFullScreen || props.isPlayerOnly) {
@@ -77,8 +77,8 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
                 }
                 reducers = {
                     locales: localesReducer,
-                    scratchGui: guiReducer,
-                    scratchPaint: ScratchPaintReducer
+                    // scratchPaint joins on demand (lib/paint-editor-loader)
+                    scratchGui: guiReducer
                 };
                 initialState = {
                     locales: initializedLocales,
@@ -92,6 +92,9 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
                 initialState,
                 enhancer
             );
+            if (!localesOnly) {
+                registerPaintStore(this.store, reducers);
+            }
             if (initializedLocales.locale !== locale) {
                 // Startup language is not bundled: start in the default one, switch once its chunk loads
                 changeLocale(this.store.dispatch, locale).catch(e => log.warn(`Failed to load locale ${locale}`, e));

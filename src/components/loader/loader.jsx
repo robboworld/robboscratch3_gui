@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import styles from './loader.css';
 import PropTypes from 'prop-types';
 
+import hideLoadingSplash from '../../lib/loading-splash';
 import topBlock from './top-block.svg';
 import middleBlock from './middle-block.svg';
 import bottomBlock from './bottom-block.svg';
@@ -124,6 +125,8 @@ class LoaderComponent extends React.Component {
         };
     }
     componentDidMount () {
+        // This loader now covers the page: the static one from index.html is no longer needed.
+        hideLoadingSplash();
         // Start an interval to choose a new message every 5 seconds
         this.intervalId = setInterval(() => {
             this.setState({messageNumber: this.chooseRandomMessage()});

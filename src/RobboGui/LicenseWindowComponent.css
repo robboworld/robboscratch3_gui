@@ -160,6 +160,18 @@
     line-height: 1.4;
 }
 
+.license_desktop_note {
+    box-sizing: border-box;
+    padding: 0.625rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: $form-radius;
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.license_desktop_note > * + * {
+    margin-top: 0.5rem;
+}
+
 .license_device_link {
     box-sizing: border-box;
     padding: 0.625rem;

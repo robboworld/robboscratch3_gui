@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Button from '../button/button.jsx';
 
-import communityIcon from './icon--see-community.svg';
+import projectPageIcon from './icon--project-page.svg';
 import styles from './community-button.css';
 
 const CommunityButton = ({
@@ -17,12 +17,12 @@ const CommunityButton = ({
             styles.communityButton
         )}
         iconClassName={styles.communityButtonIcon}
-        iconSrc={communityIcon}
+        iconSrc={projectPageIcon}
         onClick={onClick}
     >
         <FormattedMessage
-            defaultMessage="See Project Page"
-            description="Label for see project page button"
+            defaultMessage="Project page"
+            description="Label for button that opens the project page in the personal account"
             id="gui.menuBar.seeProjectPage"
         />
     </Button>

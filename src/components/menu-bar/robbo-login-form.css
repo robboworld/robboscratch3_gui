@@ -1,0 +1,98 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+.login {
+    padding: .625rem;
+    min-width: 14rem;
+    max-width: 18rem;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.label {
+    display: block;
+    margin: 0 0 0.25rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: $ui-white;
+}
+
+.field {
+    width: 100%;
+    box-sizing: border-box;
+    height: 2rem;
+    padding: 0 0.75rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.submit {
+    flex: 0 0 auto;
+    height: 2rem;
+    padding: 0 0.875rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: $ui-white;
+    color: $motion-primary;
+    font-size: 0.75rem;
+    font-weight: bold;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.submit:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.help {
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    padding: 0;
+    color: $ui-white;
+    font-size: 0.75rem;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.error {
+    margin: 0;
+    font-size: 0.7rem;
+    color: #ffd6d6;
+}
+
+.ssoHint {
+    margin: 0 0 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: $ui-white;
+}
+
+.ssoButton {
+    width: 100%;
+    height: 2rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: $ui-white;
+    color: $motion-primary;
+    font-size: 0.75rem;
+    font-weight: bold;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    cursor: pointer;
+}

@@ -8,8 +8,91 @@ import {resolveApiBase} from './robboAccountConfig';
 /** @type {string} */
 let accessTokenMemory = '';
 
+const LOGIN_HINT_KEY = 'robbo_account_login_hint';
+
 function apiBase () {
     return resolveApiBase().replace(/\/$/, '');
+}
+
+/**
+ * Persist email/username typed at password sign-in so refresh-only sessions
+ * can still show a display name (password JWT has Id/Role only, no email).
+ * @param {string} hint
+ */
+function setLoginHint (hint) {
+    const value = (hint || '').trim();
+    try {
+        if (typeof sessionStorage === 'undefined') {
+            return;
+        }
+        if (value) {
+            sessionStorage.setItem(LOGIN_HINT_KEY, value);
+        } else {
+            sessionStorage.removeItem(LOGIN_HINT_KEY);
+        }
+    } catch (e) { /* private mode / blocked storage */ }
+}
+
+function getLoginHint () {
+    try {
+        if (typeof sessionStorage === 'undefined') {
+            return '';
+        }
+        return (sessionStorage.getItem(LOGIN_HINT_KEY) || '').trim();
+    } catch (e) {
+        return '';
+    }
+}
+
+/**
+ * Best-effort decode of password-auth access JWT payload (not verified).
+ * @param {string} token
+ * @returns {{email: string, edxUserId: string, role: number}}
+ */
+function profileFromAccessToken (token) {
+    const empty = {email: '', edxUserId: '', role: 0};
+    if (!token || typeof token !== 'string') {
+        return empty;
+    }
+    try {
+        const parts = token.split('.');
+        if (parts.length < 2) {
+            return empty;
+        }
+        const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+        const json = JSON.parse(atob(b64 + pad));
+        if (!json || typeof json !== 'object') {
+            return empty;
+        }
+        return {
+            email: String(json.Email || json.email || '').trim(),
+            edxUserId: String(json.Id || json.id || '').trim(),
+            role: typeof json.Role === 'number' ? json.Role :
+                (typeof json.role === 'number' ? json.role : 0)
+        };
+    } catch (e) {
+        return empty;
+    }
+}
+
+/**
+ * Build authenticated status when OIDC BFF cookie is absent but refresh JWT works.
+ * @param {object|null} status OIDC status (usually anonymous)
+ * @param {string} token access JWT
+ * @returns {object}
+ */
+function statusFromRefreshToken (status, token) {
+    const fromJwt = profileFromAccessToken(token);
+    const hint = getLoginHint();
+    return Object.assign({}, status || {}, {
+        authenticated: true,
+        email: (status && status.email) || fromJwt.email || hint || '',
+        edx_user_id: (status && status.edx_user_id) || fromJwt.edxUserId || '',
+        sub: (status && status.sub) || fromJwt.edxUserId || '',
+        role: (status && status.role) || fromJwt.role || 0,
+        auth_via: 'refresh'
+    });
 }
 
 function parseJsonSafe (text) {
@@ -41,6 +124,9 @@ function fetchAccount (path, init) {
     const headers = new Headers((init && init.headers) || {});
     if (accessTokenMemory && !headers.has('Authorization')) {
         headers.set('Authorization', `Bearer ${accessTokenMemory}`);
+    }
+    if (!headers.has('X-Requested-With')) {
+        headers.set('X-Requested-With', 'XMLHttpRequest');
     }
     return fetch(`${apiBase()}${path}`, Object.assign({}, init, {
         credentials: 'include',
@@ -89,55 +175,83 @@ export function refreshAccessToken () {
 }
 
 /**
+ * Password sign-in via ЛК REST. Sets refresh_token cookie and returns access JWT.
+ * @param {string} email email or LMS username
+ * @param {string} password
+ * @returns {Promise<{accessToken: string}>}
+ */
+export function signIn (email, password) {
+    return fetchJson('/auth/sign-in', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            email: email || '',
+            password: password || '',
+            role: 0
+        })
+    }).then(json => {
+        if (json && json.accessToken) {
+            accessTokenMemory = json.accessToken;
+            setLoginHint(email);
+        }
+        return json;
+    });
+}
+
+/**
  * @returns {Promise<{
  *   authenticated: boolean,
  *   email?: string,
  *   edx_user_id?: string,
  *   sub?: string,
- *   role?: number
+ *   role?: number,
+ *   lms_password_fallback?: boolean
  * }>}
  */
+function mayUsePasswordRefreshFallback (status) {
+    return Boolean(status && status.lms_password_fallback === true);
+}
+
 export function getSessionStatus () {
     return fetchJson('/auth/oidc/status', {method: 'GET'})
         .then(status => {
             if (status && status.authenticated) {
                 return status;
             }
+            if (!mayUsePasswordRefreshFallback(status)) {
+                return status || {authenticated: false};
+            }
             // Password / hybrid: OIDC cookie absent — try refresh cookie → Bearer.
             return refreshAccessToken().then(token => {
                 if (!token) {
                     return status || {authenticated: false};
                 }
-                return {
-                    authenticated: true,
-                    email: '',
-                    edx_user_id: '',
-                    sub: '',
-                    role: 0,
-                    auth_via: 'refresh'
-                };
+                return statusFromRefreshToken(status, token);
             });
         })
-        .catch(() => refreshAccessToken().then(token => {
-            if (!token) {
-                return {authenticated: false};
-            }
-            return {
-                authenticated: true,
-                email: '',
-                edx_user_id: '',
-                sub: '',
-                role: 0,
-                auth_via: 'refresh'
-            };
-        }));
+        .catch(() => {
+            return {authenticated: false};
+        });
 }
 
 /**
+ * @returns {Promise<{projectPages: object[]}>}
+ */
+export function listProjectPages () {
+    return fetchJson('/projectPage/', {method: 'GET'});
+}
+
+/**
+ * @param {string} [locale] GUI locale for localized default title (Accept-Language)
  * @returns {Promise<{projectPage: object}>}
  */
-export function createProjectPage () {
-    return fetchJson('/projectPage/', {method: 'POST'});
+export function createProjectPage (locale) {
+    const headers = {};
+    const lang = (locale || '').trim();
+    if (lang) {
+        headers['Accept-Language'] = lang;
+    }
+    return fetchJson('/projectPage/', {method: 'POST', headers});
 }
 
 /**
@@ -211,11 +325,77 @@ export function uploadProjectPreview (projectPageId, blob) {
 }
 
 /**
+ * @param {object} playTokenHttp
+ * @returns {string}
+ */
+export function extractPlayToken (playTokenHttp) {
+    if (!playTokenHttp) {
+        return '';
+    }
+    const playUrl = playTokenHttp.playUrl || playTokenHttp.playURL || '';
+    if (!playUrl) {
+        return '';
+    }
+    try {
+        const base = typeof window !== 'undefined' && window.location ?
+            window.location.origin : 'http://localhost';
+        const parsed = new URL(playUrl, base);
+        return (parsed.searchParams.get('token') || '').trim();
+    } catch (e) {
+        return '';
+    }
+}
+
+/**
+ * True when the viewer cannot open this project (private or forbidden).
+ * Missing .sb3 (404 on download) is not treated as unavailable — new drafts have no file yet.
+ * @param {Error} err
+ * @returns {boolean}
+ */
+export function isCloudProjectUnavailableError (err) {
+    if (!err) {
+        return false;
+    }
+    if (err.status === 403) {
+        return true;
+    }
+    const msg = String(err.message || err.errorCode || '').toLowerCase();
+    return msg.indexOf('not access') >= 0 ||
+        msg.indexOf('forbidden') >= 0;
+}
+
+/**
+ * True when the project card itself does not exist.
+ * @param {Error} err
+ * @returns {boolean}
+ */
+export function isCloudProjectMissingError (err) {
+    if (!err) {
+        return false;
+    }
+    const msg = String(err.message || err.errorCode || '').toLowerCase();
+    // GET .../download 404 means "no .sb3 yet", not "no project card".
+    if (msg.indexOf('project file') >= 0 || msg.indexOf('download_sb3') >= 0) {
+        return false;
+    }
+    if (err.status === 404) {
+        return true;
+    }
+    return msg.indexOf('page not found') >= 0;
+}
+
+/**
  * @param {string} projectPageId
+ * @param {{playToken?: string}} [options]
  * @returns {Promise<ArrayBuffer>}
  */
-export function downloadProjectSb3 (projectPageId) {
-    return fetchAccount(`/projectPage/${encodeURIComponent(projectPageId)}/download`, {
+export function downloadProjectSb3 (projectPageId, options) {
+    const playToken = options && options.playToken;
+    let path = `/projectPage/${encodeURIComponent(projectPageId)}/download`;
+    if (playToken) {
+        path += `?token=${encodeURIComponent(playToken)}`;
+    }
+    return fetchAccount(path, {
         method: 'GET'
     }).then(res => {
         if (!res.ok) {
@@ -229,4 +409,5 @@ export function downloadProjectSb3 (projectPageId) {
 
 export function clearAccessTokenMemory () {
     accessTokenMemory = '';
+    setLoginHint('');
 }
