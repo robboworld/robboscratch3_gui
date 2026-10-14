@@ -14,7 +14,6 @@ import {
     showAlertWithTimeout,
     showStandardAlert
 } from '../reducers/alerts';
-import {setAutoSaveTimeoutId} from '../reducers/timeout';
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
     LoadingStates,
@@ -74,9 +73,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
                 this.reportTelemetryEvent('projectDidLoad');
             }
 
-            if (this.props.projectChanged && !prevProps.projectChanged) {
-                this.scheduleAutoSave();
-            }
             if (this.props.isUpdating && !prevProps.isUpdating) {
                 this.updateProjectToStorage();
             }
@@ -114,7 +110,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
             }
         }
         componentWillUnmount () {
-            this.clearAutoSaveTimeout();
             // Cant unset the beforeunload because it might no longer belong to this component
             // i.e. if another of this component has been mounted before this one gets unmounted
             // which happens when going from project to editor view.
@@ -131,24 +126,11 @@ const ProjectSaverHOC = function (WrappedComponent) {
             } */
             return; // Returning undefined prevents the prompt from coming up
         }
-        clearAutoSaveTimeout () {
-            if (this.props.autoSaveTimeoutId !== null) {
-                clearTimeout(this.props.autoSaveTimeoutId);
-                this.props.setAutoSaveTimeoutId(null);
-            }
-        }
-        scheduleAutoSave () {
-            if (this.props.isShowingSaveable && this.props.autoSaveTimeoutId === null) {
-                const timeoutId = setTimeout(this.tryToAutoSave,
-                    this.props.autoSaveIntervalSecs * 1000);
-                this.props.setAutoSaveTimeoutId(timeoutId);
-            }
-        }
+        // Saves to a Scratch project server on request of the GUI consumer (onSetProjectSaver).
+        // Local projects are kept by the session draft (containers/gui.jsx) and Save / Ctrl+S.
         tryToAutoSave () {
             if (this.props.projectChanged && this.props.isShowingSaveable) {
                 this.props.onAutoUpdateProject();
-
-            //  this.__ROBBO__autoSaveProject();
             }
         }
         isShowingCreatable (props) {
@@ -213,14 +195,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
                 });
         }
 
-        __ROBBO__autoSaveProject () {
-            if (typeof this.props.vm.saveProjectSb3_auto !== 'function') {
-                return;
-            }
-            this.props.vm.saveProjectSb3_auto()
-                .catch(() => {}); // empty/invalid project or serialization error — ignore
-        }
-
         /**
          * storeProject:
          * @param  {number|string|undefined} projectId - defined value will PUT/update; undefined/null will POST/create
@@ -229,7 +203,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
          */
         storeProject (projectId, requestParams) {
             requestParams = requestParams || {};
-            this.clearAutoSaveTimeout();
             // Serialize VM state now before embarking on
             // the asynchronous journey of storing assets to
             // the server. This ensures that assets don't update
@@ -271,12 +244,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
                     log.error(err);
                     throw err; // pass the error up the chain
                 });
-
-            // return  new Promise((resolve, reject) => {
-            //
-            //     this.__ROBBO__autoSaveProject();
-            //     resolve();
-            // });
 
         }
 
@@ -327,8 +294,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
         render () {
             const {
                 /* eslint-disable no-unused-vars */
-                autoSaveTimeoutId,
-                autoSaveIntervalSecs,
                 isCreatingCopy,
                 isCreatingNew,
                 projectChanged,
@@ -361,7 +326,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
                 onUpdateProjectThumbnail,
                 reduxProjectId,
                 reduxProjectTitle,
-                setAutoSaveTimeoutId: setAutoSaveTimeoutIdProp,
                 /* eslint-enable no-unused-vars */
                 ...componentProps
             } = this.props;
@@ -375,8 +339,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
     }
 
     ProjectSaverComponent.propTypes = {
-        autoSaveIntervalSecs: PropTypes.number.isRequired,
-        autoSaveTimeoutId: PropTypes.number,
         canCreateNew: PropTypes.bool,
         canSave: PropTypes.bool,
         isAnyCreatingNewState: PropTypes.bool,
@@ -414,11 +376,9 @@ const ProjectSaverHOC = function (WrappedComponent) {
         projectChanged: PropTypes.bool,
         reduxProjectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         reduxProjectTitle: PropTypes.string,
-        setAutoSaveTimeoutId: PropTypes.func.isRequired,
         vm: PropTypes.instanceOf(VM).isRequired
     };
     ProjectSaverComponent.defaultProps = {
-        autoSaveIntervalSecs: 600, // 10 minutes = 600 seconds
         onRemixing: () => {},
         onSetProjectThumbnailer: () => {},
         onSetProjectSaver: () => {},
@@ -428,7 +388,6 @@ const ProjectSaverHOC = function (WrappedComponent) {
         const loadingState = state.scratchGui.projectState.loadingState;
         const isShowingWithId = getIsShowingWithId(loadingState);
         return {
-            autoSaveTimeoutId: state.scratchGui.timeout.autoSaveTimeoutId,
             isAnyCreatingNewState: getIsAnyCreatingNewState(loadingState),
             isLoading: getIsLoading(loadingState),
             isCreatingCopy: getIsCreatingCopy(loadingState),
@@ -460,8 +419,7 @@ const ProjectSaverHOC = function (WrappedComponent) {
         onShowCreatingRemixAlert: () => showAlertWithTimeout(dispatch, 'creatingRemix'),
         onShowSaveSuccessAlert: () => showAlertWithTimeout(dispatch, 'saveSuccess'),
         onShowSavingAlert: () => showAlertWithTimeout(dispatch, 'saving'),
-        onUpdatedProject: loadingState => dispatch(doneUpdatingProject(loadingState)),
-        setAutoSaveTimeoutId: id => dispatch(setAutoSaveTimeoutId(id))
+        onUpdatedProject: loadingState => dispatch(doneUpdatingProject(loadingState))
     });
     // Allow incoming props to override redux-provided props. Used to mock in tests.
     const mergeProps = (stateProps, dispatchProps, ownProps) => Object.assign(
