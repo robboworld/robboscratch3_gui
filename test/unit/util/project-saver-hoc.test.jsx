@@ -18,10 +18,7 @@ describe('projectSaverHOC', () => {
             scratchGui: {
                 projectChanged: false,
                 projectState: {},
-                projectTitle: 'Scratch Project',
-                timeout: {
-                    autoSaveTimeoutId: null
-                }
+                projectTitle: 'Scratch Project'
             },
             locales: {
                 locale: 'en'
@@ -323,84 +320,6 @@ describe('projectSaverHOC', () => {
             isUpdating: true
         });
         expect(mockedShowSavingAlert).toHaveBeenCalled();
-    });
-
-    test('if project is changed, it should autosave after interval', () => {
-        const Component = () => <div />;
-        const WrappedComponent = projectSaverHOC(Component);
-        const mockedAutoUpdate = jest.fn(() => Promise.resolve());
-        const mounted = mount(
-            <WrappedComponent
-                canSave
-                isShowingSaveable
-                isShowingWithId
-                loadingState={LoadingState.SHOWING_WITH_ID}
-                store={store}
-                vm={vm}
-                onAutoUpdateProject={mockedAutoUpdate}
-            />
-        );
-        mounted.setProps({
-            projectChanged: true
-        });
-        // Fast-forward until all timers have been executed
-        jest.runAllTimers();
-        expect(mockedAutoUpdate).toHaveBeenCalled();
-    });
-
-    test('if project is changed several times in a row, it should only autosave once', () => {
-        const Component = () => <div />;
-        const WrappedComponent = projectSaverHOC(Component);
-        const mockedAutoUpdate = jest.fn(() => Promise.resolve());
-        const mounted = mount(
-            <WrappedComponent
-                canSave
-                isShowingSaveable
-                isShowingWithId
-                loadingState={LoadingState.SHOWING_WITH_ID}
-                store={store}
-                vm={vm}
-                onAutoUpdateProject={mockedAutoUpdate}
-            />
-        );
-        mounted.setProps({
-            projectChanged: true,
-            reduxProjectTitle: 'a'
-        });
-        mounted.setProps({
-            projectChanged: true,
-            reduxProjectTitle: 'b'
-        });
-        mounted.setProps({
-            projectChanged: true,
-            reduxProjectTitle: 'c'
-        });
-        // Fast-forward until all timers have been executed
-        jest.runAllTimers();
-        expect(mockedAutoUpdate).toHaveBeenCalledTimes(1);
-    });
-
-    test('if project is not changed, it should not autosave after interval', () => {
-        const Component = () => <div />;
-        const WrappedComponent = projectSaverHOC(Component);
-        const mockedAutoUpdate = jest.fn(() => Promise.resolve());
-        const mounted = mount(
-            <WrappedComponent
-                canSave
-                isShowingSaveable
-                isShowingWithId
-                loadingState={LoadingState.SHOWING_WITH_ID}
-                store={store}
-                vm={vm}
-                onAutoUpdateProject={mockedAutoUpdate}
-            />
-        );
-        mounted.setProps({
-            projectChanged: false
-        });
-        // Fast-forward until all timers have been executed
-        jest.runAllTimers();
-        expect(mockedAutoUpdate).not.toHaveBeenCalled();
     });
 
     test('when starting to remix, onRemixing should be called with param true', () => {

@@ -23,7 +23,6 @@ import restoreDeletionReducer, {restoreDeletionInitialState} from './restore-del
 import stageSizeReducer, {stageSizeInitialState} from './stage-size';
 import targetReducer, {targetsInitialState} from './targets';
 import themeReducer, {themeInitialState} from './theme';
-import timeoutReducer, {timeoutInitialState} from './timeout';
 import timeTravelReducer, {timeTravelInitialState} from './time-travel';
 import toolboxReducer, {toolboxInitialState} from './toolbox';
 import vmReducer, {vmInitialState} from './vm';
@@ -90,7 +89,6 @@ const guiInitialState = {
     restoreDeletion: restoreDeletionInitialState,
     targets: targetsInitialState,
     theme: themeInitialState,
-    timeout: timeoutInitialState,
     timeTravel: timeTravelInitialState,
     toolbox: toolboxInitialState,
     vm: vmInitialState,
@@ -212,7 +210,6 @@ const guiReducer = combineReducers({
     restoreDeletion: restoreDeletionReducer,
     targets: targetReducer,
     theme: themeReducer,
-    timeout: timeoutReducer,
     timeTravel: timeTravelReducer,
     toolbox: toolboxReducer,
     vm: vmReducer,
