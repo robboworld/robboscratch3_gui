@@ -33,7 +33,6 @@ export function setFlashButtonVisualMode (button, mode) {
     if (mode === 'busy') {
         button.classList.add(FLASH_BUTTON_BUSY_CLASS);
         button.style.textAlign = 'left';
-        button.style.color = '#000';
     } else if (mode === 'error') {
         button.classList.add(FLASH_BUTTON_ERROR_CLASS);
         button.style.textAlign = 'center';

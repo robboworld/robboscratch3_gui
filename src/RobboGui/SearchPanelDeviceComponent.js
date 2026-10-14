@@ -21,7 +21,7 @@ import { applyRobboPopupZIndex } from '../lib/robbo-popup-z-index';
 import { resolveCf2FirmwareVersionLabel, parseCf2FlashToolLine } from '../lib/crazyflie-flash-ui';
 import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
 import {setFlashButtonVisualMode, setFlashLogStatusTone} from '../lib/device-status-dom';
-import {applyFlashStatus, createFlashProgress} from '../lib/flash-status-phase';
+import {applyFlashConnected, applyFlashStatus, createFlashProgress, resetFlashWindow} from '../lib/flash-status-phase';
 import {hydrateLicenseThunk} from './actions/licenseActions';
 
 const messages = defineMessages({
@@ -275,23 +275,22 @@ const messages = defineMessages({
         description: ' ',
         defaultMessage: 'Device connected'
     },
-    device_checking_serial: {
-
-        id: 'gui.SearchPanel.device_checking_serial',
-        description: ' ',
-        defaultMessage: 'Checking serial number...'
+    device_identifying: {
+        id: 'gui.SearchPanel.device_identifying',
+        description: 'Search status while asking the device who it is; {attempt} counts the tries (the port speed changes between them)',
+        defaultMessage: 'Detecting the device… try {attempt}'
     },
     device_no_response: {
 
         id: 'gui.SearchPanel.device_no_response',
         description: ' ',
-        defaultMessage: 'Unknown device detected'
+        defaultMessage: 'The device does not answer Robbo Scratch'
     },
     device_no_response_details: {
 
         id: 'gui.SearchPanel.device_no_response_details',
         description: ' ',
-        defaultMessage: 'Firmware update is required.'
+        defaultMessage: 'It probably has another firmware. Press «Flash device».'
     },
     device_no_response_alert_details: {
 
@@ -300,7 +299,7 @@ const messages = defineMessages({
         defaultMessage: `A device connected to port {device_port} is not recognized by Robbo Scratch.
 The device may have no firmware or non-standard firmware loaded.
 
-Load standard Robbo Scratch firmware?`
+Load standard Robbo Scratch firmware? Robbo Scratch will find out which device it is and show it while flashing.`
     },
     device_connection_lost: {
 
@@ -430,6 +429,11 @@ const FLASH_FLOW_KEEP_STATUSES = {
     session_finish: true
 };
 const AUTO_RETRY_START_DELAY_MS = 800;
+// Ports already asked «flash the unrecognized device?» in this session: the flash button stays in
+// the row, the dialog does not pop up again on every search.
+const askedUnknownDevicePorts = new Set();
+// How long «Done» stays in the flash log window before it closes on its own.
+const FLASH_DONE_HIDE_DELAY_MS = 4000;
 
 class SearchPanelDeviceComponent extends Component {
 
@@ -440,6 +444,7 @@ class SearchPanelDeviceComponent extends Component {
         this.state = {
             devices: [],
             deviceState: 0,
+            identifyAttempt: 0,
             deviceId: -1,
             deviceError: null,
             quadcopterConnected: false,
@@ -681,6 +686,7 @@ class SearchPanelDeviceComponent extends Component {
     _resetQuadcopterFlashWindow() {
         const { statusEl, logEl } = this._getQuadcopterFlashWindowElements();
         const started = this.props.intl.formatMessage(messages.quadcopter_firmware_flash_started);
+        resetFlashWindow(statusEl);
         if (statusEl) {
             statusEl.innerHTML = started;
             setFlashLogStatusTone(statusEl, 'pending');
@@ -934,7 +940,9 @@ class SearchPanelDeviceComponent extends Component {
         } else if (deviceState === 2) {
             statusText = this.props.intl.formatMessage(messages.port_opened);
         } else if (deviceState === 3) {
-            statusText = this.props.intl.formatMessage(messages.device_checking_serial);
+            statusText = this.props.intl.formatMessage(messages.device_identifying, {
+                attempt: this.state.identifyAttempt || 1
+            });
         } else if (deviceState === 8) {
             if (deviceError && deviceError.code === 1) {
                 statusText = this.props.intl.formatMessage(messages.device_reconnecting);
@@ -1035,6 +1043,7 @@ class SearchPanelDeviceComponent extends Component {
 
     componentWillUnmount() {
         this._debugMounted = false;
+        this._clearFlashDoneHideTimer();
         if (this._quadcopterFlashHideTimer != null) {
             clearTimeout(this._quadcopterFlashHideTimer);
             this._quadcopterFlashHideTimer = null;
@@ -1446,7 +1455,12 @@ class SearchPanelDeviceComponent extends Component {
         if (state === 10) {
             console.warn('[FLASH_ICON] onStatusChange: received state=10 FLASHING for port=' + this.props.devicePort);
         }
-        this.setState({ deviceState: state, deviceId, deviceError: error });
+        // Each try at another port speed passes «checking the serial number» again: count the tries
+        // so the repeated status does not look like a hang.
+        let identifyAttempt = this.state.identifyAttempt || 0;
+        if (state === 3 && this.state.deviceState !== 3) identifyAttempt++;
+        else if (state === 6 || state === 7 || state === 8) identifyAttempt = 0;
+        this.setState({ deviceState: state, deviceId, deviceError: error, identifyAttempt });
 
         if (!this.props.isQuadcopter && !this.flashSessionActive) {
             if (state === 6) {
@@ -1592,6 +1606,10 @@ class SearchPanelDeviceComponent extends Component {
                 return;
             }
             unlockMenuBarSearch();
+            if (this._flashDoneHideTimer != null && this._flashProgress) {
+                const {statusEl} = getFirmwareFlashLogElements(this.props.flashingStatusComponentId);
+                applyFlashConnected(statusEl, this.props.intl, this._flashProgress);
+            }
             let result = this.firmware_version_differs_cb_result;
             if (!this.firmware_version_differs && info_field) {
                 info_field.innerHTML = '';
@@ -1694,6 +1712,8 @@ class SearchPanelDeviceComponent extends Component {
 
                     flashing_show_details_icon.style.display = 'inline-block';
                     flashing_button.style.display = 'inline-block';
+                    if (askedUnknownDevicePorts.has(this.props.devicePort)) return;
+                    askedUnknownDevicePorts.add(this.props.devicePort);
                     this._askFirmwareQuestion(need_to_flash_msg).then(need_flash_device => {
                         if (!need_flash_device) return;
                         if (deviceId === 5) {
@@ -1819,6 +1839,8 @@ class SearchPanelDeviceComponent extends Component {
     }
 
     flashingHideDetails() {
+        // «Done» is still on screen: the timer closes the window (reconnect events would close it at once).
+        if (this._flashDoneHideTimer != null) return;
         const windowState = this.props.draggable_window && this.props.draggable_window[this.props.draggableWindowId];
         if (windowState && windowState.isShowing === true) {
             this._logFlashFlow('flashWindow', 'hide', { reason: 'ui_state_change' });
@@ -1925,6 +1947,13 @@ class SearchPanelDeviceComponent extends Component {
         return config;
     }
 
+    _clearFlashDoneHideTimer() {
+        if (this._flashDoneHideTimer != null) {
+            clearTimeout(this._flashDoneHideTimer);
+            this._flashDoneHideTimer = null;
+        }
+    }
+
     flashDevice(ottoFlashMode) {
         if (this.props.isQuadcopter) {
             this.flashQuadcopterFirmware(ottoFlashMode);
@@ -1951,6 +1980,7 @@ class SearchPanelDeviceComponent extends Component {
 
         const initialStage = (this.deviceId === 5 && flashMode === 'auto') ? 'null_lab' : 'single';
         const currentSessionId = this._startFlashSession(initialStage, flashMode);
+        this._clearFlashDoneHideTimer();
 
         if (this.props.onShowFlashingStatusWindow) {
             this._logFlashFlow('flashWindow', 'show', { reason: 'flash_start' });
@@ -1978,6 +2008,7 @@ class SearchPanelDeviceComponent extends Component {
 
         if (flashingStatusComponent) flashingStatusComponent.innerHTML = "";
         if (flashingLogComponent) flashingLogComponent.innerHTML = "";
+        resetFlashWindow(flashingStatusComponent);
 
         var config = this._buildFlashConfig(flashMode);
         config.device.flash_session_id = currentSessionId;
@@ -1999,6 +2030,11 @@ class SearchPanelDeviceComponent extends Component {
 
         const suppressVerifyConfirmInAutoFlow = (this.deviceId === 5 && flashMode === 'auto');
         const flashProgress = createFlashProgress();
+        // A known device is named in the phases right away; an unknown one once the flasher recognizes it.
+        if (this.deviceId >= 0) flashProgress.deviceId = this.deviceId;
+        this._flashProgress = flashProgress;
+        const flashLogDetails = flashingLogComponent && flashingLogComponent.closest('details');
+        if (flashLogDetails) flashLogDetails.open = false;
         var statusCallback = (status) => {
             if (!this.flashSessionActive || this._activeFlashSessionId !== currentSessionId) {
                 this._logFlashFlow('statusCallback', 'ignored_stale_session', { status, callbackSessionId: currentSessionId }, true);
@@ -2027,10 +2063,15 @@ class SearchPanelDeviceComponent extends Component {
                 // событие state==0/2 в onStatusChange приходит позже, поэтому
                 // окно прошивки/поля статуса не сбрасываются автоматически.
                 // Явно скрываем окно и очищаем DOM-поля, чтобы поведение стало
-                // как на Desktop.
-                try {
-                    this.flashingHideDetails();
-                } catch (_) { }
+                // как на Desktop. Окно закрывается не сразу: ребёнок должен увидеть «Готово».
+                this._clearFlashDoneHideTimer();
+                this._flashDoneHideTimer = setTimeout(() => {
+                    this._flashDoneHideTimer = null;
+                    if (this.flashSessionActive) return;
+                    try {
+                        this.flashingHideDetails();
+                    } catch (_) { }
+                }, FLASH_DONE_HIDE_DELAY_MS);
                 if (status_field) {
                     status_field.innerHTML = this.props.intl.formatMessage(messages.device_connected);
                 }
@@ -2046,6 +2087,8 @@ class SearchPanelDeviceComponent extends Component {
                 this.searchDevices(false);
             } else if ((status.indexOf("Error") !== -1)) {
                 setFlashLogStatusTone(flashingStatusComponent, 'error');
+                // The status line says «open the details»: open them.
+                if (flashLogDetails) flashLogDetails.open = true;
                 if (search_device_button) search_device_button.removeAttribute("disabled");
 
                 if (flashing_button) {
@@ -2171,7 +2214,8 @@ class SearchPanelDeviceComponent extends Component {
         return robboConfirm(Object.assign({
             title: intl.formatMessage(messages.confirm_firmware_title),
             message,
-            confirmLabel: intl.formatMessage(messages.confirm_update_firmware),
+            // Same name as the button in the device row: «Flash device» (the quadcopter row says «Update firmware»).
+            confirmLabel: intl.formatMessage(this.props.isQuadcopter ? messages.confirm_update_firmware : messages.flash_device),
             cancelLabel: intl.formatMessage(messages.confirm_not_now)
         }, labels));
     }
