@@ -11,6 +11,7 @@ import {
     LICENSE_FEATURES,
     featuresForCapabilities
 } from '../lib/licensing/licenseFeatures';
+import {formatLicenseReason} from '../lib/licensing/licenseReasons';
 
 const messages = defineMessages({
     title_success: {
@@ -20,6 +21,11 @@ const messages = defineMessages({
     title_error: {
         id: 'gui.licenseFeedback.title_error',
         defaultMessage: 'Could not activate license'
+    },
+    title_lapsed: {
+        id: 'gui.licenseFeedback.title_lapsed',
+        description: 'Start-up notice title: the Desktop licence stopped applying',
+        defaultMessage: 'The licence no longer applies'
     },
     success_body: {
         id: 'gui.licenseFeedback.success_body',
@@ -142,23 +148,25 @@ function LicenseActivationFeedback (props) {
         return null;
     }
 
-    const isError = phase === 'error';
+    // 'lapsed': the licence stopped applying (start-up check or the ЛК answer), errorCode = reason.
+    const isLapsed = phase === 'lapsed';
+    const isError = phase === 'error' || isLapsed;
     const grantedFeatures = featuresForCapabilities(feedback.capabilities || []);
     const unknownCaps = (feedback.capabilities || []).filter(cap =>
         LICENSE_FEATURES.every(feature => feature.capability !== cap)
     );
 
-    const title = isError
-        ? intl.formatMessage(messages.title_error)
-        : intl.formatMessage(messages.title_success);
-
-    const errorText = isError
-        ? resolveActivationErrorMessage(
-            intl,
-            feedback.errorCode,
-            feedback.errorMessage
-        )
-        : '';
+    let title = intl.formatMessage(isError ? messages.title_error : messages.title_success);
+    let errorText = isError ?
+        resolveActivationErrorMessage(intl, feedback.errorCode, feedback.errorMessage) :
+        '';
+    if (isLapsed) {
+        title = intl.formatMessage(messages.title_lapsed);
+        const date = typeof feedback.date === 'number' ?
+            intl.formatDate(new Date(feedback.date * 1000), {year: 'numeric', month: 'short', day: 'numeric'}) :
+            '';
+        errorText = formatLicenseReason(intl, feedback.errorCode, date);
+    }
 
     return ReactDOM.createPortal(
         <div
@@ -199,16 +207,18 @@ function LicenseActivationFeedback (props) {
                                 >
                                     {intl.formatMessage(messages.close)}
                                 </button>
-                                <button
-                                    type="button"
-                                    className={classNames(
-                                        formStyles.action_button,
-                                        styles.primaryButton
-                                    )}
-                                    onClick={onDismiss}
-                                >
-                                    {intl.formatMessage(messages.try_again)}
-                                </button>
+                                {isLapsed ? null : (
+                                    <button
+                                        type="button"
+                                        className={classNames(
+                                            formStyles.action_button,
+                                            styles.primaryButton
+                                        )}
+                                        onClick={onDismiss}
+                                    >
+                                        {intl.formatMessage(messages.try_again)}
+                                    </button>
+                                )}
                             </div>
                         </>
                     ) : (
@@ -276,7 +286,8 @@ LicenseActivationFeedback.propTypes = {
         phase: PropTypes.string,
         capabilities: PropTypes.arrayOf(PropTypes.string),
         errorCode: PropTypes.string,
-        errorMessage: PropTypes.string
+        errorMessage: PropTypes.string,
+        date: PropTypes.number
     }),
     intl: intlShape.isRequired,
     onDismiss: PropTypes.func.isRequired

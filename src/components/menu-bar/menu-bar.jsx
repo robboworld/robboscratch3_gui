@@ -108,13 +108,19 @@ import {
 } from '../../RobboGui/actions/robboAccountActions';
 import LogoutUnsavedModal from '../../RobboGui/LogoutUnsavedModal.jsx';
 import {startBffSessionWatch} from '../../lib/robbo-account/authEcosystemSync';
+import {
+    CLOUD_PROJECT_SIZE_EXCEEDED,
+    isCloudLimitError,
+    tariffsPageUrl
+} from '../../lib/robbo-account/cloudLimits';
 import {shouldPromptSaveBeforeLeave} from '../../lib/robbo-account/editorContent';
 import {
     myProjectsUrl,
     projectPageUrl,
     resolveLkBase
 } from '../../lib/robbo-account/robboAccountConfig';
-import {AUTH_UI_ENABLED} from '../../lib/licensing/licenseUiEnabled';
+import {LICENSE_UI_ENABLED, isAuthUiEnabled} from '../../lib/licensing/licenseUiEnabled';
+import {ActionTriggerNewDraggableWindow} from '../../RobboGui/actions/sensor_actions';
 
 // Robbo: Scratch tutorials are English-only (no ru screenshots, Wistia videos); the cards engine stays for
 // future Robbo lessons in lib/libraries/decks/index.jsx — enable the menu button once there are some
@@ -163,6 +169,11 @@ const messages = defineMessages({
         defaultMessage: 'My Stuff',
         description: 'Menu bar link to personal account project list'
     },
+    license: {
+        id: 'gui.RobboMenu.trigger_license_window',
+        description: ' ',
+        defaultMessage: 'License'
+    },
     accountHome: {
         id: 'gui.menuBar.robboAccountHome',
         defaultMessage: 'Account',
@@ -202,6 +213,31 @@ const messages = defineMessages({
         id: 'gui.menuBar.robboSaveToCloudError',
         defaultMessage: 'Save failed',
         description: 'Shown when cloud save fails'
+    },
+    projectSizeExceeded: {
+        id: 'gui.menuBar.robboProjectSizeExceeded',
+        defaultMessage: 'The project is larger than {size} MB, the {tariff} limit',
+        description: 'Cloud save refused: the project file is over the tariff limit'
+    },
+    projectSizeExceededUnknown: {
+        id: 'gui.menuBar.robboProjectSizeExceededUnknown',
+        defaultMessage: 'The project is too large for your tariff',
+        description: 'Cloud save refused by the size limit, the limit itself is unknown'
+    },
+    projectLimitReached: {
+        id: 'gui.menuBar.robboProjectLimitReached',
+        defaultMessage: 'The {tariff} limit of {count} projects is reached',
+        description: 'Cloud save refused: no more projects allowed by the tariff'
+    },
+    projectLimitReachedUnknown: {
+        id: 'gui.menuBar.robboProjectLimitReachedUnknown',
+        defaultMessage: 'Your tariff allows no more projects',
+        description: 'Cloud save refused by the project count limit, the limit itself is unknown'
+    },
+    tariffs: {
+        id: 'gui.menuBar.robboTariffs',
+        defaultMessage: 'Tariffs',
+        description: 'Link to the tariffs page of the personal account after a cloud limit refusal'
     }
 });
 const ariaMessages = defineMessages({
@@ -309,6 +345,7 @@ class MenuBar extends React.Component {
             'handleLogoutUnsavedSave',
             'handleClickMyStuff',
             'handleClickAccountHome',
+            'handleClickLicense',
             'handleClickSeeProjectPage',
             'handleClickSaveToCloud',
             'handleClickSaveAsCloudCopy',
@@ -320,7 +357,10 @@ class MenuBar extends React.Component {
     }
     componentDidMount () {
         document.addEventListener('keydown', this.handleKeyPress);
-        if (AUTH_UI_ENABLED && this.props.onCheckSession) {
+        if (!isAuthUiEnabled()) {
+            return;
+        }
+        if (this.props.onCheckSession) {
             this.props.onCheckSession();
         }
         this._stopSessionWatch = startBffSessionWatch({
@@ -436,6 +476,31 @@ class MenuBar extends React.Component {
     }
     handleClickMyStuff () {
         navigateTop(myProjectsUrl());
+    }
+    /**
+     * The cloud save failure in words: a tariff limit names itself and its value.
+     * @returns {string} the message
+     */
+    cloudSaveErrorMessage () {
+        const intl = this.props.intl;
+        const code = this.props.cloudSaveError;
+        if (!isCloudLimitError(code)) {
+            return intl.formatMessage(messages.saveToCloudError);
+        }
+        const rights = this.props.robboAccountEntitlements || {};
+        const tariff = rights.tariffName || '';
+        if (code === CLOUD_PROJECT_SIZE_EXCEEDED) {
+            return rights.maxProjectSizeMb > 0 && tariff ?
+                intl.formatMessage(messages.projectSizeExceeded, {size: rights.maxProjectSizeMb, tariff}) :
+                intl.formatMessage(messages.projectSizeExceededUnknown);
+        }
+        return rights.maxProjects > 0 && tariff ?
+            intl.formatMessage(messages.projectLimitReached, {count: rights.maxProjects, tariff}) :
+            intl.formatMessage(messages.projectLimitReachedUnknown);
+    }
+    handleClickLicense () {
+        this.props.onRequestCloseAccount();
+        this.props.onOpenLicenseWindow();
     }
     handleClickAccountHome () {
         navigateTop(`${resolveLkBase()}/home`);
@@ -862,7 +927,7 @@ class MenuBar extends React.Component {
                                             </span>
                                         </MenuItem>
                                     </MenuSection>
-                                    {AUTH_UI_ENABLED && this.props.isRobboAccountAuthenticated ? (
+                                    {isAuthUiEnabled() && this.props.isRobboAccountAuthenticated ? (
                                         <MenuSection>
                                             <MenuItem onClick={this.handleClickSaveToCloud}>
                                                 {this.props.intl.formatMessage(messages.saveToCloud)}
@@ -1037,12 +1102,12 @@ class MenuBar extends React.Component {
                             />
                         </div>
                     ) : null}
-                    {AUTH_UI_ENABLED && this.props.isRobboAccountAuthenticated && this.props.cloudProjectPageId ? (
+                    {isAuthUiEnabled() && this.props.isRobboAccountAuthenticated && this.props.cloudProjectPageId ? (
                         <div className={classNames(styles.menuBarItem)}>
                             <CommunityButton onClick={this.handleClickSeeProjectPage} />
                         </div>
                     ) : null}
-                    {AUTH_UI_ENABLED && this.props.isRobboAccountAuthenticated && this.props.projectChanged &&
+                    {isAuthUiEnabled() && this.props.isRobboAccountAuthenticated && this.props.projectChanged &&
                     this.props.cloudSaveStatus !== 'saving' && this.props.cloudSaveStatus !== 'error' ? (
                         <div
                             className={classNames(styles.menuBarItem, styles.saveNowLink)}
@@ -1051,7 +1116,7 @@ class MenuBar extends React.Component {
                             {saveNowMessage}
                         </div>
                     ) : null}
-                    {AUTH_UI_ENABLED && this.props.cloudSaveStatus === 'saving' ? (
+                    {isAuthUiEnabled() && this.props.cloudSaveStatus === 'saving' ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatus)}>
                             {this.props.intl.formatMessage(messages.savingToCloud)}
                         </div>
@@ -1061,14 +1126,24 @@ class MenuBar extends React.Component {
                             {this.props.intl.formatMessage(messages.titleChanged)}
                         </div>
                     ) : null}
-                    {AUTH_UI_ENABLED && this.props.cloudSaveStatus === 'success' ? (
+                    {isAuthUiEnabled() && this.props.cloudSaveStatus === 'success' ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatus)}>
                             {this.props.intl.formatMessage(messages.savedToCloud)}
                         </div>
                     ) : null}
-                    {AUTH_UI_ENABLED && this.props.cloudSaveStatus === 'error' ? (
+                    {isAuthUiEnabled() && this.props.cloudSaveStatus === 'error' ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatusError)}>
-                            {this.props.intl.formatMessage(messages.saveToCloudError)}
+                            {this.cloudSaveErrorMessage()}
+                            {isCloudLimitError(this.props.cloudSaveError) ? (
+                                <a
+                                    className={styles.cloudLimitLink}
+                                    href={tariffsPageUrl()}
+                                    rel="noopener noreferrer"
+                                    target="_blank"
+                                >
+                                    {this.props.intl.formatMessage(messages.tariffs)}
+                                </a>
+                            ) : null}
                         </div>
                     ) : null}
                     {TUTORIALS_UI_ENABLED && <Divider className={classNames(styles.divider)} />}
@@ -1091,7 +1166,7 @@ class MenuBar extends React.Component {
                     )}
                 </div>
 
-                {AUTH_UI_ENABLED ? (
+                {isAuthUiEnabled() ? (
                 <div className={styles.accountInfoGroup}>
                     {this.props.isRobboAccountAuthenticated ? (
                         <React.Fragment>
@@ -1123,6 +1198,11 @@ class MenuBar extends React.Component {
                                     {(this.props.robboAccountUser && this.props.robboAccountUser.displayName) ||
                                         this.props.intl.formatMessage(messages.accountHome)}
                                 </span>
+                                {this.props.robboAccountTariff ? (
+                                    <span className={styles.accountTariff}>
+                                        {this.props.robboAccountTariff}
+                                    </span>
+                                ) : null}
                                 <img
                                     alt=""
                                     className={styles.dropdownCaretIcon}
@@ -1138,6 +1218,12 @@ class MenuBar extends React.Component {
                                     <MenuItem onClick={this.handleClickAccountHome}>
                                         {this.props.intl.formatMessage(messages.accountHome)}
                                     </MenuItem>
+                                    {/* Signed in, the licence lives with the account (RobboMenu hides its item) */}
+                                    {LICENSE_UI_ENABLED ? (
+                                        <MenuItem onClick={this.handleClickLicense}>
+                                            {this.props.intl.formatMessage(messages.license)}
+                                        </MenuItem>
+                                    ) : null}
                                     <MenuSection>
                                         <MenuItem onClick={this.handleClickSignOut}>
                                             {this.props.intl.formatMessage(messages.signOut)}
@@ -1199,6 +1285,7 @@ MenuBar.propTypes = {
     canShare: PropTypes.bool,
     className: PropTypes.string,
     cloudProjectPageId: PropTypes.string,
+    cloudSaveError: PropTypes.string,
     cloudSaveStatus: PropTypes.string,
     confirmReadyToReplaceProject: PropTypes.func,
     currentLocale: PropTypes.string.isRequired,
@@ -1245,6 +1332,7 @@ MenuBar.propTypes = {
     onCheckSession: PropTypes.func,
     onRemoteSignOut: PropTypes.func,
     onLogOut: PropTypes.func,
+    onOpenLicenseWindow: PropTypes.func,
     onOpenRegistration: PropTypes.func,
     onOpenTipLibrary: PropTypes.func,
     onOpenScenariosLibrary: PropTypes.func,
@@ -1285,6 +1373,12 @@ MenuBar.propTypes = {
         targetName: PropTypes.string
     }),
     renderLogin: PropTypes.func,
+    robboAccountEntitlements: PropTypes.shape({
+        maxProjectSizeMb: PropTypes.number,
+        maxProjects: PropTypes.number,
+        tariffName: PropTypes.string
+    }),
+    robboAccountTariff: PropTypes.string,
     robboAccountUser: PropTypes.object,
     sessionExists: PropTypes.bool,
     settingsMenuOpen: PropTypes.bool,
@@ -1308,7 +1402,9 @@ const mapStateToProps = (state, ownProps) => {
         aboutMenuOpen: aboutMenuOpen(state),
         accountMenuOpen: accountMenuOpen(state),
         cloudProjectPageId: robboAccount.cloudProjectPageId || '',
+        cloudSaveError: robboAccount.saveError || '',
         cloudSaveStatus: robboAccount.saveStatus || 'idle',
+        robboAccountEntitlements: robboAccount.entitlements || null,
         currentLocale: state.locales.locale,
         fileMenuOpen: fileMenuOpen(state),
         editMenuOpen: editMenuOpen(state),
@@ -1321,6 +1417,8 @@ const mapStateToProps = (state, ownProps) => {
         modeMenuOpen: modeMenuOpen(state),
         projectChanged: state.scratchGui.projectChanged,
         projectTitle: state.scratchGui.projectTitle,
+        // Tariff name as the ЛК shows it (Free / Individual / Class).
+        robboAccountTariff: (robboAccount.entitlements && robboAccount.entitlements.tariffName) || '',
         robboAccountUser: robboAccount.user,
         saveStatus: state.scratchGui.projectSaveStatus,
         sessionExists: state.session && typeof state.session.session !== 'undefined',
@@ -1345,6 +1443,7 @@ const mapDispatchToProps = dispatch => ({
     onCheckSession: () => dispatch(checkSessionThunk()),
     onRemoteSignOut: () => dispatch(handleRemoteSignOutThunk()),
     onClickAccount: () => dispatch(openAccountMenu()),
+    onOpenLicenseWindow: () => dispatch(ActionTriggerNewDraggableWindow('license-window')),
     onRequestCloseAccount: () => dispatch(closeAccountMenu()),
     onClickFile: () => dispatch(openFileMenu()),
     onRequestCloseFile: () => dispatch(closeFileMenu()),

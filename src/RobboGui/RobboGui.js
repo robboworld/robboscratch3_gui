@@ -283,6 +283,10 @@ class RobboGui extends Component {
 
   return (
 
+    <div className={styles.robbo_gui}>
+
+    {/* Hiding the ROBBO UI (menu bar toggle) hides the device palettes and windows; the licence
+        window and its notices stay: they open from the account menu too. */}
     <div
       className={styles.robbo_gui}
       style={{display: this.props.isRobboUiHidden ? 'none' : undefined}}
@@ -319,9 +323,6 @@ class RobboGui extends Component {
 
          <RobboMenu VM={this.props.vm} />
 
-         {LICENSE_UI_ENABLED ? <PremiumUpdateProgress /> : null}
-         {LICENSE_UI_ENABLED ? <LicenseActivationFeedback /> : null}
-
          <SearchPanelComponent VM={this.props.vm} DCA={this.DCA} RCA={this.RCA} LCA={this.LCA} QCA={this.QCA} OCA={this.OCA} ACA={this.ACA} />
 
 
@@ -337,6 +338,18 @@ class RobboGui extends Component {
 
          </NewDraggableWindowComponent>
 
+        {/*  <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>
+
+            <IotConnectionComponent VM={this.props.vm} IOT={this.IOT}/>
+
+          </NewDraggableWindowComponent>  */}
+        
+
+    </div>
+
+         {LICENSE_UI_ENABLED ? <PremiumUpdateProgress /> : null}
+         {LICENSE_UI_ENABLED ? <LicenseActivationFeedback /> : null}
+
          {LICENSE_UI_ENABLED ? (
          <NewDraggableWindowComponent draggableWindowId={'license-window'} initialCoords={initial_coords_license}>
 
@@ -344,14 +357,6 @@ class RobboGui extends Component {
 
          </NewDraggableWindowComponent>
          ) : null}
-
-
-        {/*  <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>
-
-            <IotConnectionComponent VM={this.props.vm} IOT={this.IOT}/>
-
-          </NewDraggableWindowComponent>  */}
-        
 
     </div>
   );

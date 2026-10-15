@@ -235,6 +235,16 @@ export function getSessionStatus () {
 }
 
 /**
+ * Rights of the signed-in account: its tariff and cloud limits.
+ * @returns {Promise<{tariffName: string, hasLicense: boolean, maxProjectSizeMb: number,
+ *     maxProjects: number, projectCount: number, usedBytes: number, seatLimit: number,
+ *     sessionLimit: number, capabilities: string[]}>} the rights, Free when there is no licence
+ */
+export function getEntitlements () {
+    return fetchJson('/licensing/entitlements', {method: 'GET'});
+}
+
+/**
  * @returns {Promise<{projectPages: object[]}>}
  */
 export function listProjectPages () {

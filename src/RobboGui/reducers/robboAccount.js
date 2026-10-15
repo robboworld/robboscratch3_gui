@@ -11,6 +11,7 @@ export const ROBBO_ACCOUNT_CLEAR_SAVE_STATUS = 'ROBBO_ACCOUNT_CLEAR_SAVE_STATUS'
 export const ROBBO_ACCOUNT_TITLE_SAVE_SUCCESS = 'ROBBO_ACCOUNT_TITLE_SAVE_SUCCESS';
 export const ROBBO_ACCOUNT_SIGN_OUT = 'ROBBO_ACCOUNT_SIGN_OUT';
 export const ROBBO_ACCOUNT_SET_CLOUD_PROJECT_ACCESS_BLOCKED = 'ROBBO_ACCOUNT_SET_CLOUD_PROJECT_ACCESS_BLOCKED';
+export const ROBBO_ACCOUNT_SET_ENTITLEMENTS = 'ROBBO_ACCOUNT_SET_ENTITLEMENTS';
 
 function applyLmsPasswordFallback (next, payload, prevState) {
     if (payload && typeof payload.lmsPasswordFallback === 'boolean') {
@@ -24,6 +25,7 @@ export function robboAccountInitialState () {
     return {
         sessionStatus: 'idle', // idle | loading | authenticated | anonymous | error
         user: null, // {email, edxUserId, sub, role, displayName}
+        entitlements: null, // GET /licensing/entitlements: {tariffName, maxProjects, …}
         cloudProjectPageId: '',
         saveStatus: 'idle', // idle | saving | success | title_success | error
         saveError: '',
@@ -55,6 +57,7 @@ export default function robboAccountReducer (state, action) {
         const next = immutable_copy(state);
         next.sessionStatus = action.payload && action.payload.anonymous ? 'anonymous' : 'error';
         next.user = null;
+        next.entitlements = null;
         applyLmsPasswordFallback(next, action.payload, state);
         return next;
     }
@@ -99,6 +102,11 @@ export default function robboAccountReducer (state, action) {
     case ROBBO_ACCOUNT_SET_CLOUD_PROJECT_ACCESS_BLOCKED: {
         const next = immutable_copy(state);
         next.cloudProjectAccessBlocked = !!(action.payload && action.payload.blocked);
+        return next;
+    }
+    case ROBBO_ACCOUNT_SET_ENTITLEMENTS: {
+        const next = immutable_copy(state);
+        next.entitlements = action.payload || null;
         return next;
     }
     case ROBBO_ACCOUNT_SIGN_OUT: {

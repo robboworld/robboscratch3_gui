@@ -6,6 +6,14 @@
  * @returns {string}
  */
 export function resolveAccountHomeUrl (activationBaseUrl) {
+    // The ЛК site the build was made for (the same as the menu bar's account links).
+    try {
+        const fromEnv = String(process.env.ROBBO_ACCOUNT_LK_URL || '').trim()
+            .replace(/\/$/, '');
+        if (fromEnv) {
+            return `${fromEnv}/home`;
+        }
+    } catch (e) { /* no process.env in this bundle */ }
     try {
         if (typeof process !== 'undefined' && process.env && process.env.RS3_ACCOUNT_BASE_URL) {
             const fromEnv = String(process.env.RS3_ACCOUNT_BASE_URL).trim().replace(/\/$/, '');
