@@ -230,6 +230,54 @@ export function getSettingsFromStorage() {
 }
 
 /**
+ * Changes some keys of settings.json and keeps the others (the Devices panel Bluetooth switch).
+ * @param {object} patch keys to set
+ * @returns {Promise<boolean>} written
+ */
+export function updateSettingsInStorage(patch) {
+  return getSettingsFromStorage().then(({file}) => {
+    let data = {};
+    try {
+      data = file ? JSON.parse(file) || {} : {};
+    } catch (e) {
+      data = {};
+    }
+    const text = JSON.stringify(Object.assign(data, patch));
+    return new Promise(resolve => {
+      const fail = e => {
+        console.error('Settings writing failed: ' + e);
+        resolve(false);
+      };
+      const onInitFs = fs => {
+        fs.root.getFile(SETTINGS_FILENAME, {create: true}, fileEntry => {
+          fileEntry.createWriter(writer => {
+            let truncated = false;
+            writer.onerror = fail;
+            // truncate first: a shorter text must not leave the tail of the old one
+            writer.onwriteend = () => {
+              if (!truncated) {
+                truncated = true;
+                writer.write(new Blob([text]));
+                return;
+              }
+              resolve(true);
+            };
+            writer.truncate(0);
+          }, fail);
+        }, fail);
+      };
+      if (typeof navigator === 'undefined' || !navigator.webkitPersistentStorage || !window.webkitRequestFileSystem) {
+        resolve(false);
+        return;
+      }
+      navigator.webkitPersistentStorage.requestQuota(500 * 1024 * 1024, grantedBytes => {
+        window.webkitRequestFileSystem(PERSISTENT, grantedBytes, onInitFs, fail);
+      }, fail);
+    });
+  });
+}
+
+/**
  * Applies parsed settings object to DCA (intervals and bluetooth_search_enabled).
  * Single place where settings are pushed to DeviceControlAPI.
  * @param {object} vm - VM with getDCA()

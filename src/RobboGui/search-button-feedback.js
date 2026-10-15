@@ -58,3 +58,47 @@ export function subscribeSearchButtonFeedback (handler) {
         document.removeEventListener(EVENT_SEARCH_IDLE, onIdle);
     };
 }
+
+const EVENT_DEVICE_COUNT = 'rs3-device-count';
+let deviceCount = 0;
+
+/**
+ * Rows in the Devices panel changed (serial and Bluetooth devices, the quadcopter row).
+ * @param {number} count rows
+ */
+export function notifyDeviceCount (count) {
+    deviceCount = count;
+    document.dispatchEvent(new CustomEvent(EVENT_DEVICE_COUNT, {detail: {count}}));
+}
+
+/**
+ * @param {(count: number) => void} handler called now with the current count and on every change
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeDeviceCount (handler) {
+    const listener = event => handler(event.detail.count);
+    document.addEventListener(EVENT_DEVICE_COUNT, listener);
+    handler(deviceCount);
+    return () => document.removeEventListener(EVENT_DEVICE_COUNT, listener);
+}
+
+const EVENT_FIRMWARE_FLASHING = 'rs3-firmware-flashing';
+
+/**
+ * Serial flashing started or ended (flashing is drawn in the device row of the Devices panel; when the panel
+ * is closed, the menu bar search button shows it).
+ * @param {boolean} active some device is being flashed
+ */
+export function notifyFirmwareFlashing (active) {
+    document.dispatchEvent(new CustomEvent(EVENT_FIRMWARE_FLASHING, {detail: {active: !!active}}));
+}
+
+/**
+ * @param {(active: boolean) => void} handler
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeFirmwareFlashing (handler) {
+    const listener = event => handler(!!(event.detail && event.detail.active));
+    document.addEventListener(EVENT_FIRMWARE_FLASHING, listener);
+    return () => document.removeEventListener(EVENT_FIRMWARE_FLASHING, listener);
+}

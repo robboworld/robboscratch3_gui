@@ -9,7 +9,6 @@ import sharedStyles from './DevicePaletteShared.css';
 import formStyles from './RobboPaletteForm.css';
 import styles from './SettingsWindowComponent.css';
 import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
-import { isDesktopWithBluetooth } from '../lib/platform';
 import {
   getSettingsFromStorage,
   applySettingsToDCA,
@@ -102,11 +101,6 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'Lower values run faster but increase CPU load.'
   },
-  devices_section_title: {
-    id: 'gui.RobboGui.settings_window.devices_section_title',
-    description: 'Settings window: section with the device search options',
-    defaultMessage: 'Devices'
-  },
   display_section_title: {
     id: 'gui.RobboGui.settings_window.display_section_title',
     description: 'Settings window: section with the stage rendering options',
@@ -185,11 +179,6 @@ const messages_for_DCA_intervals = defineMessages({
     id: 'gui.dca.uno_timeout',
     description: ' ',
     defaultMessage: 'Switch to Scratchduino search after (ms)'
-  },
-  bluetooth_search_enabled: {
-    id: 'gui.dca.bluetooth_search_enabled',
-    description: ' ',
-    defaultMessage: 'Bluetooth search'
   },
 });
 
@@ -320,9 +309,10 @@ class SettingsWindowComponent extends Component {
       sim_sensor_debug_overlay_enabled: simSensorDebugOverlayInput ? simSensorDebugOverlayInput.checked === true : false
     };
 
-    const btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
-    if (btSearchEl && btSearchEl.children[0]) {
-      settings_data.bluetooth_search_enabled = btSearchEl.children[0].checked;
+    // Bluetooth search is switched in the Devices panel: keep its value in the rewritten file
+    const dca = this.VM && typeof this.VM.getDCA === 'function' ? this.VM.getDCA() : null;
+    if (dca && typeof dca.isBluetoothSearchEnabled === 'function') {
+      settings_data.bluetooth_search_enabled = dca.isBluetoothSearchEnabled();
     }
 
     const settings_data_serialized = JSON.stringify(settings_data);
@@ -409,10 +399,9 @@ class SettingsWindowComponent extends Component {
     if (c3) c3.value = def.DEVICE_HANDLE_TIMEOUT_DEFAULT;
     if (c4) c4.value = def.UNO_TIMEOUT_DEFAULT;
 
-    const btSearchEl = document.getElementById("raw-bt-search-settings-window-content-column-2");
-    if (btSearchEl && btSearchEl.children[0]) {
-      btSearchEl.children[0].checked = true;
-    }
+    // the default: Bluetooth robots are searched (the switch is in the Devices panel)
+    const dca = this.VM && typeof this.VM.getDCA === 'function' ? this.VM.getDCA() : null;
+    if (dca && typeof dca.setBluetoothSearchEnabled === 'function') dca.setBluetoothSearchEnabled(true);
 
     const fullscreenQualityInput = this.getInput("raw-fullscreen-quality-settings-window-content-column-2");
     if (fullscreenQualityInput) {
@@ -462,9 +451,6 @@ class SettingsWindowComponent extends Component {
           if (c2) c2.value = no_start;
           if (c3) c3.value = device_handle;
           if (c4) c4.value = uno_timeout;
-
-          const btSearchEl = child0("raw-bt-search-settings-window-content-column-2");
-          if (btSearchEl) btSearchEl.checked = settings_data.bluetooth_search_enabled !== false;
 
           const fullscreenRenderQuality = normalizeFullscreenRenderQuality(settings_data);
           if (fullscreenQuality) {
@@ -539,22 +525,6 @@ class SettingsWindowComponent extends Component {
           onChange={this.handleFormChange}
         >
 
-          <div
-            id="settings-window-content-raw-connection-title"
-            className={classNames(formStyles.section, styles.settings_section)}
-            role="group"
-            aria-labelledby="raw-connection-title-settings-window-content-column-1"
-          >
-            <h3
-              id="raw-connection-title-settings-window-content-column-1"
-              className={formStyles.section_title}
-            >
-              {intl.formatMessage(messages.devices_section_title)}
-            </h3>
-
-            {isDesktopWithBluetooth() && this.renderField('raw-bt-search', messages_for_DCA_intervals.bluetooth_search_enabled,
-              <input id="settings-input-raw-bt-search" type="checkbox" defaultChecked />, {checkbox: true})}
-          </div>
 
           <div
             id="settings-window-content-raw-vm-section-title"

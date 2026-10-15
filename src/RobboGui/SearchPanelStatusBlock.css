@@ -2,6 +2,7 @@
 @import "../css/units.css";
 
 .statusBlock {
+    margin: 0.5rem 0.75rem;
     padding: 10px 12px;
     font-weight: normal;
 }
@@ -17,7 +18,46 @@
 .statusBlockEmpty {
     display: flex;
     flex-direction: column;
-    gap: 0.375rem;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 1rem 1.125rem 1.125rem;
+    border: 0;
+    background: none;
+}
+
+.statusBlockEmpty .statusTitle {
+    font-weight: bold;
+    font-size: 0.9375rem;
+}
+
+.statusSteps {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: $popup-font-size-sm;
+    line-height: 1.5;
+    color: $text-primary;
+}
+
+.statusAction {
+    margin-top: 0.25rem;
+    padding: 0.4375rem 0.875rem;
+    border: 0;
+    border-radius: $form-radius;
+    background-color: rgb(0, 175, 65);
+    color: #fff;
+    font: inherit;
+    font-size: $popup-font-size-sm;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.statusAction:hover {
+    background-color: rgb(0, 154, 58);
+}
+
+.statusAction:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
 }
 
 .statusTitle {

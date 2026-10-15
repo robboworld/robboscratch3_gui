@@ -10,14 +10,14 @@ import {
     showSearchPanel,
     subscribeSearchPanelVisibility
 } from './search-panel-visibility';
-import {notifySearchIdle} from './search-button-feedback';
+import {notifyDeviceCount, notifySearchIdle} from './search-button-feedback';
+import {registerEscapeClosable} from '../lib/robbo-popup-escape';
+import {updateSettingsInStorage} from '../lib/settingsLoader';
 
-import FirmwareFlasherFlashingStatusComponent from './FirmwareFlasherFlashingStatusComponent';
 import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
 
-import DraggableWindowComponent from './DraggableWindowComponent';
 
-import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
+import { defineMessages, injectIntl } from 'react-intl';
 import { isDesktopWithBluetooth, isRobboAndroidAppContext, isRobboLinkMobileWebContext, node_process } from '../lib/platform';
 import {
     ROBBO_POPUP_Z_INDEX_BASE,
@@ -30,16 +30,69 @@ function shouldProbeQuadcopterOnDeviceSearch(QCA) {
   return isDesktopWithBluetooth() && !!QCA;
 }
 
+/** The panel never says «Searching…» longer than this, even if a search forgets to report its end. */
+const SEARCH_WAIT_MAX_MS = 8000;
+
 /** DCA device states while port open / identify / flash — search button stays busy until settled */
 const USB_SEARCH_CONNECTING_STATES = [0, 2, 3, 9, 10];
 
 const messages = defineMessages({
+  search_again: {
+    id: 'gui.SearchPanel.search_again',
+    description: 'Button in the Devices panel header and in the empty panel: search for devices again',
+    defaultMessage: 'Search again'
+  },
+  devices_not_found_step_cable: {
+    id: 'gui.SearchPanel.devices_not_found_step_cable',
+    description: 'Devices panel, nothing found, step 1',
+    defaultMessage: 'Connect the robot or the laboratory with a USB cable.'
+  },
+  devices_not_found_step_power: {
+    id: 'gui.SearchPanel.devices_not_found_step_power',
+    description: 'Devices panel, nothing found, step 2',
+    defaultMessage: 'Check that the device is switched on.'
+  },
+  devices_not_found_step_bluetooth_disabled: {
+    id: 'gui.SearchPanel.devices_not_found_step_bluetooth_disabled',
+    description: 'Empty Devices panel: Bluetooth robots are not searched (the switch in the panel header is off)',
+    defaultMessage: 'Bluetooth robot? Its search is off: press the Bluetooth button above.'
+  },
+  bluetooth_search_label: {
+    id: 'gui.SearchPanel.bluetooth_search_label',
+    description: 'Devices panel header switch (screen readers): search robots over Bluetooth',
+    defaultMessage: 'Search Bluetooth robots'
+  },
+  bluetooth_search_on: {
+    id: 'gui.SearchPanel.bluetooth_search_on',
+    description: 'Tooltip of the Devices panel Bluetooth switch while Bluetooth robots are searched',
+    defaultMessage: 'Bluetooth robots are searched. Click to stop searching them'
+  },
+  bluetooth_search_off: {
+    id: 'gui.SearchPanel.bluetooth_search_off',
+    description: 'Tooltip of the Devices panel Bluetooth switch while Bluetooth robots are not searched',
+    defaultMessage: 'Bluetooth robots are not searched. Click to search them'
+  },
+  bluetooth_adapter_off: {
+    id: 'gui.SearchPanel.bluetooth_adapter_off',
+    description: 'Tooltip of the Devices panel Bluetooth switch: the search is on, but Bluetooth is off on the computer',
+    defaultMessage: 'Bluetooth is off on the computer. Turn it on and press «Search again». Click to stop searching Bluetooth robots'
+  },
+  devices_not_found_step_bluetooth_off: {
+    id: 'gui.SearchPanel.devices_not_found_step_bluetooth_off',
+    description: 'Empty Devices panel: Bluetooth is off on the computer, so Bluetooth robots are not searched',
+    defaultMessage: 'Bluetooth robot? Turn Bluetooth on on the computer: while it is off, they are not searched.'
+  },
+  devices_not_found_step_port: {
+    id: 'gui.SearchPanel.devices_not_found_step_port',
+    description: 'Devices panel, nothing found, step 3',
+    defaultMessage: 'If that does not help, try another USB port or cable.'
+  },
 
   devices_not_found: {
 
     id: 'gui.RobboGui.devices_not_found',
     description: ' ',
-    defaultMessage: 'No devices available for connection.'
+    defaultMessage: 'No devices found'
   },
   devices_searching: {
 
@@ -50,7 +103,7 @@ const messages = defineMessages({
   search_panel_title: {
     id: 'gui.RobboGui.search_panel_title',
     description: 'Title for device search popup window',
-    defaultMessage: 'Device search'
+    defaultMessage: 'Devices'
   },
   devices_not_found_hint: {
     id: 'gui.RobboGui.devices_not_found_hint',
@@ -104,8 +157,11 @@ class SearchPanelComponent extends Component {
     this._handleWindowResize = this._handleWindowResize.bind(this);
     this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
     this.onThisWindowClose = this.onThisWindowClose.bind(this);
-
-    this.device_list = [];
+    // «Search again» presses the menu bar search button: the same search (and the port chooser on web)
+    this.searchAgain = () => {
+      const button = document.getElementById('robbo_search_devices');
+      if (button && !button.disabled) button.click();
+    };
 
     this.bluetooth_devices_state = "idle";
     this.usb_search_finished = true;
@@ -187,6 +243,12 @@ class SearchPanelComponent extends Component {
 
   componentDidMount() {
     this._isMounted = true;
+    // Escape closes the panel like its ✕ (the topmost Robbo window first)
+    this._unregisterEscape = registerEscapeClosable({
+      isOpen: () => this.state.isShowing === true,
+      getZIndex: () => this.state.popupZIndex,
+      close: () => hideSearchPanel()
+    });
     this._unsubscribeSearchPanelVisibility = subscribeSearchPanelVisibility(showing => {
       if (showing) {
         this._handleSearchPanelShow();
@@ -210,8 +272,6 @@ class SearchPanelComponent extends Component {
     this.ACA = this.props.ACA;
     this.VM = this.props.VM;
 
-    this.draggableWindowId = this.props.draggableWindowId;
-
     this.DCA.registerBluetoothDevicesFoundCallback(() => {
 
       this.bluetooth_devices_state = "found";
@@ -221,6 +281,16 @@ class SearchPanelComponent extends Component {
 
     this.DCA.registerDevicesStartSearchingCallback(() => {
       this._quadcopterAwaitingFirstSearchingEmit = shouldProbeQuadcopterOnDeviceSearch(this.QCA);
+      // No Crazyradio plugged in: there is no copter to wait for
+      if (this._quadcopterAwaitingFirstSearchingEmit && typeof this.QCA.checkDonglePresent === 'function') {
+        this.QCA.checkDonglePresent().then(present => {
+          if (present || !this._quadcopterAwaitingFirstSearchingEmit) return;
+          this._quadcopterAwaitingFirstSearchingEmit = false;
+          if (this._isMounted) this.setState({ uiRev: Date.now() });
+        });
+      }
+      clearTimeout(this._searchWaitTimer);
+      this._searchWaitTimer = setTimeout(() => this._finishSearchWait(), SEARCH_WAIT_MAX_MS);
       this._quadcopterRowPinnedForSession = false;
       if (this.QCA && typeof this.QCA.resetFirmwareSessionOnDeviceSearch === 'function') {
         this.QCA.resetFirmwareSessionOnDeviceSearch();
@@ -280,11 +350,21 @@ class SearchPanelComponent extends Component {
 
 
     this.DCA.registerDeviceFoundCallback(() => {
-      this.is_bluetooth_devices_not_found = false;
       this.usb_search_finished = true;
       this._refreshDeviceList();
       this._maybeNotifySearchIdleWhenSettled();
     });
+
+    // The copter search is over (with or without Crazyradio): stop waiting for it. Without a dongle no copter
+    // session starts, so «searching» is never reported and only this tells that the search ended.
+    if (this.QCA && typeof this.QCA.subscribeScanFinished === 'function') {
+      this._unsubscribeCopterScan = this.QCA.subscribeScanFinished(() => {
+        if (!this._quadcopterAwaitingFirstSearchingEmit) return;
+        this._quadcopterAwaitingFirstSearchingEmit = false;
+        this._refreshDeviceList();
+        if (this._isMounted) this.setState({ uiRev: Date.now() });
+      });
+    }
 
     if (this.QCA) {
       this._quadcopterStatusCallback = (state, searching, snapshot) => {
@@ -348,6 +428,38 @@ class SearchPanelComponent extends Component {
     }
   }
 
+  /**
+   * The header switch: Bluetooth robots are searched or not. On: the Bluetooth search runs now (USB devices stay as
+   * they are). Off: robots that are not connected leave the list. Kept in settings.json.
+   */
+  toggleBluetoothSearch () {
+    const enabled = !this.DCA.isBluetoothSearchEnabled();
+    this.DCA.setBluetoothSearchEnabled(enabled);
+    updateSettingsInStorage({bluetooth_search_enabled: enabled});
+    if (enabled) {
+      this.bluetooth_devices_state = 'searching';
+      this.bluetooth_search_finished = false;
+      this.DCA.searchBluetoothRobots();
+    } else {
+      this.bluetooth_devices_state = 'idle';
+      this.bluetooth_search_finished = true;
+    }
+    this._refreshDeviceList();
+    this.setState({ uiRev: Date.now() });
+  }
+
+  /** Safety net: whatever did not report its end, the panel shows what it has. */
+  _finishSearchWait() {
+    this._searchWaitTimer = null;
+    if (!this._isMounted) return;
+    this.usb_search_finished = true;
+    this.bluetooth_search_finished = true;
+    if (this.bluetooth_devices_state === 'searching') this.bluetooth_devices_state = 'not_found';
+    this._quadcopterAwaitingFirstSearchingEmit = false;
+    this._refreshDeviceList();
+    this.setState({ uiRev: Date.now() });
+  }
+
   _refreshDeviceList() {
     let allDevices = this.DCA.getDevices().filter(Boolean);
     let newList = [];
@@ -381,17 +493,21 @@ class SearchPanelComponent extends Component {
       });
     }
     if (!this._isMounted) return;
-    this.device_list = newList;
     const prev = this.state.devices;
     const listChanged = prev.length !== newList.length ||
       newList.some((d, i) => !prev[i] || prev[i].devicePort !== d.devicePort || Boolean(prev[i].isQuadcopter) !== Boolean(d.isQuadcopter));
     if (listChanged) {
       this.setState({ devices: newList });
+      // the menu bar shows how many rows the panel has: opening it does not need a new search
+      notifyDeviceCount(newList.length);
     }
   }
 
   componentWillUnmount() {
     this._isMounted = false;
+    if (this._unregisterEscape) this._unregisterEscape();
+    if (this._unsubscribeCopterScan) this._unsubscribeCopterScan();
+    clearTimeout(this._searchWaitTimer);
     if (this._unsubscribeSearchPanelVisibility) {
       this._unsubscribeSearchPanelVisibility();
       this._unsubscribeSearchPanelVisibility = null;
@@ -416,6 +532,12 @@ class SearchPanelComponent extends Component {
     const supportsBluetoothSearchUi = isDesktopWithBluetooth() || isMobileBridgeContext;
     const showBluetoothPhaseSearching = supportsBluetoothSearchUi && bluetoothSearchEnabled &&
       this.bluetooth_devices_state === 'searching' && this.usb_search_finished;
+    // Bluetooth robots are searched through chrome.bluetooth on Windows and Linux desktop only
+    const bluetoothSwitch = !isMobileBridgeContext && supportsBluetoothSearchUi && this.DCA &&
+      typeof this.DCA.setBluetoothSearchEnabled === 'function' && typeof node_process !== 'undefined' &&
+      (node_process.platform === 'win32' || node_process.platform === 'linux');
+    const bluetoothOff = supportsBluetoothSearchUi && this.DCA &&
+      typeof this.DCA.isBluetoothAdapterOff === 'function' && this.DCA.isBluetoothAdapterOff();
     const showBluetoothNotFound = supportsBluetoothSearchUi && bluetoothSearchEnabled && this.bluetooth_devices_state === "not_found";
     const shouldDelayNoDevicesMessage = bluetoothSearchEnabled && !this.bluetooth_search_finished;
     const qcaSearchingNow = this.QCA &&
@@ -434,26 +556,6 @@ class SearchPanelComponent extends Component {
       !this._quadcopterAwaitingFirstSearchingEmit && !qcaSearchingNow;
 
     void this.state.uiRev;
-
-    // Flash windows follow the row index; the search after a flash empties the device list for a moment, and an
-    // unmounted window would take «Done» away. Keep as many windows as there have ever been rows.
-    this._flashWindowCount = Math.max(this._flashWindowCount || 0, this.state.devices.length);
-    const flashWindowSlots = Array.from({length: this._flashWindowCount});
-    const firmwareFlashWindows = showFirmwareUi ? flashWindowSlots.map((slot, index) => (
-      <DraggableWindowComponent key={index + 'devices-list-draggable'} draggableWindowId={7 + index}>
-        <FirmwareFlasherFlashingStatusComponent
-          key={index + 'devices-list-status'}
-          componentId={index}
-          draggableWindowId={7 + index}
-          DCA={this.DCA}
-          RCA={this.RCA}
-          LCA={this.LCA}
-          QCA={this.QCA}
-          OCA={this.OCA}
-          ACA={this.ACA}
-        />
-      </DraggableWindowComponent>
-    )) : null;
 
     const panelStyle = {
       zIndex: this.state.popupZIndex,
@@ -480,6 +582,36 @@ class SearchPanelComponent extends Component {
             <span className={styles.search_panel_header_title}>
               {this.props.intl.formatMessage(messages.search_panel_title)}
             </span>
+            {bluetoothSwitch ? (
+              <button
+                  type="button"
+                  className={classNames(styles.bluetooth_switch, {
+                    [styles.bluetooth_switch_on]: bluetoothSearchEnabled && !bluetoothOff,
+                    [styles.bluetooth_switch_adapter_off]: bluetoothSearchEnabled && bluetoothOff
+                  })}
+                  aria-pressed={bluetoothSearchEnabled}
+                  aria-label={this.props.intl.formatMessage(messages.bluetooth_search_label)}
+                  title={this.props.intl.formatMessage(!bluetoothSearchEnabled ? messages.bluetooth_search_off :
+                    bluetoothOff ? messages.bluetooth_adapter_off : messages.bluetooth_search_on)}
+                  onClick={() => this.toggleBluetoothSearch()}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 7l10 10-5 5V2l5 5L7 17" />
+                  {bluetoothSearchEnabled && bluetoothOff ? <path d="M4 4l16 16" /> : null}
+                </svg>
+              </button>
+            ) : null}
+            <button
+                type="button"
+                className={styles.search_again}
+                onClick={this.searchAgain}
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" />
+                <path d="M13.5 2.5v3.6H9.9" />
+              </svg>
+              {this.props.intl.formatMessage(messages.search_again)}
+            </button>
             <button
                 type="button"
                 className={styles.search_panel_close}
@@ -496,8 +628,6 @@ class SearchPanelComponent extends Component {
                 this.state.devices.map((device, index) => (
                   <SearchPanelDeviceComponent
                       Id={index}
-                      flashingStatusComponentId={index}
-                      draggableWindowId={7 + index}
                       key={device.devicePort + '-search-panel-devices-list'}
                       devicePort={device.devicePort}
                       isBluetooth={device.isBluetooth}
@@ -530,7 +660,16 @@ class SearchPanelComponent extends Component {
                   <SearchPanelStatusBlock
                       variant="empty"
                       title={this.props.intl.formatMessage(messages.devices_not_found)}
-                      hint={this.props.intl.formatMessage(messages.devices_not_found_hint)}
+                      steps={[
+                        this.props.intl.formatMessage(messages.devices_not_found_step_cable),
+                        this.props.intl.formatMessage(messages.devices_not_found_step_power),
+                        this.props.intl.formatMessage(messages.devices_not_found_step_port),
+                        bluetoothOff ? this.props.intl.formatMessage(messages.devices_not_found_step_bluetooth_off) : null,
+                        bluetoothSwitch && !bluetoothSearchEnabled ?
+                          this.props.intl.formatMessage(messages.devices_not_found_step_bluetooth_disabled) : null
+                      ].filter(Boolean)}
+                      actionLabel={this.props.intl.formatMessage(messages.search_again)}
+                      onAction={this.searchAgain}
                   />
                 ) : null
               }
@@ -554,7 +693,6 @@ class SearchPanelComponent extends Component {
 
         </div>
       </RobboPopupTransition>
-      {firmwareFlashWindows}
       </React.Fragment>
     )
   };

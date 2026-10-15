@@ -10,34 +10,13 @@ import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 
 import {defineMessages, injectIntl} from 'react-intl';
 import {closeMessage} from './sensor-type-messages';
-
-const STEP_MESSAGE_KEYS = ['stepBoard', 'stepDevice', 'stepWrite', 'stepCheck'];
+import {FLASH_STEP_MESSAGES} from '../lib/flash-status-phase';
 
 const messages = defineMessages({
     flashing_status: {
         id: 'gui.FirmwareFlasherFlashingStatusComponent.flashing_status',
         description: ' ',
         defaultMessage: 'Firmware update'
-    },
-    stepBoard: {
-        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepBoard',
-        description: 'Flash window step track: connecting to the board bootloader',
-        defaultMessage: 'Board'
-    },
-    stepDevice: {
-        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepDevice',
-        description: 'Flash window step track: recognizing which device it is',
-        defaultMessage: 'Device'
-    },
-    stepWrite: {
-        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepWrite',
-        description: 'Flash window step track: writing the firmware',
-        defaultMessage: 'Writing'
-    },
-    stepCheck: {
-        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepCheck',
-        description: 'Flash window step track: checking the written firmware',
-        defaultMessage: 'Check'
     },
     details: {
         id: 'gui.FirmwareFlasherFlashingStatusComponent.details',
@@ -88,14 +67,14 @@ class FirmwareFlasherFlashingStatusComponent extends Component {
                         className={styles.flashing_steps}
                         aria-hidden="true"
                     >
-                        {STEP_MESSAGE_KEYS.map(key => (
+                        {FLASH_STEP_MESSAGES.map(message => (
                             <li
-                                key={key}
+                                key={message.id}
                                 className={styles.flashing_step}
                             >
                                 <span className={styles.flashing_step_dot} />
                                 <span className={styles.flashing_step_label}>
-                                    {this.props.intl.formatMessage(messages[key])}
+                                    {this.props.intl.formatMessage(message)}
                                 </span>
                             </li>
                         ))}

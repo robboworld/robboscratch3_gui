@@ -112,6 +112,55 @@ const messages = defineMessages({
     }
 });
 
+const stepMessages = defineMessages({
+    stepBoard: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepBoard',
+        description: 'Flash window step track: connecting to the board bootloader',
+        defaultMessage: 'Board'
+    },
+    stepDevice: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepDevice',
+        description: 'Flash window step track: recognizing which device it is',
+        defaultMessage: 'Device'
+    },
+    stepWrite: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepWrite',
+        description: 'Flash window step track: writing the firmware',
+        defaultMessage: 'Writing'
+    },
+    stepCheck: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepCheck',
+        description: 'Flash window step track: checking the written firmware',
+        defaultMessage: 'Check'
+    },
+    stepBootloader: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepBootloader',
+        description: 'Quadcopter flash step track: the quadcopter restarts into its bootloader over the radio',
+        defaultMessage: 'Bootloader'
+    },
+    stepRestart: {
+        id: 'gui.FirmwareFlasherFlashingStatusComponent.stepRestart',
+        description: 'Quadcopter flash step track: the quadcopter restarts with the new firmware',
+        defaultMessage: 'Restart'
+    }
+});
+
+/** Steps of the flash track (Board → Device → Writing → Check), in order; data-flash-step 1…4. */
+export const FLASH_STEP_MESSAGES = [
+    stepMessages.stepBoard,
+    stepMessages.stepDevice,
+    stepMessages.stepWrite,
+    stepMessages.stepCheck
+];
+
+/** Steps of the quadcopter flash track (Bootloader → Writing → Restart → Check); data-flash-step 1…4. */
+export const COPTER_FLASH_STEP_MESSAGES = [
+    stepMessages.stepBootloader,
+    stepMessages.stepWrite,
+    stepMessages.stepRestart,
+    stepMessages.stepCheck
+];
+
 /** device_id → device name; ids missing here are shown without a name. */
 const DEVICE_NAME_BY_ID = {
     0: messages.deviceRobot,
@@ -228,10 +277,17 @@ const flashWindowOf = el => {
     return null;
 };
 
-const deviceNameOf = (progress, intl) => {
-    const message = progress.deviceId === null ? null : DEVICE_NAME_BY_ID[progress.deviceId];
+/**
+ * @param {?number} deviceId device_id
+ * @param {object} intl react-intl
+ * @returns {?string} device name for the flashing texts, null for ids without a name
+ */
+const flashDeviceName = (deviceId, intl) => {
+    const message = deviceId === null || deviceId === undefined ? null : DEVICE_NAME_BY_ID[deviceId];
     return message ? intl.formatMessage(message) : null;
 };
+
+const deviceNameOf = (progress, intl) => flashDeviceName(progress.deviceId, intl);
 
 const pendingPercent = progress => {
     if (progress.blockTotal) return Math.round(progress.block / progress.blockTotal * 100);

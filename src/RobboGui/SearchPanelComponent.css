@@ -8,19 +8,21 @@
     position: fixed;
     z-index: $z-index-robbo-popup;
     pointer-events: auto;
-    min-width: 220px;
-    /* Long search messages wrap instead of stretching the panel across the screen. */
-    max-width: min(28rem, 96vw);
+    /* One width: rows keep their layout while statuses change */
+    width: min(27rem, 96vw);
     overflow-wrap: anywhere;
     min-height: 70px;
     max-height: 70vh;
     transform-origin: top left;
-    font-weight: bold;
     font-size: $popup-font-size;
 }
 
 .search_panel_header {
     composes: popupHeader;
+    /* title on the left, «Search again» before the close button */
+    justify-content: flex-start;
+    padding: 0.375rem 2.5rem 0.375rem 1rem;
+    cursor: default;
 }
 
 .search_panel_header_title {
@@ -34,6 +36,92 @@
 .search_panel_body {
     composes: popupBody;
     max-height: 60vh;
+    /* rows run edge to edge, separated by lines */
+    padding: 0.25rem 0;
+}
+
+/* Bluetooth robots searched or not: a switch before «Search again» */
+.bluetooth_switch {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    margin-left: auto;
+    margin-right: 0.375rem;
+    padding: 0;
+    border: 1px solid rgba(87, 94, 117, 0.25);
+    border-radius: $form-radius;
+    background-color: #fff;
+    color: rgba(87, 94, 117, 0.55);
+    cursor: pointer;
+}
+
+.bluetooth_switch svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.bluetooth_switch:hover {
+    background-color: rgba(87, 94, 117, 0.06);
+}
+
+.bluetooth_switch:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+.bluetooth_switch_on {
+    border-color: rgba(0, 130, 252, 0.45);
+    background-color: rgba(0, 130, 252, 0.08);
+    color: rgb(0, 110, 220);
+}
+
+.bluetooth_switch_on:hover {
+    background-color: rgba(0, 130, 252, 0.14);
+}
+
+/* searched, but Bluetooth is off on the computer */
+.bluetooth_switch_adapter_off {
+    border-color: rgba(230, 140, 0, 0.5);
+    background-color: rgba(255, 171, 25, 0.12);
+    color: rgb(190, 110, 0);
+}
+
+.search_again {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.3125rem 0.625rem;
+    border: 1px solid rgba(0, 175, 65, 0.45);
+    border-radius: $form-radius;
+    background-color: #fff;
+    color: rgb(0, 154, 58);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.search_again:hover {
+    background-color: rgba(0, 175, 65, 0.08);
+}
+
+.search_again:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+.search_again svg {
+    width: 0.875rem;
+    height: 0.875rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
 }
 
 .search_panel_body::-webkit-scrollbar {
@@ -45,17 +133,3 @@
     border-radius: $form-radius;
 }
 
-.devices_status_message {
-    font-size: $popup-font-size;
-    padding: 0.5rem 0.625rem;
-    font-weight: normal;
-    color: $text-primary;
-}
-
-.devices_status_empty {
-    composes: devices_status_message;
-}
-
-.bluetooth_devices_not_found {
-    composes: devices_status_message;
-}
