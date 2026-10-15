@@ -52,7 +52,7 @@ import draggable_window,{draggable_window_InitialState} from '../RobboGui/reduce
 import new_draggable_window,{new_draggable_window_InitialState} from '../RobboGui/reducers/new_draggable_window';
 import devices_firmware_flasher,{devices_firmware_flasher_InitialState} from '../RobboGui/reducers/devices_firmware_flasher';
 
-import iot_blocks,{iot_block_InitialState as iot_blocks_InitialState} from '../RobboGui/reducers/iot_blocks';
+import iot_blocks,{iot_blocks_InitialState} from '../RobboGui/reducers/iot_blocks';
 import license,{license_InitialState} from '../RobboGui/reducers/license';
 import robboAccount,{robboAccount_InitialState} from '../RobboGui/reducers/robboAccount';
 

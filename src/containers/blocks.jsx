@@ -756,9 +756,11 @@ class Blocks extends React.Component {
         if (toolboxXML) {
             this.props.updateToolboxState(toolboxXML);
         }
-        if (this.workspace && this.props.isVisible) {
+        // Blocks of an extension added before the VM got the editor language. Only when the
+        // language differs: setLocale refreshes every extension, and each refresh comes back
+        // here through BLOCKSINFO_UPDATE.
+        if (this.workspace && this.props.isVisible && this.props.vm.getLocale() !== this.props.locale) {
             this.setLocale();
-            this.requestToolboxUpdate();
         }
     }
     handleBlocksInfoUpdate (categoryInfo) {
