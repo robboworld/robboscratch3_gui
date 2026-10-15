@@ -11,6 +11,8 @@ import {isDesktopWithBluetooth} from '../lib/platform';
 import {showSearchPanel} from './search-panel-visibility';
 import {
     beginSearchButtonFeedbackSession,
+    subscribeDeviceCount,
+    subscribeFirmwareFlashing,
     subscribeSearchButtonFeedback
 } from './search-button-feedback';
 import {subscribeDeviceSearchRequest} from './device-link-status';
@@ -46,6 +48,11 @@ const messages = defineMessages({
         id: 'gui.RobboGui.ArduinoPalette.arduino',
         defaultMessage: 'Arduino'
     },
+    open_devices: {
+        id: 'gui.RobboGui.open_devices',
+        description: 'Menu bar counter beside «Search devices»: opens the Devices panel without a new search',
+        defaultMessage: 'Devices: {count}. Open the list'
+    },
     sensors_palette: {
         id: 'gui.RobboGui.sensors_palette',
         description: 'Collapsed menu bar label to open sensors palette',
@@ -60,6 +67,11 @@ const messages = defineMessages({
         id: 'gui.RobboGui.search_device_error',
         description: 'Brief feedback on search button after connection error',
         defaultMessage: 'Connection error'
+    },
+    firmware_flashing: {
+        id: 'gui.RobboGui.search_firmware_flashing',
+        description: 'Search button while a device is being flashed: a click opens the Devices panel with the progress',
+        defaultMessage: 'Flashing…'
     }
 });
 
@@ -68,7 +80,11 @@ class MenuBarDeviceControls extends Component {
         super(props);
         this.state = {
             searchBusy: false,
-            searchFeedback: null
+            searchFeedback: null,
+            // a device is being flashed: the button opens the Devices panel instead of a new search
+            firmwareFlashing: false,
+            // rows of the Devices panel: the counter beside the search button opens it without a new search
+            deviceCount: 0
         };
         this.unsubscribeSearchFeedback = null;
         this.searchDevices = this.searchDevices.bind(this);
@@ -78,6 +94,12 @@ class MenuBarDeviceControls extends Component {
     componentDidMount () {
         // "Find device" in a device palette runs the same search as this button.
         this.unsubscribeSearchRequest = subscribeDeviceSearchRequest(this.searchDevices);
+        this.unsubscribeDeviceCount = subscribeDeviceCount(count => {
+            if (count !== this.state.deviceCount) this.setState({deviceCount: count});
+        });
+        this.unsubscribeFirmwareFlashing = subscribeFirmwareFlashing(active => {
+            if (active !== this.state.firmwareFlashing) this.setState({firmwareFlashing: active});
+        });
         this.unsubscribeSearchFeedback = subscribeSearchButtonFeedback(kind => {
             if (kind === 'idle') {
                 if (this.state.searchBusy) {
@@ -104,6 +126,8 @@ class MenuBarDeviceControls extends Component {
 
     componentWillUnmount () {
         if (this.unsubscribeSearchRequest) this.unsubscribeSearchRequest();
+        if (this.unsubscribeFirmwareFlashing) this.unsubscribeFirmwareFlashing();
+        if (this.unsubscribeDeviceCount) this.unsubscribeDeviceCount();
         if (this.unsubscribeSearchFeedback) {
             this.unsubscribeSearchFeedback();
             this.unsubscribeSearchFeedback = null;
@@ -113,6 +137,11 @@ class MenuBarDeviceControls extends Component {
 
     searchDevices () {
         if (this.state.searchBusy) return;
+        // «Find device» in a palette during a flash: a new search would break it, show the progress instead
+        if (this.state.firmwareFlashing) {
+            showSearchPanel();
+            return;
+        }
 
         const searchPanel = document.getElementById('SearchPanelComponent');
         if (searchPanel) {
@@ -201,7 +230,10 @@ class MenuBarDeviceControls extends Component {
     render () {
         if (!this.props.vm) return null;
 
-        const searchButtonLabel = this.props.intl.formatMessage(messages.search_devices);
+        const firmwareFlashing = this.state.firmwareFlashing;
+        const searchButtonLabel = this.props.intl.formatMessage(
+            firmwareFlashing ? messages.firmware_flashing : messages.search_devices
+        );
         const searchFeedbackLabel = this.state.searchFeedback === 'connected'
             ? this.props.intl.formatMessage(messages.search_device_connected)
             : this.state.searchFeedback === 'error'
@@ -225,33 +257,58 @@ class MenuBarDeviceControls extends Component {
             );
         }
 
+        const deviceCount = this.state.deviceCount;
+        const openDevicesLabel = this.props.intl.formatMessage(messages.open_devices, {count: deviceCount});
+
         return (
             <div className={styles.deviceToolbar}>
-                <button
-                    type="button"
-                    id="robbo_search_devices"
-                    className={classNames(styles.searchDevices, {
-                        [styles.searchBusy]: this.state.searchBusy,
-                        [styles.searchFeedbackOk]: searchFeedbackKind === 'connected',
-                        [styles.searchFeedbackError]: searchFeedbackKind === 'error'
-                    })}
-                    title={searchButtonLabel}
-                    aria-label={searchButtonLabel}
-                    aria-busy={this.state.searchBusy ? 'true' : 'false'}
-                    onClick={event => {
-                        this.searchDevices();
-                        event.currentTarget.blur();
-                    }}
-                >
-                    {this.state.searchBusy ? (
-                        <span className={styles.searchSpinner} aria-hidden="true" />
-                    ) : (
-                        <span className={styles.searchIcon} aria-hidden="true" />
-                    )}
-                    <span className={styles.searchLabel}>
-                        {searchFeedbackLabel || searchButtonLabel}
-                    </span>
-                </button>
+                <div className={styles.searchGroup}>
+                    <button
+                        type="button"
+                        id="robbo_search_devices"
+                        className={classNames(styles.searchDevices, {
+                            [styles.searchBusy]: this.state.searchBusy || firmwareFlashing,
+                            [styles.searchFeedbackOk]: searchFeedbackKind === 'connected',
+                            [styles.searchFeedbackError]: searchFeedbackKind === 'error'
+                        })}
+                        title={searchButtonLabel}
+                        aria-label={searchButtonLabel}
+                        aria-busy={this.state.searchBusy ? 'true' : 'false'}
+                        onClick={event => {
+                            // a new search would break the flash: show its progress in the panel instead
+                            if (firmwareFlashing) showSearchPanel();
+                            else this.searchDevices();
+                            event.currentTarget.blur();
+                        }}
+                    >
+                        {this.state.searchBusy || firmwareFlashing ? (
+                            <span className={styles.searchSpinner} aria-hidden="true" />
+                        ) : (
+                            <span className={styles.searchIcon} aria-hidden="true" />
+                        )}
+                        <span className={styles.searchLabel}>
+                            {searchFeedbackLabel || searchButtonLabel}
+                        </span>
+                    </button>
+                    {deviceCount > 0 ? (
+                        <button
+                            type="button"
+                            className={styles.deviceCount}
+                            title={openDevicesLabel}
+                            aria-label={openDevicesLabel}
+                            onClick={event => {
+                                showSearchPanel();
+                                event.currentTarget.blur();
+                            }}
+                        >
+                            <span
+                                className={styles.deviceCountIcon}
+                                aria-hidden="true"
+                            />
+                            {deviceCount}
+                        </button>
+                    ) : null}
+                </div>
                 {/* The search result is announced to screen readers (the button label alone is not). */}
                 <span
                     className={styles.visuallyHidden}

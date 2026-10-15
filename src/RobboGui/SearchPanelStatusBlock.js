@@ -7,7 +7,10 @@ import styles from './SearchPanelStatusBlock.css';
 const SearchPanelStatusBlock = ({
     variant,
     title,
-    hint
+    hint,
+    steps,
+    actionLabel,
+    onAction
 }) => (
     <div
         className={classNames(
@@ -25,13 +28,30 @@ const SearchPanelStatusBlock = ({
         {hint ? (
             <div className={styles.statusHint}>{hint}</div>
         ) : null}
+        {steps && steps.length ? (
+            <ol className={styles.statusSteps}>
+                {steps.map(step => <li key={step}>{step}</li>)}
+            </ol>
+        ) : null}
+        {actionLabel && onAction ? (
+            <button
+                type="button"
+                className={styles.statusAction}
+                onClick={onAction}
+            >
+                {actionLabel}
+            </button>
+        ) : null}
     </div>
 );
 
 SearchPanelStatusBlock.propTypes = {
     variant: PropTypes.oneOf(['searching', 'empty', 'info']).isRequired,
     title: PropTypes.node.isRequired,
-    hint: PropTypes.node
+    hint: PropTypes.node,
+    steps: PropTypes.arrayOf(PropTypes.node),
+    actionLabel: PropTypes.node,
+    onAction: PropTypes.func
 };
 
 export default SearchPanelStatusBlock;

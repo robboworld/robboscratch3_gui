@@ -1,60 +1,214 @@
 
 import classNames from 'classnames';
-import {robboConfirm} from './RobboConfirmDialog';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
+import {ActionDropDraggableWindow, ActionTriggerDraggableWindow} from './actions/sensor_actions';
 
-import { defineMessages, intlShape, injectIntl, FormattedMessage } from 'react-intl';
-
-import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
-import { ActionCreateDraggableWindow } from './actions/sensor_actions';
+import { defineMessages, injectIntl } from 'react-intl';
 
 
 import styles from './SearchPanelDeviceComponent.css';
 import './RobboDeviceStatus.css';
-import {hideSearchPanel, scheduleHideSearchPanelAfterConnect, showSearchPanel} from './search-panel-visibility';
-import {notifySearchButtonFeedback} from './search-button-feedback';
+import {showSearchPanel} from './search-panel-visibility';
+import {notifyFirmwareFlashing, notifySearchButtonFeedback} from './search-button-feedback';
 
-import { createDiv } from './lib/lib.js';
 import { getFirmwareSettingsFromRuntime } from '../lib/settingsLoader';
-import { applyRobboPopupZIndex } from '../lib/robbo-popup-z-index';
-import { resolveCf2FirmwareVersionLabel, parseCf2FlashToolLine } from '../lib/crazyflie-flash-ui';
-import {getFirmwareFlashLogElements} from './firmware-flash-window-dom';
-import {setFlashButtonVisualMode, setFlashLogStatusTone} from '../lib/device-status-dom';
+import { resolveCf2FirmwareVersionLabel, applyCf2FlashLine } from '../lib/crazyflie-flash-ui';
 import {
+    COPTER_FLASH_STEP_MESSAGES,
+    FLASH_STEP_MESSAGES,
     applyFlashConnected,
     applyFlashStatus,
     createFlashProgress,
-    isFlashDone,
-    resetFlashWindow
+    isFlashDone
 } from '../lib/flash-status-phase';
 import {hydrateLicenseThunk} from './actions/licenseActions';
 
 const messages = defineMessages({
-    confirm_update_firmware: {
-        id: 'gui.SearchPanelDeviceComponent.confirm_update_firmware',
-        description: 'Firmware question: confirm button',
-        defaultMessage: 'Update firmware'
+    row_details: {
+        id: 'gui.SearchPanelDeviceComponent.row_details',
+        description: 'Accessible name of a device row: shows or hides the device details',
+        defaultMessage: 'Device details'
     },
-    confirm_not_now: {
-        id: 'gui.SearchPanelDeviceComponent.confirm_not_now',
-        description: 'Firmware question: cancel button',
-        defaultMessage: 'Not now'
+    pill_connected: {
+        id: 'gui.SearchPanelDeviceComponent.pill_connected',
+        description: 'Device row status: the device is connected and works; {gender} is the grammatical gender of the device name (m, f, n) for languages that need it',
+        defaultMessage: '{gender, select, f {Connected} n {Connected} other {Connected}}'
     },
-    confirm_try_again: {
-        id: 'gui.SearchPanelDeviceComponent.confirm_try_again',
-        description: 'Firmware verification failed: retry button',
+    pill_detecting: {
+        id: 'gui.SearchPanelDeviceComponent.pill_detecting',
+        description: 'Device row status: asking the device who it is',
+        defaultMessage: 'Detecting…'
+    },
+    pill_reconnecting: {
+        id: 'gui.SearchPanelDeviceComponent.pill_reconnecting',
+        description: 'Device row status: the connection was lost and is being restored',
+        defaultMessage: 'Reconnecting…'
+    },
+    pill_needs_update: {
+        id: 'gui.SearchPanelDeviceComponent.pill_needs_update',
+        description: 'Device row status: the device firmware is older than Robbo Scratch needs',
+        defaultMessage: 'New firmware needed'
+    },
+    pill_no_answer: {
+        id: 'gui.SearchPanelDeviceComponent.pill_no_answer',
+        description: 'Device row status: the device does not answer Robbo Scratch',
+        defaultMessage: 'Not answering'
+    },
+    pill_no_link: {
+        id: 'gui.SearchPanelDeviceComponent.pill_no_link',
+        description: 'Device row status: the port could not be opened or the connection failed',
+        defaultMessage: 'No connection'
+    },
+    pill_flashing: {
+        id: 'gui.SearchPanelDeviceComponent.pill_flashing',
+        description: 'Device row status: firmware is being written',
+        defaultMessage: 'Flashing…'
+    },
+    pill_flashing_percent: {
+        id: 'gui.SearchPanelDeviceComponent.pill_flashing_percent',
+        description: 'Device row status: firmware is being written, {percent} done',
+        defaultMessage: 'Flashing… {percent} %'
+    },
+    quadcopter_group_scanning: {
+        id: 'gui.SearchPanelDeviceComponent.quadcopter_group_scanning',
+        description: 'Quadcopter row hint: no copter in this group, looking in the other radio groups',
+        defaultMessage: 'No copter in group {group}. Looking in the other groups…'
+    },
+    quadcopter_found_in_group: {
+        id: 'gui.SearchPanelDeviceComponent.quadcopter_found_in_group',
+        description: 'Quadcopter row hint: copters {numbers} answered in another radio group {group}; this computer uses group {current}',
+        defaultMessage: '{count, plural, one {Copter {numbers} is} other {Copters {numbers} are}} in group {group}, this computer searches group {current}.'
+    },
+    quadcopter_switch_group: {
+        id: 'gui.SearchPanelDeviceComponent.quadcopter_switch_group',
+        description: 'Quadcopter row button: switch this computer to the radio group {group} and search again',
+        defaultMessage: 'Switch to group {group}'
+    },
+    pill_flash_done: {
+        id: 'gui.SearchPanelDeviceComponent.pill_flash_done',
+        description: 'Device row status right after a successful flash, before the device answers again',
+        defaultMessage: 'Done'
+    },
+    flash_log: {
+        id: 'gui.SearchPanelDeviceComponent.flash_log',
+        description: 'Collapsible block with the raw lines of the firmware flasher inside the device row',
+        defaultMessage: 'Details'
+    },
+    pill_flash_failed: {
+        id: 'gui.SearchPanelDeviceComponent.pill_flash_failed',
+        description: 'Device row status: flashing failed',
+        defaultMessage: 'Not flashed'
+    },
+    row_attempt: {
+        id: 'gui.SearchPanelDeviceComponent.row_attempt',
+        description: 'Under the device name while detecting: {port} and the try number {attempt}',
+        defaultMessage: '{port}, try {attempt}'
+    },
+    row_title_port: {
+        id: 'gui.SearchPanelDeviceComponent.row_title_port',
+        description: 'Device row title while the device is not known yet; {port} is like ttyUSB0 or COM3',
+        defaultMessage: 'Device on {port}'
+    },
+    row_title_unknown: {
+        id: 'gui.SearchPanelDeviceComponent.row_title_unknown',
+        description: 'Device row title: the device does not answer, its type is unknown',
+        defaultMessage: 'Unknown device'
+    },
+    hint_needs_update: {
+        id: 'gui.SearchPanelDeviceComponent.hint_needs_update',
+        description: 'Device row hint: firmware {current} on the device, {required} is needed',
+        defaultMessage: 'The device has firmware {current}, version {required} is needed. Without the update some blocks may not work.'
+    },
+    hint_no_answer: {
+        id: 'gui.SearchPanelDeviceComponent.hint_no_answer',
+        description: 'Device row hint for a device that does not answer: Robbo Scratch can flash it',
+        defaultMessage: 'It probably has another firmware. Robbo Scratch will find out the device and write the right one.'
+    },
+    hint_flashing: {
+        id: 'gui.SearchPanelDeviceComponent.hint_flashing',
+        description: 'Device row hint while flashing, before the flasher reports anything',
+        defaultMessage: 'Do not unplug the cable while the firmware is written.'
+    },
+    hint_flash_failed: {
+        id: 'gui.SearchPanelDeviceComponent.hint_flash_failed',
+        description: 'Device row hint: flashing failed',
+        defaultMessage: 'The firmware was not written. Check the cable and try again.'
+    },
+    hint_port_error: {
+        id: 'gui.SearchPanelDeviceComponent.hint_port_error',
+        description: 'Device row hint: the serial port could not be opened',
+        defaultMessage: 'Could not open the port. Reconnect the device or plug the cable into another USB port.'
+    },
+    hint_bluetooth_off: {
+        id: 'gui.SearchPanelDeviceComponent.hint_bluetooth_off',
+        description: 'Device row hint: Bluetooth adapter of the computer is off',
+        defaultMessage: 'Bluetooth on the computer is off. Turn it on and press «Search again».'
+    },
+    action_update: {
+        id: 'gui.SearchPanelDeviceComponent.action_update',
+        description: 'Device row button: update the outdated firmware',
+        defaultMessage: 'Update'
+    },
+    action_flash: {
+        id: 'gui.SearchPanelDeviceComponent.action_flash',
+        description: 'Device row button: flash a device that does not answer',
+        defaultMessage: 'Flash'
+    },
+    action_retry: {
+        id: 'gui.SearchPanelDeviceComponent.action_retry',
+        description: 'Device row button: repeat the failed flash',
         defaultMessage: 'Try again'
     },
-    flash_details: {
-        id: 'gui.SearchPanelDeviceComponent.flash_details',
-        description: 'Button that opens the firmware flashing log',
-        defaultMessage: 'Flashing details'
+    details_port: {
+        id: 'gui.SearchPanelDeviceComponent.details_port',
+        description: 'Device details: port label',
+        defaultMessage: 'Port'
     },
-    confirm_firmware_title: {
-        id: 'gui.SearchPanelDeviceComponent.confirm_firmware_title',
-        description: 'Title of the firmware questions',
-        defaultMessage: 'Device firmware'
+    details_firmware: {
+        id: 'gui.SearchPanelDeviceComponent.details_firmware',
+        description: 'Device details: firmware label',
+        defaultMessage: 'Firmware'
+    },
+    details_firmware_current: {
+        id: 'gui.SearchPanelDeviceComponent.details_firmware_current',
+        description: 'Device details: the firmware {version} is the one Robbo Scratch needs',
+        defaultMessage: '{version}, current'
+    },
+    details_firmware_old: {
+        id: 'gui.SearchPanelDeviceComponent.details_firmware_old',
+        description: 'Device details: firmware {current} on the device, {required} is needed',
+        defaultMessage: '{current}, version {required} is needed'
+    },
+    details_serial: {
+        id: 'gui.SearchPanelDeviceComponent.details_serial',
+        description: 'Device details: serial number label',
+        defaultMessage: 'Serial number'
+    },
+    details_error: {
+        id: 'gui.SearchPanelDeviceComponent.details_error',
+        description: 'Device details: technical error message label',
+        defaultMessage: 'Error'
+    },
+    row_menu_reflash: {
+        id: 'gui.SearchPanelDeviceComponent.row_menu_reflash',
+        description: 'Device row menu item: write the same firmware to the device again',
+        defaultMessage: 'Flash again'
+    },
+    row_menu_identify_flash: {
+        id: 'gui.SearchPanelDeviceComponent.row_menu_identify_flash',
+        description: 'Device row menu item: find out the device by its serial number and write the right firmware',
+        defaultMessage: 'Another device? Detect it and flash'
+    },
+    row_menu_flash_log: {
+        id: 'gui.SearchPanelDeviceComponent.row_menu_flash_log',
+        description: 'Device row menu item: open the firmware flashing window with its log',
+        defaultMessage: 'Flashing log'
+    },
+    row_menu_no_flash_yet: {
+        id: 'gui.SearchPanelDeviceComponent.row_menu_no_flash_yet',
+        description: 'Flash window opened from the row menu for a device not flashed in this session',
+        defaultMessage: 'This device has not been flashed since Robbo Scratch started'
     },
 
     device_robot: {
@@ -86,11 +240,6 @@ const messages = defineMessages({
         id: 'gui.SearchPanel.quadcopter_searching',
         description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
         defaultMessage: 'Searching…'
-    },
-    quadcopter_connecting: {
-        id: 'gui.SearchPanel.quadcopter_connecting',
-        description: 'Quadcopter radio link is being established during device search.',
-        defaultMessage: 'Connecting…'
     },
     quadcopter_connected: {
         id: 'gui.SearchPanel.quadcopter_connected',
@@ -142,11 +291,6 @@ const messages = defineMessages({
         description: 'Shown beside device name; do not repeat the device type (name is in the first column).',
         defaultMessage: 'Emergency stop'
     },
-    quadcopter_firmware_update_prompt: {
-        id: 'gui.SearchPanel.quadcopter_firmware_update_prompt',
-        description: 'Confirm text when quadcopter firmware differs from bundled desktop firmware.',
-        defaultMessage: 'Quadcopter firmware version differs from the required one.\n\nCurrent: {current}\nRequired: {required}\n\nUpdate now?'
-    },
     quadcopter_firmware_update_warning: {
         id: 'gui.SearchPanel.quadcopter_firmware_update_warning',
         description: 'Shown before flashing quadcopter firmware.',
@@ -176,6 +320,11 @@ const messages = defineMessages({
         id: 'gui.SearchPanel.quadcopter_firmware_flash_started',
         description: 'Shown in quadcopter row during flashing.',
         defaultMessage: 'Flashing quadcopter firmware…'
+    },
+    quadcopter_firmware_flash_done_version: {
+        id: 'gui.SearchPanel.quadcopter_firmware_flash_done_version',
+        description: 'Quadcopter row after a successful flash: the version now on board',
+        defaultMessage: 'Firmware {version} is written.'
     },
     quadcopter_firmware_flash_done: {
         id: 'gui.SearchPanel.quadcopter_firmware_flash_done',
@@ -219,152 +368,73 @@ const messages = defineMessages({
         id: 'gui.SearchPanel.cf2_flash_connecting',
         defaultMessage: 'Connecting…'
     },
+    cf2_flash_to_bootloader: {
+        id: 'gui.SearchPanel.cf2_flash_to_bootloader',
+        description: 'Quadcopter flash status: the quadcopter restarts into its bootloader before writing',
+        defaultMessage: 'Restarting the quadcopter into the bootloader…'
+    },
+    cf2_flash_checking: {
+        id: 'gui.SearchPanel.cf2_flash_checking',
+        description: 'Quadcopter flash status: firmware written, Robbo Scratch connects to the quadcopter again',
+        defaultMessage: 'Connecting to the quadcopter with the new firmware…'
+    },
+    quadcopter_hint_flashing: {
+        id: 'gui.SearchPanel.quadcopter_hint_flashing',
+        description: 'Quadcopter row hint while its firmware is written',
+        defaultMessage: 'Do not switch the quadcopter off and do not unplug Crazyradio until the firmware is written.'
+    },
+    quadcopter_hint_power_cycle: {
+        id: 'gui.SearchPanel.quadcopter_hint_power_cycle',
+        description: 'Quadcopter row hint during a firmware recovery: the bootloader starts only on power-up',
+        defaultMessage: 'Switch the quadcopter off and on now.'
+    },
+    quadcopter_flash_interrupted: {
+        id: 'gui.SearchPanel.quadcopter_flash_interrupted',
+        description: 'Quadcopter row hint: a firmware update did not finish, the quadcopter waits in its bootloader',
+        defaultMessage: 'The firmware update was interrupted and the quadcopter waits in its bootloader. ' +
+            'Press «{action}», then switch the quadcopter off and on.'
+    },
+    open_palette: {
+        id: 'gui.SearchPanelDeviceComponent.open_palette',
+        description: 'Device row button that opens the palette of this device',
+        defaultMessage: 'Open the palette'
+    },
+    open_palette_unavailable: {
+        id: 'gui.SearchPanelDeviceComponent.open_palette_unavailable',
+        description: 'Device row palette button while the device is not connected (or is being flashed)',
+        defaultMessage: 'The palette opens once the device is connected'
+    },
+    details_radio: {
+        id: 'gui.SearchPanelDeviceComponent.details_radio',
+        description: 'Quadcopter row details: label of the radio group and channel',
+        defaultMessage: 'Radio'
+    },
+    details_radio_value: {
+        id: 'gui.SearchPanelDeviceComponent.details_radio_value',
+        description: 'Quadcopter row details: radio group and channel of this computer',
+        defaultMessage: 'group {group}, channel {channel}'
+    },
     device_unknown: {
         id: 'gui.FirmwareFlasherDeviceComponent.device_unknown',
         description: ' ',
         defaultMessage: 'Unknown device'
-    },
-    flash_device: {
-        id: 'gui.FirmwareFlasherDeviceComponent.flash_device',
-        description: ' ',
-        defaultMessage: 'Flash device'
     },
     firmware_not_available_mobile: {
         id: 'gui.SearchPanel.firmware_not_available_mobile',
         description: ' ',
         defaultMessage: 'Firmware update is unavailable in the Android app. Use the desktop version of Robbo Scratch for flashing.'
     },
-    flashing_device: {
-        id: 'gui.FirmwareFlasherDeviceComponent.flashing_device',
-        description: ' ',
-        defaultMessage: 'Flashing...'
-    },
 
-    update_firm_msg: {
-
-        id: 'gui.RobboGui.update_firm_msg',
-        description: ' ',
-        defaultMessage: 'Please update  firmware.'
-    },
-    cr_firm_msg: {
-
-        id: 'gui.RobboGui.cr_firm_msg',
-        description: ' ',
-        defaultMessage: '(current: {current_firmware} required: {required_firmware})'
-    },
-    differ_firm_msg: {
-
-        id: 'gui.RobboGui.differ_firm_msg',
-        description: ' ',
-        defaultMessage: 'The current firmware version of the device differs from the required one.'
-    },
-    differ_firm_msg_device_maybe_incorrect: {
-
-        id: 'gui.RobboGui.differ_firm_msg_device_maybe_incorrect',
-        description: ' ',
-        defaultMessage: 'Device may not work correctly.'
-    },
-    error: {
-
-        id: 'gui.SearchPanel.error',
-        description: ' ',
-        defaultMessage: 'Error!'
-    },
-    firmware_verify_failed_try_again: {
-        id: 'gui.SearchPanel.firmware_verify_failed_try_again',
-        description: ' ',
-        defaultMessage: 'Firmware was not updated. Try again?'
-    },
-    device_connected: {
-
-        id: 'gui.SearchPanel.device_connected',
-        description: ' ',
-        defaultMessage: 'Device connected'
-    },
-    device_identifying: {
-        id: 'gui.SearchPanel.device_identifying',
-        description: 'Search status while asking the device who it is; {attempt} counts the tries (the port speed changes between them)',
-        defaultMessage: 'Detecting the device… try {attempt}'
-    },
-    device_no_response: {
-
-        id: 'gui.SearchPanel.device_no_response',
-        description: ' ',
-        defaultMessage: 'The device does not answer Robbo Scratch'
-    },
-    device_no_response_details: {
-
-        id: 'gui.SearchPanel.device_no_response_details',
-        description: ' ',
-        defaultMessage: 'It probably has another firmware. Press «Flash device».'
-    },
-    device_no_response_alert_details: {
-
-        id: 'gui.SearchPanel.device_no_response_alert_details',
-        description: ' ',
-        defaultMessage: `A device connected to port {device_port} is not recognized by Robbo Scratch.
-The device may have no firmware or non-standard firmware loaded.
-
-Load standard Robbo Scratch firmware? Robbo Scratch will find out which device it is and show it while flashing.`
-    },
-    device_connection_lost: {
-
-        id: 'gui.SearchPanel.device_connection_lost',
-        description: ' ',
-        defaultMessage: 'Connection to device lost.'
-    },
-    device_port_error: {
-
-        id: 'gui.SearchPanel.device_port_error',
-        description: ' ',
-        defaultMessage: 'Port error!'
-    },
-    milliseconds: {
-
-        id: 'gui.SearchPanel.milliseconds',
-        description: ' ',
-        defaultMessage: ' ms'
-    },
     bluetooth_linux_hint: {
 
         id: 'gui.SearchPanel.bluetooth_linux_hint',
         description: ' ',
         defaultMessage: 'Due to Linux specifics, Robbo Scratch must be run with root privileges.'
     },
-    flashing_in_progress: {
-
-        id: 'gui.SearchPanel.flashing_in_progress',
-        description: ' ',
-        defaultMessage: 'Attention!'
-    },
-    flashing_in_progress_details: {
-
-        id: 'gui.SearchPanel.flashing_in_progress_details',
-        description: ' ',
-        defaultMessage: 'Flashing in progress.'
-    },
-    otto_flash_version_unchanged_try_arduino: {
-        id: 'gui.SearchPanel.otto_flash_version_unchanged_try_arduino',
-        description: ' ',
-        defaultMessage: 'Version unchanged. Try flashing as Arduino?'
-    },
     otto_flash_retry_arduino_log: {
         id: 'gui.SearchPanel.otto_flash_retry_arduino_log',
         description: ' ',
         defaultMessage: 'Version unchanged. Flashing as Arduino…'
-    },
-    device_try_to_reconnect: {
-
-
-        id: 'gui.SearchPanel.device_try_to_reconnect',
-        description: ' ',
-        defaultMessage: 'Try reconnecting the device or use a different USB port.'
-
-    },
-    device_reconnecting: {
-        id: 'gui.SearchPanel.device_reconnecting',
-        description: ' ',
-        defaultMessage: 'Connection lost, attempting to reconnect'
     },
     device_cannot_open_old_bluetooth_com: {
 
@@ -405,22 +475,6 @@ Please remove old devices from the Bluetooth devices list.`
         id: 'gui.SearchPanel.bluetooth_error_already_connected',
         description: ' ',
         defaultMessage: 'Device is already connected. Try disconnecting and connecting again.'
-    },
-    try_connect_to_port: {
-
-
-        id: 'gui.SearchPanel.try_connect_to_port',
-        description: ' ',
-        defaultMessage: 'Connecting to port...'
-
-    },
-    port_opened: {
-
-
-        id: 'gui.SearchPanel.port_opened',
-        description: ' ',
-        defaultMessage: 'Port opened'
-
     }
 
 
@@ -435,14 +489,59 @@ const FLASH_FLOW_KEEP_STATUSES = {
     session_finish: true
 };
 const AUTO_RETRY_START_DELAY_MS = 800;
-// Ports already asked «flash the unrecognized device?» in this session: the flash button stays in
-// the row, the dialog does not pop up again on every search.
-const askedUnknownDevicePorts = new Set();
-// How long «Done» stays in the flash log window before it closes on its own.
-const FLASH_DONE_HIDE_DELAY_MS = 4000;
-// Flash windows holding «Done»: draggableWindowId → {timer, progress}. Module-level, not per row: the search after
-// flashing recreates the device rows, and a new row must neither close the window early nor lose «connected».
-const flashDoneHolds = new Map();
+// Palette window of each device_id (SensorPallete: robot 1, laboratory 2, Otto 5, Arduino 6; quadcopter 0).
+const PALETTE_WINDOW_BY_DEVICE_ID = {0: 1, 1: 2, 2: 2, 3: 1, 4: 2, 5: 5, 6: 6};
+const COPTER_PALETTE_WINDOW_ID = 0;
+// A Bluetooth device that has not answered yet: its name tells the kind (see _rowIcon)
+const PALETTE_WINDOW_BY_ROW_ICON = {robot: 1, lab: 2, otto: 5};
+// A palette opened from the Devices panel stands next to it (the size is known only after it is shown;
+// DraggableWindowComponent moves it back on screen).
+const PALETTE_GAP_PX = 12;
+const PALETTE_ESTIMATED_WIDTH_PX = 340;
+
+/**
+ * Right of the Devices panel, or left of it when there is no room; null keeps the palette where it was.
+ * @returns {?{top: number, left: number}} position
+ */
+const paletteSpotNearPanel = () => {
+    const panel = document.getElementById('SearchPanelComponent');
+    if (!panel || panel.getAttribute('aria-hidden') === 'true') return null;
+    const r = panel.getBoundingClientRect();
+    if (!r.width) return null;
+    let left = r.right + PALETTE_GAP_PX;
+    if (left + PALETTE_ESTIMATED_WIDTH_PX > window.innerWidth - 8) {
+        left = r.left - PALETTE_GAP_PX - PALETTE_ESTIMATED_WIDTH_PX;
+    }
+    if (left < 8) return null;
+    return {top: Math.round(r.top), left: Math.round(left)};
+};
+
+// How long «Done» stays in the row after flashing.
+const FLASH_DONE_HOLD_MS = 5000;
+// The last flash of every port in this session, drawn inside the device row:
+// {active, done, failed, connected, lines, status, step, phase, percent, deviceId, holdUntil}.
+// Module-level: the search after flashing recreates the rows, and the new row keeps showing «Done».
+const lastFlashByPort = new Map();
+// fired when a «Done» hold ends: rows redraw, the panel may close as usual
+const FLASH_HOLD_END_EVENT = 'rs3-flash-hold-end';
+
+const isFlashShownInRow = record => !!record && (record.active || (record.holdUntil > Date.now()));
+const notifyFlashingChanged = () => notifyFirmwareFlashing(
+    Array.from(lastFlashByPort.values()).some(record => record.active)
+);
+
+/**
+ * applyFlashStatus() writes the phase text and track step into DOM; the row is React, so it runs on a detached
+ * element and the row reads the result.
+ * @returns {{root: HTMLElement, el: HTMLElement}} detached flash window root and its status element
+ */
+const createFlashProbe = () => {
+    const root = document.createElement('div');
+    root.setAttribute('data-flash-window', '');
+    const el = document.createElement('div');
+    root.appendChild(el);
+    return {root, el};
+};
 
 class SearchPanelDeviceComponent extends Component {
 
@@ -454,6 +553,15 @@ class SearchPanelDeviceComponent extends Component {
             devices: [],
             deviceState: 0,
             identifyAttempt: 0,
+            // {current, required} while the device firmware is not the one Robbo Scratch needs
+            firmwareDiffers: null,
+            // flashing as seen in the row: {active, percent, text} or {failed, text}
+            flashUi: null,
+            detailsOpen: false,
+            // «Flashing log» in the details: the last flash of this port drawn in the row
+            logOpen: false,
+            // the raw flasher lines of the row flash block are shown
+            flashLogExpanded: false,
             deviceId: -1,
             deviceError: null,
             quadcopterConnected: false,
@@ -461,21 +569,18 @@ class SearchPanelDeviceComponent extends Component {
             quadcopterState: 'disconnected',
             quadcopterLastError: null,
             quadcopterFlashStatus: null,
+            // probe info {current, required, …} while the quadcopter needs a firmware update
+            quadcopterFirmwareUpdate: null,
             quadcopterRowPhase: 'idle'
         };
 
         this.deviceId = -1;
 
         this.firmware_version_differs = false;
-
-        this.firmware_version_differs_cb_result = {};
-
-        this.isFlashing = false;
         this.flashSessionActive = false;
         this.flashSessionId = 0;
         this._activeFlashSessionId = null;
         this.flashStage = 'idle';
-        this._flashConfigRef = null;
 
         this.isRasberry = false;
 
@@ -624,33 +729,11 @@ class SearchPanelDeviceComponent extends Component {
         });
     }
 
-    _resetQuadcopterRowAfterFirmwareDeclined(info) {
-        this._quadcopterFirmwareProbeInFlight = false;
-        this._quadcopterFirmwarePrompted = false;
-        this._quadcopterFirmwareUpdateDeclined = true;
-        if (this._debugMounted !== true) {
-            return;
-        }
-        this.setState({
-            quadcopterLastError: null,
-            quadcopterFlashStatus: info && info.needsUpdate
-                ? this._quadcopterFirmwareMismatchStatusText(info)
-                : this._quadcopterConnectFailureStatusText(info),
-            quadcopterRowPhase: 'idle'
-        });
-    }
 
     _isQuadcopterSearchUiActive(effectiveSearching, quadcopterRowPhase) {
         return effectiveSearching === true || quadcopterRowPhase === 'searching';
     }
 
-    _isQuadcopterFirmwareFlowBlockingHide() {
-        if (!this.props.isQuadcopter) return false;
-        if (this._isQuadcopterFirmwareProbeUiActive()) return true;
-        if (this._quadcopterFirmwareFlashActive) return true;
-        if (!this._quadcopterFirmwareVersionChecked) return true;
-        return false;
-    }
 
     _getQuadcopterCurrentVersionForUi(infoOrVersion) {
         if (infoOrVersion && typeof infoOrVersion === 'object') {
@@ -677,7 +760,9 @@ class SearchPanelDeviceComponent extends Component {
             'Verifying firmware…': messages.cf2_flash_verifying,
             'Resetting copter…': messages.cf2_flash_resetting,
             'Firmware update complete': messages.cf2_flash_complete,
-            'Connecting…': messages.cf2_flash_connecting
+            'Connecting…': messages.cf2_flash_connecting,
+            'Restarting into the bootloader…': messages.cf2_flash_to_bootloader,
+            'Checking connection…': messages.cf2_flash_checking
         };
         if (map[headline]) {
             return this.props.intl.formatMessage(map[headline]);
@@ -685,73 +770,6 @@ class SearchPanelDeviceComponent extends Component {
         return headline;
     }
 
-    _getQuadcopterFlashWindowElements() {
-        const cId = this.props.flashingStatusComponentId;
-        const root = document.getElementById(`firmware-flasher-flashing-status-component-${cId}`);
-        const {statusEl, logEl} = getFirmwareFlashLogElements(cId);
-        return {root, statusEl, logEl};
-    }
-
-    _resetQuadcopterFlashWindow() {
-        const { statusEl, logEl } = this._getQuadcopterFlashWindowElements();
-        const started = this.props.intl.formatMessage(messages.quadcopter_firmware_flash_started);
-        resetFlashWindow(statusEl);
-        if (statusEl) {
-            statusEl.innerHTML = started;
-            setFlashLogStatusTone(statusEl, 'pending');
-        }
-        if (logEl) {
-            logEl.innerHTML = '';
-        }
-    }
-
-    onQuadcopterFlashingStatusChanged(line, meta) {
-        const parsed = parseCf2FlashToolLine(line, meta);
-        if (!parsed) {
-            return;
-        }
-        const { statusEl, logEl } = this._getQuadcopterFlashWindowElements();
-        if (parsed.headline && statusEl) {
-            statusEl.innerHTML = this._translateCf2FlashHeadline(parsed.headline);
-            setFlashLogStatusTone(statusEl, 'pending');
-        }
-        if (parsed.logLine && logEl) {
-            const styles = { margin: '6px 10px', fontSize: '11px' };
-            createDiv(logEl, null, null, null, null, styles, parsed.logLine, null);
-            logEl.scrollTop = logEl.scrollHeight;
-        }
-    }
-
-    _quadcopterFlashFinishUi(message, success) {
-        const { statusEl } = this._getQuadcopterFlashWindowElements();
-        if (statusEl) {
-            statusEl.innerHTML = success
-                ? this._translateCf2FlashHeadline('Firmware update complete')
-                : message;
-            setFlashLogStatusTone(statusEl, success ? 'success' : 'error');
-        }
-        if (success) {
-            this._scheduleQuadcopterFlashWindowHide(1000);
-        } else if (this._quadcopterFlashHideTimer != null) {
-            clearTimeout(this._quadcopterFlashHideTimer);
-            this._quadcopterFlashHideTimer = null;
-        }
-    }
-
-    _scheduleQuadcopterFlashWindowHide(delayMs) {
-        if (this._quadcopterFlashHideTimer != null) {
-            clearTimeout(this._quadcopterFlashHideTimer);
-        }
-        this._quadcopterFlashHideTimer = setTimeout(() => {
-            this._quadcopterFlashHideTimer = null;
-            if (this._debugMounted !== true) {
-                return;
-            }
-            try {
-                this.flashingHideDetails();
-            } catch (_) { /* ignore */ }
-        }, delayMs > 0 ? delayMs : 1000);
-    }
 
     _shouldShowQuadcopterFlashStatusHint() {
         if (!this.state.quadcopterFlashStatus) {
@@ -773,29 +791,6 @@ class SearchPanelDeviceComponent extends Component {
         return true;
     }
 
-    _raiseQuadcopterFlashingWindowZIndex() {
-        const windowId = this.props.draggableWindowId;
-        const el = document.getElementById(`draggable_window_id-${windowId}`);
-        if (el) {
-            applyRobboPopupZIndex(el);
-        }
-    }
-
-    _openQuadcopterFlashingWindow() {
-        const windowId = this.props.draggableWindowId;
-        if (typeof this.props.onCreateDraggableWindow === 'function') {
-            this.props.onCreateDraggableWindow(windowId);
-        }
-        const windowState = this.props.draggable_window && this.props.draggable_window[windowId];
-        if ((!windowState || windowState.isShowing !== true) &&
-            typeof this.props.onShowFlashingStatusWindow === 'function') {
-            this.props.onShowFlashingStatusWindow(windowId);
-        }
-        this._raiseQuadcopterFlashingWindowZIndex();
-        requestAnimationFrame(() => {
-            this._raiseQuadcopterFlashingWindowZIndex();
-        });
-    }
 
     _isQuadcopterConnectErrorHintSuppressed() {
         return this._isQuadcopterFirmwareCheckUiActive() ||
@@ -803,7 +798,7 @@ class SearchPanelDeviceComponent extends Component {
             this.state.quadcopterRowPhase === 'flashing';
     }
 
-    _logFlashFlow(source, status, extra = {}, always = false) {
+    _logFlashFlow(source, status, extra = {}) {
         if (!FLASH_FLOW_DEBUG && !FLASH_FLOW_KEEP_STATUSES[status]) return;
         const sessionId = this._activeFlashSessionId != null ? this._activeFlashSessionId : '-';
         const base = {
@@ -824,16 +819,14 @@ class SearchPanelDeviceComponent extends Component {
         this._activeFlashSessionId = this.flashSessionId;
         this.flashSessionActive = true;
         this.flashStage = initialStage || 'single';
-        this.isFlashing = true;
-        this._logFlashFlow('flashDevice', 'session_start', { mode }, true);
+        this._logFlashFlow('flashDevice', 'session_start', { mode });
         return this._activeFlashSessionId;
     }
 
     _finishFlashSession(result) {
-        this._logFlashFlow('statusCallback', 'session_finish', { result }, true);
+        this._logFlashFlow('statusCallback', 'session_finish', { result });
         this.flashSessionActive = false;
         this.flashStage = 'done';
-        this.isFlashing = false;
         this._activeFlashSessionId = null;
     }
 
@@ -866,6 +859,329 @@ class SearchPanelDeviceComponent extends Component {
             return `${this.getDeviceName(this.state.deviceId)} (${port})`;
         }
         return port;
+    }
+
+    /**
+     * Grammatical gender of the device name for «connected» (ru: Робот подключён, Лаборатория подключена,
+     * Ардуино подключено).
+     * @param {number} deviceId device_id
+     * @returns {'m'|'f'|'n'} gender
+     */
+    _deviceGender(deviceId) {
+        if (deviceId === 1 || deviceId === 2 || deviceId === 4) return 'f';
+        if (deviceId === 6 || deviceId === 7) return 'n';
+        return 'm';
+    }
+
+    /** Short port name for the row (ttyUSB0, COM3); Bluetooth rows say «Bluetooth». */
+    _shortPortName() {
+        const port = this.props.devicePort || '';
+        if (this.props.isBluetooth || port.indexOf('bluetooth_') === 0) return 'Bluetooth';
+        if (port.indexOf('webserial:') === 0) return 'USB';
+        return port.replace(/^\/dev\//, '');
+    }
+
+    /** Device icon of the row: the same pictures as the device buttons in the menu bar. */
+    _rowIcon() {
+        if (this.props.isQuadcopter) return 'quadcopter';
+        const flashUi = this.state.flashUi;
+        const flashId = flashUi && flashUi.deviceId !== null && flashUi.deviceId !== undefined ? flashUi.deviceId : null;
+        const id = flashId !== null ? flashId : (this.state.deviceState === 6 || flashUi ? this.state.deviceId : -1);
+        if (id === 0 || id === 3) return 'robot';
+        if (id === 1 || id === 2 || id === 4) return 'lab';
+        if (id === 5) return 'otto';
+        if (id === 6 || id === 7) return 'arduino';
+        // Not answered yet: a Bluetooth name tells the kind (ROBBO-R-…, ROB-R-…, ROBBO-L-…, OTTO…)
+        const btName = this.props.isBluetooth ? (this.props.devicePort || '').replace(/^bluetooth_/, '') : '';
+        if (/^ROBB?O?-R-/i.test(btName) || /^ROB-R-/i.test(btName)) return 'robot';
+        if (/^ROBBO-L-/i.test(btName)) return 'lab';
+        if (/OTTO|Dancing/i.test(btName)) return 'otto';
+        return 'unknown';
+    }
+
+    /** Human text for a port / connection error (state 7); the raw message goes to the details. */
+    _rowErrorHint(error) {
+        const msg = (error && error.msg) || '';
+        if (/not-powered|NotReady|adapter/i.test(msg)) return this.props.intl.formatMessage(messages.hint_bluetooth_off);
+        if (this.props.devicePort.indexOf('rfcom') !== -1 && msg.indexOf('cannot open /dev/rfcom') !== -1) {
+            return this.props.intl.formatMessage(messages.bluetooth_linux_hint);
+        }
+        const byCode = {
+            '274C': messages.bluetooth_error_274C,
+            '274D': messages.bluetooth_error_274D,
+            '2711': messages.bluetooth_error_2711,
+            '2740': messages.bluetooth_error_2740,
+            CONNECTION_ERROR: messages.bluetooth_error_connection,
+            ALREADY_CONNECTED: messages.bluetooth_error_already_connected
+        };
+        if (error && error.errorCode && byCode[error.errorCode]) return this.props.intl.formatMessage(byCode[error.errorCode]);
+        return this.props.intl.formatMessage(messages.hint_port_error);
+    }
+
+    /**
+     * Everything the row shows, from the device state: tone (ok · action needed · waiting · error · unknown),
+     * title, line under it, status pill, hint with at most one action, progress.
+     */
+    getRowView() {
+        const intl = this.props.intl;
+        const port = this._shortPortName();
+        const view = {tone: 'wait', title: '', subtitle: port, pill: '', hint: '', action: null};
+        if (this.props.isQuadcopter) {
+            const {iconSrc, statusText} = this.getStatusDisplay();
+            view.title = this.getSearchPanelRowTitle();
+            view.subtitle = 'Crazyradio';
+            view.pill = statusText;
+            view.tone = /green/.test(iconSrc) ? 'ok' : /red/.test(iconSrc) ? 'err' : 'wait';
+            const qca = this.props.QCA;
+            const currentGroup = qca && typeof qca.getRadioGroup === 'function' ? qca.getRadioGroup() : null;
+            const other = this.state.quadcopterOtherGroups && this.state.quadcopterOtherGroups[0];
+            const record = lastFlashByPort.get(this.props.devicePort);
+            const recovery = qca && typeof qca.isFirmwareRecoveryNeeded === 'function' &&
+                qca.isFirmwareRecoveryNeeded() === true;
+            const update = this.state.quadcopterFirmwareUpdate;
+            if (record && record.active) {
+                view.tone = 'wait';
+                view.pill = record.percent === null ?
+                    intl.formatMessage(messages.pill_flashing) :
+                    intl.formatMessage(messages.pill_flashing_percent, {percent: record.percent});
+                view.hint = intl.formatMessage(record.cold ? messages.quadcopter_hint_power_cycle :
+                    messages.quadcopter_hint_flashing);
+            } else if (this.state.quadcopterRowPhase === 'flashFailed' || recovery) {
+                const label = intl.formatMessage(recovery ? messages.action_update : messages.action_retry);
+                view.tone = this.state.quadcopterRowPhase === 'flashFailed' ? 'err' : 'act';
+                if (this.state.quadcopterRowPhase === 'flashFailed') {
+                    view.pill = intl.formatMessage(messages.pill_flash_failed);
+                }
+                view.hint = recovery ?
+                    intl.formatMessage(messages.quadcopter_flash_interrupted, {action: label}) :
+                    intl.formatMessage(messages.quadcopter_firmware_flash_failed);
+                view.action = {label, run: () => this.flashQuadcopterFirmware({cold: recovery})};
+            } else if (record && record.done && isFlashShownInRow(record) && view.tone !== 'ok') {
+                view.tone = 'ok';
+                view.pill = intl.formatMessage(messages.pill_flash_done);
+            } else if (update && view.tone !== 'ok') {
+                view.tone = 'act';
+                view.hint = [
+                    this._quadcopterFirmwareMismatchStatusText(update),
+                    intl.formatMessage(messages.quadcopter_firmware_update_warning)
+                ];
+                view.action = {
+                    label: intl.formatMessage(messages.action_update),
+                    run: () => this.flashQuadcopterFirmware()
+                };
+            } else if (other) {
+                view.hint = intl.formatMessage(messages.quadcopter_found_in_group, {
+                    count: other.ids.length,
+                    numbers: other.ids.join(', '),
+                    group: other.group,
+                    current: currentGroup
+                });
+                view.action = {
+                    label: intl.formatMessage(messages.quadcopter_switch_group, {group: other.group}),
+                    run: () => this._switchQuadcopterGroup(other.group)
+                };
+                view.tone = 'act';
+            } else if (this.state.quadcopterGroupScanning) {
+                view.hint = intl.formatMessage(messages.quadcopter_group_scanning, {group: currentGroup});
+                view.tone = 'wait';
+            }
+            return view;
+        }
+        const {deviceState, deviceId, deviceError, firmwareDiffers, flashUi, identifyAttempt} = this.state;
+        const shownId = flashUi && flashUi.deviceId !== null && flashUi.deviceId !== undefined ? flashUi.deviceId : deviceId;
+        const known = shownId !== -1 && shownId !== undefined && shownId !== null;
+        const name = known ? this.getDeviceName(shownId) : '';
+        const btName = (this.props.devicePort || '').replace(/^bluetooth_/, '');
+        view.title = name || (this.props.isBluetooth ? btName : intl.formatMessage(messages.row_title_port, {port}));
+
+        if (flashUi && flashUi.active) {
+            view.tone = 'wait';
+            view.pill = flashUi.percent === null ?
+                intl.formatMessage(messages.pill_flashing) :
+                intl.formatMessage(messages.pill_flashing_percent, {percent: flashUi.percent});
+            return view;
+        }
+        if (flashUi && flashUi.failed) {
+            view.tone = 'err';
+            view.pill = intl.formatMessage(messages.pill_flash_failed);
+            view.hint = this.props.disableFirmwareUi ? flashUi.text : intl.formatMessage(messages.hint_flash_failed);
+            if (this._firmwareActionsAllowed()) {
+                view.action = {label: intl.formatMessage(messages.action_retry), run: () => this.retryFlash()};
+            }
+            return view;
+        }
+        const record = lastFlashByPort.get(this.props.devicePort);
+        if (record && record.done && isFlashShownInRow(record)) {
+            view.tone = 'ok';
+            view.pill = record.connected ?
+                intl.formatMessage(messages.pill_connected, {gender: this._deviceGender(record.deviceId)}) :
+                intl.formatMessage(messages.pill_flash_done);
+            if (record.deviceId !== null && record.deviceId !== undefined) view.title = this.getDeviceName(record.deviceId);
+            return view;
+        }
+        if (deviceState === 6) {
+            if (firmwareDiffers && this._firmwareActionsAllowed()) {
+                view.tone = 'act';
+                view.pill = intl.formatMessage(messages.pill_needs_update);
+                view.hint = intl.formatMessage(messages.hint_needs_update, firmwareDiffers);
+                view.action = {
+                    label: intl.formatMessage(messages.action_update),
+                    run: () => this.flashDevice(deviceId === 5 ? 'auto' : undefined)
+                };
+                return view;
+            }
+            view.tone = 'ok';
+            view.pill = intl.formatMessage(messages.pill_connected, {gender: this._deviceGender(deviceId)});
+            return view;
+        }
+        if (deviceState === 7) {
+            view.tone = 'err';
+            view.pill = intl.formatMessage(messages.pill_no_link);
+            view.hint = this._rowErrorHint(deviceError);
+            return view;
+        }
+        if (deviceState === 9 || (deviceState === 8 && deviceError && deviceError.code === 1)) {
+            view.pill = intl.formatMessage(messages.pill_reconnecting);
+            return view;
+        }
+        if (deviceState === 8) {
+            view.tone = 'unknown';
+            view.title = this.props.isBluetooth ? btName : intl.formatMessage(messages.row_title_unknown);
+            view.pill = intl.formatMessage(messages.pill_no_answer);
+            if (this.props.isBluetooth) {
+                view.hint = intl.formatMessage(messages.device_cannot_open_old_bluetooth_com);
+            } else if (this._firmwareActionsAllowed()) {
+                view.hint = intl.formatMessage(messages.hint_no_answer);
+                view.action = {label: intl.formatMessage(messages.action_flash), run: () => this.flashDevice()};
+            }
+            return view;
+        }
+        if (deviceState === 10) {
+            view.pill = intl.formatMessage(messages.pill_flashing);
+            return view;
+        }
+        view.pill = intl.formatMessage(messages.pill_detecting);
+        if (identifyAttempt > 1) view.subtitle = intl.formatMessage(messages.row_attempt, {port, attempt: identifyAttempt});
+        return view;
+    }
+
+    /**
+     * Flashing inside the row: the track of steps, the status line, write progress and the raw flasher lines.
+     * Shown while flashing, for a while after «Done», after a failure, and by «Flashing log» in the details.
+     * @returns {?React.ReactElement} the block or null
+     */
+    _renderFlashBlock() {
+        const intl = this.props.intl;
+        const record = lastFlashByPort.get(this.props.devicePort);
+        // the failure belongs to this row (a new search recreates rows and they start clean)
+        const failed = !!(record && record.failed && (this.props.isQuadcopter ?
+            this.state.quadcopterRowPhase === 'flashFailed' :
+            this.state.flashUi && this.state.flashUi.failed));
+        const shown = (record && (isFlashShownInRow(record) || failed)) || this.state.logOpen;
+        if (!shown) return null;
+        if (!record) {
+            return (
+                <div className={classNames(styles.flash, styles.flash_empty)}>
+                    <p className={styles.flash_status}>{intl.formatMessage(messages.row_menu_no_flash_yet)}</p>
+                </div>
+            );
+        }
+        const step = record.done ? '5' : record.step;
+        const phase = record.failed ? 'error' : record.done ? 'done' : record.phase;
+        const steps = this.props.isQuadcopter ? COPTER_FLASH_STEP_MESSAGES : FLASH_STEP_MESSAGES;
+        const status = this.props.isQuadcopter ? this._copterFlashStatusText(record) : record.status;
+        return (
+            <div
+                className={classNames(
+                    styles.flash,
+                    record.done && styles.flash_done,
+                    record.failed && styles.flash_failed
+                )}
+                data-flash-step={step || undefined}
+                data-flash-phase={phase || undefined}
+            >
+                <ol className={styles.flash_steps} aria-hidden="true">
+                    {steps.map(message => (
+                        <li key={message.id} className={styles.flash_step}>
+                            <span className={styles.flash_step_dot} />
+                            <span className={styles.flash_step_label}>{intl.formatMessage(message)}</span>
+                        </li>
+                    ))}
+                </ol>
+                <p className={styles.flash_status} role="status" aria-live="polite">
+                    {status || intl.formatMessage(messages.hint_flashing)}
+                </p>
+                {record.active && record.percent !== null ? (
+                    <span className={styles.flash_bar}>
+                        <b style={{width: `${record.percent}%`}} />
+                    </span>
+                ) : null}
+                {record.lines.length ? (
+                    <details
+                        className={styles.flash_log}
+                        open={this.state.flashLogExpanded}
+                        onToggle={event => {
+                            const open = event.currentTarget.open;
+                            if (open !== this.state.flashLogExpanded) this.setState({flashLogExpanded: open});
+                        }}
+                    >
+                        <summary>{intl.formatMessage(messages.flash_log)}</summary>
+                        <div className={styles.flash_log_lines}>
+                            {record.lines.map((line, index) => <div key={index}>{line}</div>)}
+                        </div>
+                    </details>
+                ) : null}
+            </div>
+        );
+    }
+
+    /** Details under an expanded row: port, firmware, serial number, the raw error. */
+    _rowDetails() {
+        if (this.props.isQuadcopter) return this._copterRowDetails();
+        const all = this.props.DCA && typeof this.props.DCA.getDevices === 'function' ? this.props.DCA.getDevices() : [];
+        const device = all.find(d => d && d.getPortName && d.getPortName() === this.props.devicePort);
+        const safe = fn => {
+            try {
+                return fn();
+            } catch (e) {
+                return null;
+            }
+        };
+        const firmware = device ? safe(() => device.getFirmwareVersion()) : null;
+        const serial = device ? safe(() => device.getSerialNumber()) : null;
+        const {firmwareDiffers, deviceState, deviceError} = this.state;
+        const rows = [[this.props.intl.formatMessage(messages.details_port), this.props.devicePort]];
+        if (deviceState === 6 && firmware !== null && firmware !== undefined && !Number.isNaN(Number(firmware))) {
+            rows.push([this.props.intl.formatMessage(messages.details_firmware), firmwareDiffers ?
+                this.props.intl.formatMessage(messages.details_firmware_old, firmwareDiffers) :
+                this.props.intl.formatMessage(messages.details_firmware_current, {version: firmware})]);
+        }
+        if (deviceState === 6 && serial) rows.push([this.props.intl.formatMessage(messages.details_serial), serial]);
+        if (deviceError && deviceError.msg) rows.push([this.props.intl.formatMessage(messages.details_error), deviceError.msg]);
+        return rows;
+    }
+
+    /** Details under the expanded quadcopter row: radio group and channel, firmware, the raw error. */
+    _copterRowDetails() {
+        const intl = this.props.intl;
+        const qca = this.props.QCA;
+        const rows = [];
+        const group = qca && typeof qca.getRadioGroup === 'function' ? qca.getRadioGroup() : null;
+        const channels = qca && typeof qca.getRadioGroupChannels === 'function' ? qca.getRadioGroupChannels() : [];
+        if (group) {
+            rows.push([intl.formatMessage(messages.details_radio),
+                intl.formatMessage(messages.details_radio_value, {group, channel: channels[group - 1]})]);
+        }
+        const probe = qca && typeof qca.getLastFirmwareProbe === 'function' ? qca.getLastFirmwareProbe() : null;
+        const current = probe ? this._getQuadcopterCurrentVersionForUi(probe) : null;
+        if (current) {
+            rows.push([intl.formatMessage(messages.details_firmware), probe.needsUpdate && probe.required ?
+                intl.formatMessage(messages.details_firmware_old, {current, required: probe.required}) :
+                intl.formatMessage(messages.details_firmware_current, {version: current})]);
+        }
+        const error = this.state.quadcopterLastError;
+        if (error && error.message) rows.push([intl.formatMessage(messages.details_error), String(error.message)]);
+        return rows;
     }
 
     getStatusDisplay() {
@@ -938,71 +1254,17 @@ class SearchPanelDeviceComponent extends Component {
             }
             return { iconSrc: './static/robbo_assets/red.png', statusText: this.props.intl.formatMessage(messages.quadcopter_disconnected) };
         }
-        const { deviceState, deviceId, deviceError } = this.state;
-        let statusText = '';
-        let iconSrc = './static/robbo_assets/yellow.png';
-        if (deviceState === 6) {
-            statusText = this.props.intl.formatMessage(messages.device_connected);
-            iconSrc = './static/robbo_assets/green.png';
-        } else if (deviceState === 0) {
-            statusText = this.props.intl.formatMessage(messages.try_connect_to_port);
-        } else if (deviceState === 2) {
-            statusText = this.props.intl.formatMessage(messages.port_opened);
-        } else if (deviceState === 3) {
-            statusText = this.props.intl.formatMessage(messages.device_identifying, {
-                attempt: this.state.identifyAttempt || 1
-            });
-        } else if (deviceState === 8) {
-            if (deviceError && deviceError.code === 1) {
-                statusText = this.props.intl.formatMessage(messages.device_reconnecting);
-            } else {
-                statusText = this.props.intl.formatMessage(messages.device_no_response);
-                iconSrc = './static/robbo_assets/red.png';
-            }
-        } else if (deviceState === 7) {
-            statusText = this.props.intl.formatMessage(messages.device_port_error);
-            iconSrc = './static/robbo_assets/red.png';
-        } else if (deviceState === 9) {
-            statusText = this.props.intl.formatMessage(messages.device_reconnecting);
-        } else if (deviceState === 10) {
-            statusText = this.props.intl.formatMessage(messages.flashing_in_progress_details);
-            iconSrc = './static/robbo_assets/yellow.png';
-            console.warn('[FLASH_ICON] getStatusDisplay: deviceState=10 FLASHING -> yellow icon, port=' + (this.props.devicePort || ''));
-        }
-        return { iconSrc, statusText };
+        // Serial device rows are drawn from getRowView().
+        return {iconSrc: null, statusText: ''};
     }
 
-    // Hide search panel when all DCA devices are ready; if dongle row is shown, require copter connected (not searching).
-    _canHideSearchPanelWhenAllDevicesReady() {
-        if (this._isQuadcopterFirmwareFlowBlockingHide()) {
-            return false;
-        }
-        if (!this.props.DCA) return false;
-        const allDevices = this.props.DCA.getDevices();
-        for (let i = 0; i < allDevices.length; i++) {
-            const dev = allDevices[i];
-            if (!dev) continue;
-            if (!(dev.getState() === 6 && !dev.isFirmwareVersionDiffers())) {
-                return false;
-            }
-        }
-        if (this.props.QCA && typeof this.props.QCA.isDongleAvailable === 'function' && this.props.QCA.isDongleAvailable()) {
-            if (typeof this.props.QCA.isQuadcopterConnected !== 'function' || !this.props.QCA.isQuadcopterConnected()) {
-                return false;
-            }
-            if (typeof this.props.QCA.isQuadcopterSearching === 'function' && this.props.QCA.isQuadcopterSearching()) {
-                return false;
-            }
-        }
-        return true;
-    }
+    // «Done» of a flash is no longer held: the row shows the device status again
+    _onFlashHoldEnd = () => {
+        if (this._debugMounted !== true) return;
+        this.forceUpdate();
+    };
 
-    _tryHideSearchPanelWhenAllDevicesReady() {
-        if (!this._canHideSearchPanelWhenAllDevicesReady()) {
-            return;
-        }
-        scheduleHideSearchPanelAfterConnect(() => this._canHideSearchPanelWhenAllDevicesReady());
-    }
+
 
     syncStateFromDevice() {
         if (this.props.isQuadcopter) return;
@@ -1045,6 +1307,7 @@ class SearchPanelDeviceComponent extends Component {
             this.setState({
                 quadcopterLastError: null,
                 quadcopterFlashStatus: null,
+                quadcopterFirmwareUpdate: null,
                 quadcopterRowPhase: 'searching'
             });
         }
@@ -1052,14 +1315,15 @@ class SearchPanelDeviceComponent extends Component {
 
     componentWillUnmount() {
         this._debugMounted = false;
+        document.removeEventListener(FLASH_HOLD_END_EVENT, this._onFlashHoldEnd);
         // A pending «Done» timer still closes the flash window: the row is recreated by the search after flashing.
-        if (this._quadcopterFlashHideTimer != null) {
-            clearTimeout(this._quadcopterFlashHideTimer);
-            this._quadcopterFlashHideTimer = null;
-        }
         if (this.props.isQuadcopter && this.props.QCA && this._quadcopterStatusCallback &&
             typeof this.props.QCA.unregisterQuadcopterStatusChangeCallback === 'function') {
             this.props.QCA.unregisterQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
+        }
+        if (this._unsubscribeCopterScan) {
+            this._unsubscribeCopterScan();
+            this._unsubscribeCopterScan = null;
         }
         if (!this.props.isQuadcopter && this.props.DCA) {
             this.props.DCA.unregisterDeviceStatusChangeCallback(this.props.devicePort);
@@ -1072,11 +1336,8 @@ class SearchPanelDeviceComponent extends Component {
         this.DCA = this.props.DCA;
         this.RCA = this.props.RCA;
         this.LCA = this.props.LCA;
-        this.QCA = this.props.QCA;
         this.OCA = this.props.OCA;
         this.ACA = this.props.ACA;
-
-        this.dots_counter = 1;
 
         if (this.props.isQuadcopter && this.props.QCA) {
             this._lastQuadcopterConnected = null;
@@ -1095,8 +1356,6 @@ class SearchPanelDeviceComponent extends Component {
                         this.props.QCA.isQuadcopterConnected() === true)
                 );
                 const quadcopterState = nextSnapshot.state || state || 'disconnected';
-                const preflightActive = typeof this.props.QCA.isQuadcopterPreflightActive === 'function' &&
-                    this.props.QCA.isQuadcopterPreflightActive();
                 const suppressConnectError = this._isQuadcopterFirmwareCheckUiActive() ||
                     this._quadcopterFirmwareFlashActive === true ||
                     this.state.quadcopterRowPhase === 'flashing';
@@ -1162,39 +1421,44 @@ class SearchPanelDeviceComponent extends Component {
                             this.setState({
                                 quadcopterLastError: null,
                                 quadcopterFlashStatus: null,
-                                quadcopterRowPhase: 'connected'
+                                quadcopterRowPhase: 'connected',
+                                quadcopterOtherGroups: null,
+                                quadcopterGroupScanning: false,
+                                quadcopterFirmwareUpdate: null
                             });
                         }
-                        this._tryHideSearchPanelWhenAllDevicesReady();
                     }
                 }
             };
             this.props.QCA.registerQuadcopterStatusChangeCallback(this._quadcopterStatusCallback);
+            // An empty group never opens a copter session, so the end of the scan itself is the signal.
+            if (typeof this.props.QCA.subscribeScanFinished === 'function') {
+                this._unsubscribeCopterScan = this.props.QCA.subscribeScanFinished(info => {
+                    if (!info.connected && !info.foundIds.length) this._maybeFindCopterInOtherGroups();
+                });
+            }
             if (typeof this.props.QCA.isQuadcopterPreflightActive === 'function' &&
                 this.props.QCA.isQuadcopterPreflightActive()) {
                 this.setState({ quadcopterRowPhase: 'checking' });
             }
         }
 
+        document.addEventListener(FLASH_HOLD_END_EVENT, this._onFlashHoldEnd);
+
         if (!this.props.isQuadcopter && this.props.DCA) {
             this.props.DCA.registerDeviceStatusChangeCallback(this.props.devicePort, this.onStatusChange.bind(this));
             this.props.DCA.registerFirmwareVersionDiffersCallback(this.props.devicePort, (result) => {
                 this.firmware_version_differs = true;
-                this.firmware_version_differs_cb_result = result;
                 if (this.flashSessionActive) {
                     this._logFlashFlow('firmwareVersionDiffersCb', 'ignored_due_to_active_session', {
                         currentFirmware: result.current_device_firmware,
                         requiredFirmware: result.need_firmware
-                    }, true);
+                    });
                     return;
                 }
-                let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
-                if (info_field) {
-                    info_field.style.display = "inline-block";
-                    info_field.innerHTML = this.props.intl.formatMessage(messages.differ_firm_msg) + "<br/><br/>" + this.props.intl.formatMessage(messages.cr_firm_msg, { current_firmware: result.current_device_firmware, required_firmware: result.need_firmware }) + "<br/><br/>" + this.props.intl.formatMessage(messages.differ_firm_msg_device_maybe_incorrect) + "<br/><br/>" + this.props.intl.formatMessage(messages.update_firm_msg);
-                }
-                var flashing_button = document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
-                if (flashing_button) setFlashButtonVisualMode(flashing_button, 'default');
+                this.setState({
+                    firmwareDiffers: {current: result.current_device_firmware, required: result.need_firmware}
+                });
             });
         }
 
@@ -1203,36 +1467,6 @@ class SearchPanelDeviceComponent extends Component {
         }
 
 
-
-        this.props.onCreateDraggableWindow(this.props.draggableWindowId);
-
-
-
-
-
-
-        //    this.props.DCA.registerFirmwareVersionDiffersCallback(this.props.devicePort, (result) => {
-
-
-        //  this.firmware_version_differs = true;     
-        //  this.firmware_version_differs_cb_result = result;  
-
-
-        // let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
-
-        //  info_field.style.display = "inline-block";
-
-
-        // info_field.innerHTML = this.props.intl.formatMessage(messages.differ_firm_msg) + "<br/><br/>" + this.props.intl.formatMessage(messages.cr_firm_msg,{current_firmware:result.current_device_firmware,required_firmware:result.need_firmware}) +  "<br/><br/>" + this.props.intl.formatMessage(messages.differ_firm_msg_device_maybe_incorrect) + "<br/><br/>" + this.props.intl.formatMessage(messages.update_firm_msg);
-
-
-        // var flashing_button =  document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
-        // flashing_button.style.backgroundColor = "";  
-
-
-
-
-        //      });
     }
 
     _formatQuadcopterLastErrorMessage(err) {
@@ -1306,27 +1540,9 @@ class SearchPanelDeviceComponent extends Component {
             return;
         }
 
+        // The row offers «Update» with the versions and what to do before it (no modal question).
         this._quadcopterFirmwarePrompted = true;
-        try {
-            const currentUi = this._getQuadcopterCurrentVersionForUi(info);
-            const promptText = this.props.intl.formatMessage(messages.quadcopter_firmware_update_prompt, {
-                current: currentUi || '?',
-                required: info.required
-            });
-            const warning = this.props.intl.formatMessage(messages.quadcopter_firmware_update_warning);
-            this._askFirmwareQuestion(promptText + '\n\n' + warning).then(ok => {
-                if (ok) {
-                    this._quadcopterFirmwareUpdateDeclined = false;
-                    this.flashDevice('quadcopter_auto');
-                    return;
-                }
-                this._resetQuadcopterRowAfterFirmwareDeclined(info);
-                this._retryQuadcopterSearchAfterLogSetupFailure(probeEpoch);
-            });
-        } catch (confirmErr) {
-            console.error('[CF2 firmware] confirm failed', confirmErr);
-            this._resetQuadcopterRowAfterFirmwareDeclined(info);
-        }
+        if (this._debugMounted === true) this.setState({quadcopterFirmwareUpdate: info});
     }
 
     /**
@@ -1402,6 +1618,30 @@ class SearchPanelDeviceComponent extends Component {
             .finally(() => {
                 this._quadcopterFirmwareProbeInFlight = false;
             });
+    }
+
+    /**
+     * Nothing answered in this computer's group: a copter numbered on another computer (or before the group was
+     * changed) may be in another group. Look there once per search and offer to switch.
+     */
+    _maybeFindCopterInOtherGroups() {
+        const qca = this.props.QCA;
+        if (!qca || typeof qca.findCoptersInOtherGroups !== 'function') return;
+        if (typeof qca.lastScanFoundCopters === 'function' && qca.lastScanFoundCopters()) return;
+        const epoch = this.props.searchEpoch;
+        if (this._groupScanEpoch === epoch) return;
+        this._groupScanEpoch = epoch;
+        this.setState({quadcopterGroupScanning: true, quadcopterOtherGroups: null});
+        qca.findCoptersInOtherGroups().then(found => {
+            if (this._debugMounted !== true) return;
+            this.setState({quadcopterGroupScanning: false, quadcopterOtherGroups: found && found.length ? found : null});
+        });
+    }
+
+    _switchQuadcopterGroup(group) {
+        const qca = this.props.QCA;
+        this.setState({quadcopterOtherGroups: null});
+        Promise.resolve(qca.setRadioGroup(group)).then(() => qca.searchQuadcopterDevices());
     }
 
     isFirmwareFlashingSupportedForQuadcopter() {
@@ -1481,16 +1721,7 @@ class SearchPanelDeviceComponent extends Component {
             }
         }
 
-        let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
-        let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
-        let flashing_button = document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
-        let flashing_show_details_icon = document.getElementById(`search-panel-flashing-show-details-${this.props.Id}`);
-        let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
         let search_device_button = document.getElementById(`robbo_search_devices`);
-
-        if (!status_field || !device_status_icon) return;
-        if (!this.props.isQuadcopter && !info_field) return;
-
         const unlockMenuBarSearch = () => {
             if (search_device_button) {
                 search_device_button.style.pointerEvents = 'none';
@@ -1498,320 +1729,48 @@ class SearchPanelDeviceComponent extends Component {
                 search_device_button.removeAttribute('disabled');
             }
         };
-        const hasFirmwareUi = Boolean(
-            flashing_button && flashing_show_details_icon && info_field && !this.props.isQuadcopter
-        );
-
-        let device_name = "";
-
-        // Используем deviceId, полученный напрямую от устройства
-        switch (deviceId) {
-
-            case -1:
-
-                device_name = this.props.intl.formatMessage(messages.device_unknown);
-
-                break;
-
-            case 0:
-
-                device_name = this.props.intl.formatMessage(messages.device_robot);
-
-                break;
-
-            case 1:
-
-                device_name = this.props.intl.formatMessage(messages.device_lab);
-
-                break;
-
-            case 2:
-
-                device_name = this.props.intl.formatMessage(messages.device_lab);
-
-                break;
-
-            case 3:
-
-                device_name = this.props.intl.formatMessage(messages.device_robot);
-
-                break;
-
-            case 4:
-
-                device_name = this.props.intl.formatMessage(messages.device_lab);
-
-                break;
-
-            case 5:
-
-                device_name = this.props.intl.formatMessage(messages.device_otto);
-
-                break;
-
-            case 6:
-
-                device_name = this.props.intl.formatMessage(messages.device_arduino);
-
-                break;
-
-
-            default:
-
-        }
 
         if ([0, 2, 6, 8].indexOf(state) !== -1) {
             this._logFlashFlow('onStatusChange', 'state_received', { state, hasError: !!error });
         }
 
-        if (state == 0) {
+        // The row draws itself from deviceState / deviceError / firmwareDiffers / flashUi (render, getRowView);
+        // here only what is not a picture: the flash window, the panel, the menu bar search button.
+        if (state == 0 || state == 2) {
             if (this.flashSessionActive) {
-                this._logFlashFlow('onStatusChange', 'state0_ignored_due_to_active_session', { state }, true);
+                this._logFlashFlow('onStatusChange', `state${state}_ignored_due_to_active_session`, { state });
                 return;
             }
             this.firmware_version_differs = false;
-            this.isFlashing = false;
-            if (info_field) {
-                info_field.innerHTML = '';
-                info_field.style.display = 'none';
-            }
-
-            if (hasFirmwareUi) {
-                setFlashButtonVisualMode(flashing_button, 'default');
-                flashing_button.innerText = this.props.intl.formatMessage(messages.flash_device);
-                flashing_show_details_icon.style.display = 'none';
-                flashing_button.style.display = 'none';
-                this.flashingHideDetails();
-            }
-
-
-        } else if (state == 2) {
-            if (this.flashSessionActive) {
-                this._logFlashFlow('onStatusChange', 'state2_ignored_due_to_active_session', { state }, true);
-                return;
-            }
-            this.firmware_version_differs = false;
-            this.isFlashing = false;
-            if (info_field) {
-                info_field.innerHTML = '';
-                info_field.style.display = 'none';
-            }
-
-            if (hasFirmwareUi) {
-                setFlashButtonVisualMode(flashing_button, 'default');
-                flashing_button.innerText = this.props.intl.formatMessage(messages.flash_device);
-                flashing_show_details_icon.style.display = 'none';
-                flashing_button.style.display = 'none';
-                this.flashingHideDetails();
-            }
-
-
-        } else if (state == 3) {
-
-
+            if (this.state.firmwareDiffers) this.setState({firmwareDiffers: null});
         } else if (state == 6) {
             if (this.flashSessionActive) {
-                this._logFlashFlow('onStatusChange', 'state6_ignored_due_to_active_session', { state }, true);
+                this._logFlashFlow('onStatusChange', 'state6_ignored_due_to_active_session', { state });
                 return;
             }
             unlockMenuBarSearch();
-            const doneHold = flashDoneHolds.get(this.props.draggableWindowId);
-            if (doneHold) {
-                const {statusEl} = getFirmwareFlashLogElements(this.props.flashingStatusComponentId);
-                applyFlashConnected(statusEl, this.props.intl, doneHold.progress);
+            const record = lastFlashByPort.get(this.props.devicePort);
+            if (record && record.done && isFlashShownInRow(record) && !record.connected) {
+                const probe = createFlashProbe();
+                applyFlashConnected(probe.el, this.props.intl, {deviceId: record.deviceId});
+                record.status = probe.el.textContent;
+                record.connected = true;
+                this.forceUpdate();
             }
-            let result = this.firmware_version_differs_cb_result;
-            if (!this.firmware_version_differs && info_field) {
-                info_field.innerHTML = '';
-            }
-
-            if (hasFirmwareUi && this.firmware_version_differs &&
-                this.props.devicePort.indexOf('rfcomm') === -1 &&
-                !this.props.isMacBluetooth && !this.props.isBluetooth && !this.isRasberry) {
-                // The button says "Update firmware": the question needs no "Flash the device?".
-                const firm_differs_msg = this.props.intl.formatMessage(messages.differ_firm_msg) +
-                    this.props.intl.formatMessage(messages.cr_firm_msg, {
-                        current_firmware: result.current_device_firmware,
-                        required_firmware: result.need_firmware
-                    });
-
-                flashing_show_details_icon.style.display = 'inline-block';
-                flashing_button.style.display = 'inline-block';
-                this._askFirmwareQuestion(firm_differs_msg).then(need_flash_device => {
-                    if (!need_flash_device) return;
-                    if (deviceId === 5) {
-                        this.flashDevice('auto');
-                    } else {
-                        this.flashDevice();
-                    }
-                });
-            } else if (!this.firmware_version_differs) { //We don't need to close panel if firmware versions differ.
-
-                this._tryHideSearchPanelWhenAllDevicesReady();
-
-            }
-
-
         } else if (state == 9) { //Reconnecting (state - RECONNECTING)
-
             unlockMenuBarSearch();
-
-            let info_field_local = document.getElementById(`search-panel-device-info-${this.props.Id}`);
             showSearchPanel();
-
-            if (hasFirmwareUi) {
-                flashing_show_details_icon.style.display = 'none';
-                flashing_button.style.display = 'none';
-            }
-
-            if (info_field_local) {
-                info_field_local.style.display = "none";
-                info_field_local.innerHTML = "";
-            }
-
         } else if (state == 8) { //Port doesn't respond (state - TIMEOUT)
             if (this.flashSessionActive) {
-                this._logFlashFlow('onStatusChange', 'state8_ignored_due_to_active_session', { state }, true);
+                this._logFlashFlow('onStatusChange', 'state8_ignored_due_to_active_session', { state });
                 return;
             }
-
             unlockMenuBarSearch();
-
-            let info_field_local = document.getElementById(`search-panel-device-info-${this.props.Id}`);
-
-            if (info_field_local) info_field_local.style.display = "inline-block";
-
-            if (error && error.code == 1 && (!this.isFlashing)) { //Device was good but connection lost.
-
-                showSearchPanel();
-
-                if (info_field) {
-                    info_field.innerHTML = '';
-                    info_field.style.display = 'none';
-                }
-                if (hasFirmwareUi) {
-                    flashing_show_details_icon.style.display = 'none';
-                    flashing_button.style.display = 'none';
-                }
-
-            } else if (error && error.code == -1) { //We cann't get any usefull info from the device
-
-
-
-
-                let DEVICE_HANDLE_TIMEOUT = this.DCA.getTimeoutVars().DEVICE_HANDLE_TIMEOUT;
-
-                //  info_field.innerHTML = this.props.intl.formatMessage(messages.device_no_response_details) + " " + DEVICE_HANDLE_TIMEOUT
-                //         + " " + this.props.intl.formatMessage(messages.milliseconds);
-
-                if (info_field) {
-                    if (this.props.isBluetooth) {
-                        info_field.innerHTML = this.props.intl.formatMessage(messages.device_cannot_open_old_bluetooth_com);
-                    } else {
-                        info_field.innerHTML = this.props.intl.formatMessage(messages.device_no_response_details);
-                    }
-                }
-
-                if (hasFirmwareUi &&
-                    this.props.devicePort.indexOf('rfcomm') === -1 &&
-                    !this.props.isMacBluetooth && !this.props.isBluetooth && !this.isRasberry) {
-                    const need_to_flash_msg = this.props.intl.formatMessage(
-                        messages.device_no_response_alert_details,
-                        {device_port: this.props.devicePort}
-                    );
-
-                    flashing_show_details_icon.style.display = 'inline-block';
-                    flashing_button.style.display = 'inline-block';
-                    if (askedUnknownDevicePorts.has(this.props.devicePort)) return;
-                    askedUnknownDevicePorts.add(this.props.devicePort);
-                    this._askFirmwareQuestion(need_to_flash_msg).then(need_flash_device => {
-                        if (!need_flash_device) return;
-                        if (deviceId === 5) {
-                            this.flashDevice('auto');
-                        } else {
-                            this.flashDevice();
-                        }
-                    });
-                }
-
-            }
-
-
-
-        } else if (state == 7) {
-
-            unlockMenuBarSearch();
-
-            let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
-
-            if (info_field) info_field.style.display = "inline-block";
-
-            //  if (this.props.devicePort.indexOf("rfcom") != -1){
-
-            //         flashing_show_details_icon.style.display = "none";
-            //         flashing_button.style.display = "none";
-
-
-
-            //     }
-
-
-
-            if (hasFirmwareUi) {
-                flashing_show_details_icon.style.display = 'none';
-                flashing_button.style.display = 'none';
-            }
-
-            if (error && info_field && (this.props.devicePort.indexOf("rfcom") != -1) && (error.msg && error.msg.indexOf("cannot open /dev/rfcom") != -1)) {
-
-                info_field.innerHTML = error.msg + "<br/>" + this.props.intl.formatMessage(messages.bluetooth_linux_hint);
-
-            } else if (error && (this.props.isBluetooth) && (this.props.devicePort.indexOf("bluetooth_") !== -1)) {
-
-                // Используем интернационализированное сообщение на основе кода ошибки
-                let errorMessage = error.msg || '';
-                if (error.errorCode) {
-                    const errorCode = error.errorCode;
-                    let messageKey = null;
-
-                    switch (errorCode) {
-                        case '274C':
-                            messageKey = messages.bluetooth_error_274C;
-                            break;
-                        case '274D':
-                            messageKey = messages.bluetooth_error_274D;
-                            break;
-                        case '2711':
-                            messageKey = messages.bluetooth_error_2711;
-                            break;
-                        case '2740':
-                            messageKey = messages.bluetooth_error_2740;
-                            break;
-                        case 'CONNECTION_ERROR':
-                            messageKey = messages.bluetooth_error_connection;
-                            break;
-                        case 'ALREADY_CONNECTED':
-                            messageKey = messages.bluetooth_error_already_connected;
-                            break;
-                    }
-
-                    if (messageKey) {
-                        errorMessage = this.props.intl.formatMessage(messageKey);
-                    }
-                }
-
-                info_field.innerHTML = errorMessage;
-
-            }
-
-            else if (error) {
-
-                info_field.innerHTML = error.msg + "<br/>" + this.props.intl.formatMessage(messages.device_try_to_reconnect);
-
-            }
-
+            // connection lost (code 1) or no answer at all (code -1): the row explains and offers «Flash»
             showSearchPanel();
-
+        } else if (state == 7) {
+            unlockMenuBarSearch();
+            showSearchPanel();
         }
     }
 
@@ -1820,8 +1779,6 @@ class SearchPanelDeviceComponent extends Component {
         if (showPanel) {
             showSearchPanel();
         }
-
-
 
 
         this.DCA.searchAllDevices();
@@ -1840,114 +1797,36 @@ class SearchPanelDeviceComponent extends Component {
     }
 
 
-    flashingShowDetails() {
-        const windowState = this.props.draggable_window && this.props.draggable_window[this.props.draggableWindowId];
-        if (windowState && windowState.isShowing !== true) {
-            this._logFlashFlow('flashWindow', 'show', { reason: 'manual_open' });
-            this.props.onShowFlashingStatusWindow(this.props.draggableWindowId);
-        }
+    _firmwareActionsAllowed() {
+        return !this.props.disableFirmwareUi && !this.props.isQuadcopter && !this.props.isBluetooth &&
+            !this.props.isMacBluetooth && !this.isRasberry && this.props.devicePort.indexOf('rfcomm') === -1;
     }
 
-    flashingHideDetails() {
-        // «Done» is still on screen: the timer closes the window (reconnect events would close it at once).
-        if (flashDoneHolds.has(this.props.draggableWindowId)) return;
-        const windowState = this.props.draggable_window && this.props.draggable_window[this.props.draggableWindowId];
-        if (windowState && windowState.isShowing === true) {
-            this._logFlashFlow('flashWindow', 'hide', { reason: 'ui_state_change' });
-            this.props.onHideFlashingStatusWindow(this.props.draggableWindowId);
-        }
+    toggleDetails() {
+        this.setState(prev => ({detailsOpen: !prev.detailsOpen}));
     }
 
-    onFlashingStatusChanged(status) {
-        if (this.props.isQuadcopter) {
-            this.onQuadcopterFlashingStatusChanged(status);
-            return;
-        }
-
-        var cId = this.props.flashingStatusComponentId;
-
-        const {statusEl: flashingStatusComponent, logEl: flashingLogComponent} = getFirmwareFlashLogElements(cId);
-
-        var block_ids_component = null;
-
-        //flashingStatusComponent.innerHTML = "";
-        //flashingLogComponent.innerHTML = "";
-
-
-
-
-
-        var styles = {
-
-            margin: '10px'
-
-        }
-
-        // Raw flasher lines go to the details log (not the repeated "Uploading.."),
-        // the status line shows the phase in plain words with a progress bar.
-        if (flashingLogComponent && status.indexOf("Uploading") === -1) {
-            createDiv(flashingLogComponent, null, null, null, null, styles, status, null);
-        }
-        if (!this.flashProgress) this.flashProgress = createFlashProgress();
-        applyFlashStatus(flashingStatusComponent, status, this.props.intl, this.flashProgress);
-
-        if (flashingLogComponent) flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
-
-        var search_device_button = document.getElementById(`robbo_search_devices`);
-        var flashing_button = document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
-
-        if (isFlashDone(status)) {
-
-            setFlashLogStatusTone(flashingStatusComponent, 'success');
-
-            if (search_device_button) search_device_button.removeAttribute("disabled");
-
-            if (flashing_button) {
-                setFlashButtonVisualMode(flashing_button, 'default');
-                flashing_button.removeAttribute("disabled");
-                flashing_button.style.display = "inline-block";
-            }
-
-            // Обновляем список устройств, но окно поиска должно оставаться скрытым
-            // (как на Desktop после успешной прошивки).
-            try {
-                hideSearchPanel();
-            } catch (_) { }
-            this.searchDevices(false); //search devices (hidden)
-
-        } else if ((status.indexOf("Error") !== -1)) {
-
-            setFlashLogStatusTone(flashingStatusComponent, 'error');
-            if (search_device_button) search_device_button.removeAttribute("disabled");
-
-            if (flashing_button) {
-                setFlashButtonVisualMode(flashing_button, 'error');
-                flashing_button.innerText = this.props.intl.formatMessage(messages.error);
-                flashing_button.removeAttribute("disabled");
-            }
-
-            let device_status_icon = document.getElementById(`search-panel-device-status-icon-${this.props.Id}`);
-            if (device_status_icon) device_status_icon.innerHTML = `<img src = "./static/robbo_assets/red.png" />`;
-
-            showSearchPanel();
-
-        } else {
-
-            setFlashLogStatusTone(flashingStatusComponent, 'pending');
-
-        }
-
-
-
+    retryFlash() {
+        const [mode, opts] = this._lastFlashArgs || [this.deviceId === 5 ? 'auto' : undefined, {}];
+        this.flashDevice(mode, opts);
     }
 
-    _buildFlashConfig(ottoFlashMode) {
+    // «Flashing log»: the last flash of this port, in the row
+    toggleFlashLog() {
+        this.setState(prev => ({logOpen: !prev.logOpen, flashLogExpanded: !prev.logOpen}));
+    }
+
+
+    _buildFlashConfig(ottoFlashMode, identify) {
         const config = { device: {} };
-        config.device.device_id = this.deviceId;
+        config.device.device_id = identify ? -1 : this.deviceId;
         const firmwareSettings = getFirmwareSettingsFromRuntime(this.props.VM && this.props.VM.runtime ? this.props.VM.runtime : null);
         config.device.detect_timeout_ms = firmwareSettings.detect_timeout_ms;
         config.device.block_transmit_delay = firmwareSettings.block_transmit_delay;
-        if (this.deviceId === 5) {
+        // Unknown device the search gave up on (TIMEOUT): the flasher skips asking it once more (~3 s)
+        // «Detect the device and flash» skips it too: the probe would read the current (wrong) firmware again
+        config.device.skip_probe = identify === true || (this.deviceId === -1 && this.state.deviceState === 8);
+        if (!identify && this.deviceId === 5) {
             const useNullLab = ottoFlashMode === 'null_lab' || ottoFlashMode === 'auto';
             config.device.use_null_lab = useNullLab;
             if (useNullLab) {
@@ -1957,262 +1836,178 @@ class SearchPanelDeviceComponent extends Component {
         return config;
     }
 
-    _clearFlashDoneHideTimer() {
-        const hold = flashDoneHolds.get(this.props.draggableWindowId);
-        if (hold) {
-            clearTimeout(hold.timer);
-            flashDoneHolds.delete(this.props.draggableWindowId);
-        }
+    // Sensor polling stops only in the API that drives the flashed port: the other robots and labs keep
+    // working while this device is flashed (each API polls its first connected device).
+    _stopDataReceivingForFlashedPort() {
+        const port = this.props.devicePort;
+        [
+            [this.RCA, 'ConnectedRobots'],
+            [this.LCA, 'ConnectedLaboratories'],
+            [this.OCA, 'ConnectedOttos'],
+            [this.ACA, 'ConnectedArduinos']
+        ].forEach(([api, listName]) => {
+            const device = api && api[listName] && api[listName][0];
+            const devicePort = device && typeof device.getPortName === 'function' ? device.getPortName() : null;
+            if (devicePort === port) api.stopDataRecievingProcess();
+        });
     }
 
-    flashDevice(ottoFlashMode) {
+    /**
+     * @param {string} [ottoFlashMode] Otto: 'auto' | 'null_lab' | 'arduino'
+     * @param {object} [opts]
+     * @param {boolean} [opts.identify] ignore the current firmware: the flasher recognizes the device by a test
+     *     firmware (its serial number) and writes the right firmware
+     */
+    flashDevice(ottoFlashMode, opts = {}) {
         if (this.props.isQuadcopter) {
-            this.flashQuadcopterFirmware(ottoFlashMode);
+            this.flashQuadcopterFirmware();
             return;
         }
         if (this.props.disableFirmwareUi) {
-            let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
-            let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
-            if (status_field) {
-                status_field.innerHTML = this.props.intl.formatMessage(messages.device_connected);
-            }
-            if (info_field) {
-                info_field.style.display = "block";
-                info_field.innerHTML = this.props.intl.formatMessage(messages.firmware_not_available_mobile);
-            }
+            this.setState({flashUi: {failed: true, text: this.props.intl.formatMessage(messages.firmware_not_available_mobile)}});
             return;
         }
 
         const flashMode = ottoFlashMode || 'default';
         if (this.flashSessionActive) {
-            this._logFlashFlow('flashDevice', 'ignored_parallel_start', { mode: flashMode }, true);
+            this._logFlashFlow('flashDevice', 'ignored_parallel_start', { mode: flashMode });
             return;
         }
 
-        const initialStage = (this.deviceId === 5 && flashMode === 'auto') ? 'null_lab' : 'single';
+        // «Retry» in the row repeats exactly this flash
+        this._lastFlashArgs = [ottoFlashMode, opts];
+        const targetDeviceId = opts.identify ? -1 : this.deviceId;
+        const initialStage = (targetDeviceId === 5 && flashMode === 'auto') ? 'null_lab' : 'single';
         const currentSessionId = this._startFlashSession(initialStage, flashMode);
-        this._clearFlashDoneHideTimer();
 
-        if (this.props.onShowFlashingStatusWindow) {
-            this._logFlashFlow('flashWindow', 'show', { reason: 'flash_start' });
-            this.props.onShowFlashingStatusWindow(this.props.draggableWindowId);
-        }
-
+        // The menu bar search button stays enabled: while flashing it opens this panel (FIRMWARE_FLASHING event).
         var search_device_button = document.getElementById(`robbo_search_devices`);
-        if (search_device_button) search_device_button.setAttribute("disabled", "disabled");
 
-        var flashing_button = document.getElementById(`search-panel-device-flash-button-${this.props.Id}`);
-        if (flashing_button) {
-            flashing_button.setAttribute("disabled", "disabled");
-            setFlashButtonVisualMode(flashing_button, 'busy');
-            flashing_button.innerText = this.props.intl.formatMessage(messages.flashing_device);
-        }
-
-        let status_field = document.getElementById(`search-panel-device-status-${this.props.Id}`);
-        let info_field = document.getElementById(`search-panel-device-info-${this.props.Id}`);
-        if (status_field) status_field.innerHTML = this.props.intl.formatMessage(messages.flashing_in_progress);
-        if (info_field) info_field.innerHTML = "";
-
-        // Иконку не трогаем через innerHTML — она управляется React по deviceState (state 10 приходит из disco() в VM)
-        var cId = this.props.flashingStatusComponentId;
-        // The hidden flash window is unmounted (RobboPopupTransition); after a click it mounts only once this handler
-        // returns. So the window elements are looked up for every status line, and the details log is kept here
-        // and replayed into a freshly mounted window.
-        const flashLogLines = [];
-        const flashWindowElements = () => {
-            const els = getFirmwareFlashLogElements(cId);
-            if (els.logEl && els.logEl.dataset.flashSession !== String(currentSessionId)) {
-                els.logEl.innerHTML = '';
-                els.logEl.dataset.flashSession = String(currentSessionId);
-                flashLogLines.forEach(line => createDiv(els.logEl, null, null, null, null, {margin: '10px'}, line, null));
-            }
-            if (els.statusEl && els.statusEl.dataset.flashSession !== String(currentSessionId)) {
-                els.statusEl.innerHTML = '';
-                els.statusEl.dataset.flashSession = String(currentSessionId);
-                resetFlashWindow(els.statusEl);
-            }
-            return els;
+        // The flash is drawn in the row from this record (steps, status, progress, log); applyFlashStatus()
+        // computes the phase texts on a detached element.
+        const flashProbe = createFlashProbe();
+        const flashRecord = {
+            active: true,
+            done: false,
+            failed: false,
+            connected: false,
+            lines: [],
+            status: '',
+            step: null,
+            phase: null,
+            percent: null,
+            deviceId: targetDeviceId >= 0 ? targetDeviceId : null,
+            holdUntil: 0
         };
-        flashWindowElements();
+        lastFlashByPort.set(this.props.devicePort, flashRecord);
+        const flashLogLines = flashRecord.lines;
+        notifyFlashingChanged();
+        this.setState({flashUi: {active: true, percent: null, text: ''}, detailsOpen: false, logOpen: false});
 
-        var config = this._buildFlashConfig(flashMode);
+        var config = this._buildFlashConfig(flashMode, opts.identify);
         config.device.flash_session_id = currentSessionId;
-        this._flashConfigRef = config;
-        this.dots_counter = 1;
 
         this._logFlashFlow('flashDevice', 'start_flash', {
             sessionId: currentSessionId,
             mode: flashMode,
             useNullLab: !!(config && config.device && config.device.use_null_lab)
-        }, true);
+        });
 
-        var styles = { margin: '10px' };
+        this._stopDataReceivingForFlashedPort();
 
-        this.RCA.stopDataRecievingProcess();
-        this.LCA.stopDataRecievingProcess();
-        this.OCA.stopDataRecievingProcess();
-        this.ACA.stopDataRecievingProcess();
-
-        const suppressVerifyConfirmInAutoFlow = (this.deviceId === 5 && flashMode === 'auto');
+        const suppressVerifyConfirmInAutoFlow = (targetDeviceId === 5 && flashMode === 'auto');
         const flashProgress = createFlashProgress();
         // A known device is named in the phases right away; an unknown one once the flasher recognizes it.
-        if (this.deviceId >= 0) flashProgress.deviceId = this.deviceId;
-        const initialLog = flashWindowElements().logEl;
-        const initialDetails = initialLog && initialLog.closest('details');
-        if (initialDetails) initialDetails.open = false;
+        if (targetDeviceId >= 0) flashProgress.deviceId = targetDeviceId;
         var statusCallback = (status) => {
             if (!this.flashSessionActive || this._activeFlashSessionId !== currentSessionId) {
-                this._logFlashFlow('statusCallback', 'ignored_stale_session', { status, callbackSessionId: currentSessionId }, true);
+                this._logFlashFlow('statusCallback', 'ignored_stale_session', { status, callbackSessionId: currentSessionId });
                 return;
             }
             this._logFlashFlow('statusCallback', 'status', { status });
-            const {statusEl: flashingStatusComponent, logEl: flashingLogComponent} = flashWindowElements();
-            const flashLogDetails = flashingLogComponent && flashingLogComponent.closest('details');
 
             // Raw lines to the details log, the phase in plain words to the status line.
             if (status.indexOf("Uploading") === -1 && !/Block \d+\/\d+/.test(status)) {
                 flashLogLines.push(status);
-                if (flashingLogComponent) createDiv(flashingLogComponent, null, null, null, null, styles, status, null);
             }
-            applyFlashStatus(flashingStatusComponent, status, this.props.intl, flashProgress);
-
-            if (flashingLogComponent) flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
+            const phase = applyFlashStatus(flashProbe.el, status, this.props.intl, flashProgress);
+            flashRecord.status = flashProbe.el.textContent;
+            flashRecord.step = flashProbe.root.getAttribute('data-flash-step');
+            flashRecord.phase = phase;
+            flashRecord.deviceId = flashProgress.deviceId;
+            // percent of the written blocks while writing
+            flashRecord.percent = phase === 'write' && flashProgress.blockTotal ?
+                Math.round(flashProgress.block / flashProgress.blockTotal * 100) : null;
+            if (phase !== 'done' && phase !== 'error') {
+                this.setState({flashUi: {
+                    active: true,
+                    percent: flashRecord.percent,
+                    text: flashRecord.status,
+                    deviceId: flashRecord.deviceId
+                }});
+            }
 
             if (isFlashDone(status)) {
-                setFlashLogStatusTone(flashingStatusComponent, 'success');
                 if (search_device_button) search_device_button.removeAttribute("disabled");
-                if (flashing_button) {
-                    setFlashButtonVisualMode(flashing_button, 'default');
-                    flashing_button.removeAttribute("disabled");
-                    flashing_button.style.display = "inline-block";
-                }
+                this.firmware_version_differs = false;
+                // «Done» stays in the row for a while, then the panel may close as usual
+                flashRecord.active = false;
+                flashRecord.done = true;
+                flashRecord.holdUntil = Date.now() + FLASH_DONE_HOLD_MS;
+                setTimeout(() => document.dispatchEvent(new CustomEvent(FLASH_HOLD_END_EVENT)), FLASH_DONE_HOLD_MS + 50);
+                notifyFlashingChanged();
+                this.setState({flashUi: null, firmwareDiffers: null});
                 this._finishFlashSession('success');
-                // Web-отладка: после успешной прошивки в некоторых сценариях
-                // событие state==0/2 в onStatusChange приходит позже, поэтому
-                // окно прошивки/поля статуса не сбрасываются автоматически.
-                // Явно скрываем окно и очищаем DOM-поля, чтобы поведение стало
-                // как на Desktop. Окно закрывается не сразу: ребёнок должен увидеть «Готово».
-                this._clearFlashDoneHideTimer();
-                const windowId = this.props.draggableWindowId;
-                const onHideWindow = this.props.onHideFlashingStatusWindow;
-                flashDoneHolds.set(windowId, {
-                    progress: flashProgress,
-                    timer: setTimeout(() => {
-                        flashDoneHolds.delete(windowId);
-                        if (this.flashSessionActive) return;
-                        // The action toggles the window, and this row may be gone with stale props: hide only
-                        // a window that is still on screen (the child may have closed it already).
-                        const flashWindow = document.getElementById(`draggable_window_id-${windowId}`);
-                        const shown = flashWindow && flashWindow.getAttribute('aria-hidden') !== 'true';
-                        if (shown && onHideWindow) onHideWindow(windowId);
-                    }, FLASH_DONE_HIDE_DELAY_MS)
-                });
-                if (status_field) {
-                    status_field.innerHTML = this.props.intl.formatMessage(messages.device_connected);
-                }
-                if (info_field) {
-                    info_field.innerHTML = "";
-                    info_field.style.display = "none";
-                }
-                // Обновляем список устройств, но окно поиска должно оставаться скрытым
-                // (как на Desktop после успешной прошивки).
-                try {
-                    hideSearchPanel();
-                } catch (_) { }
+                // Reconnect all devices; the panel stays open while the row shows «Done».
                 this.searchDevices(false);
             } else if ((status.indexOf("Error") !== -1)) {
-                setFlashLogStatusTone(flashingStatusComponent, 'error');
-                // The status line says «open the details»: open them.
-                if (flashLogDetails) flashLogDetails.open = true;
                 if (search_device_button) search_device_button.removeAttribute("disabled");
+                flashRecord.active = false;
+                flashRecord.failed = true;
+                notifyFlashingChanged();
+                this.setState({flashLogExpanded: true});
 
-                if (flashing_button) {
-                    setFlashButtonVisualMode(flashing_button, 'error');
-                    flashing_button.innerText = this.props.intl.formatMessage(messages.error);
-                    flashing_button.removeAttribute("disabled");
-                }
-
-                this.setState({ deviceState: 8 });
-
+                // The row says what happened and offers «Retry» (it repeats this flash): no question window.
+                this.setState({flashUi: {failed: true, text: flashRecord.status}});
                 showSearchPanel();
-
-                var isVerifyFailure = (status.indexOf("Firmware was not updated") !== -1) || (status.indexOf("verification timeout") !== -1);
-                if (isVerifyFailure) {
-                    if (!suppressVerifyConfirmInAutoFlow) {
-                        // The session ends after the answer: retrying keeps it alive.
-                        this._askFirmwareQuestion(
-                            this.props.intl.formatMessage(messages.firmware_verify_failed_try_again),
-                            {confirmLabel: this.props.intl.formatMessage(messages.confirm_try_again)}
-                        ).then(tryAgain => {
-                            this._logFlashFlow('statusCallback', 'verify_failure_confirm', { tryAgain }, true);
-                            if (!tryAgain) {
-                                this._finishFlashSession('error');
-                                return;
-                            }
-                            this.RCA.stopDataRecievingProcess();
-                            this.LCA.stopDataRecievingProcess();
-                            this.OCA.stopDataRecievingProcess();
-                            this.ACA.stopDataRecievingProcess();
-                            var retryConfig = this._flashConfigRef || config;
-                            if (retryConfig && retryConfig.device && retryConfig.device.flash_session_id == null) {
-                                retryConfig.device.flash_session_id = currentSessionId;
-                            }
-                            this.flashStage = 'manual_retry';
-                            this._logFlashFlow('statusCallback', 'manual_retry_start', {
-                                useNullLab: !!(retryConfig && retryConfig.device && retryConfig.device.use_null_lab)
-                            }, true);
-                            this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, retryConfig, statusCallback);
-                        });
-                        return;
-                    } else {
-                        this._logFlashFlow('statusCallback', 'verify_failure_auto_no_confirm', {
-                            stage: this.flashStage
-                        }, true);
-                    }
-                }
+                this._logFlashFlow('statusCallback', 'flash_error', {
+                    stage: this.flashStage,
+                    autoRetry: suppressVerifyConfirmInAutoFlow
+                });
 
                 this._finishFlashSession('error');
             } else {
-                setFlashLogStatusTone(flashingStatusComponent, 'pending');
                 if (status.indexOf("Upload complete. Verifying") !== -1) {
                     this.flashStage = 'verify';
-                    this._logFlashFlow('statusCallback', 'verify_started_search_suppressed', {}, true);
+                    this._logFlashFlow('statusCallback', 'verify_started_search_suppressed', {});
                 }
             }
         };
 
         var onVerifyFailure = null;
-        if (this.deviceId === 5 && flashMode === 'auto') {
+        if (targetDeviceId === 5 && flashMode === 'auto') {
             onVerifyFailure = (verifyContext = {}) => {
                 if (!this.flashSessionActive || this._activeFlashSessionId !== currentSessionId) {
-                    this._logFlashFlow('onVerifyFailure', 'ignored_stale_session', { callbackSessionId: currentSessionId }, true);
+                    this._logFlashFlow('onVerifyFailure', 'ignored_stale_session', { callbackSessionId: currentSessionId });
                     return;
                 }
-                this._logFlashFlow('onVerifyFailure', 'triggered', verifyContext, true);
-                const flashingLogComponent = flashWindowElements().logEl;
+                this._logFlashFlow('onVerifyFailure', 'triggered', verifyContext);
                 flashLogLines.push(this.props.intl.formatMessage(messages.otto_flash_retry_arduino_log));
-                if (flashingLogComponent) {
-                    createDiv(flashingLogComponent, null, null, null, null, styles, this.props.intl.formatMessage(messages.otto_flash_retry_arduino_log), null);
-                    flashingLogComponent.scrollTop = flashingLogComponent.scrollHeight;
-                }
-                this.RCA.stopDataRecievingProcess();
-                this.LCA.stopDataRecievingProcess();
-                this.OCA.stopDataRecievingProcess();
-                this.ACA.stopDataRecievingProcess();
+                this.forceUpdate();
+                this._stopDataReceivingForFlashedPort();
                 var arduinoConfig = this._buildFlashConfig('arduino');
                 arduinoConfig.device.flash_session_id = currentSessionId;
-                this._flashConfigRef = arduinoConfig;
                 this.flashStage = 'retry_wait';
                 setTimeout(() => {
                     if (!this.flashSessionActive || this._activeFlashSessionId !== currentSessionId) {
-                        this._logFlashFlow('onVerifyFailure', 'retry_delay_skipped_stale_session', { callbackSessionId: currentSessionId }, true);
+                        this._logFlashFlow('onVerifyFailure', 'retry_delay_skipped_stale_session', { callbackSessionId: currentSessionId });
                         return;
                     }
                     this.flashStage = 'arduino_retry';
                     this._logFlashFlow('onVerifyFailure', 'start_arduino_retry', {
                         useNullLab: !!(arduinoConfig && arduinoConfig.device && arduinoConfig.device.use_null_lab),
                         delayMs: AUTO_RETRY_START_DELAY_MS
-                    }, true);
+                    });
                     this.DCA.flashFirmwareWithDisconnect(this.props.devicePort, arduinoConfig, statusCallback);
                 }, AUTO_RETRY_START_DELAY_MS);
             };
@@ -2233,264 +2028,328 @@ class SearchPanelDeviceComponent extends Component {
         // }
 
 
-
         // 
 
-        // this.DCA.flashFirmware(this.props.devicePort,config,this.onFlashingStatusChanged.bind(this, dots_counter));
 
     }
+
 
     /**
-     * In-app firmware question (NW.js shows window.confirm() as a bare system window).
-     * @param {string} message question
-     * @param {object} [labels] confirmLabel override
-     * @returns {Promise<boolean>} true to flash
+     * Write the bundled firmware to the quadcopter; steps, progress and the cfloader lines are drawn in the row.
+     * @param {object} [opts]
+     * @param {boolean} [opts.cold] the copter is stuck in its bootloader (an interrupted update): cfloader waits
+     *     for it to be switched off and on
      */
-    _askFirmwareQuestion (message, labels) {
+    flashQuadcopterFirmware(opts = {}) {
         const intl = this.props.intl;
-        return robboConfirm(Object.assign({
-            title: intl.formatMessage(messages.confirm_firmware_title),
-            message,
-            // Same name as the button in the device row: «Flash device» (the quadcopter row says «Update firmware»).
-            confirmLabel: intl.formatMessage(this.props.isQuadcopter ? messages.confirm_update_firmware : messages.flash_device),
-            cancelLabel: intl.formatMessage(messages.confirm_not_now)
-        }, labels));
-    }
-
-    flashQuadcopterFirmware(_mode) {
-        if (!this.props.QCA || typeof this.props.QCA.flashBundledFirmware !== 'function') {
-            this.setState({ quadcopterFlashStatus: this.props.intl.formatMessage(messages.quadcopter_firmware_flash_failed) });
+        const qca = this.props.QCA;
+        const supported = qca && typeof qca.flashBundledFirmware === 'function' &&
+            (typeof qca.isFirmwareFlashingSupported !== 'function' || qca.isFirmwareFlashingSupported());
+        if (!supported) {
+            this.setState({quadcopterFlashStatus: intl.formatMessage(messages.quadcopter_firmware_flash_failed)});
             return;
         }
-        if (typeof this.props.QCA.isFirmwareFlashingSupported === 'function' && !this.props.QCA.isFirmwareFlashingSupported()) {
-            this.setState({ quadcopterFlashStatus: this.props.intl.formatMessage(messages.quadcopter_firmware_flash_failed) });
-            return;
-        }
-
-        if (_mode !== 'quadcopter_auto') {
-            const warning = this.props.intl.formatMessage(messages.quadcopter_firmware_update_warning);
-            this._askFirmwareQuestion(warning).then(ok => {
-                if (ok) {
-                    this.flashQuadcopterFirmware('quadcopter_auto');
-                    return;
-                }
-                const probe = typeof this.props.QCA.getLastFirmwareProbe === 'function'
-                    ? this.props.QCA.getLastFirmwareProbe()
-                    : null;
-                if (probe && probe.needsUpdate) {
-                    this._resetQuadcopterRowAfterFirmwareDeclined(probe);
-                } else if (this._debugMounted === true) {
-                    this.setState({ quadcopterRowPhase: 'idle' });
-                }
-            });
-            return;
-        }
-
+        if (qca._firmwareFlashInProgress === true) return;
+        const cold = opts.cold === true;
+        // {active, done, failed, lines, step, headline, percent, status, holdUntil} — see lastFlashByPort
+        const record = {
+            active: true,
+            done: false,
+            failed: false,
+            connected: false,
+            cold,
+            lines: [],
+            status: null,
+            headline: null,
+            step: '1',
+            phase: null,
+            percent: null,
+            deviceId: null,
+            holdUntil: 0
+        };
+        lastFlashByPort.set(this.props.devicePort, record);
+        notifyFlashingChanged();
         this._quadcopterFirmwareUpdateDeclined = false;
         this._quadcopterFirmwareFlashActive = true;
-        if (this._quadcopterFlashHideTimer != null) {
-            clearTimeout(this._quadcopterFlashHideTimer);
-            this._quadcopterFlashHideTimer = null;
-        }
         this.setState({
             quadcopterLastError: null,
             quadcopterFlashStatus: null,
-            quadcopterRowPhase: 'flashing'
+            quadcopterFirmwareUpdate: null,
+            quadcopterOtherGroups: null,
+            quadcopterRowPhase: 'flashing',
+            logOpen: false,
+            flashLogExpanded: false
         });
-        this._openQuadcopterFlashingWindow();
-
-        setTimeout(() => {
-            if (this._debugMounted !== true) {
-                return;
-            }
-            this._resetQuadcopterFlashWindow();
-        }, 0);
-
-        this.props.QCA.flashBundledFirmware({
-            closeBlockedMessage: this.props.intl.formatMessage(messages.quadcopter_flash_close_blocked),
+        const options = {
+            closeBlockedMessage: intl.formatMessage(messages.quadcopter_flash_close_blocked),
             onLine: (line, meta) => {
-                if (line && typeof line === 'string') {
-                    this.onQuadcopterFlashingStatusChanged(line, meta || {});
-                }
+                if (applyCf2FlashLine(record, line, meta || {}) && this._debugMounted === true) this.forceUpdate();
             }
-        }).then((ok) => {
+        };
+        const run = cold ? qca.recoverInterruptedFirmware(options) : qca.flashBundledFirmware(options);
+        Promise.resolve(run).then(ok => ok === true, () => false).then(ok => {
+            record.active = false;
+            this._quadcopterFirmwareFlashActive = false;
+            this._quadcopterFirmwarePrompted = false;
+            notifyFlashingChanged();
             if (ok) {
-                const probe = typeof this.props.QCA.getLastFirmwareProbe === 'function'
-                    ? this.props.QCA.getLastFirmwareProbe()
-                    : null;
+                const probe = typeof qca.getLastFirmwareProbe === 'function' ? qca.getLastFirmwareProbe() : null;
                 const currentUi = probe ? this._getQuadcopterCurrentVersionForUi(probe) : null;
-                if (probe && currentUi && probe.required) {
-                    const doneMsg = this.props.intl.formatMessage(messages.quadcopter_firmware_versions_line, {
+                record.done = true;
+                if (currentUi && probe.required && currentUi !== probe.required) {
+                    record.status = intl.formatMessage(messages.quadcopter_firmware_versions_line, {
                         current: currentUi,
                         required: probe.required
                     });
-                    if (this._debugMounted === true) {
-                        this.setState({ quadcopterFlashStatus: doneMsg, quadcopterRowPhase: 'flashDone' });
-                    }
-                    this._quadcopterFlashFinishUi(doneMsg, true);
                 } else {
-                    const doneMsg = this.props.intl.formatMessage(messages.quadcopter_firmware_flash_done);
-                    if (this._debugMounted === true) {
-                        this.setState({ quadcopterFlashStatus: doneMsg, quadcopterRowPhase: 'flashDone' });
-                    }
-                    this._quadcopterFlashFinishUi(doneMsg, true);
+                    record.status = currentUi ?
+                        intl.formatMessage(messages.quadcopter_firmware_flash_done_version, {version: currentUi}) :
+                        intl.formatMessage(messages.quadcopter_firmware_flash_done);
                 }
+                record.holdUntil = Date.now() + FLASH_DONE_HOLD_MS;
+                setTimeout(() => document.dispatchEvent(new CustomEvent(FLASH_HOLD_END_EVENT)), FLASH_DONE_HOLD_MS + 50);
                 this._quadcopterFirmwareVersionChecked = true;
-                this._quadcopterFirmwarePrompted = false;
                 if (this._debugMounted === true) {
-                    this.setState({ quadcopterLastError: null });
+                    this.setState({quadcopterLastError: null, quadcopterRowPhase: 'flashDone'});
                 }
-                this._tryHideSearchPanelWhenAllDevicesReady();
-                this._quadcopterFirmwareFlashActive = false;
-            } else {
-                const failMsg = this.props.intl.formatMessage(messages.quadcopter_firmware_flash_failed);
-                if (this._debugMounted === true) {
-                    this.setState({ quadcopterFlashStatus: failMsg, quadcopterRowPhase: 'flashFailed' });
-                }
-                this._quadcopterFirmwarePrompted = false;
-                this._quadcopterFirmwareVersionChecked = false;
-                this._quadcopterFlashFinishUi(failMsg, false);
-                this._quadcopterFirmwareFlashActive = false;
+                return;
             }
-        }).catch(() => {
-            const failMsg = this.props.intl.formatMessage(messages.quadcopter_firmware_flash_failed);
-            if (this._debugMounted === true) {
-                this.setState({ quadcopterFlashStatus: failMsg, quadcopterRowPhase: 'flashFailed' });
-            }
-            this._quadcopterFirmwarePrompted = false;
+            record.failed = true;
+            record.status = intl.formatMessage(messages.quadcopter_firmware_flash_failed);
             this._quadcopterFirmwareVersionChecked = false;
-            this._quadcopterFlashFinishUi(failMsg, false);
-            this._quadcopterFirmwareFlashActive = false;
+            if (this._debugMounted === true) {
+                this.setState({quadcopterRowPhase: 'flashFailed', flashLogExpanded: true});
+            }
         });
     }
 
+    /** Status line of the quadcopter flash block from the last cfloader headline. */
+    _copterFlashStatusText(record) {
+        const intl = this.props.intl;
+        if (!record.active) return record.status;
+        if (record.headline === 'Writing firmware…' && record.percent !== null) {
+            return intl.formatMessage(messages.cf2_flash_writing_pct, {pct: record.percent});
+        }
+        return this._translateCf2FlashHeadline(record.headline) ||
+            intl.formatMessage(messages.quadcopter_firmware_flash_started);
+    }
+
+    /** @returns {?number} palette window of this row's device, null when the device has no palette */
+    _paletteWindowId() {
+        if (this.props.isQuadcopter) return COPTER_PALETTE_WINDOW_ID;
+        const byId = PALETTE_WINDOW_BY_DEVICE_ID[this.state.deviceId];
+        if (byId !== undefined) return byId;
+        // the button stays off until the device answers and connects
+        const byIcon = PALETTE_WINDOW_BY_ROW_ICON[this._rowIcon()];
+        return byIcon === undefined ? null : byIcon;
+    }
+
+    /** The palette button works: the device is connected and not being flashed. */
+    _paletteAvailable() {
+        const record = lastFlashByPort.get(this.props.devicePort);
+        if (record && record.active) return false;
+        if (this.props.isQuadcopter) {
+            const qca = this.props.QCA;
+            return this.state.quadcopterConnected === true ||
+                Boolean(qca && typeof qca.isQuadcopterConnected === 'function' && qca.isQuadcopterConnected());
+        }
+        return this.state.deviceState === 6 && !this.flashSessionActive;
+    }
+
+    /** Open the device palette next to the panel, or bring it to the front when it is already open. */
+    openPalette() {
+        const windowId = this._paletteWindowId();
+        if (windowId === null) return;
+        const win = this.props.draggable_window && this.props.draggable_window[windowId];
+        if (win && win.isShowing) {
+            // the palette raises itself on mousedown (DraggableWindowComponent)
+            const node = document.getElementById(`draggable_window_id-${windowId}`);
+            if (node) node.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+            return;
+        }
+        this.props.onOpenPalette(windowId, paletteSpotNearPanel());
+    }
+
+    /** The quadcopter can be flashed from its row right now (connected, on the ground, nothing else flashing). */
+    _copterReflashAllowed() {
+        const qca = this.props.QCA;
+        if (!qca || this.props.disableFirmwareUi || !this.isFirmwareFlashingSupportedForQuadcopter()) return false;
+        if (qca._firmwareFlashInProgress === true || this._quadcopterFirmwareFlashActive) return false;
+        if (typeof qca.isAnyCopterAirborne === 'function' && qca.isAnyCopterAirborne()) return false;
+        return typeof qca.isQuadcopterConnected === 'function' && qca.isQuadcopterConnected() === true;
+    }
 
     render() {
-        const displayPortName = this.getSearchPanelRowTitle();
-        const showFlashButton = !this.props.disableFirmwareUi;
-        const { iconSrc, statusText } = this.getStatusDisplay();
+        const intl = this.props.intl;
+        const view = this.getRowView();
         const quadcopterHintText = this.props.isQuadcopter &&
             !this._isQuadcopterConnectErrorHintSuppressed() &&
             this._formatQuadcopterLastErrorMessage(this.state.quadcopterLastError);
-        const quadcopterFlashStatus = this.props.isQuadcopter && this._shouldShowQuadcopterFlashStatusHint()
-            ? String(this.state.quadcopterFlashStatus)
-            : '';
-        const quadcopterFlashHintIsError = this.state.quadcopterRowPhase === 'flashFailed';
+        const quadcopterFlashStatus = this.props.isQuadcopter && this._shouldShowQuadcopterFlashStatusHint() ?
+            String(this.state.quadcopterFlashStatus) :
+            '';
+        // a copter found in another group explains «not found» better than the connect error
+        const viewHints = [].concat(view.hint || []);
+        const hints = (this.props.isQuadcopter && !view.action ?
+            [quadcopterHintText, quadcopterFlashStatus, ...viewHints] :
+            viewHints).filter(Boolean);
+        const canExpand = true;
+        const detailsOpen = canExpand && this.state.detailsOpen;
+        const detailsId = `search-panel-device-details-${this.props.Id}`;
+        const flashing = this.flashSessionActive;
+        const firmwareActions = this._firmwareActionsAllowed() && !flashing;
+        const flashBlock = this._renderFlashBlock();
+        const paletteWindowId = this._paletteWindowId();
+        const paletteAvailable = paletteWindowId !== null && this._paletteAvailable();
+        const paletteLabel = intl.formatMessage(paletteAvailable ? messages.open_palette :
+            messages.open_palette_unavailable);
 
-        return (
-
-            <div id={`search-panel-device-component`} className={classNames(
-                styles.firmware_flasher_device_component,
-                this.props.isQuadcopter && styles.quadcopter_device_root
-            )}>
-
-
-                <div className={styles.search_panel_device_primary_row}>
-
-
-                <div id="search-panel-device-port" className={styles.search_panel_device_element}>
-
-                    {displayPortName}
-
-                </div>
-
-                <div id={`search-panel-device-status-icon-${this.props.Id}`} className={styles.search_panel_device_status_icon}>
-                    {iconSrc ? <img src={iconSrc} alt="" /> : null}
-                </div>
-
-                <div id={`search-panel-device-status-${this.props.Id}`} className={styles.search_panel_device_element}>
-                    {statusText}
-                </div>
-
-                {!this.props.isQuadcopter ? (
-                    <div id={`search-panel-device-info-${this.props.Id}`} className={styles.search_panel_device_element}>
-
-
-
-                    </div>
-                ) : null}
-
-                {/* Otto: the button flashes like the question does — 'auto' tries the Null Lab (LGT) board and falls
-                    back to Nano by itself; the plain mode fails on an LGT board. */}
-                {showFlashButton && (
-                    <div id={`search-panel-device-flash-button-element-${this.props.Id}`} className={styles.search_panel_device_element}>
-
-                        <button id={`search-panel-device-flash-button-${this.props.Id}`} className={styles.device_flash_button} onClick={() => this.flashDevice(this.deviceId === 5 ? 'auto' : undefined)}>{this.props.intl.formatMessage(messages.flash_device)} </button>
-
-                    </div>
-                )}
-
-                <div id={`search-panel-flashing-status-${this.props.Id}`} className={styles.search_panel_flashing_status}>
-
-
-
-                </div>
-
-                {showFlashButton && (
-                    <button
-                        type="button"
-                        id={`search-panel-flashing-show-details-${this.props.Id}`}
-                        className={styles.search_panel_flashing_show_details}
-                        title={this.props.intl.formatMessage(messages.flash_details)}
-                        aria-label={this.props.intl.formatMessage(messages.flash_details)}
-                        onClick={this.flashingShowDetails.bind(this)}
-                    />
-                )}
-
-
-                </div>
-
-
-                {this.props.isQuadcopter ? (
-                    <div
-                        id={`search-panel-device-info-${this.props.Id}`}
-                        className={styles.quadcopter_info_row}
-                    >
-                        {quadcopterHintText ? (
-                            <div className={styles.quadcopter_panel_hint}>{quadcopterHintText}</div>
-                        ) : null}
-                        {quadcopterFlashStatus ? (
-                            <div className={classNames(
-                                styles.quadcopter_panel_hint,
-                                !quadcopterFlashHintIsError && styles.quadcopter_panel_hint_info
-                            )}>{quadcopterFlashStatus}</div>
-                        ) : null}
-                    </div>
-                ) : null}
-
-
-            </div>
-
+        const head = (
+            <React.Fragment>
+                <span className={classNames(styles.row_icon, styles[`row_icon_${this._rowIcon()}`])} aria-hidden="true">
+                    <i />
+                </span>
+                <span className={styles.row_text}>
+                    <span className={styles.row_title}>{view.title}</span>
+                    <span className={styles.row_subtitle}>{view.subtitle}</span>
+                </span>
+                <span className={styles.row_status}>
+                    <span className={styles.row_pill}>{view.pill}</span>
+                    {canExpand ? <span className={styles.row_chevron} aria-hidden="true" /> : null}
+                </span>
+            </React.Fragment>
         );
 
-    }
+        return (
+            <div
+                id="search-panel-device-component"
+                className={classNames(styles.row, styles[`row_${view.tone}`], detailsOpen && styles.row_open)}
+                data-port={this.props.devicePort}
+                data-tone={view.tone}
+            >
+                <div className={styles.row_top}>
+                    {canExpand ? (
+                        <button
+                            type="button"
+                            className={styles.row_head}
+                            aria-expanded={detailsOpen}
+                            aria-controls={detailsId}
+                            aria-label={`${view.title}: ${view.pill}. ${intl.formatMessage(messages.row_details)}`}
+                            onClick={() => this.toggleDetails()}
+                        >
+                            {head}
+                        </button>
+                    ) : (
+                        <div className={styles.row_head}>{head}</div>
+                    )}
+                    {paletteWindowId === null ? <span className={styles.row_palette_space} /> : (
+                        <button
+                            type="button"
+                            className={styles.row_palette}
+                            // aria-disabled, not disabled: the tooltip says when the palette becomes available
+                            aria-disabled={!paletteAvailable}
+                            title={paletteLabel}
+                            aria-label={`${view.title}: ${paletteLabel}`}
+                            onClick={() => {
+                                if (paletteAvailable) this.openPalette();
+                            }}
+                        >
+                            <svg
+                                viewBox="0 0 20 20"
+                                aria-hidden="true"
+                            >
+                                <rect
+                                    x="2.5"
+                                    y="3.5"
+                                    width="15"
+                                    height="13"
+                                    rx="2.5"
+                                />
+                                <path d="M2.5 7.5h15M6 11h3M6 13.5h5" />
+                                <circle
+                                    cx="13.5"
+                                    cy="12"
+                                    r="1.6"
+                                />
+                            </svg>
+                        </button>
+                    )}
+                </div>
 
+                {flashBlock}
+
+                {hints.length || view.action ? (
+                    <div className={styles.row_more} role={view.tone === 'err' ? 'alert' : undefined}>
+                        <div className={styles.row_hints}>
+                            {hints.map(text => <p key={text}>{text}</p>)}
+                        </div>
+                        {view.action ? (
+                            <button type="button" className={styles.row_action} onClick={view.action.run}>
+                                {view.action.label}
+                            </button>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {detailsOpen ? (
+                    <div id={detailsId} className={styles.row_details}>
+                        <dl>
+                            {this._rowDetails().map(([label, value]) => (
+                                <React.Fragment key={label}>
+                                    <dt>{label}</dt>
+                                    <dd>{value}</dd>
+                                </React.Fragment>
+                            ))}
+                        </dl>
+                        <div className={styles.row_details_actions}>
+                            {this.props.isQuadcopter && this._copterReflashAllowed() ? (
+                                <button
+                                    type="button"
+                                    className={styles.row_link}
+                                    onClick={() => this.flashQuadcopterFirmware()}
+                                >
+                                    {intl.formatMessage(messages.row_menu_reflash)}
+                                </button>
+                            ) : null}
+                            {firmwareActions && this.state.deviceState === 6 && this.deviceId >= 0 ? (
+                                <button
+                                    type="button"
+                                    className={styles.row_link}
+                                    onClick={() => this.flashDevice(this.deviceId === 5 ? 'auto' : undefined)}
+                                >
+                                    {intl.formatMessage(messages.row_menu_reflash)}
+                                </button>
+                            ) : null}
+                            {firmwareActions && this.state.deviceState === 6 ? (
+                                <button
+                                    type="button"
+                                    className={styles.row_link}
+                                    onClick={() => this.flashDevice(undefined, {identify: true})}
+                                >
+                                    {intl.formatMessage(messages.row_menu_identify_flash)}
+                                </button>
+                            ) : null}
+                            <button type="button" className={styles.row_link} onClick={() => this.toggleFlashLog()}>
+                                {intl.formatMessage(messages.row_menu_flash_log)}
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
+            </div>
+        );
+    }
 }
 
 
 const mapStateToProps = state => ({
-
-    //   devices:state.scratchGui.devices_search_panel,
-    //   draggable_window:state.scratchGui.new_draggable_window
     draggable_window: state.scratchGui.draggable_window
-
 });
 
 const mapDispatchToProps = dispatch => ({
 
-    onShowFlashingStatusWindow: (draggable_window_id) => {
-
-        dispatch(ActionTriggerDraggableWindow(draggable_window_id));
-    },
-
-    onHideFlashingStatusWindow: (draggable_window_id) => {
-
-        dispatch(ActionTriggerDraggableWindow(draggable_window_id));
-    },
-
-    onCreateDraggableWindow: (draggable_window_id) => {
-
-        dispatch(ActionCreateDraggableWindow(draggable_window_id));
+    onOpenPalette: (windowId, spot) => {
+        if (spot) dispatch(ActionDropDraggableWindow(spot.top, spot.left, windowId));
+        dispatch(ActionTriggerDraggableWindow(windowId));
     },
 
     onHydrateDemoLicense: () => {

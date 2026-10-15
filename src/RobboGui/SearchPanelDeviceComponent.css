@@ -2,167 +2,547 @@
 @import "../css/units.css";
 @import "./RobboDeviceStatus.css";
 
-.search_panel_device_component{
+/*
+ * A device row of the «Devices» panel: the device icon (the same pictures as the device buttons in the
+ * menu bar), name and port, status in words. A hint with at most one action appears under it only when
+ * the child has something to do; the rarely needed firmware actions live in the expanded details.
+ * Tone: ok — connected, act — the child should act (outdated firmware), wait — in progress,
+ * err — no connection or flashing failed, unknown — the device does not answer.
+ */
+
+$row-green: rgb(0, 175, 65);
+$row-green-dark: rgb(0, 154, 58);
+$row-green-tint: rgba(0, 175, 65, 0.1);
+$row-text-soft: rgba(87, 94, 117, 0.75);
+$row-line: rgba(87, 94, 117, 0.14);
+$row-neutral-tint: rgba(87, 94, 117, 0.08);
+$row-amber: rgb(184, 110, 0);
+$row-amber-tint: rgb(255, 243, 214);
+$row-red: rgb(217, 58, 63);
+$row-red-tint: rgb(253, 236, 236);
+
+.row {
+    border-bottom: 1px solid $row-line;
+    font-weight: normal;
     color: $text-primary;
 }
 
-/* Quadcopter: статус в первой строке; подсказка — отдельным блоком на всю ширину */
-
-.quadcopter_device_root {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  width: 100%;
-  box-sizing: border-box;
-  gap: 6px;
+.row:last-child {
+    border-bottom: 0;
 }
 
-.search_panel_device_primary_row {
-  display: flex;
-  flex-flow: row wrap;
-  align-items: center;
-  row-gap: 2px;
-  column-gap: 6px;
+.row_head {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.75rem;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.625rem 0.75rem 0.625rem 0.875rem;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
 }
 
-.quadcopter_info_row {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+/* The head (a button: expands the details) and the palette button beside it */
+.row_top {
+    display: flex;
+    align-items: center;
 }
 
-.quadcopter_panel_hint {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  white-space: normal;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  font-size: $popup-font-size-sm;
-  line-height: 1.45;
-  font-weight: normal;
-  color: #a40018;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 4px 0 0;
-  margin: 0;
+.row_top .row_head {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: 0.375rem;
 }
 
-.quadcopter_panel_hint_info {
-  color: #333;
+/* a device without a palette keeps the status column in line with the other rows */
+.row_palette_space {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    margin-right: 0.5rem;
 }
 
-
-/* Flash button: the shared calm action button (RobboPaletteForm.css action_button), not a gradient. */
-.device_flash_button {
-  display: none;
-  min-height: 2rem;
-  min-width: 8rem;
-  padding: 0.375rem 0.875rem;
-  border: 1px solid $motion-primary;
-  border-radius: $form-radius;
-  background-color: $motion-primary;
-  color: #fff;
-  cursor: pointer;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: $popup-font-size;
-  font-weight: bold;
+.row_palette {
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-right: 0.5rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background: none;
+    color: $row-text-soft;
+    cursor: pointer;
 }
 
-.device_flash_button:hover {
-  background-color: #00963a;
+.row_palette svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
-.device_flash_button:focus {
-  outline: none;
+.row_palette:hover:not([aria-disabled="true"]) {
+    border-color: rgba(0, 175, 65, 0.35);
+    background-color: $row-green-tint;
+    color: $row-green-dark;
 }
 
-.device_flash_button:focus-visible {
-  outline: 2px solid $motion-primary;
-  outline-offset: 2px;
+.row_palette:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 1px;
 }
 
-/* Toggled from lib/device-status-dom.js by plain class names.
-   Busy looks like the flash window status: calm white with a green border, not a warning. */
-.device_flash_button:global(.device_flash_button_busy),
-.device_flash_button:global(.device_flash_button_busy):hover {
-  border-color: rgba(0, 175, 65, 0.45);
-  background-color: #fff;
-  color: rgb(0, 154, 58);
-  cursor: default;
+.row_palette[aria-disabled="true"] {
+    opacity: 0.35;
+    cursor: default;
 }
 
-.device_flash_button:global(.device_flash_button_error) {
-  border-color: #e24b4a;
-  background-color: #e24b4a;
-  color: #fff;
+.row_ok .row_palette:not([aria-disabled="true"]) {
+    color: $row-green-dark;
 }
 
-.device_flash_button:global(.device_flash_button_error)::before {
-  content: "⚠ ";
+button.row_head {
+    cursor: pointer;
 }
 
-.search_panel_device_status_icon {
-    display: inline-block;
-    min-width: 30px;
-    padding-left: 3px;
-    padding-right: 3px;
-    margin-bottom: 7px;
-    margin-top: 7px;
+button.row_head:hover {
+    background-color: rgba(87, 94, 117, 0.04);
 }
 
-/* "Details" of the flashing log: a real button (keyboard, screen readers), shown by the code. */
-.search_panel_flashing_show_details {
-  display: none;
-  width: 2rem;
-  height: 2rem;
-  margin: 7px 5px;
-  padding: 0;
-  border: 1px solid rgba(87, 94, 117, 0.35);
-  border-radius: $form-radius;
-  background: transparent center / 1.25rem no-repeat url("../../static/robbo_assets/show_details.svg");
-  cursor: pointer;
-  vertical-align: middle;
+button.row_head:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: -2px;
 }
 
-.search_panel_flashing_show_details:hover {
-  background-color: rgba(87, 94, 117, 0.1);
+/* Device icon, tinted by the tone (CSS mask over the menu bar device SVG) */
+.row_icon {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    background-color: $row-neutral-tint;
+    color: rgba(87, 94, 117, 0.55);
 }
 
-.search_panel_flashing_show_details:focus {
-  outline: none;
+.row_icon i {
+    width: 2.125rem;
+    height: 2.125rem;
+    background-color: currentColor;
+    mask-position: center;
+    mask-size: 118%;
+    mask-repeat: no-repeat;
 }
 
-.search_panel_flashing_show_details:focus-visible {
-  outline: 2px solid $motion-primary;
-  outline-offset: 1px;
+.row_icon_robot i { mask-image: url(../../static/robbo_assets/device_icons/menu_icon_robot.svg); }
+.row_icon_lab i { mask-image: url(../../static/robbo_assets/device_icons/menu_icon_lab.svg); }
+.row_icon_otto i { mask-image: url(../../static/robbo_assets/device_icons/menu_icon_otto.svg); }
+.row_icon_arduino i { mask-image: url(../../static/robbo_assets/device_icons/menu_icon_arduino.svg); }
+.row_icon_quadcopter i { mask-image: url(../../static/robbo_assets/device_icons/menu_icon_quadcopter.svg); }
+
+.row_icon_unknown i {
+    width: auto;
+    height: auto;
+    background: none;
+    font-style: normal;
+    font-weight: bold;
+    font-size: 1.25rem;
 }
 
-.search_panel_flashing_status {
-    display: none;
-    padding-left: 5px;
-    padding-right: 5px;
-    margin-bottom: 7px;
-    margin-top: 7px;
-    min-width: 30px;
-    min-height: 30px;
+.row_icon_unknown i::before {
+    content: "?";
 }
 
-.search_panel_device_element {
-    display: inline-block;
-    padding-left: 5px;
-    padding-right: 5px;
-    margin-bottom: 7px;
-    margin-top: 7px;
-    min-width: 90px;
+.row_ok .row_icon { background-color: $row-green-tint; color: $row-green-dark; }
+.row_act .row_icon { background-color: $row-amber-tint; color: $row-amber; }
+.row_err .row_icon { background-color: $row-red-tint; color: $row-red; }
+
+.row_text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.row_title {
+    overflow: hidden;
+    font-weight: bold;
+    font-size: 0.9375rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.row_subtitle {
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+    color: $row-text-soft;
+}
+
+/* Status pill: a dot and the status in words */
+.row_status {
+    display: flex;
+    align-items: center;
+}
+
+.row_pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.1875rem 0.625rem 0.1875rem 0.5rem;
+    border-radius: 999px;
+    background-color: $row-neutral-tint;
+    color: $text-primary;
+    font-weight: bold;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.row_pill::before {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: currentColor;
+}
+
+.row_ok .row_pill { background-color: $row-green-tint; color: $row-green-dark; }
+.row_act .row_pill { background-color: $row-amber-tint; color: $row-amber; }
+.row_err .row_pill { background-color: $row-red-tint; color: $row-red; }
+
+/* In progress: the dot turns into a small spinner */
+.row_wait .row_pill::before {
+    width: 0.625rem;
+    height: 0.625rem;
+    box-sizing: border-box;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    background: none;
+    animation: row-spin 0.9s linear infinite;
+}
+
+@keyframes row-spin {
+    to { transform: rotate(360deg); }
+}
+
+.row_chevron {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: 0 0.25rem 0.25rem 0.625rem;
+    border: solid $row-text-soft;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+}
+
+.row_open .row_chevron {
+    margin-top: 0.375rem;
+    margin-bottom: 0;
+    transform: rotate(-135deg);
+}
+
+/* Hint and the one action that helps */
+.row_more {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 0.75rem 0.75rem 4.125rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+.row_hints {
+    flex: 1;
+    min-width: 0;
+}
+
+.row_hints p {
+    margin: 0;
+}
+
+.row_hints p + p {
+    margin-top: 0.25rem;
+}
+
+.row_action {
+    flex: none;
+    padding: 0.4375rem 0.875rem;
+    border: 0;
+    border-radius: $form-radius;
+    background-color: $row-green;
+    color: #fff;
+    font: inherit;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.row_action:hover {
+    background-color: $row-green-dark;
+}
+
+.row_action:focus-visible,
+.row_link:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+.row_link {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: $row-green-dark;
+    font: inherit;
+    text-align: left;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+/* Expanded details: port, firmware, serial number, quiet firmware actions */
+.row_details {
+    padding: 0.125rem 1rem 0.875rem 4.125rem;
+    font-size: 0.8125rem;
+}
+
+.row_details dl {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.25rem 0.875rem;
+    margin: 0 0 0.625rem;
+}
+
+.row_details dt {
+    color: $row-text-soft;
+}
+
+.row_details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.row_details_actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .row_wait .row_pill::before { animation: none; }
+    .row_chevron { transition: none; }
+}
+
+/*
+ * Flashing inside the row (the separate window is only for the quadcopter now): track of steps
+ * Board → Device → Writing → Check from data-flash-step / data-flash-phase, the status line, write progress,
+ * raw flasher lines under «Details».
+ */
+.flash {
+    margin: 0 0.75rem 0.75rem 4.125rem;
+    padding: 0.75rem 0.875rem 0.625rem;
+    border: 1px solid rgba(0, 175, 65, 0.25);
+    border-radius: 0.5rem;
+    background-color: rgba(0, 175, 65, 0.04);
+}
+
+.flash_failed {
+    border-color: rgba(217, 58, 63, 0.35);
+    background-color: $row-red-tint;
+}
+
+.flash_empty {
+    padding: 0.625rem 0.875rem;
+}
+
+.flash_steps {
+    display: flex;
+    margin: 0 0 0.625rem;
+    padding: 0;
+    list-style: none;
+}
+
+.flash_step {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    color: $row-text-soft;
+}
+
+.flash_step + .flash_step::before {
+    content: "";
+    position: absolute;
+    top: 0.5rem;
+    right: 50%;
+    left: -50%;
+    height: 2px;
+    margin-top: -1px;
+    background-color: rgba(87, 94, 117, 0.18);
+}
+
+.flash_step_dot {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(87, 94, 117, 0.22);
+    border-radius: 50%;
+    background-color: #fff;
+}
+
+.flash_step_label {
+    margin-top: 0.25rem;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 0.6875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.flash[data-flash-step="2"] .flash_step:nth-child(-n+1),
+.flash[data-flash-step="3"] .flash_step:nth-child(-n+2),
+.flash[data-flash-step="4"] .flash_step:nth-child(-n+3),
+.flash[data-flash-step="5"] .flash_step:nth-child(-n+4) {
     color: $text-primary;
 }
 
-/* Low screens: a bit tighter. */
-@media (max-height: 900px) {
-    .search_panel_device_element {
-        padding-left: 3px;
-        padding-right: 3px;
-    }
+.flash[data-flash-step="2"] .flash_step:nth-child(-n+1) .flash_step_dot,
+.flash[data-flash-step="3"] .flash_step:nth-child(-n+2) .flash_step_dot,
+.flash[data-flash-step="4"] .flash_step:nth-child(-n+3) .flash_step_dot,
+.flash[data-flash-step="5"] .flash_step:nth-child(-n+4) .flash_step_dot {
+    border-color: $row-green;
+    background-color: $row-green;
+}
+
+.flash[data-flash-step="2"] .flash_step:nth-child(-n+1) .flash_step_dot::after,
+.flash[data-flash-step="3"] .flash_step:nth-child(-n+2) .flash_step_dot::after,
+.flash[data-flash-step="4"] .flash_step:nth-child(-n+3) .flash_step_dot::after,
+.flash[data-flash-step="5"] .flash_step:nth-child(-n+4) .flash_step_dot::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 3.5px;
+    width: 3px;
+    height: 6px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.flash[data-flash-step="1"] .flash_step:nth-child(-n+1)::before,
+.flash[data-flash-step="2"] .flash_step:nth-child(-n+2)::before,
+.flash[data-flash-step="3"] .flash_step:nth-child(-n+3)::before,
+.flash[data-flash-step="4"] .flash_step:nth-child(-n+4)::before,
+.flash[data-flash-step="5"] .flash_step:nth-child(-n+4)::before {
+    background-color: $row-green;
+}
+
+.flash[data-flash-step="1"] .flash_step:nth-child(1),
+.flash[data-flash-step="2"] .flash_step:nth-child(2),
+.flash[data-flash-step="3"] .flash_step:nth-child(3),
+.flash[data-flash-step="4"] .flash_step:nth-child(4) {
+    color: $row-green-dark;
+    font-weight: bold;
+}
+
+.flash[data-flash-step="1"] .flash_step:nth-child(1) .flash_step_dot,
+.flash[data-flash-step="2"] .flash_step:nth-child(2) .flash_step_dot,
+.flash[data-flash-step="3"] .flash_step:nth-child(3) .flash_step_dot,
+.flash[data-flash-step="4"] .flash_step:nth-child(4) .flash_step_dot {
+    border-color: $row-green-dark;
+    box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 6px $row-green-dark;
+}
+
+.flash[data-flash-step="1"][data-flash-phase="error"] .flash_step:nth-child(1),
+.flash[data-flash-step="2"][data-flash-phase="error"] .flash_step:nth-child(2),
+.flash[data-flash-step="3"][data-flash-phase="error"] .flash_step:nth-child(3),
+.flash[data-flash-step="4"][data-flash-phase="error"] .flash_step:nth-child(4) {
+    color: $row-red;
+}
+
+.flash[data-flash-step="1"][data-flash-phase="error"] .flash_step:nth-child(1) .flash_step_dot,
+.flash[data-flash-step="2"][data-flash-phase="error"] .flash_step:nth-child(2) .flash_step_dot,
+.flash[data-flash-step="3"][data-flash-phase="error"] .flash_step:nth-child(3) .flash_step_dot,
+.flash[data-flash-step="4"][data-flash-phase="error"] .flash_step:nth-child(4) .flash_step_dot {
+    border-color: $row-red;
+    box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 6px $row-red;
+}
+
+.flash_status {
+    margin: 0;
+    font-weight: bold;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+.flash_done .flash_status {
+    color: $row-green-dark;
+}
+
+.flash_failed .flash_status {
+    color: $row-red;
+}
+
+.flash_bar {
+    display: block;
+    height: 0.375rem;
+    margin-top: 0.5rem;
+    overflow: hidden;
+    border-radius: 0.1875rem;
+    background-color: rgba(87, 94, 117, 0.16);
+}
+
+.flash_bar b {
+    display: block;
+    height: 100%;
+    border-radius: 0.1875rem;
+    background-color: $row-green;
+    transition: width 0.3s ease;
+}
+
+.flash_log {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.flash_log summary {
+    color: $row-text-soft;
+    cursor: pointer;
+}
+
+.flash_log summary:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+.flash_log_lines {
+    max-height: 7.5rem;
+    margin-top: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    overflow-y: auto;
+    border-radius: 0.375rem;
+    background-color: #fff;
+    color: $row-text-soft;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    overflow-wrap: anywhere;
+}
+
+.flash_log_lines div + div {
+    margin-top: 0.125rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flash_bar b { transition: none; }
 }

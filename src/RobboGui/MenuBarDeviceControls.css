@@ -15,12 +15,19 @@
     min-width: 5rem;
 }
 
+/* «Search devices» and the counter that opens the Devices panel without a new search */
+.searchGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    margin-right: 0.5rem;
+}
+
 .searchDevices {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     height: calc($menu-bar-height - 0.5rem);
-    margin-right: 0.5rem;
     padding: 0 0.625rem;
     border: none;
     border-radius: $form-radius;
@@ -93,6 +100,43 @@
 .searchLabel {
     line-height: 1;
     margin-left: 0.375rem;
+}
+
+.deviceCount {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    height: calc($menu-bar-height - 0.5rem);
+    padding: 0 0.5rem;
+    border: none;
+    border-radius: $form-radius;
+    background-color: rgba(255, 255, 255, 0.14);
+    color: white;
+    cursor: pointer;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: $menu-bar-standard-font-size;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+.deviceCount:hover {
+    background-color: $ui-black-transparent;
+}
+
+.deviceCount:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.85);
+    outline-offset: 2px;
+}
+
+/* a list: three lines with dots */
+.deviceCountIcon {
+    width: 0.875rem;
+    height: 0.75rem;
+    background:
+        radial-gradient(circle, currentColor 0.09rem, transparent 0.1rem) 0 0 / 0.25rem 0.25rem repeat-y,
+        linear-gradient(currentColor, currentColor) 0.375rem 0.0625rem / 0.5rem 0.125rem no-repeat,
+        linear-gradient(currentColor, currentColor) 0.375rem 0.3125rem / 0.5rem 0.125rem no-repeat,
+        linear-gradient(currentColor, currentColor) 0.375rem 0.5625rem / 0.5rem 0.125rem no-repeat;
 }
 
 .devicePreviews {
