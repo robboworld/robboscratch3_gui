@@ -1,8 +1,17 @@
 import {
     postActivate,
     postDeviceLinkStart,
-    postDeviceLinkPoll
+    postDeviceLinkPoll,
+    postSeatRelease,
+    postTokenRefresh
 } from '../../lib/licensing/activationClient.js';
+import {
+    LICENSE_REASON_EXPIRED,
+    LICENSE_REASON_INVALID,
+    LICENSE_REASON_NOT_YET_VALID,
+    LICENSE_REASON_OTHER_DEVICE,
+    LICENSE_REASONS_DROPPING_TOKEN
+} from '../../lib/licensing/licenseReasons.js';
 import {verifyActivationJwt} from '../../lib/licensing/verifyJwtRs256.js';
 import {loadPaidAddonFromManifestUrl, clearAddonCache} from '../../lib/licensing/loadPaidAddon.js';
 import paidAddonRegistry from '../../lib/licensing/paidAddonRegistry.js';
@@ -10,6 +19,7 @@ import {computeDeviceFingerprint, getCachedDeviceFingerprint, LS_FP_CACHE} from 
 import {assertPremiumAutoUpdateCapability} from '../../lib/licensing/capabilityGateway.js';
 import {isDesktopWithBluetooth, openExternalUrl} from '../../lib/platform.js';
 import {APP_VERSION} from '../AboutWindowComponent.js';
+import log from '../../lib/log';
 import {
     LS_ACTIVATION_BASE,
     LS_TOKEN,
@@ -30,6 +40,9 @@ import {
     LICENSE_UPDATE_PROGRESS,
     LICENSE_FEEDBACK_SHOW,
     LICENSE_FEEDBACK_DISMISS,
+    LICENSE_LAPSED,
+    LICENSE_REFRESH_START,
+    LICENSE_REFRESH_END,
     licenseUpdateInitialState,
     licenseFeedbackInitialState,
     readPersistedActivationBase,
@@ -63,6 +76,8 @@ function licenseContextFromPayload (jwtPayload) {
         seatId: jwtPayload.seatId || '',
         capabilities: capabilitiesFromPayload(jwtPayload),
         expiresAt: jwtPayload.exp || null,
+        tariff: jwtPayload.tariff || '',
+        ownerName: jwtPayload.ownerName || '',
         deviceBindingValid: jwtPayload.deviceBindingValid !== false,
         currentAppVersion: APP_VERSION
     };
@@ -175,6 +190,8 @@ function finishActivationFromResponse (dispatch, base, resp, fingerprint) {
                 licenseId: licenseContext.licenseId,
                 seatId: licenseContext.seatId,
                 expiresAt: licenseContext.expiresAt,
+                tariff: licenseContext.tariff,
+                ownerName: licenseContext.ownerName,
                 deviceBindingValid: true
             }
         });
@@ -394,6 +411,284 @@ export function startDeviceLinkThunk () {
     };
 }
 
+/** @returns {function} */
+export function clearLicenseThunk () {
+    return function (dispatch, getState) {
+        clearDeviceLinkPollTimer();
+        deviceLinkGeneration += 1;
+        const base =
+            typeof getState().scratchGui.license !== 'undefined'
+                ? String(getState().scratchGui.license.activationBaseUrl || '')
+                    .trim() || readPersistedActivationBase()
+                : readPersistedActivationBase();
+        removeLicenseFromStorage();
+        paidAddonRegistry.reset();
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(LS_ACTIVATION_BASE, base);
+            }
+        } catch (e) { /* ignore */ }
+        dispatch({
+            type: LICENSE_CLEAR,
+            payload: {activationBaseUrl: base}
+        });
+    };
+}
+
+/** The reason last told at start-up (`reason:exp`), so an expired licence is not announced on every start. */
+const LS_LAPSE_NOTICE = 'rs3_license_lapse_notice';
+
+/** How often a running editor asks the ЛК for the licence's current terms. */
+const LICENSE_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000;
+let lastLicenseRefreshAt = 0;
+let licenseRefreshTimer = null;
+
+/**
+ * Tell once why the licence stopped applying (start-up modal); the License window shows it too.
+ * @param {function} dispatch redux dispatch
+ * @param {string} reason LICENSE_REASON_*
+ * @param {?number} date expiry (s) for an expired licence
+ */
+function showLapseNotice (dispatch, reason, date) {
+    const key = `${reason}:${date || ''}`;
+    try {
+        if (typeof localStorage !== 'undefined') {
+            if (localStorage.getItem(LS_LAPSE_NOTICE) === key) return;
+            localStorage.setItem(LS_LAPSE_NOTICE, key);
+        }
+    } catch (e) { /* ignore */ }
+    dispatch({
+        type: LICENSE_FEEDBACK_SHOW,
+        payload: {phase: 'lapsed', capabilities: [], errorCode: reason, errorMessage: '', date: date || null}
+    });
+}
+
+/**
+ * Remove a licence that cannot apply on this computer any more and say why.
+ * @param {function} dispatch redux dispatch
+ * @param {string} base activation server
+ * @param {string} reason LICENSE_REASON_*
+ */
+function dropLicense (dispatch, base, reason) {
+    removeLicenseFromStorage();
+    paidAddonRegistry.reset();
+    dispatch({type: LICENSE_CLEAR, payload: {activationBaseUrl: base, reason}});
+    showLapseNotice(dispatch, reason, null);
+}
+
+/**
+ * Keep a licence that does not apply right now (expired / not yet valid): the ЛК may renew it.
+ * @param {function} dispatch redux dispatch
+ * @param {string} token the offline token
+ * @param {object} payload its verified claims
+ * @param {string} status 'expired' | 'not_yet_valid'
+ */
+function lapseLicense (dispatch, token, payload, status) {
+    paidAddonRegistry.reset();
+    const context = licenseContextFromPayload(payload);
+    dispatch({
+        type: LICENSE_LAPSED,
+        payload: {
+            status,
+            reason: status === 'expired' ? LICENSE_REASON_EXPIRED : LICENSE_REASON_NOT_YET_VALID,
+            signedOfflineToken: token,
+            expiresAt: payload.exp || null,
+            notBefore: payload.nbf || null,
+            tariff: context.tariff,
+            ownerName: context.ownerName,
+            licenseId: context.licenseId,
+            seatId: context.seatId
+        }
+    });
+    if (status === 'expired') {
+        showLapseNotice(dispatch, LICENSE_REASON_EXPIRED, payload.exp || null);
+    }
+}
+
+/**
+ * Renew the offline token from the ЛК: a renewal or new terms reach the computer, a revocation or a
+ * removed seat ends the licence here with its reason. Offline nothing changes.
+ * @param {object} [options] force: skip the 12-hour pause (start-up of an expired licence, "Check
+ *     again"); manual: report a failure to reach the server
+ * @returns {function} thunk resolving to 'renewed' | 'ended' | 'unchanged'
+ */
+export function refreshLicenseThunk (options) {
+    const force = Boolean(options && (options.force || options.manual));
+    const manual = Boolean(options && options.manual);
+    return function (dispatch, getState) {
+        if (!isDesktopWithBluetooth()) {
+            return Promise.resolve('unchanged');
+        }
+        const now = Date.now();
+        if (!force && now - lastLicenseRefreshAt < LICENSE_REFRESH_INTERVAL_MS) {
+            return Promise.resolve('unchanged');
+        }
+        const state = getState().scratchGui.license;
+        const token = readPersistedToken() || state.signedOfflineToken;
+        const base = (state.activationBaseUrl || readPersistedActivationBase()).trim();
+        if (!token || !base) {
+            return Promise.resolve('unchanged');
+        }
+        lastLicenseRefreshAt = now;
+        dispatch({type: LICENSE_REFRESH_START});
+        const done = result => {
+            dispatch({type: LICENSE_REFRESH_END});
+            return result;
+        };
+        return computeDeviceFingerprint()
+            .then(fingerprint => postTokenRefresh(base, {
+                signedOfflineToken: token,
+                deviceFingerprint: fingerprint,
+                publicBase: base.replace(/\/$/, '')
+            })
+                .then(resp => verifyActivationJwt(resp.signedOfflineToken).then(jwtPayload => {
+                    const caps = capabilitiesFromPayload(jwtPayload);
+                    if (caps.length === 0) {
+                        throw new Error('capability_denied');
+                    }
+                    const before = getState().scratchGui.license;
+                    const manifestUrl = typeof resp.addonManifestUrl === 'string' && resp.addonManifestUrl.trim() ?
+                        resp.addonManifestUrl.trim() :
+                        manifestUrlFromJwtOrBase(jwtPayload, base.replace(/\/$/, ''));
+                    persistLicenseToStorage(base, resp.signedOfflineToken, fingerprint);
+                    const context = licenseContextFromPayload(jwtPayload);
+                    dispatch({
+                        type: LICENSE_HYDRATE,
+                        payload: {
+                            activationBaseUrl: base,
+                            signedOfflineToken: resp.signedOfflineToken,
+                            capabilities: caps,
+                            addonManifestUrl: manifestUrl,
+                            licenseId: context.licenseId,
+                            seatId: context.seatId,
+                            expiresAt: context.expiresAt,
+                            tariff: context.tariff,
+                            ownerName: context.ownerName,
+                            deviceBindingValid: true,
+                            status: 'valid_offline',
+                            addonReady: before.addonReady && before.status === 'valid_offline',
+                            addonError: ''
+                        }
+                    });
+                    try {
+                        if (typeof localStorage !== 'undefined') localStorage.removeItem(LS_LAPSE_NOTICE);
+                    } catch (e) { /* ignore */ }
+                    // A licence that was not working (expired, addon failed) gets its addon now.
+                    if (!(before.addonReady && before.status === 'valid_offline')) {
+                        return loadAddonDispatched(dispatch, manifestUrl, resp.signedOfflineToken, context)
+                            .then(() => 'renewed');
+                    }
+                    return 'renewed';
+                })))
+            .catch(err => {
+                if (err && LICENSE_REASONS_DROPPING_TOKEN.indexOf(err.reason) >= 0) {
+                    dropLicense(dispatch, base, err.reason);
+                    return 'ended';
+                }
+                if (err && err.reason === LICENSE_REASON_EXPIRED) {
+                    const current = getState().scratchGui.license;
+                    if (current.status !== 'expired') {
+                        // Ended early in the ЛК while the token still runs.
+                        lapseLicense(dispatch, token, {
+                            exp: Math.floor(Date.now() / 1000),
+                            tariff: current.tariff,
+                            ownerName: current.ownerName,
+                            licenseId: current.licenseId,
+                            seatId: current.seatId
+                        }, 'expired');
+                    }
+                    return 'ended';
+                }
+                log.warn('licence refresh failed', err);
+                if (manual) {
+                    dispatchActivationErrorFeedback(dispatch, err && err.offline ? new Error('Failed') : err);
+                }
+                return 'unchanged';
+            })
+            .then(done, err => {
+                done();
+                throw err;
+            });
+    };
+}
+
+/**
+ * The stored offline token did not pass the start-up check.
+ * @param {function} dispatch redux dispatch
+ * @param {string} base activation server
+ * @param {string} token the offline token
+ * @param {Error} err verifyActivationJwt failure
+ * @returns {?Promise} a renewal attempt for an expired licence
+ */
+function handleStoredTokenError (dispatch, base, token, err) {
+    const code = err && err.message;
+    if (code === 'license_expired' && err.payload) {
+        lapseLicense(dispatch, token, err.payload, 'expired');
+        // Renewed in the ЛК? Then a new token comes back.
+        return dispatch(refreshLicenseThunk({force: true}));
+    }
+    if (code === 'license_not_yet_valid' && err.payload) {
+        lapseLicense(dispatch, token, err.payload, 'not_yet_valid');
+        return null;
+    }
+    if (code === 'crypto_subtle_missing') {
+        // This runtime cannot check signatures: not the token's fault, keep it.
+        dispatch({type: LICENSE_CLEAR, payload: {activationBaseUrl: base}});
+        return null;
+    }
+    log.warn('stored licence rejected', err);
+    dropLicense(dispatch, base,
+        code === 'device_binding_mismatch' ? LICENSE_REASON_OTHER_DEVICE : LICENSE_REASON_INVALID);
+    return null;
+}
+
+/**
+ * Ask the ЛК for the licence's current terms now and then (at start and every 12 h while open).
+ * @param {function} dispatch redux dispatch
+ */
+function scheduleLicenseRefresh (dispatch) {
+    if (!licenseRefreshTimer && typeof setInterval === 'function') {
+        licenseRefreshTimer = setInterval(() => dispatch(refreshLicenseThunk()), LICENSE_REFRESH_INTERVAL_MS);
+        // Node timers (tests) must not keep the process alive; a browser returns a number.
+        if (licenseRefreshTimer && typeof licenseRefreshTimer.unref === 'function') licenseRefreshTimer.unref();
+    }
+    dispatch(refreshLicenseThunk());
+}
+
+/**
+ * "Deactivate": give the seat back to the licence in the ЛК, then forget the licence here.
+ * @returns {function} thunk resolving to 'released', or 'offline' when the ЛК could not be reached
+ *     (nothing is changed then; clearLicenseThunk forgets the licence on this computer only)
+ */
+export function releaseLicenseThunk () {
+    return function (dispatch, getState) {
+        const state = getState().scratchGui.license;
+        const token = readPersistedToken() || state.signedOfflineToken;
+        const base = (state.activationBaseUrl || readPersistedActivationBase()).trim();
+        if (!token || !base) {
+            dispatch(clearLicenseThunk());
+            return Promise.resolve('released');
+        }
+        return computeDeviceFingerprint()
+            .then(fingerprint => postSeatRelease(base, {signedOfflineToken: token, deviceFingerprint: fingerprint}))
+            .then(() => 'released', err => {
+                // Answered by the ЛК (seat already free, licence gone, token not usable): nothing to give
+                // back. A bare 404 is not that: a ЛК without this request must not drop the licence here.
+                if (err && (err.reason || err.errorCode === 'SEAT_NOT_FOUND')) {
+                    return 'released';
+                }
+                log.warn('seat release failed', err);
+                return 'offline';
+            })
+            .then(result => {
+                if (result === 'released') {
+                    dispatch(clearLicenseThunk());
+                }
+                return result;
+            });
+    };
+}
+
 /**
  * Restore JWT + optionally warm addon cache from persisted storage at app start.
  * @returns {function}
@@ -418,6 +713,7 @@ export function hydrateLicenseThunk () {
                 // A failed addon load (addonError) is still retried.
                 if (current && token && current.signedOfflineToken === token &&
                     (current.addonReady || (current.status === 'valid_offline' && !current.addonError))) {
+                    scheduleLicenseRefresh(dispatch);
                     return Promise.resolve();
                 }
 
@@ -434,12 +730,7 @@ export function hydrateLicenseThunk () {
                 return computeDeviceFingerprint()
                     .then(currentFp => {
                         if (storedFp && storedFp !== currentFp) {
-                            removeLicenseFromStorage();
-                            paidAddonRegistry.reset();
-                            dispatch({
-                                type: LICENSE_CLEAR,
-                                payload: {activationBaseUrl: base}
-                            });
+                            dropLicense(dispatch, base, LICENSE_REASON_OTHER_DEVICE);
                             return null;
                         }
                         return verifyActivationJwt(token).then(jwtPayload => {
@@ -462,27 +753,26 @@ export function hydrateLicenseThunk () {
                                     licenseId: licenseContext.licenseId,
                                     seatId: licenseContext.seatId,
                                     expiresAt: licenseContext.expiresAt,
+                                    tariff: licenseContext.tariff,
+                                    ownerName: licenseContext.ownerName,
                                     deviceBindingValid: true,
                                     status: 'valid_offline',
                                     addonReady: false,
                                     addonError: ''
                                 }
                             });
+                            scheduleLicenseRefresh(dispatch);
                             return loadAddonDispatched(
                                 dispatch,
                                 manifestUrl,
                                 token,
                                 licenseContext
                             );
-                        });
+                        }, err => handleStoredTokenError(dispatch, base, token, err));
                     })
-                    .catch(() => {
-                        removeLicenseFromStorage();
-                        paidAddonRegistry.reset();
-                        dispatch({
-                            type: LICENSE_CLEAR,
-                            payload: {activationBaseUrl: base}
-                        });
+                    .catch(err => {
+                        log.warn('stored licence rejected', err);
+                        dropLicense(dispatch, base, LICENSE_REASON_INVALID);
                     });
             }
             return Promise.resolve();
@@ -492,29 +782,6 @@ export function hydrateLicenseThunk () {
     };
 }
 
-/** @returns {function} */
-export function clearLicenseThunk () {
-    return function (dispatch, getState) {
-        clearDeviceLinkPollTimer();
-        deviceLinkGeneration += 1;
-        const base =
-            typeof getState().scratchGui.license !== 'undefined'
-                ? String(getState().scratchGui.license.activationBaseUrl || '')
-                    .trim() || readPersistedActivationBase()
-                : readPersistedActivationBase();
-        removeLicenseFromStorage();
-        paidAddonRegistry.reset();
-        try {
-            if (typeof localStorage !== 'undefined') {
-                localStorage.setItem(LS_ACTIVATION_BASE, base);
-            }
-        } catch (e) { /* ignore */ }
-        dispatch({
-            type: LICENSE_CLEAR,
-            payload: {activationBaseUrl: base}
-        });
-    };
-}
 
 /** @returns {function} */
 export function licenseFeedbackDismissThunk () {

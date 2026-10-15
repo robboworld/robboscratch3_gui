@@ -24,7 +24,7 @@ import RobboPopupTransition from './RobboPopupTransition';
 import {getMenuBarDropdownTopPx} from '../lib/menu-bar-dropdown-anchor';
 
 import {createDiv,createDivShort} from './lib/lib.js';
-import {LICENSE_UI_ENABLED} from '../lib/licensing/licenseUiEnabled';
+import {LICENSE_UI_ENABLED, isAuthUiEnabled} from '../lib/licensing/licenseUiEnabled';
 
 //import Blockly_Arduino from 'blocks-compiler';
 
@@ -701,7 +701,9 @@ class RobboMenu extends Component {
 
           {this.renderItem('trigger-settings-window', intl.formatMessage(messages.trigger_settings_window),
             this.openAndClose(this.triggerSettingsWindow.bind(this)))}
-          {LICENSE_UI_ENABLED ? this.renderItem('trigger-license-window',
+          {/* Signed in: the item is in the account menu of the menu bar */}
+          {LICENSE_UI_ENABLED && !(isAuthUiEnabled() && this.props.isRobboAccountAuthenticated) ?
+            this.renderItem('trigger-license-window',
             intl.formatMessage(messages.trigger_license_window),
             this.openAndClose(this.triggerLicenseWindow.bind(this))) : null}
           {this.renderItem('trigger-about-window', intl.formatMessage(messages.trigger_about_window),
@@ -724,7 +726,8 @@ const mapStateToProps =  state => ({
     robbo_menu:state.scratchGui.robbo_menu,
     robot_sensors:state.scratchGui.robot_sensors,
     settings:state.scratchGui.settings,
-    extension_pack:state.scratchGui.extension_pack
+    extension_pack:state.scratchGui.extension_pack,
+    isRobboAccountAuthenticated: (state.scratchGui.robboAccount || {}).sessionStatus === 'authenticated'
 
 
   });

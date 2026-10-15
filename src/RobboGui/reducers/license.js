@@ -41,6 +41,10 @@ export const LICENSE_UPDATE_PHASE = 'LICENSE_UPDATE_PHASE';
 export const LICENSE_UPDATE_PROGRESS = 'LICENSE_UPDATE_PROGRESS';
 export const LICENSE_FEEDBACK_SHOW = 'LICENSE_FEEDBACK_SHOW';
 export const LICENSE_FEEDBACK_DISMISS = 'LICENSE_FEEDBACK_DISMISS';
+/** The kept token does not apply now (expired / not yet valid); payload: status, reason, dates. */
+export const LICENSE_LAPSED = 'LICENSE_LAPSED';
+export const LICENSE_REFRESH_START = 'LICENSE_REFRESH_START';
+export const LICENSE_REFRESH_END = 'LICENSE_REFRESH_END';
 
 export function licenseCheckInitialState () {
     return {
@@ -95,7 +99,15 @@ function readLocalStorageItem (key, legacyKey) {
     return '';
 }
 
+/**
+ * Activation server. A release build always uses the address it was built with: an address saved
+ * by an earlier build (or the dev field) must not keep the licence on another server.
+ * @returns {string} base URL
+ */
 export function readPersistedActivationBase () {
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') {
+        return DEFAULT_ACTIVATION_BASE_URL;
+    }
     const value = readLocalStorageItem(LS_ACTIVATION_BASE, LS_ACTIVATION_BASE_LEGACY);
     return value || DEFAULT_ACTIVATION_BASE_URL;
 }
@@ -115,6 +127,13 @@ export function licenseInitialState () {
         licenseId: '',
         seatId: '',
         expiresAt: null,
+        notBefore: null,
+        // Tariff and owner of the licence, from the token (owner only for a personal licence).
+        tariff: '',
+        ownerName: '',
+        // Why the licence does not apply here, see lib/licensing/licenseReasons.js; '' when it does.
+        reason: '',
+        isRefreshing: false,
         deviceBindingValid: false,
         addonReady: false,
         addonError: '',
@@ -165,6 +184,10 @@ export default function reducer (state, action) {
             ? action.payload.expiresAt
             : null;
         next.deviceBindingValid = action.payload.deviceBindingValid !== false;
+        next.tariff = action.payload.tariff || '';
+        next.ownerName = action.payload.ownerName || '';
+        next.notBefore = null;
+        next.reason = '';
         next.status = 'valid_offline';
         next.activationError = '';
         next.addonReady = false;
@@ -230,6 +253,10 @@ export default function reducer (state, action) {
             ? action.payload.expiresAt
             : null;
         next.deviceBindingValid = action.payload.deviceBindingValid !== false;
+        next.tariff = action.payload.tariff || '';
+        next.ownerName = action.payload.ownerName || '';
+        next.notBefore = null;
+        next.reason = '';
         next.status =
             typeof action.payload.status === 'string'
                 ? action.payload.status
@@ -247,6 +274,35 @@ export default function reducer (state, action) {
           typeof action.payload.activationBaseUrl === 'string'
             ? action.payload.activationBaseUrl
             : readPersistedActivationBase();
+        next.reason = (action.payload && action.payload.reason) || '';
+        // A start-up notice raised with the reason stays until it is closed.
+        next.feedback = state.feedback;
+        return next;
+
+    case LICENSE_LAPSED:
+        next = immutable_copy(state);
+        next.status = action.payload.status;
+        next.reason = action.payload.reason || '';
+        next.signedOfflineToken = action.payload.signedOfflineToken || state.signedOfflineToken;
+        next.expiresAt = typeof action.payload.expiresAt === 'number' ? action.payload.expiresAt : null;
+        next.notBefore = typeof action.payload.notBefore === 'number' ? action.payload.notBefore : null;
+        next.tariff = action.payload.tariff || '';
+        next.ownerName = action.payload.ownerName || '';
+        next.licenseId = action.payload.licenseId || '';
+        next.seatId = action.payload.seatId || '';
+        next.capabilities = [];
+        next.addonReady = false;
+        next.addonError = '';
+        return next;
+
+    case LICENSE_REFRESH_START:
+        next = immutable_copy(state);
+        next.isRefreshing = true;
+        return next;
+
+    case LICENSE_REFRESH_END:
+        next = immutable_copy(state);
+        next.isRefreshing = false;
         return next;
 
     case LICENSE_PREMIUM_CHECK_RESULT:

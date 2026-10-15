@@ -2,6 +2,7 @@ import log from '../../lib/log';
 import dataURItoBlob from '../../lib/data-uri-to-blob';
 import queryString from 'query-string';
 import {
+    getEntitlements,
     getSessionStatus,
     signIn,
     listProjectPages,
@@ -35,7 +36,8 @@ import {
     ROBBO_ACCOUNT_CLEAR_SAVE_STATUS,
     ROBBO_ACCOUNT_TITLE_SAVE_SUCCESS,
     ROBBO_ACCOUNT_SIGN_OUT,
-    ROBBO_ACCOUNT_SET_CLOUD_PROJECT_ACCESS_BLOCKED
+    ROBBO_ACCOUNT_SET_CLOUD_PROJECT_ACCESS_BLOCKED,
+    ROBBO_ACCOUNT_SET_ENTITLEMENTS
 } from '../reducers/robboAccount';
 import {setProjectTitle} from '../../reducers/project-title';
 import {setProjectUnchanged} from '../../reducers/project-changed';
@@ -53,6 +55,8 @@ import {
 import {openLoadingProject, closeLoadingProject} from '../../reducers/modals';
 import {removeSnapshot} from '../../lib/project-session-store';
 import storage from '../../lib/storage';
+import {isAuthUiEnabled} from '../../lib/licensing/licenseUiEnabled';
+import {isCloudLimitError} from '../../lib/robbo-account/cloudLimits';
 
 const UUID_RE = /^[0-9a-fA-F-]{36}$/;
 // The page title from index.html: a cloud project replaces it with its own name.
@@ -365,10 +369,32 @@ export function resetEditorToDefaultThunk () {
     };
 }
 
+/**
+ * Load the account's tariff and cloud limits (menu bar, License window). A failure leaves them
+ * unknown: they are only shown, the ЛК enforces the limits itself.
+ * @returns {function} thunk
+ */
+export function loadEntitlementsThunk () {
+    return function (dispatch) {
+        return getEntitlements()
+            .then(entitlements => {
+                dispatch({type: ROBBO_ACCOUNT_SET_ENTITLEMENTS, payload: entitlements});
+            })
+            .catch(err => {
+                log.warn('robbo account entitlements failed', err);
+            });
+    };
+}
+
 let checkSessionInFlight = null;
 
 export function checkSessionThunk (options) {
     return function (dispatch, getState) {
+        // No account here (Desktop, Android): nothing to ask, and an "anonymous" answer
+        // would clear the project title.
+        if (!isAuthUiEnabled()) {
+            return Promise.resolve();
+        }
         if (canonicalizeLoopbackEditorHost()) {
             return Promise.resolve();
         }
@@ -404,6 +430,7 @@ export function checkSessionThunk (options) {
                                 lmsPasswordFallback : undefined
                         }
                     });
+                    dispatch(loadEntitlementsThunk());
                     return dispatch(ensureCloudProjectPageThunk()).then(() => status);
                 }
                 dispatch({
@@ -555,6 +582,10 @@ export function saveToCloudThunk (options) {
                 setProjectSaveTarget({kind: 'cloud', name: (projectTitle || '').trim()});
                 dispatch(setProjectUnchanged());
                 dispatch(fileSaveSucceeded(Date.now()));
+                // A new cloud project changes the project count shown with the tariff.
+                if (needCreate) {
+                    dispatch(loadEntitlementsThunk());
+                }
                 if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
                     const params = Object.assign(
                         {},
@@ -578,10 +609,15 @@ export function saveToCloudThunk (options) {
             .catch(err => {
                 log.warn('cloud save failed', err);
                 dispatch(fileSaveFailed());
+                const message = (err && err.message) || 'save_failed';
                 dispatch({
                     type: ROBBO_ACCOUNT_SAVE_FAILURE,
-                    payload: {message: (err && err.message) || 'save_failed'}
+                    payload: {message}
                 });
+                // Refused by the tariff: its current limits go into the message.
+                if (isCloudLimitError(message)) {
+                    dispatch(loadEntitlementsThunk());
+                }
                 return false;
             });
     };

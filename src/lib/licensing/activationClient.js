@@ -166,3 +166,68 @@ export function addonAuthHeaders (signedOfflineToken, deviceFingerprint) {
         'X-RS3-Device-Fingerprint': deviceFingerprint
     };
 }
+
+/**
+ * POST a device's offline token (token refresh / seat release). A rejection carries
+ * `reason` (expired | revoked | seat_removed | other_device | invalid) when the ЛК answered why the
+ * licence no longer applies, and `offline` when the server could not be reached.
+ * @param {string} activationBaseUrl e.g. https://lk-api.example
+ * @param {string} path /v1/token/refresh or /v1/seats/release
+ * @param {object} body {signedOfflineToken, deviceFingerprint, publicBase}
+ * @returns {Promise<object>} the ЛК's JSON answer
+ */
+function postDeviceToken (activationBaseUrl, path, body) {
+    const base = activationBaseUrl.replace(/\/$/, '');
+    return fetch(`${base}${path}`, {
+        method: 'POST',
+        headers: Object.assign(
+            {'Content-Type': 'application/json'},
+            addonAuthHeaders(body.signedOfflineToken, body.deviceFingerprint || '')
+        ),
+        body: JSON.stringify({publicBase: body.publicBase || ''})
+    })
+        .catch(fetchErr => {
+            const err = new Error(`device_token_offline: ${fetchErr && fetchErr.message}`);
+            err.offline = true;
+            throw err;
+        })
+        .then(res => res.text().then(text => {
+            let json;
+            try {
+                json = text ? JSON.parse(text) : {};
+            } catch (e) {
+                json = {};
+            }
+            if (!res.ok) {
+                const err = new Error(json.error || json.errorCode || `device_token_http_${res.status}`);
+                err.status = res.status;
+                err.errorCode = json.errorCode || json.error;
+                err.reason = json.reason || '';
+                // No answer from the licensing API (proxy error, server down): as good as offline.
+                err.offline = res.status >= 500 && !err.reason;
+                throw err;
+            }
+            return json;
+        }));
+}
+
+/**
+ * Renew this device's offline token with the licence's current terms.
+ * @param {string} activationBaseUrl licensing API of the ЛК
+ * @param {object} body {signedOfflineToken, deviceFingerprint, publicBase}
+ * @returns {Promise<{signedOfflineToken: string, addonManifestUrl: string, refreshAfter: string}>}
+ *     the same answer as postActivate
+ */
+export function postTokenRefresh (activationBaseUrl, body) {
+    return postDeviceToken(activationBaseUrl, '/v1/token/refresh', body);
+}
+
+/**
+ * Free this device's seat (no licence key needed).
+ * @param {string} activationBaseUrl licensing API of the ЛК
+ * @param {object} body {signedOfflineToken, deviceFingerprint}
+ * @returns {Promise<{ok: boolean, seatId: string}>} the released seat
+ */
+export function postSeatRelease (activationBaseUrl, body) {
+    return postDeviceToken(activationBaseUrl, '/v1/seats/release', body);
+}

@@ -113,11 +113,17 @@ export function verifyActivationJwt (token) {
                 }
                 const payload = JSON.parse(new TextDecoder().decode(base64UrlToUint8Array(pl64)));
                 const now = Math.floor(Date.now() / 1000);
+                // The signature is valid here: the payload goes with the error, so the editor can
+                // name the dates and ask the ЛК whether the licence was renewed.
                 if (payload.exp != null && now >= payload.exp) {
-                    throw new Error('license_expired');
+                    const err = new Error('license_expired');
+                    err.payload = payload;
+                    throw err;
                 }
                 if (payload.nbf != null && now < payload.nbf) {
-                    throw new Error('license_not_yet_valid');
+                    const err = new Error('license_not_yet_valid');
+                    err.payload = payload;
+                    throw err;
                 }
                 return verifyDeviceBinding(payload);
             });

@@ -13,15 +13,25 @@ import {
     persistActivationBaseUrlThunk,
     clearLicenseThunk,
     startDeviceLinkThunk,
-    cancelDeviceLinkThunk
+    cancelDeviceLinkThunk,
+    refreshLicenseThunk,
+    releaseLicenseThunk
 } from './actions/licenseActions';
+import {
+    LICENSE_REASON_EXPIRED,
+    LICENSE_REASON_NOT_YET_VALID,
+    LICENSE_REASON_REVOKED,
+    formatLicenseReason
+} from '../lib/licensing/licenseReasons';
 import {LICENSE_FEATURES} from '../lib/licensing/licenseFeatures';
 import {
     resolveAccountHomeUrl,
     resolveLicensesUrl,
     DESKTOP_DOWNLOAD_URL
 } from '../lib/licensing/accountUrls';
-import {loginUrl} from '../lib/robbo-account/robboAccountConfig';
+import {startOidcLoginThunk} from './actions/robboAccountActions';
+import {licensesPageUrl} from '../lib/robbo-account/cloudLimits';
+import {isAuthUiEnabled} from '../lib/licensing/licenseUiEnabled';
 import {isDesktopWithBluetooth, openExternalUrl} from '../lib/platform.js';
 import {
     showTransientButtonFeedback,
@@ -125,6 +135,52 @@ const messages = defineMessages({
         id: 'gui.licenseWindow.meta_valid_until',
         defaultMessage: 'Valid until'
     },
+    meta_tariff: {
+        id: 'gui.licenseWindow.meta_tariff',
+        description: 'License window: tariff of the licence (Individual, Class…)',
+        defaultMessage: 'Tariff'
+    },
+    meta_owner: {
+        id: 'gui.licenseWindow.meta_owner',
+        description: 'License window: the account a personal licence belongs to',
+        defaultMessage: 'Owner'
+    },
+    status_expired: {
+        id: 'gui.licenseWindow.status_expired',
+        description: 'License window status chip: the licence term is over',
+        defaultMessage: 'Expired'
+    },
+    status_not_yet_valid: {
+        id: 'gui.licenseWindow.status_not_yet_valid',
+        description: 'License window status chip: the licence starts later',
+        defaultMessage: 'Not started yet'
+    },
+    check_again: {
+        id: 'gui.licenseWindow.check_again',
+        description: 'License window: ask the server whether an expired licence was renewed',
+        defaultMessage: 'Check again'
+    },
+    checking: {
+        id: 'gui.licenseWindow.checking',
+        description: 'License window: the renewal check is running',
+        defaultMessage: 'Checking…'
+    },
+    renew_in_account: {
+        id: 'gui.licenseWindow.renew_in_account',
+        description: 'License window: open the licences page of the personal account to renew',
+        defaultMessage: 'Renew in Robbo account'
+    },
+    deactivate_offline_confirm: {
+        id: 'gui.licenseWindow.deactivate_offline_confirm',
+        description: 'Question when the licence server cannot be reached on Deactivate',
+        defaultMessage: 'The licence server cannot be reached. Deactivate the licence on this ' +
+            'computer only? Its seat stays taken until you remove this computer in your Robbo account.'
+    },
+    deactivate_offline_yes: {
+        id: 'gui.licenseWindow.deactivate_offline_yes',
+        description: 'Confirm button: deactivate without freeing the seat on the server',
+        defaultMessage: 'Deactivate here'
+    },
     meta_no_expiry: {
         id: 'gui.licenseWindow.meta_no_expiry',
         defaultMessage: 'No expiry date'
@@ -160,6 +216,26 @@ const messages = defineMessages({
     web_signed_in: {
         id: 'gui.licenseWindow.web_signed_in',
         defaultMessage: 'Signed in as {name}'
+    },
+    web_projects: {
+        id: 'gui.licenseWindow.web_projects',
+        description: 'License window (browser): cloud projects of the account',
+        defaultMessage: 'Cloud projects'
+    },
+    web_projects_of: {
+        id: 'gui.licenseWindow.web_projects_of',
+        description: 'License window (browser): saved projects out of the tariff limit',
+        defaultMessage: '{count} of {limit}'
+    },
+    web_project_size: {
+        id: 'gui.licenseWindow.web_project_size',
+        description: 'License window (browser): largest project the tariff allows',
+        defaultMessage: 'Project size'
+    },
+    web_project_size_value: {
+        id: 'gui.licenseWindow.web_project_size_value',
+        description: 'License window (browser): project size limit in megabytes',
+        defaultMessage: 'up to {size} MB'
     },
     web_signed_out: {
         id: 'gui.licenseWindow.web_signed_out',
@@ -210,6 +286,7 @@ class LicenseWindowComponent extends Component {
         this.handleKeyChange = this.handleKeyChange.bind(this);
         this.onActivateClick = this.onActivateClick.bind(this);
         this.onDeactivateClick = this.onDeactivateClick.bind(this);
+        this.onCheckAgainClick = this.onCheckAgainClick.bind(this);
         this.onRobboIdClick = this.onRobboIdClick.bind(this);
         this.onCancelDeviceLinkClick = this.onCancelDeviceLinkClick.bind(this);
         this.onOpenVerificationAgain = this.onOpenVerificationAgain.bind(this);
@@ -255,11 +332,30 @@ class LicenseWindowComponent extends Component {
             danger: true
         }).then(confirmed => {
             if (!confirmed) {
-                return;
+                return null;
             }
             this.setState({licenseKeyDraft: '', showKeyForm: false});
-            this.props.onClearLicense();
+            // The seat goes back to the licence in the ЛК; without the server, ask first.
+            return this.props.onReleaseLicense().then(result => {
+                if (result !== 'offline') {
+                    return null;
+                }
+                return robboConfirm({
+                    message: this.props.intl.formatMessage(messages.deactivate_offline_confirm),
+                    confirmLabel: this.props.intl.formatMessage(messages.deactivate_offline_yes),
+                    cancelLabel: this.props.intl.formatMessage(messages.deactivate_cancel),
+                    danger: true
+                }).then(offlineConfirmed => {
+                    if (offlineConfirmed) {
+                        this.props.onClearLicense();
+                    }
+                });
+            });
         });
+    }
+
+    onCheckAgainClick () {
+        this.props.onRefreshLicense();
     }
 
     onOpenAccountClick () {
@@ -268,12 +364,16 @@ class LicenseWindowComponent extends Component {
     }
 
     onOpenLicensesClick () {
-        const url = resolveLicensesUrl(this.props.license.activationBaseUrl);
+        // Desktop derives the ЛК site from the activation server when the build has no ЛК address.
+        const url = isDesktopWithBluetooth() ?
+            resolveLicensesUrl(this.props.license.activationBaseUrl) :
+            licensesPageUrl();
         openExternalUrl(url);
     }
 
     onWebSignInClick () {
-        openExternalUrl(loginUrl());
+        // The same sign-in as the menu bar: through the ЛК and back to this editor.
+        this.props.onStartSignIn();
     }
 
     onDownloadDesktopClick () {
@@ -416,6 +516,20 @@ class LicenseWindowComponent extends Component {
                 </span>
             );
         }
+        if (ld.status === 'expired' || ld.status === 'not_yet_valid') {
+            return (
+                <span
+                    className={classNames(
+                        styles.license_status_chip,
+                        styles.license_status_chip_error
+                    )}
+                    role="status"
+                >
+                    {this.props.intl.formatMessage(ld.status === 'expired' ?
+                        messages.status_expired : messages.status_not_yet_valid)}
+                </span>
+            );
+        }
         return (
             <span
                 className={styles.license_status_chip}
@@ -426,7 +540,120 @@ class LicenseWindowComponent extends Component {
         );
     }
 
+    /**
+     * Why the licence does not apply here, with what can be done about it.
+     * @returns {?React.Element} the notice, null while the licence works
+     */
+    renderReasonNotice () {
+        const ld = this.props.license;
+        if (!ld.reason) {
+            return null;
+        }
+        let date = '';
+        if (ld.reason === LICENSE_REASON_EXPIRED) date = this.formatExpiresAt(ld.expiresAt);
+        if (ld.reason === LICENSE_REASON_NOT_YET_VALID) date = this.formatExpiresAt(ld.notBefore);
+        const expired = ld.reason === LICENSE_REASON_EXPIRED;
+        return (
+            <div className={styles.license_reason_notice}>
+                <div
+                    className={styles.license_addon_warning}
+                    role="alert"
+                >
+                    {formatLicenseReason(this.props.intl, ld.reason, date)}
+                </div>
+                {expired ? (
+                    <div className={styles.license_reason_actions}>
+                        <button
+                            type="button"
+                            className={classNames(formStyles.action_button, styles.license_primary_button)}
+                            disabled={ld.isRefreshing}
+                            onClick={this.onCheckAgainClick}
+                        >
+                            {this.props.intl.formatMessage(ld.isRefreshing ? messages.checking : messages.check_again)}
+                        </button>
+                        <button
+                            type="button"
+                            className={classNames(formStyles.action_button, styles.license_button_secondary)}
+                            onClick={this.onOpenLicensesClick}
+                        >
+                            {this.props.intl.formatMessage(messages.renew_in_account)}
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.license_deactivate_button}
+                            onClick={this.onDeactivateClick}
+                        >
+                            {this.props.intl.formatMessage(messages.deactivate_license)}
+                        </button>
+                    </div>
+                ) : null}
+                {ld.reason === LICENSE_REASON_REVOKED ? (
+                    <div className={styles.license_reason_actions}>
+                        <button
+                            type="button"
+                            className={classNames(formStyles.action_button, styles.license_button_secondary)}
+                            onClick={this.onOpenAccountClick}
+                        >
+                            {this.props.intl.formatMessage(messages.open_account)}
+                        </button>
+                    </div>
+                ) : null}
+            </div>
+        );
+    }
+
+    /**
+     * Tariff, term and cloud limits of the signed-in account (GET /licensing/entitlements).
+     * @returns {?React.Element} the rows, null until they are loaded
+     */
+    renderAccountRights () {
+        const rights = this.props.robboAccountEntitlements;
+        if (!rights || !rights.tariffName) {
+            return null;
+        }
+        const intl = this.props.intl;
+        const expiresAt = rights.expiresAt ? Math.floor(Date.parse(rights.expiresAt) / 1000) : 0;
+        const rows = [{label: intl.formatMessage(messages.meta_tariff), value: rights.tariffName}];
+        if (expiresAt > 0) {
+            rows.push({label: intl.formatMessage(messages.meta_valid_until), value: this.formatExpiresAt(expiresAt)});
+        }
+        if (typeof rights.projectCount === 'number') {
+            rows.push({
+                label: intl.formatMessage(messages.web_projects),
+                value: rights.maxProjects > 0 ?
+                    intl.formatMessage(messages.web_projects_of, {
+                        count: rights.projectCount,
+                        limit: rights.maxProjects
+                    }) :
+                    String(rights.projectCount)
+            });
+        }
+        if (rights.maxProjectSizeMb > 0) {
+            rows.push({
+                label: intl.formatMessage(messages.web_project_size),
+                value: intl.formatMessage(messages.web_project_size_value, {size: rights.maxProjectSizeMb})
+            });
+        }
+        return (
+            <dl className={styles.license_meta_list}>
+                {rows.map(row => (
+                    <div
+                        key={row.label}
+                        className={styles.license_meta_row}
+                    >
+                        <dt className={styles.license_meta_label}>{row.label}</dt>
+                        <dd className={styles.license_meta_value}>{row.value}</dd>
+                    </div>
+                ))}
+            </dl>
+        );
+    }
+
     renderWebAccountPanel () {
+        // No account in this shell (Android): only the note about the Desktop licence.
+        if (!isAuthUiEnabled()) {
+            return this.renderDesktopNote();
+        }
         const authenticated = this.props.robboAccountSessionStatus === 'authenticated';
         const user = this.props.robboAccountUser;
         const displayName = (user && (user.displayName || user.email || user.sub)) || '';
@@ -446,6 +673,8 @@ class LicenseWindowComponent extends Component {
                         }) :
                         this.props.intl.formatMessage(messages.web_signed_out)}
                 </span>
+
+                {authenticated ? this.renderAccountRights() : null}
 
                 <div className={styles.license_hint}>
                     {this.props.intl.formatMessage(messages.web_account_hint)}
@@ -477,22 +706,28 @@ class LicenseWindowComponent extends Component {
                     )}
                 </div>
 
-                <div className={styles.license_desktop_note}>
-                    <div className={styles.license_hint}>
-                        {this.props.intl.formatMessage(messages.web_desktop_note)}
-                    </div>
-                    <button
-                        type="button"
-                        className={classNames(
-                            formStyles.action_button,
-                            styles.license_button_secondary
-                        )}
-                        onClick={this.onDownloadDesktopClick}
-                    >
-                        {this.props.intl.formatMessage(messages.web_download_desktop)}
-                    </button>
-                </div>
+                {this.renderDesktopNote()}
             </>
+        );
+    }
+
+    renderDesktopNote () {
+        return (
+            <div className={styles.license_desktop_note}>
+                <div className={styles.license_hint}>
+                    {this.props.intl.formatMessage(messages.web_desktop_note)}
+                </div>
+                <button
+                    type="button"
+                    className={classNames(
+                        formStyles.action_button,
+                        styles.license_button_secondary
+                    )}
+                    onClick={this.onDownloadDesktopClick}
+                >
+                    {this.props.intl.formatMessage(messages.web_download_desktop)}
+                </button>
+            </div>
         );
     }
 
@@ -646,6 +881,22 @@ class LicenseWindowComponent extends Component {
                             {this.formatExpiresAt(ld.expiresAt)}
                         </dd>
                     </div>
+                    {ld.tariff ? (
+                        <div className={styles.license_meta_row}>
+                            <dt className={styles.license_meta_label}>
+                                {this.props.intl.formatMessage(messages.meta_tariff)}
+                            </dt>
+                            <dd className={styles.license_meta_value}>{ld.tariff}</dd>
+                        </div>
+                    ) : null}
+                    {ld.ownerName ? (
+                        <div className={styles.license_meta_row}>
+                            <dt className={styles.license_meta_label}>
+                                {this.props.intl.formatMessage(messages.meta_owner)}
+                            </dt>
+                            <dd className={styles.license_meta_value}>{ld.ownerName}</dd>
+                        </div>
+                    ) : null}
                     {idRows.map(row => {
                         const justCopied = copiedField === row.key;
                         return (
@@ -835,6 +1086,8 @@ class LicenseWindowComponent extends Component {
                             <>
                                 {!isActive ? this.renderStatusChip() : null}
 
+                                {this.renderReasonNotice()}
+
                                 {showAddonWarning ? (
                                     <div className={styles.license_addon_warning} role="alert">
                                         {this.props.intl.formatMessage(messages.addon_issue, {
@@ -861,7 +1114,8 @@ class LicenseWindowComponent extends Component {
 const mapStateToProps = state => ({
     license: state.scratchGui.license,
     robboAccountSessionStatus: (state.scratchGui.robboAccount || {}).sessionStatus,
-    robboAccountUser: (state.scratchGui.robboAccount || {}).user
+    robboAccountUser: (state.scratchGui.robboAccount || {}).user,
+    robboAccountEntitlements: (state.scratchGui.robboAccount || {}).entitlements
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -882,7 +1136,12 @@ const mapDispatchToProps = dispatch => ({
     },
     onCancelDeviceLink: () => {
         dispatch(cancelDeviceLinkThunk());
-    }
+    },
+    onStartSignIn: () => {
+        dispatch(startOidcLoginThunk());
+    },
+    onRefreshLicense: () => dispatch(refreshLicenseThunk({manual: true})),
+    onReleaseLicense: () => dispatch(releaseLicenseThunk())
 });
 
 export default injectIntl(
