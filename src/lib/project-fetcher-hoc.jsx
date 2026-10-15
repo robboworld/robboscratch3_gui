@@ -99,7 +99,9 @@ const ProjectFetcherHOC = function (WrappedComponent) {
             }
 
             const validationPromise = new Promise((resolve, reject) => {
-                validate(input, (error, res) => {
+                // The second argument of false below indicates to the validator that the
+                // input should be parsed/validated as an entire project (and not a single sprite)
+                validate(input, false, (error, res) => {
                     if (error) return reject(error);
                     resolve(res);
                 });
