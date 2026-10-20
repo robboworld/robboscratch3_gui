@@ -135,6 +135,12 @@ const messages = defineMessages({
         description: 'Device row hint: flashing failed',
         defaultMessage: 'The firmware was not written. Check the cable and try again.'
     },
+    hint_bluetooth_no_answer: {
+        id: 'gui.SearchPanelDeviceComponent.hint_bluetooth_no_answer',
+        description: 'Bluetooth robot row: the connection failed for a reason without its own hint',
+        defaultMessage: 'The robot does not answer over Bluetooth. Switch it on, bring it closer to the computer ' +
+            'and press «Search again».'
+    },
     hint_port_error: {
         id: 'gui.SearchPanelDeviceComponent.hint_port_error',
         description: 'Device row hint: the serial port could not be opened',
@@ -915,6 +921,8 @@ class SearchPanelDeviceComponent extends Component {
             ALREADY_CONNECTED: messages.bluetooth_error_already_connected
         };
         if (error && error.errorCode && byCode[error.errorCode]) return this.props.intl.formatMessage(byCode[error.errorCode]);
+        // a cable and a USB port say nothing to a Bluetooth robot
+        if (this.props.isBluetooth) return this.props.intl.formatMessage(messages.hint_bluetooth_no_answer);
         return this.props.intl.formatMessage(messages.hint_port_error);
     }
 
