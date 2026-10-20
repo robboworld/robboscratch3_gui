@@ -45,7 +45,7 @@ const messages = defineMessages({
   devices_not_found_step_cable: {
     id: 'gui.SearchPanel.devices_not_found_step_cable',
     description: 'Devices panel, nothing found, step 1',
-    defaultMessage: 'Connect the robot or the laboratory with a USB cable.'
+    defaultMessage: 'Connect the device to the computer with a USB cable.'
   },
   devices_not_found_step_power: {
     id: 'gui.SearchPanel.devices_not_found_step_power',
