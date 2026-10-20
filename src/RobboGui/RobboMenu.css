@@ -77,3 +77,14 @@
   background: none;
   border-top: 1px solid rgba(255, 255, 255, 0.28);
 }
+
+/* «Что нового»: unread release messages */
+.unread_dot {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: auto;
+  border: 2px solid white;
+  border-radius: 50%;
+  background-color: $data-primary;
+}

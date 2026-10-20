@@ -14,6 +14,7 @@ import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
+import {WHATS_NEW_WINDOW_ID} from './reducers/whats_new';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 import {
@@ -119,6 +120,14 @@ const messages = defineMessages({
       description: ' ',
       defaultMessage: 'Device settings'
 
+    },
+    trigger_whats_new: {
+      id: 'gui.RobboMenu.trigger_whats_new',
+      defaultMessage: 'What\'s new'
+    },
+    whats_new_unread: {
+      id: 'gui.RobboMenu.whats_new_unread',
+      defaultMessage: 'There are new changes'
     },
     trigger_about_window:{
 
@@ -251,7 +260,7 @@ class RobboMenu extends Component {
     items[next].focus();
   }
 
-  renderItem (id, label, onClick, checked) {
+  renderItem (id, label, onClick, checked, badgeLabel) {
     const isToggle = typeof checked === 'boolean';
     return (
       <button
@@ -271,6 +280,14 @@ class RobboMenu extends Component {
           </span>
         ) : null}
         <span>{label}</span>
+        {badgeLabel ? (
+          <span
+            className={styles.unread_dot}
+            role="img"
+            aria-label={badgeLabel}
+            title={badgeLabel}
+          />
+        ) : null}
       </button>
     );
   }
@@ -706,6 +723,10 @@ class RobboMenu extends Component {
             this.renderItem('trigger-license-window',
             intl.formatMessage(messages.trigger_license_window),
             this.openAndClose(this.triggerLicenseWindow.bind(this))) : null}
+          {this.props.hasWhatsNew ? this.renderItem('trigger-whats-new',
+            intl.formatMessage(messages.trigger_whats_new),
+            this.openAndClose(this.props.onTriggerWhatsNew), undefined,
+            this.props.hasUnreadWhatsNew ? intl.formatMessage(messages.whats_new_unread) : '') : null}
           {this.renderItem('trigger-about-window', intl.formatMessage(messages.trigger_about_window),
             this.openAndClose(this.triggerAboutWindow.bind(this)))}
 
@@ -727,7 +748,9 @@ const mapStateToProps =  state => ({
     robot_sensors:state.scratchGui.robot_sensors,
     settings:state.scratchGui.settings,
     extension_pack:state.scratchGui.extension_pack,
-    isRobboAccountAuthenticated: (state.scratchGui.robboAccount || {}).sessionStatus === 'authenticated'
+    isRobboAccountAuthenticated: (state.scratchGui.robboAccount || {}).sessionStatus === 'authenticated',
+    hasWhatsNew: Boolean(state.scratchGui.whats_new.data),
+    hasUnreadWhatsNew: state.scratchGui.whats_new.unread.length > 0
 
 
   });
@@ -773,6 +796,9 @@ const mapDispatchToProps = dispatch => ({
 
               dispatch(ActionTriggerNewDraggableWindow(window_id));
             },
+    onTriggerWhatsNew: () => {
+        dispatch(ActionTriggerNewDraggableWindow(WHATS_NEW_WINDOW_ID));
+      },
     onTriggerLicenseWindow: windowId => {
 
         dispatch(ActionTriggerNewDraggableWindow(windowId));

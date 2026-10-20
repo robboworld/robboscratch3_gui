@@ -28,11 +28,14 @@ import styles from './RobboGui.css';
 import SearchPanelComponent from './SearchPanelComponent';
 import AboutWindowComponent from './AboutWindowComponent';
 import LicenseWindowComponent from './LicenseWindowComponent';
+import WhatsNewWindowComponent from './WhatsNewWindowComponent';
+import {WHATS_NEW_WINDOW_ID, loadWhatsNewThunk} from './reducers/whats_new';
 
 import NewDraggableWindowComponent from './NewDraggableWindowComponent';
 import {
   ROBBO_POPUP_SIZE_ABOUT,
-  ROBBO_POPUP_SIZE_SETTINGS
+  ROBBO_POPUP_SIZE_SETTINGS,
+  ROBBO_POPUP_SIZE_WHATS_NEW
 } from '../lib/robbo-popup-position';
 
 import {
@@ -115,6 +118,7 @@ class RobboGui extends Component {
       if (LICENSE_UI_ENABLED) {
         this.props.onHydrateLicense();
       }
+      this.props.onLoadWhatsNew();
 
       if (this.props.vm) {
         const RCA = this.props.vm.getRCA();
@@ -338,6 +342,16 @@ class RobboGui extends Component {
 
          </NewDraggableWindowComponent>
 
+         <NewDraggableWindowComponent
+           draggableWindowId={WHATS_NEW_WINDOW_ID}
+           centerOnCreate
+           estimatedPopupSize={ROBBO_POPUP_SIZE_WHATS_NEW}
+         >
+
+            <WhatsNewWindowComponent />
+
+         </NewDraggableWindowComponent>
+
         {/*  <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>
 
             <IotConnectionComponent VM={this.props.vm} IOT={this.IOT}/>
@@ -376,6 +390,8 @@ const mapStateToProps =  state => ({
   });
 
 const mapDispatchToProps = dispatch => ({
+
+  onLoadWhatsNew: () => dispatch(loadWhatsNewThunk()),
 
   searchRobotDevices: (RCA) => {
 

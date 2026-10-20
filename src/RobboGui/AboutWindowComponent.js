@@ -33,12 +33,13 @@ import {
   premiumStartUpdateThunk
 } from './actions/licenseActions';
 import {closeMessage} from './sensor-type-messages';
+import {WHATS_NEW_WINDOW_ID} from './reducers/whats_new';
 
 const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
 const SUPPORT_URL = 'https://support.robbo.world/';
 
-const VERSION = 'Robbo Scratch v.3.136.1-alpha';
+const VERSION = 'Robbo Scratch v.3.137.0-alpha';
 export {VERSION};
 export const APP_VERSION = (VERSION.match(/v\.(.+)$/) || [])[1] || '';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
@@ -61,6 +62,10 @@ const formatProfilingMetric = value => {
 };
 
 const messages = defineMessages({
+  whats_new: {
+    id: 'gui.RobboMenu.trigger_whats_new',
+    defaultMessage: 'What\'s new'
+  },
   about_window: {
     id: 'gui.RobboGui.about_window',
     description: ' ',
@@ -743,6 +748,16 @@ class AboutWindowComponent extends Component {
                 </div>
                 {updateIndicator}
               </div>
+              {this.props.hasWhatsNew ? (
+                <button
+                  type="button"
+                  id="about-window-whats-new"
+                  className={styles.about_whats_new_link}
+                  onClick={this.props.onOpenWhatsNew}
+                >
+                  {intl.formatMessage(messages.whats_new)}
+                </button>
+              ) : null}
               {!profilingEnabled ? (
                 <button
                   type="button"
@@ -886,12 +901,17 @@ class AboutWindowComponent extends Component {
 }
 
 const mapStateToProps = state => ({
-  license: state.scratchGui.license
+  license: state.scratchGui.license,
+  hasWhatsNew: Boolean(state.scratchGui.whats_new.data)
 });
 
 const mapDispatchToProps = dispatch => ({
   onAboutWindowClose: window_id => {
     dispatch(ActionTriggerNewDraggableWindow(window_id));
+  },
+
+  onOpenWhatsNew: () => {
+    dispatch(ActionTriggerNewDraggableWindow(WHATS_NEW_WINDOW_ID));
   },
 
   onCheckForUpdates: () => {
