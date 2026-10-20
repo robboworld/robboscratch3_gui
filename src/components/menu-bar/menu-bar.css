@@ -477,3 +477,16 @@ $robbo-white: #ffffff;
 .toggle_robbo_ui_active {
     background-color: rgba(0, 0, 0, 0.1);
 }
+
+/* «Что нового»: unread release messages (src/RobboGui/reducers/whats_new.js) */
+.robboMenuUnreadDot {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.25rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border: 2px solid $ui-white;
+    border-radius: 50%;
+    background-color: $data-primary;
+    pointer-events: none;
+}

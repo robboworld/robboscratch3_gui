@@ -1090,6 +1090,12 @@ class MenuBar extends React.Component {
                                     description=""
                                     id="gui.menuBar.robbo_menu"
                                 />
+                                {this.props.hasUnreadWhatsNew ? (
+                                    <span
+                                        className={styles.robboMenuUnreadDot}
+                                        aria-hidden="true"
+                                    />
+                                ) : null}
                             </div>
                             <MenuBarDeviceControls vm={this.props.vm} />
                         </div>
@@ -1296,6 +1302,7 @@ MenuBar.propTypes = {
     isRobboAccountAuthenticated: PropTypes.bool,
     isRtl: PropTypes.bool,
     isRobboUiHidden: PropTypes.bool,
+    hasUnreadWhatsNew: PropTypes.bool,
     isShared: PropTypes.bool,
     isShowingProject: PropTypes.bool,
     isTotallyNormal: PropTypes.bool,
@@ -1400,6 +1407,7 @@ const mapStateToProps = (state, ownProps) => {
 
     return {
         aboutMenuOpen: aboutMenuOpen(state),
+        hasUnreadWhatsNew: state.scratchGui.whats_new.unread.length > 0,
         accountMenuOpen: accountMenuOpen(state),
         cloudProjectPageId: robboAccount.cloudProjectPageId || '',
         cloudSaveError: robboAccount.saveError || '',

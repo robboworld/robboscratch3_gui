@@ -4,6 +4,7 @@ export const POPUP_VIEWPORT_MARGIN = 16;
 /** Estimated size for centering (min-width / typical height from CSS). */
 export const ROBBO_POPUP_SIZE_ABOUT = {width: 800, height: 480};
 export const ROBBO_POPUP_SIZE_SETTINGS = {width: 520, height: 460};
+export const ROBBO_POPUP_SIZE_WHATS_NEW = {width: 480, height: 560};
 export const ROBBO_POPUP_SIZE_FIRMWARE = {width: 815, height: 520};
 export const ROBBO_POPUP_SIZE_FLASH_LOG = {width: 448, height: 360};
 

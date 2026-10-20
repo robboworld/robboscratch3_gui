@@ -55,6 +55,7 @@ import devices_firmware_flasher,{devices_firmware_flasher_InitialState} from '..
 import iot_blocks,{iot_blocks_InitialState} from '../RobboGui/reducers/iot_blocks';
 import license,{license_InitialState} from '../RobboGui/reducers/license';
 import robboAccount,{robboAccount_InitialState} from '../RobboGui/reducers/robboAccount';
+import whats_new,{whats_new_InitialState} from '../RobboGui/reducers/whats_new';
 
 import thunk from 'redux-thunk';
 
@@ -113,7 +114,8 @@ const guiInitialState = {
   devices_firmware_flasher:devices_firmware_flasher_InitialState,
   iot_blocks:iot_blocks_InitialState,
     license: license_InitialState,
-    robboAccount: robboAccount_InitialState
+    robboAccount: robboAccount_InitialState,
+    whats_new: whats_new_InitialState
 };
 
 const initPlayer = function (currentState) {
@@ -234,7 +236,8 @@ const guiReducer = combineReducers({
     devices_firmware_flasher:devices_firmware_flasher,
     iot_blocks:iot_blocks,
     license: license,
-    robboAccount: robboAccount
+    robboAccount: robboAccount,
+    whats_new: whats_new
 
 });
 
