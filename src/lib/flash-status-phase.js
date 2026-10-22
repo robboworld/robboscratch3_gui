@@ -222,7 +222,7 @@ export const createFlashProgress = () => ({
     recognized: false,
     block: 0,
     blockTotal: 0,
-    // the bootloader answered at least once (something was written or the device told its id)
+    // the bootloader answered at least once (a block was written or the device told its id)
     boardAnswered: false,
     // a bootloader request got no byte back
     boardSilent: false
@@ -268,9 +268,9 @@ export const flashPhaseOf = (status, progress) => {
 
 /** Remember what a flasher line tells about the device. */
 const trackDevice = (status, progress) => {
-    if (status.indexOf('Uploading') !== -1 || BLOCK_PATTERN.test(status) || DEVICE_ID_PATTERN.test(status)) {
-        progress.boardAnswered = true;
-    }
+    // «Uploading..» follows every packet sent, before any answer; «Block N/M» starts only after the bootloader
+    // took the programming mode, «Device ID» comes from the diagnostic firmware written through it
+    if (BLOCK_PATTERN.test(status) || DEVICE_ID_PATTERN.test(status)) progress.boardAnswered = true;
     if (status.indexOf('no bytes') !== -1 || status.indexOf('receivedBytes=0') !== -1) progress.boardSilent = true;
     const diagnostic = DIAGNOSTIC_PATTERN.exec(status);
     if (diagnostic) {
