@@ -248,6 +248,11 @@ const messages = defineMessages({
     description: 'About window: where the support report was saved',
     defaultMessage: 'Report saved: {path}'
   },
+  support_report_saved_desktop: {
+    id: 'gui.RobboGui.support_report_saved_desktop',
+    description: 'About window: the support report was saved to the Desktop (file name)',
+    defaultMessage: 'Saved to the Desktop: {file}'
+  },
   support_report_downloaded: {
     id: 'gui.RobboGui.support_report_downloaded',
     description: 'About window: the support report was downloaded (web)',
@@ -491,6 +496,14 @@ class AboutWindowComponent extends Component {
     });
   }
 
+  componentDidUpdate (prevProps) {
+    // the window stays mounted while closed: each opening starts with «Save report» again
+    // (after a new search the journal is different, support may ask for a fresh report)
+    if (!prevProps.isShowing && this.props.isShowing && this.state.reportSave) {
+      this.setState({reportSave: null});
+    }
+  }
+
   componentWillUnmount () {
     this.unmounted = true;
     clearTransientButtonFeedbackTimer(this, COPY_BUTTON_FEEDBACK_KEY);
@@ -646,7 +659,13 @@ class AboutWindowComponent extends Component {
     saveSupportReport({formatMessage: this.props.intl.formatMessage, dca: this.DCA})
       .then(saved => {
         if (this.unmounted) return;
-        this.setState({reportSave: {status: 'saved', path: saved.path, downloaded: saved.downloaded}});
+        this.setState({reportSave: {
+          status: 'saved',
+          path: saved.path,
+          fileName: saved.fileName,
+          onDesktop: saved.onDesktop,
+          downloaded: saved.downloaded
+        }});
       })
       .catch(error => {
         if (this.unmounted) return;
@@ -654,6 +673,7 @@ class AboutWindowComponent extends Component {
       });
   }
 
+  /** One line under the button: where the report went, or why it did not. */
   renderReportSaveStatus () {
     const reportSave = this.state.reportSave;
     if (!reportSave || reportSave.status === 'saving') return null;
@@ -665,24 +685,60 @@ class AboutWindowComponent extends Component {
         </div>
       );
     }
+    let text = intl.formatMessage(messages.support_report_downloaded);
+    if (!reportSave.downloaded) {
+      text = reportSave.onDesktop ?
+        intl.formatMessage(messages.support_report_saved_desktop, {file: reportSave.fileName}) :
+        intl.formatMessage(messages.support_report_saved, {path: reportSave.path});
+    }
     return (
-      <div className={styles.about_report_status} role="status">
-        <span className={styles.about_report_path}>
-          {reportSave.downloaded ?
-            intl.formatMessage(messages.support_report_downloaded) :
-            intl.formatMessage(messages.support_report_saved, {path: reportSave.path})}
-        </span>
-        {reportSave.path ? (
-          <button
-            type="button"
-            id="about-window-show-report"
-            className={styles.about_text_link}
-            onClick={() => showReportInFolder(reportSave.path)}
-          >
-            {intl.formatMessage(messages.show_in_folder)}
-          </button>
-        ) : null}
+      <div
+        className={styles.about_report_status}
+        role="status"
+        title={reportSave.path || undefined}
+      >
+        {text}
       </div>
+    );
+  }
+
+  /** Save the report; once saved (desktop) the same button shows it in the folder. */
+  renderReportButton () {
+    const intl = this.props.intl;
+    const reportSave = this.state.reportSave;
+    const saving = Boolean(reportSave && reportSave.status === 'saving');
+    const savedPath = reportSave && reportSave.status === 'saved' ? reportSave.path : null;
+    if (savedPath) {
+      return (
+        <button
+          type="button"
+          id="about-window-show-report"
+          className={classNames(formStyles.action_button, styles.about_report_button_done)}
+          title={savedPath}
+          onClick={() => showReportInFolder(savedPath)}
+        >
+          <span
+            className={styles.about_report_done_icon}
+            aria-hidden="true"
+          />
+          <span className={formStyles.action_button_label}>
+            {intl.formatMessage(messages.show_in_folder)}
+          </span>
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        id="about-window-save-report"
+        className={formStyles.action_button}
+        disabled={saving}
+        onClick={this.onSaveReportClick}
+      >
+        <span className={formStyles.action_button_label}>
+          {intl.formatMessage(saving ? messages.saving_support_report : messages.save_support_report)}
+        </span>
+      </button>
     );
   }
 
@@ -822,7 +878,6 @@ class AboutWindowComponent extends Component {
       COPY_FEEDBACK_TOKEN
     );
     const updateIndicator = this.renderUpdateIndicator();
-    const reportSaving = this.state.reportSave && this.state.reportSave.status === 'saving';
     return (
       <div id="about-window" className={classNames(sharedStyles.palette, styles.about_window)}>
         <div
@@ -982,17 +1037,7 @@ class AboutWindowComponent extends Component {
           className={classNames(formStyles.footer, styles.about_footer, styles.about_footer_outside)}
         >
           <div className={classNames(formStyles.footer_actions, styles.about_footer_actions)}>
-            <button
-              type="button"
-              id="about-window-save-report"
-              className={formStyles.action_button}
-              disabled={Boolean(reportSaving)}
-              onClick={this.onSaveReportClick}
-            >
-              <span className={formStyles.action_button_label}>
-                {intl.formatMessage(reportSaving ? messages.saving_support_report : messages.save_support_report)}
-              </span>
-            </button>
+            {this.renderReportButton()}
             <button
               type="button"
               id="about-window-help"
@@ -1019,6 +1064,7 @@ class AboutWindowComponent extends Component {
 }
 
 const mapStateToProps = state => ({
+  isShowing: Boolean((state.scratchGui.new_draggable_window['about-window'] || {}).isShowing),
   license: state.scratchGui.license,
   hasWhatsNew: hasWhatsNew(state.scratchGui.whats_new),
   hasUnreadWhatsNew: hasUnreadWhatsNew(state.scratchGui.whats_new),

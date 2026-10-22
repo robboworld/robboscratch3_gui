@@ -47,7 +47,8 @@ const buildSupportReport = function ({formatMessage, dca, version} = {}) {
 
 /**
  * @param {object} [options] see buildSupportReport
- * @returns {Promise<{path: ?string, downloaded: boolean, findings: Array<object>}>} where the file went
+ * @returns {Promise<{path: ?string, fileName: string, onDesktop: boolean, downloaded: boolean,
+ *     findings: Array<object>}>} where the file went
  */
 const saveSupportReport = function (options) {
     return buildSupportReport(options).then(report => saveReport(report.text)
