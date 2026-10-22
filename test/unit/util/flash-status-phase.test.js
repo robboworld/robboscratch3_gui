@@ -2,6 +2,7 @@ import {
     applyFlashConnected,
     applyFlashStatus,
     createFlashProgress,
+    flashFailureOf,
     flashPhaseOf,
     resetFlashWindow
 } from '../../../src/lib/flash-status-phase.js';
@@ -43,6 +44,28 @@ describe('flash status phases', () => {
         expect(phases).toEqual(UNKNOWN_OTTO_FLOW.map(([, phase]) => phase));
         expect(progress.deviceId).toBe(5);
         expect(el.textContent).toBe('doneDevice|{"device":"deviceOtto"}');
+    });
+
+    test('a board whose bootloader never answers is told apart (Bluetooth module on pins 0/1)', () => {
+        const progress = createFlashProgress();
+        const el = document.createElement('div');
+        [
+            `${P}Waiting for DeviceID on (115200)`,
+            `${P}Start downloading diagnostic for nano/otto_arduino(57600) 1/3`,
+            `${P}STK500 timeout: packet=ENTER_PROGMODE, receivedBytes=0, raw=no bytes`,
+            `${P}Start downloading diagnostic for uno/otto_arduino(115200) 3/3`,
+            `${P}STK500 error: Timeout waiting for STK500 response (no bytes)`,
+            `${P}Error! PLS reload RS and try again`
+        ].forEach(line => applyFlashStatus(el, line, intl, progress));
+        expect(flashFailureOf(progress)).toBe('board_silent');
+        expect(el.textContent).toBe('errorBoardSilent');
+    });
+
+    test('a silent board variant before a good one is not a silent board', () => {
+        const progress = createFlashProgress();
+        UNKNOWN_OTTO_FLOW.slice(0, 8).forEach(([line]) => applyFlashStatus(null, line, intl, progress));
+        applyFlashStatus(null, `${P}Error! PLS reload RS and try again`, intl, progress);
+        expect(flashFailureOf(progress)).toBe(null);
     });
 
     test('board detection shows the variant number', () => {

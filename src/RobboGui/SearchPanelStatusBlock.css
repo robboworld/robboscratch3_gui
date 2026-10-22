@@ -25,7 +25,52 @@
     background: none;
 }
 
-.statusBlockEmpty .statusTitle {
+.statusBlockEmpty .statusCause {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid $error-primary;
+    border-radius: $form-radius;
+    background-color: $error-transparent;
+    font-size: $popup-font-size-sm;
+    line-height: 1.45;
+    color: $text-primary;
+}
+
+.statusCauseTitle {
+    font-weight: bold;
+}
+
+.statusCauseAction {
+    margin-top: 0.25rem;
+}
+
+/* «Save report for support»: a quiet link under the main action */
+.statusSecondaryAction {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: $motion-primary;
+    font: inherit;
+    font-size: $popup-font-size-sm;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.statusSecondaryAction:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+.statusNote {
+    font-size: $popup-font-size-sm;
+    line-height: 1.4;
+    color: rgba(0, 0, 0, 0.62);
+    overflow-wrap: anywhere;
+}
+
+.statusTitle {
     font-weight: bold;
     font-size: 0.9375rem;
 }

@@ -287,12 +287,13 @@ const collectWeb = function () {
  * @param {object} options options
  * @param {?object} options.dca DeviceControlAPI (search journal)
  * @param {string} options.version app version shown in the report
- * @param {boolean} [options.quick] skip the slow system queries (PowerShell, pnputil) — for UI hints
+ * @param {boolean} [options.quick] skip the slow Windows queries (PowerShell, pnputil) — for UI hints
+ * @param {Promise<?object>} [options.windows] the Windows block collected earlier (collectWindowsSystem)
  * @returns {Promise<object>} snapshot, see the top of this file
  */
 const collectEnvironment = options => Promise.resolve().then(() => collect(options || {}));
 
-const collect = function ({dca, version, quick}) {
+const collect = function ({dca, version, quick, windows: presetWindows}) {
     const problems = [];
     const nodeProcess = nodeRequire('process');
     const runtime = nodeProcess ? 'desktop' : 'web';
@@ -323,8 +324,9 @@ const collect = function ({dca, version, quick}) {
     if (platform === 'win32' && cp && fs && path) {
         const systemRoot = nodeProcess.env.SystemRoot || 'C:\\Windows';
         installPromise = guard(collectWindowsInstall(cp, fs, path, execDir), 'Installation');
-        if (!quick) windowsPromise = guard(collectWindows(cp, systemRoot, problems), 'Windows devices');
-    } else if (platform === 'linux' && cp && fs && !quick) {
+        if (presetWindows) windowsPromise = guard(presetWindows, 'Windows devices');
+        else if (!quick) windowsPromise = guard(collectWindows(cp, systemRoot, problems), 'Windows devices');
+    } else if (platform === 'linux' && cp && fs) {
         linuxPromise = guard(collectLinux(cp, fs), 'Linux devices');
     }
 
@@ -350,8 +352,21 @@ const collect = function ({dca, version, quick}) {
         }));
 };
 
+/**
+ * The slow Windows part alone (Device Manager, driver store, Memory Integrity), so a UI hint can reuse it.
+ * @returns {Promise<?object>} the windows block of the snapshot, null off Windows
+ */
+const collectWindowsSystem = function () {
+    const nodeProcess = nodeRequire('process');
+    const cp = nodeRequire('child_process');
+    if (!nodeProcess || nodeProcess.platform !== 'win32' || !cp) return Promise.resolve(null);
+    const problems = [];
+    return collectWindows(cp, nodeProcess.env.SystemRoot || 'C:\\Windows', problems).catch(() => null);
+};
+
 export {
     collectEnvironment,
+    collectWindowsSystem,
     parsePnputilDrivers,
     driverFamily
 };

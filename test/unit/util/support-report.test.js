@@ -88,6 +88,22 @@ describe('diagnose', () => {
         }))).toEqual([]);
     });
 
+    test('copied folder with a device connected earlier: a later search does not probe it again', () => {
+        expect(codes(windowsSnapshot({
+            install: {state: 'copied', registeredDir: '', installLog: null},
+            windows: {devices: [ftdiDevice(0)], drivers: [], memoryIntegrity: false},
+            search: {
+                events: [
+                    event('search_start'),
+                    event('probe', {port: 'COM3', result: 'ready', deviceId: 5, firmware: 4}),
+                    event('search_start'),
+                    event('port_list', {count: 1, accepted: ['COM3']})
+                ],
+                lastPortList: {t: 1000, ports: [{path: 'COM3', verdict: 'accepted'}]}
+            }
+        }))).toEqual([]);
+    });
+
     test('nothing plugged in', () => {
         expect(codes(windowsSnapshot())).toEqual(['RS-DEV-03']);
     });
@@ -131,6 +147,26 @@ describe('diagnose', () => {
                 event('port_open', {port: '/dev/ttyUSB0', ok: false, message: 'Error: Permission denied, cannot open /dev/ttyUSB0'})
             ])
         }))).toEqual(['RS-LNX-01']);
+    });
+
+    test('browser: the port dialog was closed without a choice', () => {
+        expect(codes({
+            runtime: 'web', platform: '', install: null, windows: null, linux: null,
+            web: {serialApi: true, secureContext: true, robbolink: false, ports: []},
+            search: {events: [event('search_start', {transport: 'webserial'}), event('port_choice_cancelled')],
+                lastPortList: null}
+        })).toEqual(['RS-WEB-02']);
+    });
+
+    test('browser: a chosen port that does not answer', () => {
+        expect(codes({
+            runtime: 'web', platform: '', install: null, windows: null, linux: null,
+            web: {serialApi: true, secureContext: true, robbolink: false, ports: [{usbVendorId: 1027, usbProductId: 24577}]},
+            search: searchWith([{path: 'webserial_0403_6001', verdict: 'accepted'}], [
+                event('port_open', {port: 'webserial_0403_6001', ok: true, baud: 115200}),
+                event('probe', {port: 'webserial_0403_6001', result: 'no answer', firstByte: null, rubbish: null})
+            ])
+        })).toEqual(['RS-DEV-01']);
     });
 
     test('browser without Web Serial', () => {

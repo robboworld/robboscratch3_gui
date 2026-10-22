@@ -115,6 +115,16 @@ const findingMessages = defineMessages({
         description: 'Support report: what to do without Web Serial',
         defaultMessage: 'Open Robbo Scratch in Chrome or Edge, or install the desktop version.'
     },
+    'RS-WEB-02.title': {
+        id: 'gui.supportReport.RS-WEB-02.title',
+        description: 'Support report: no port was chosen in the browser port dialog',
+        defaultMessage: 'No device was chosen in the browser window.'
+    },
+    'RS-WEB-02.action': {
+        id: 'gui.supportReport.RS-WEB-02.action',
+        description: 'Support report: what to do when no port was chosen',
+        defaultMessage: 'Press «Search devices», choose the device in the browser window and press «Connect». If the device is not in the list, check the cable; on Windows it also needs the driver from the Robbo Scratch installer.'
+    },
     'OK.title': {
         id: 'gui.supportReport.OK.title',
         description: 'Support report: no known problem found',

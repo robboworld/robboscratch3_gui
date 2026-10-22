@@ -22,6 +22,7 @@ import {
     applyFlashConnected,
     applyFlashStatus,
     createFlashProgress,
+    flashFailureOf,
     isFlashDone
 } from '../lib/flash-status-phase';
 import {hydrateLicenseThunk} from './actions/licenseActions';
@@ -136,6 +137,16 @@ const messages = defineMessages({
         id: 'gui.SearchPanelDeviceComponent.hint_flashing',
         description: 'Device row hint while flashing, before the flasher reports anything',
         defaultMessage: 'Do not unplug the cable while the firmware is written.'
+    },
+    hint_flash_board_silent: {
+        id: 'gui.SearchPanelDeviceComponent.hint_flash_board_silent',
+        description: 'Device row hint: flashing an unknown device failed, the board never answered (rarely: a Bluetooth module of the Dancing robot on pins 0/1)',
+        defaultMessage: 'The board does not answer. Check the cable and try another USB port. If it is a Dancing robot with a Bluetooth module, unplug the module for the flashing and press «Retry».'
+    },
+    hint_flash_board_silent_otto: {
+        id: 'gui.SearchPanelDeviceComponent.hint_flash_board_silent_otto',
+        description: 'Device row hint: flashing the Dancing robot failed, the board never answered (a Bluetooth module on pins 0/1 blocks it)',
+        defaultMessage: 'The board does not answer. Check the cable; if the robot has a Bluetooth module, unplug it for the flashing and press «Retry».'
     },
     hint_flash_failed: {
         id: 'gui.SearchPanelDeviceComponent.hint_flash_failed',
@@ -1101,7 +1112,7 @@ class SearchPanelDeviceComponent extends Component {
         if (flashUi && flashUi.failed) {
             view.tone = 'err';
             view.pill = intl.formatMessage(messages.pill_flash_failed);
-            view.hint = this.props.disableFirmwareUi ? flashUi.text : intl.formatMessage(messages.hint_flash_failed);
+            view.hint = this.props.disableFirmwareUi ? flashUi.text : intl.formatMessage(this._flashFailedHint(flashUi));
             if (this._firmwareActionsAllowed()) {
                 view.action = {label: intl.formatMessage(messages.action_retry), run: () => this.retryFlash()};
             }
@@ -1418,6 +1429,17 @@ class SearchPanelDeviceComponent extends Component {
                 quadcopterRowPhase: 'searching'
             });
         }
+    }
+
+    /**
+     * Hint of a failed flash. A board that never answered is rarely anything but the cable; only the Dancing robot
+     * may have a Bluetooth module on pins 0/1 that holds the line, so only it (or a device not known yet) hears of it.
+     */
+    _flashFailedHint(flashUi) {
+        if (flashUi.reason !== 'board_silent') return messages.hint_flash_failed;
+        if (flashUi.deviceId === 5) return messages.hint_flash_board_silent_otto;
+        const known = flashUi.deviceId !== null && flashUi.deviceId !== undefined && flashUi.deviceId !== -1;
+        return known ? messages.hint_flash_failed : messages.hint_flash_board_silent;
     }
 
     /** The USB cable was pulled out (DCA watches the ports of the system). */
@@ -2083,7 +2105,12 @@ class SearchPanelDeviceComponent extends Component {
                 this.setState({flashLogExpanded: true});
 
                 // The row says what happened and offers «Retry» (it repeats this flash): no question window.
-                this.setState({flashUi: {failed: true, text: flashRecord.status}});
+                this.setState({flashUi: {
+                    failed: true,
+                    text: flashRecord.status,
+                    reason: flashFailureOf(flashProgress),
+                    deviceId: flashProgress.deviceId
+                }});
                 showSearchPanel();
                 this._logFlashFlow('statusCallback', 'flash_error', {
                     stage: this.flashStage,
