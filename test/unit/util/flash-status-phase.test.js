@@ -52,8 +52,12 @@ describe('flash status phases', () => {
         [
             `${P}Waiting for DeviceID on (115200)`,
             `${P}Start downloading diagnostic for nano/otto_arduino(57600) 1/3`,
-            `${P}STK500 timeout: packet=ENTER_PROGMODE, receivedBytes=0, raw=no bytes`,
+            `${P}Wait about 5 secs`,
+            // the flasher prints «Uploading» after every packet it sends, an answer or not
+            `${P}Uploading..`,
+            `${P}Trying next diagnostic profile: uno/otto_arduino...`,
             `${P}Start downloading diagnostic for uno/otto_arduino(115200) 3/3`,
+            `${P}Uploading...`,
             `${P}STK500 error: Timeout waiting for STK500 response (no bytes)`,
             `${P}Error! PLS reload RS and try again`
         ].forEach(line => applyFlashStatus(el, line, intl, progress));
@@ -64,6 +68,7 @@ describe('flash status phases', () => {
     test('a silent board variant before a good one is not a silent board', () => {
         const progress = createFlashProgress();
         UNKNOWN_OTTO_FLOW.slice(0, 8).forEach(([line]) => applyFlashStatus(null, line, intl, progress));
+        applyFlashStatus(null, `${P}Block 1/72`, intl, progress);
         applyFlashStatus(null, `${P}Error! PLS reload RS and try again`, intl, progress);
         expect(flashFailureOf(progress)).toBe(null);
     });
