@@ -33,7 +33,7 @@ import {
   premiumStartUpdateThunk
 } from './actions/licenseActions';
 import {closeMessage} from './sensor-type-messages';
-import {WHATS_NEW_WINDOW_ID, hasWhatsNew} from './reducers/whats_new';
+import {WHATS_NEW_WINDOW_ID, hasUnreadWhatsNew, hasWhatsNew} from './reducers/whats_new';
 
 const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
@@ -66,6 +66,19 @@ const messages = defineMessages({
   whats_new: {
     id: 'gui.RobboMenu.trigger_whats_new',
     defaultMessage: 'What\'s new'
+  },
+  whats_new_update: {
+    id: 'gui.WhatsNew.update_available',
+    defaultMessage: 'Version {version} is available'
+  },
+  whats_new_unread: {
+    id: 'gui.RobboMenu.whats_new_unread',
+    defaultMessage: 'There are new changes'
+  },
+  whats_new_hint: {
+    id: 'gui.RobboGui.whats_new_hint',
+    description: 'About window: under «What\'s new» when nothing is unread',
+    defaultMessage: 'Changes in this version'
   },
   about_window: {
     id: 'gui.RobboGui.about_window',
@@ -307,6 +320,45 @@ class AboutWindowComponent extends Component {
       return intl.formatMessage(UPDATE_ERROR_MESSAGES[code]);
     }
     return check.errorMessage || code || intl.formatMessage(messages.update_error);
+  }
+
+  /** «What's new» as a row under the version: what is waiting there, a dot while unread */
+  renderWhatsNewLink () {
+    const intl = this.props.intl;
+    const update = this.props.whatsNewUpdates[0];
+    let hint = intl.formatMessage(messages.whats_new_hint);
+    if (update) {
+      hint = intl.formatMessage(messages.whats_new_update, {version: update.version});
+    } else if (this.props.hasUnreadWhatsNew) {
+      hint = intl.formatMessage(messages.whats_new_unread);
+    }
+    return (
+      <button
+        type="button"
+        id="about-window-whats-new"
+        className={classNames(styles.about_whats_new, {[styles.about_whats_new_unread]: this.props.hasUnreadWhatsNew})}
+        onClick={this.props.onOpenWhatsNew}
+      >
+        <span
+          className={styles.about_whats_new_icon}
+          aria-hidden="true"
+        >{'✦'}</span>
+        <span className={styles.about_whats_new_text}>
+          <span className={styles.about_whats_new_title}>{intl.formatMessage(messages.whats_new)}</span>
+          <span className={styles.about_whats_new_hint}>{hint}</span>
+        </span>
+        {this.props.hasUnreadWhatsNew ? (
+          <span
+            className={styles.about_whats_new_dot}
+            aria-hidden="true"
+          />
+        ) : null}
+        <span
+          className={styles.about_whats_new_chevron}
+          aria-hidden="true"
+        >{'›'}</span>
+      </button>
+    );
   }
 
   renderUpdateIndicator () {
@@ -624,7 +676,7 @@ class AboutWindowComponent extends Component {
           <button
             type="button"
             id="about-window-show-report"
-            className={styles.about_whats_new_link}
+            className={styles.about_text_link}
             onClick={() => showReportInFolder(reportSave.path)}
           >
             {intl.formatMessage(messages.show_in_folder)}
@@ -811,16 +863,7 @@ class AboutWindowComponent extends Component {
                 </div>
                 {updateIndicator}
               </div>
-              {this.props.hasWhatsNew ? (
-                <button
-                  type="button"
-                  id="about-window-whats-new"
-                  className={styles.about_whats_new_link}
-                  onClick={this.props.onOpenWhatsNew}
-                >
-                  {intl.formatMessage(messages.whats_new)}
-                </button>
-              ) : null}
+              {this.props.hasWhatsNew ? this.renderWhatsNewLink() : null}
               {!profilingEnabled ? (
                 <button
                   type="button"
@@ -941,6 +984,17 @@ class AboutWindowComponent extends Component {
           <div className={classNames(formStyles.footer_actions, styles.about_footer_actions)}>
             <button
               type="button"
+              id="about-window-save-report"
+              className={formStyles.action_button}
+              disabled={Boolean(reportSaving)}
+              onClick={this.onSaveReportClick}
+            >
+              <span className={formStyles.action_button_label}>
+                {intl.formatMessage(reportSaving ? messages.saving_support_report : messages.save_support_report)}
+              </span>
+            </button>
+            <button
+              type="button"
               id="about-window-help"
               className={classNames(
                 formStyles.action_button,
@@ -956,17 +1010,6 @@ class AboutWindowComponent extends Component {
                 {intl.formatMessage(messages.help)}
               </span>
             </button>
-            <button
-              type="button"
-              id="about-window-save-report"
-              className={formStyles.action_button}
-              disabled={Boolean(reportSaving)}
-              onClick={this.onSaveReportClick}
-            >
-              <span className={formStyles.action_button_label}>
-                {intl.formatMessage(reportSaving ? messages.saving_support_report : messages.save_support_report)}
-              </span>
-            </button>
           </div>
           {this.renderReportSaveStatus()}
         </div>
@@ -977,7 +1020,9 @@ class AboutWindowComponent extends Component {
 
 const mapStateToProps = state => ({
   license: state.scratchGui.license,
-  hasWhatsNew: hasWhatsNew(state.scratchGui.whats_new)
+  hasWhatsNew: hasWhatsNew(state.scratchGui.whats_new),
+  hasUnreadWhatsNew: hasUnreadWhatsNew(state.scratchGui.whats_new),
+  whatsNewUpdates: state.scratchGui.whats_new.updates
 });
 
 const mapDispatchToProps = dispatch => ({

@@ -14,7 +14,7 @@ import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
-import {WHATS_NEW_WINDOW_ID, hasUnreadWhatsNew, hasWhatsNew} from './reducers/whats_new';
+import {hasUnreadWhatsNew} from './reducers/whats_new';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 import {
@@ -120,10 +120,6 @@ const messages = defineMessages({
       description: ' ',
       defaultMessage: 'Device settings'
 
-    },
-    trigger_whats_new: {
-      id: 'gui.RobboMenu.trigger_whats_new',
-      defaultMessage: 'What\'s new'
     },
     whats_new_unread: {
       id: 'gui.RobboMenu.whats_new_unread',
@@ -723,12 +719,10 @@ class RobboMenu extends Component {
             this.renderItem('trigger-license-window',
             intl.formatMessage(messages.trigger_license_window),
             this.openAndClose(this.triggerLicenseWindow.bind(this))) : null}
-          {this.props.hasWhatsNew ? this.renderItem('trigger-whats-new',
-            intl.formatMessage(messages.trigger_whats_new),
-            this.openAndClose(this.props.onTriggerWhatsNew), undefined,
-            this.props.hasUnreadWhatsNew ? intl.formatMessage(messages.whats_new_unread) : '') : null}
+          {/* «What's new» opens from the About window; the dot leads there */}
           {this.renderItem('trigger-about-window', intl.formatMessage(messages.trigger_about_window),
-            this.openAndClose(this.triggerAboutWindow.bind(this)))}
+            this.openAndClose(this.triggerAboutWindow.bind(this)), undefined,
+            this.props.hasUnreadWhatsNew ? intl.formatMessage(messages.whats_new_unread) : '')}
 
       </div>
       </RobboPopupTransition>
@@ -749,7 +743,6 @@ const mapStateToProps =  state => ({
     settings:state.scratchGui.settings,
     extension_pack:state.scratchGui.extension_pack,
     isRobboAccountAuthenticated: (state.scratchGui.robboAccount || {}).sessionStatus === 'authenticated',
-    hasWhatsNew: hasWhatsNew(state.scratchGui.whats_new),
     hasUnreadWhatsNew: hasUnreadWhatsNew(state.scratchGui.whats_new)
 
 
@@ -796,9 +789,6 @@ const mapDispatchToProps = dispatch => ({
 
               dispatch(ActionTriggerNewDraggableWindow(window_id));
             },
-    onTriggerWhatsNew: () => {
-        dispatch(ActionTriggerNewDraggableWindow(WHATS_NEW_WINDOW_ID));
-      },
     onTriggerLicenseWindow: windowId => {
 
         dispatch(ActionTriggerNewDraggableWindow(windowId));

@@ -84,8 +84,19 @@ const messages = defineMessages({
     checkUpdates: {
         id: 'gui.WhatsNew.check_updates',
         defaultMessage: 'Check for new versions'
+    },
+    testTag: {
+        id: 'gui.WhatsNew.test_tag',
+        defaultMessage: 'Test'
+    },
+    changesCount: {
+        id: 'gui.WhatsNew.changes_count',
+        defaultMessage: '{count, plural, one {# change} other {# changes}}'
     }
 });
+
+/** 3.138.0-alpha, 3.140.0-rc.1: a test version */
+const isTestVersion = version => /^\d+\.\d+\.\d+-[A-Za-z]/.test(version);
 
 const SECTIONS = ['added', 'changed', 'fixed'];
 
@@ -133,12 +144,14 @@ class WhatsNewWindowComponent extends Component {
         this.handleClose = this.handleClose.bind(this);
         this.handleCheckUpdatesChange = this.handleCheckUpdatesChange.bind(this);
         // unread at the moment the window opened: closing marks it read, but the fading window keeps it
-        this.state = {wasShowing: false, unread: [], sinceVersion: ''};
+        // releases opened by the user. One release is shown open; several start collapsed — the chain of
+        // versions first, details on click
+        this.state = {wasShowing: false, unread: [], sinceVersion: '', expanded: {}};
     }
 
     static getDerivedStateFromProps (props, state) {
         if (props.isShowing && !state.wasShowing) {
-            return {wasShowing: true, unread: props.unread, sinceVersion: props.sinceVersion};
+            return {wasShowing: true, unread: props.unread, sinceVersion: props.sinceVersion, expanded: {}};
         }
         if (!props.isShowing && state.wasShowing) return {wasShowing: false};
         return null;
@@ -206,6 +219,30 @@ class WhatsNewWindowComponent extends Component {
         );
     }
 
+    renderUpdateNotes (offer, text) {
+        const intl = this.props.intl;
+        const key = `update-${offer.version}`;
+        const open = this.state.expanded[key];
+        const count = SECTIONS.reduce((sum, section) => sum + text.sections[section].length, 0);
+        return (
+            <React.Fragment>
+                <button
+                    type="button"
+                    className={classNames(styles.release_toggle, styles.update_notes_toggle)}
+                    aria-expanded={Boolean(open)}
+                    onClick={() => this.toggleRelease(key)}
+                >
+                    <span
+                        className={classNames(styles.release_chevron, {[styles.release_chevron_open]: open})}
+                        aria-hidden="true"
+                    >{'›'}</span>
+                    <span className={styles.release_name}>{intl.formatMessage(messages.changesCount, {count})}</span>
+                </button>
+                {open ? this.renderNotes(text) : null}
+            </React.Fragment>
+        );
+    }
+
     renderUpdate (offer, lang) {
         const intl = this.props.intl;
         const isAlpha = offer.channel === 'alpha';
@@ -230,28 +267,60 @@ class WhatsNewWindowComponent extends Component {
                 >
                     {intl.formatMessage(this.props.canInstall ? messages.updateNow : messages.download)}
                 </button>
-                {offer.notes && offer.notes[lang] ? this.renderNotes(offer.notes[lang]) : null}
+                {offer.notes && offer.notes[lang] ? this.renderUpdateNotes(offer, offer.notes[lang]) : null}
             </section>
         );
     }
 
-    renderRelease (release, lang, from) {
+    toggleRelease (version) {
+        this.setState(state => ({expanded: Object.assign({}, state.expanded, {[version]: !state.expanded[version]})}));
+    }
+
+    renderRelease (release, lang, from, collapsible) {
         const intl = this.props.intl;
         const text = release[lang];
+        const open = !collapsible || this.state.expanded[release.version];
+        const count = SECTIONS.reduce((sum, key) => sum + text.sections[key].length, 0);
+        const heading = (
+            <React.Fragment>
+                <span className={styles.release_name}>
+                    {from ?
+                        intl.formatMessage(messages.versionRange, {from, to: release.version}) :
+                        intl.formatMessage(messages.version, {version: release.version})}
+                    {isTestVersion(release.version) ? (
+                        <span className={styles.test_tag}>{intl.formatMessage(messages.testTag)}</span>
+                    ) : null}
+                </span>
+                <span className={styles.release_date}>
+                    {collapsible && !open ? `${intl.formatMessage(messages.changesCount, {count})} · ` : ''}
+                    {release.date}
+                </span>
+            </React.Fragment>
+        );
         return (
             <section
                 key={release.version}
-                className={styles.release}
+                className={classNames(styles.release, {[styles.release_collapsed]: !open})}
             >
-                <h3 className={styles.release_title}>
-                    <span>
-                        {from ?
-                            intl.formatMessage(messages.versionRange, {from, to: release.version}) :
-                            intl.formatMessage(messages.version, {version: release.version})}
-                    </span>
-                    <span className={styles.release_date}>{release.date}</span>
-                </h3>
-                {this.renderNotes(text)}
+                {collapsible ? (
+                    <h3 className={styles.release_title}>
+                        <button
+                            type="button"
+                            className={styles.release_toggle}
+                            aria-expanded={Boolean(open)}
+                            onClick={() => this.toggleRelease(release.version)}
+                        >
+                            <span
+                                className={classNames(styles.release_chevron, {[styles.release_chevron_open]: open})}
+                                aria-hidden="true"
+                            >{'›'}</span>
+                            {heading}
+                        </button>
+                    </h3>
+                ) : (
+                    <h3 className={styles.release_title}>{heading}</h3>
+                )}
+                {open ? this.renderNotes(text) : null}
             </section>
         );
     }
@@ -292,7 +361,7 @@ class WhatsNewWindowComponent extends Component {
                     {!updates.length && updateCheckSupported && current && this.props.updateCheckEnabled ? (
                         <p className={styles.up_to_date}>{intl.formatMessage(messages.upToDate, {version: current})}</p>
                     ) : null}
-                    {releases.map(release => this.renderRelease(release, lang, fromOf(release)))}
+                    {releases.map(release => this.renderRelease(release, lang, fromOf(release), releases.length > 1))}
                     {canShowAll ? (
                         <button
                             type="button"

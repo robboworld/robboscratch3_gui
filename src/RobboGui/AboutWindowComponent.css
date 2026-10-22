@@ -372,7 +372,87 @@
 }
 
 /* «Что нового» (WhatsNewWindowComponent) */
-.about_whats_new_link {
+.about_whats_new {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid rgba(0, 175, 65, 0.3);
+    border-radius: $form-radius;
+    background-color: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.about_whats_new:hover {
+    border-color: rgba(0, 175, 65, 0.6);
+    background-color: rgba(0, 175, 65, 0.06);
+}
+
+.about_whats_new:focus-visible {
+    outline: 2px solid $motion-primary;
+    outline-offset: 2px;
+}
+
+.about_whats_new_icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background-color: rgba(0, 175, 65, 0.12);
+    color: $motion-primary;
+    font-size: 0.95rem;
+}
+
+.about_whats_new_text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.about_whats_new_title {
+    font-size: $popup-font-size;
+    font-weight: bold;
+    line-height: 1.35;
+}
+
+.about_whats_new_hint {
+    font-size: $popup-font-size-sm;
+    line-height: 1.35;
+    color: $text-primary-transparent;
+}
+
+.about_whats_new_unread .about_whats_new_hint {
+    color: $motion-primary;
+}
+
+.about_whats_new_dot {
+    flex: 0 0 auto;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: $data-primary;
+}
+
+.about_whats_new_chevron {
+    flex: 0 0 auto;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: $text-primary-transparent;
+}
+
+/* Inline text link (show the saved support report in its folder) */
+.about_text_link {
     align-self: flex-start;
     margin: 0;
     padding: 0;
@@ -386,7 +466,7 @@
     cursor: pointer;
 }
 
-.about_whats_new_link:focus-visible {
+.about_text_link:focus-visible {
     outline: 2px solid $motion-primary;
     outline-offset: 2px;
 }
