@@ -5,7 +5,7 @@ import BrowserModalComponent from '../components/browser-modal/browser-modal.jsx
 import CrashMessageComponent from '../components/crash-message/crash-message.jsx';
 import log from '../lib/log.js';
 import {recordError} from '../lib/error-journal';
-import {saveSupportReport} from '../lib/support-report';
+import {saveSupportReport, showReportInFolder} from '../lib/support-report';
 import {recommendedBrowser} from '../lib/supported-browser';
 
 class ErrorBoundary extends React.Component {
@@ -17,6 +17,7 @@ class ErrorBoundary extends React.Component {
             reportSave: null
         };
         this.handleSaveReport = this.handleSaveReport.bind(this);
+        this.handleShowReport = this.handleShowReport.bind(this);
     }
 
     /**
@@ -60,11 +61,21 @@ class ErrorBoundary extends React.Component {
         this.setState({reportSave: {status: 'saving'}});
         saveSupportReport()
             .then(saved => this.setState({
-                reportSave: {status: 'saved', path: saved.path || '', downloaded: saved.downloaded}
+                reportSave: {
+                    status: 'saved',
+                    path: saved.path || '',
+                    fileName: saved.fileName,
+                    onDesktop: saved.onDesktop,
+                    downloaded: saved.downloaded
+                }
             }))
             .catch(error => this.setState({
                 reportSave: {status: 'error', message: (error && error.message) || String(error)}
             }));
+    }
+
+    handleShowReport () {
+        if (this.state.reportSave) showReportInFolder(this.state.reportSave.path);
     }
 
     handleReload () {
@@ -80,6 +91,7 @@ class ErrorBoundary extends React.Component {
                         reportSave={this.state.reportSave}
                         onReload={this.handleReload}
                         onSaveReport={this.handleSaveReport}
+                        onShowReport={this.handleShowReport}
                     />
                 );
             }

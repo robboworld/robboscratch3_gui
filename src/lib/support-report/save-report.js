@@ -85,7 +85,7 @@ const findDesktopDir = function () {
 
 /**
  * @param {string} text report text
- * @returns {Promise<{path: ?string, downloaded: boolean}>} where it went
+ * @returns {Promise<{path: ?string, fileName: string, onDesktop: boolean, downloaded: boolean}>} where it went
  */
 const saveReport = function (text) {
     const fileName = reportFileName();
@@ -93,15 +93,14 @@ const saveReport = function (text) {
     const path = nodeRequire('path');
     if (!fs || !path) {
         downloadBlob(fileName, new Blob([BOM + text], {type: 'text/plain;charset=utf-8'}));
-        return Promise.resolve({path: null, downloaded: true});
+        return Promise.resolve({path: null, fileName, onDesktop: false, downloaded: true});
     }
     return findDesktopDir()
-        .then(dir => dir || window.nw.App.dataPath)
-        .then(dir => new Promise((resolve, reject) => {
-            const filePath = path.join(dir, fileName);
+        .then(desktop => new Promise((resolve, reject) => {
+            const filePath = path.join(desktop || window.nw.App.dataPath, fileName);
             fs.writeFile(filePath, BOM + text, 'utf8', error => {
                 if (error) reject(error);
-                else resolve({path: filePath, downloaded: false});
+                else resolve({path: filePath, fileName, onDesktop: Boolean(desktop), downloaded: false});
             });
         }));
 };
