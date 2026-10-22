@@ -39,3 +39,32 @@
     font-size: 0.875rem;
     cursor: pointer;
 }
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.report-button {
+    border: 1px solid #383838;
+    border-radius: 0.25rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: #383838;
+    font-weight: bold;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.report-button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.report-status {
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+    user-select: text;
+}

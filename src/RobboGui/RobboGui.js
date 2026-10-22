@@ -26,7 +26,8 @@ import SettingsWindowComponent from './SettingsWindowComponent';
 import styles from './RobboGui.css';
 
 import SearchPanelComponent from './SearchPanelComponent';
-import AboutWindowComponent from './AboutWindowComponent';
+import AboutWindowComponent, {DISPLAY_VERSION} from './AboutWindowComponent';
+import {registerSupportReportSource} from '../lib/support-report';
 import LicenseWindowComponent from './LicenseWindowComponent';
 import WhatsNewWindowComponent from './WhatsNewWindowComponent';
 import {WHATS_NEW_WINDOW_ID, loadWhatsNewThunk} from './reducers/whats_new';
@@ -276,6 +277,8 @@ class RobboGui extends Component {
 //  return this.props.connectDropTarget(
 
   this.DCA =  this.props.vm.getDCA();
+  // the crash screen builds the support report without the Robbo GUI tree
+  registerSupportReportSource({dca: this.DCA, version: DISPLAY_VERSION});
   this.RCA =  this.props.vm.getRCA();
   this.LCA =  this.props.vm.getLCA();
   this.QCA =  this.props.vm.getQCA();

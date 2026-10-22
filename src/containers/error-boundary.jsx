@@ -5,6 +5,7 @@ import BrowserModalComponent from '../components/browser-modal/browser-modal.jsx
 import CrashMessageComponent from '../components/crash-message/crash-message.jsx';
 import log from '../lib/log.js';
 import {recordError} from '../lib/error-journal';
+import {saveSupportReport} from '../lib/support-report';
 import {recommendedBrowser} from '../lib/supported-browser';
 
 class ErrorBoundary extends React.Component {
@@ -12,8 +13,10 @@ class ErrorBoundary extends React.Component {
         super(props);
         this.state = {
             error: null,
-            errorInfo: null
+            errorInfo: null,
+            reportSave: null
         };
+        this.handleSaveReport = this.handleSaveReport.bind(this);
     }
 
     /**
@@ -52,6 +55,18 @@ class ErrorBoundary extends React.Component {
         window.history.back();
     }
 
+    // The intl tree may be what crashed: the report conclusions stay in English here
+    handleSaveReport () {
+        this.setState({reportSave: {status: 'saving'}});
+        saveSupportReport()
+            .then(saved => this.setState({
+                reportSave: {status: 'saved', path: saved.path || '', downloaded: saved.downloaded}
+            }))
+            .catch(error => this.setState({
+                reportSave: {status: 'error', message: (error && error.message) || String(error)}
+            }));
+    }
+
     handleReload () {
         window.location.replace(window.location.origin + window.location.pathname);
     }
@@ -62,7 +77,9 @@ class ErrorBoundary extends React.Component {
                 return (
                     <CrashMessageComponent
                         errorMessage={String(this.state.error.message || this.state.error)}
+                        reportSave={this.state.reportSave}
                         onReload={this.handleReload}
+                        onSaveReport={this.handleSaveReport}
                     />
                 );
             }

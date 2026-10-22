@@ -8,7 +8,14 @@ import sharedStyles from './DevicePaletteShared.css';
 import formStyles from './RobboPaletteForm.css';
 import styles from './WhatsNewWindowComponent.css';
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
-import {WHATS_NEW_WINDOW_ID, whatsNewSeen, whatsNewShowAll} from './reducers/whats_new';
+import {
+    WHATS_NEW_WINDOW_ID,
+    setUpdateCheckThunk,
+    whatsNewSeen,
+    whatsNewShowAll
+} from './reducers/whats_new';
+import {premiumDownloadAndInstallThunk} from './actions/licenseActions';
+import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
 import {whatsNewLanguage} from '../lib/whats-new-state';
 import {openExternalUrl} from '../lib/platform';
 import {closeMessage} from './sensor-type-messages';
@@ -49,6 +56,34 @@ const messages = defineMessages({
     ok: {
         id: 'gui.WhatsNew.ok',
         defaultMessage: 'Got it'
+    },
+    updateAvailable: {
+        id: 'gui.WhatsNew.update_available',
+        defaultMessage: 'Version {version} is available'
+    },
+    updateAlpha: {
+        id: 'gui.WhatsNew.update_alpha',
+        defaultMessage: 'Test version {version} is available'
+    },
+    alphaHint: {
+        id: 'gui.WhatsNew.alpha_hint',
+        defaultMessage: 'For those who want to try new features earlier: it may contain bugs. For lessons the stable version is better.'
+    },
+    download: {
+        id: 'gui.WhatsNew.download',
+        defaultMessage: 'Download'
+    },
+    updateNow: {
+        id: 'gui.WhatsNew.update_now',
+        defaultMessage: 'Update'
+    },
+    upToDate: {
+        id: 'gui.WhatsNew.up_to_date',
+        defaultMessage: 'You have the latest version: {version}.'
+    },
+    checkUpdates: {
+        id: 'gui.WhatsNew.check_updates',
+        defaultMessage: 'Check for new versions'
     }
 });
 
@@ -96,6 +131,7 @@ class WhatsNewWindowComponent extends Component {
     constructor (props) {
         super(props);
         this.handleClose = this.handleClose.bind(this);
+        this.handleCheckUpdatesChange = this.handleCheckUpdatesChange.bind(this);
         // unread at the moment the window opened: closing marks it read, but the fading window keeps it
         this.state = {wasShowing: false, unread: [], sinceVersion: ''};
     }
@@ -110,8 +146,8 @@ class WhatsNewWindowComponent extends Component {
 
     componentDidUpdate (prevProps) {
         // closed by the button, the cross or Esc: everything up to this build is read
-        if (prevProps.isShowing && !this.props.isShowing && this.props.data) {
-            this.props.onSeen(this.props.data.current);
+        if (prevProps.isShowing && !this.props.isShowing && this.props.current) {
+            this.props.onSeen(this.props.current);
         }
     }
 
@@ -119,22 +155,24 @@ class WhatsNewWindowComponent extends Component {
         this.props.onClose();
     }
 
-    renderRelease (release, lang, from) {
+    handleCheckUpdatesChange (event) {
+        this.props.onSetUpdateCheck(event.target.checked);
+    }
+
+    handleUpdate (offer) {
+        if (this.props.canInstall) {
+            // the paid addon downloads and runs the installer; its progress window takes over
+            this.props.onClose();
+            this.props.onInstall(offer);
+        } else {
+            openExternalUrl(offer.downloadUrl);
+        }
+    }
+
+    renderNotes (text) {
         const intl = this.props.intl;
-        const text = release[lang];
         return (
-            <section
-                key={release.version}
-                className={styles.release}
-            >
-                <h3 className={styles.release_title}>
-                    <span>
-                        {from ?
-                            intl.formatMessage(messages.versionRange, {from, to: release.version}) :
-                            intl.formatMessage(messages.version, {version: release.version})}
-                    </span>
-                    <span className={styles.release_date}>{release.date}</span>
-                </h3>
+            <React.Fragment>
                 {text.intro ? <p className={styles.intro}>{renderInline(text.intro)}</p> : null}
                 {SECTIONS.filter(key => text.sections[key].length).map(key => (
                     <div
@@ -164,22 +202,73 @@ class WhatsNewWindowComponent extends Component {
                         </ul>
                     </div>
                 ))}
+            </React.Fragment>
+        );
+    }
+
+    renderUpdate (offer, lang) {
+        const intl = this.props.intl;
+        const isAlpha = offer.channel === 'alpha';
+        return (
+            <section
+                key={`update-${offer.channel}`}
+                className={classNames(styles.release, styles.update, {[styles.update_alpha]: isAlpha})}
+            >
+                <h3 className={styles.release_title}>
+                    <span>
+                        {intl.formatMessage(isAlpha ? messages.updateAlpha : messages.updateAvailable,
+                            {version: offer.version})}
+                    </span>
+                    <span className={styles.release_date}>{offer.date}</span>
+                </h3>
+                {isAlpha ? <p className={styles.alpha_hint}>{intl.formatMessage(messages.alphaHint)}</p> : null}
+                <button
+                    type="button"
+                    id={`whats-new-update-${offer.channel}`}
+                    className={classNames(formStyles.action_button, styles.update_button)}
+                    onClick={() => this.handleUpdate(offer)}
+                >
+                    {intl.formatMessage(this.props.canInstall ? messages.updateNow : messages.download)}
+                </button>
+                {offer.notes && offer.notes[lang] ? this.renderNotes(offer.notes[lang]) : null}
+            </section>
+        );
+    }
+
+    renderRelease (release, lang, from) {
+        const intl = this.props.intl;
+        const text = release[lang];
+        return (
+            <section
+                key={release.version}
+                className={styles.release}
+            >
+                <h3 className={styles.release_title}>
+                    <span>
+                        {from ?
+                            intl.formatMessage(messages.versionRange, {from, to: release.version}) :
+                            intl.formatMessage(messages.version, {version: release.version})}
+                    </span>
+                    <span className={styles.release_date}>{release.date}</span>
+                </h3>
+                {this.renderNotes(text)}
             </section>
         );
     }
 
     render () {
-        const {data, showAll, intl} = this.props;
-        if (!data) return null;
+        const {data, showAll, intl, updates, current, updateCheckSupported} = this.props;
+        if (!data && !updates.length && !updateCheckSupported) return null;
         const {unread, sinceVersion} = this.state;
         const lang = whatsNewLanguage(this.props.locale);
-        let releases = data.releases;
+        const allReleases = data ? data.releases : [];
+        let releases = allReleases;
         if (unread.length) {
             releases = unread;
         } else if (!showAll) {
-            releases = data.releases.slice(0, 1);
+            releases = allReleases.slice(0, 1);
         }
-        const canShowAll = !unread.length && !showAll && data.releases.length > 1;
+        const canShowAll = !unread.length && !showAll && allReleases.length > 1;
         // each release starts at its base; the oldest unread one — at the version the user last opened
         const oldest = releases[releases.length - 1];
         const fromOf = release => ((unread.length && release === oldest && sinceVersion) || release.from || '');
@@ -199,6 +288,10 @@ class WhatsNewWindowComponent extends Component {
                     />
                 </div>
                 <div className={classNames(sharedStyles.body, styles.content)}>
+                    {updates.map(offer => this.renderUpdate(offer, lang))}
+                    {!updates.length && updateCheckSupported && current && this.props.updateCheckEnabled ? (
+                        <p className={styles.up_to_date}>{intl.formatMessage(messages.upToDate, {version: current})}</p>
+                    ) : null}
                     {releases.map(release => this.renderRelease(release, lang, fromOf(release)))}
                     {canShowAll ? (
                         <button
@@ -213,6 +306,17 @@ class WhatsNewWindowComponent extends Component {
                 </div>
                 <div className={classNames(formStyles.footer, styles.footer)}>
                     <div className={classNames(formStyles.footer_actions, styles.footer_actions)}>
+                        {updateCheckSupported ? (
+                            <label className={styles.check_updates}>
+                                <input
+                                    type="checkbox"
+                                    id="whats-new-check-updates"
+                                    checked={this.props.updateCheckEnabled}
+                                    onChange={this.handleCheckUpdatesChange}
+                                />
+                                <span>{intl.formatMessage(messages.checkUpdates)}</span>
+                            </label>
+                        ) : null}
                         <button
                             type="button"
                             id="whats-new-ok"
@@ -238,10 +342,23 @@ const releaseShape = PropTypes.shape({
 });
 
 WhatsNewWindowComponent.propTypes = {
+    canInstall: PropTypes.bool,
+    current: PropTypes.string,
     data: PropTypes.shape({
         current: PropTypes.string.isRequired,
         releases: PropTypes.arrayOf(releaseShape).isRequired
     }),
+    onInstall: PropTypes.func.isRequired,
+    onSetUpdateCheck: PropTypes.func.isRequired,
+    updateCheckEnabled: PropTypes.bool,
+    updateCheckSupported: PropTypes.bool,
+    updates: PropTypes.arrayOf(PropTypes.shape({
+        channel: PropTypes.string.isRequired,
+        version: PropTypes.string.isRequired,
+        date: PropTypes.string,
+        downloadUrl: PropTypes.string.isRequired,
+        notes: PropTypes.object // eslint-disable-line react/forbid-prop-types
+    })),
     intl: intlShape.isRequired,
     isShowing: PropTypes.bool,
     locale: PropTypes.string,
@@ -257,6 +374,11 @@ const mapStateToProps = state => {
     const w = state.scratchGui.new_draggable_window[WHATS_NEW_WINDOW_ID];
     return {
         data: state.scratchGui.whats_new.data,
+        current: state.scratchGui.whats_new.current,
+        updates: state.scratchGui.whats_new.updates,
+        updateCheckSupported: state.scratchGui.whats_new.updateCheckSupported,
+        updateCheckEnabled: state.scratchGui.whats_new.updateCheckEnabled,
+        canInstall: Boolean(state.scratchGui.license && hasPremiumAutoUpdateCapability(state.scratchGui.license)),
         unread: state.scratchGui.whats_new.unread,
         sinceVersion: state.scratchGui.whats_new.sinceVersion,
         showAll: state.scratchGui.whats_new.showAll,
@@ -268,7 +390,12 @@ const mapStateToProps = state => {
 const mapDispatchToProps = dispatch => ({
     onClose: () => dispatch(ActionTriggerNewDraggableWindow(WHATS_NEW_WINDOW_ID)),
     onSeen: version => dispatch(whatsNewSeen(version)),
-    onShowAll: () => dispatch(whatsNewShowAll())
+    onShowAll: () => dispatch(whatsNewShowAll()),
+    onSetUpdateCheck: enabled => dispatch(setUpdateCheckThunk(enabled)),
+    onInstall: offer => dispatch(premiumDownloadAndInstallThunk({
+        downloadUrl: offer.downloadUrl,
+        latestVersion: offer.version
+    }))
 });
 
 export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(WhatsNewWindowComponent));

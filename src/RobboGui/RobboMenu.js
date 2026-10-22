@@ -14,7 +14,7 @@ import {ActionTriggerColorCorrectorTable} from './actions/sensor_actions';
 import {ActionTriggerDraggableWindow} from './actions/sensor_actions';
 import {ActionTriggerRobboMenu} from './actions/sensor_actions.js'; 
 import {ActionTriggerNewDraggableWindow} from './actions/sensor_actions';
-import {WHATS_NEW_WINDOW_ID} from './reducers/whats_new';
+import {WHATS_NEW_WINDOW_ID, hasUnreadWhatsNew, hasWhatsNew} from './reducers/whats_new';
 
 import {defineMessages, intlShape, injectIntl, FormattedMessage} from 'react-intl';
 import {
@@ -749,8 +749,8 @@ const mapStateToProps =  state => ({
     settings:state.scratchGui.settings,
     extension_pack:state.scratchGui.extension_pack,
     isRobboAccountAuthenticated: (state.scratchGui.robboAccount || {}).sessionStatus === 'authenticated',
-    hasWhatsNew: Boolean(state.scratchGui.whats_new.data),
-    hasUnreadWhatsNew: state.scratchGui.whats_new.unread.length > 0
+    hasWhatsNew: hasWhatsNew(state.scratchGui.whats_new),
+    hasUnreadWhatsNew: hasUnreadWhatsNew(state.scratchGui.whats_new)
 
 
   });

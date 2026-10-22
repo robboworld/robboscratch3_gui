@@ -27,19 +27,19 @@ import {
   isTransientButtonFeedbackActive
 } from '../lib/transient-button-feedback';
 import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
-import {getErrorJournalFilePath, getErrorJournalText} from '../lib/error-journal';
+import {buildSupportReport, saveSupportReport, showReportInFolder} from '../lib/support-report';
 import {
   premiumAutoUpdateCheckThunk,
   premiumStartUpdateThunk
 } from './actions/licenseActions';
 import {closeMessage} from './sensor-type-messages';
-import {WHATS_NEW_WINDOW_ID} from './reducers/whats_new';
+import {WHATS_NEW_WINDOW_ID, hasWhatsNew} from './reducers/whats_new';
 
 const COPY_FEEDBACK_TOKEN = 'copied';
 const COPY_BUTTON_FEEDBACK_KEY = 'copyButtonFeedback';
 const SUPPORT_URL = 'https://support.robbo.world/';
 
-const VERSION = 'Robbo Scratch v.3.137.0-alpha';
+const VERSION = 'Robbo Scratch v.3.138.0-alpha';
 export {VERSION};
 export const APP_VERSION = (VERSION.match(/v\.(.+)$/) || [])[1] || '';
 const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
@@ -49,6 +49,7 @@ const BUILD_VERSION_SUFFIX = (typeof process !== 'undefined' &&
   ? process.env.ROBBO_BUILD_VERSION_SUFFIX
   : '';
 const DISPLAY_VERSION = `${VERSION}${BUILD_VERSION_SUFFIX}`;
+export {DISPLAY_VERSION};
 
 const EMPTY_PROFILING_METRICS = {
   stepDuration: '',
@@ -139,11 +140,6 @@ const messages = defineMessages({
     description: ' ',
     defaultMessage: 'Copy to clipboard'
   },
-  copy_system_info: {
-    id: 'gui.RobboGui.copy_system_info',
-    description: ' ',
-    defaultMessage: 'Copy system information'
-  },
   copied_to_clipboard: {
     id: 'gui.RobboGui.copied_to_clipboard',
     description: 'About window copy button success label',
@@ -218,6 +214,41 @@ const messages = defineMessages({
     id: 'gui.RobboGui.help',
     description: 'About window help button',
     defaultMessage: 'Help'
+  },
+  copy_support_report: {
+    id: 'gui.RobboGui.copy_support_report',
+    description: 'About window: copy the support report to the clipboard',
+    defaultMessage: 'Copy report for support'
+  },
+  save_support_report: {
+    id: 'gui.RobboGui.save_support_report',
+    description: 'About window: save the support report to a file',
+    defaultMessage: 'Save report for support'
+  },
+  saving_support_report: {
+    id: 'gui.RobboGui.saving_support_report',
+    description: 'About window: the support report is being collected',
+    defaultMessage: 'Collecting the report…'
+  },
+  support_report_saved: {
+    id: 'gui.RobboGui.support_report_saved',
+    description: 'About window: where the support report was saved',
+    defaultMessage: 'Report saved: {path}'
+  },
+  support_report_downloaded: {
+    id: 'gui.RobboGui.support_report_downloaded',
+    description: 'About window: the support report was downloaded (web)',
+    defaultMessage: 'Report downloaded. Send the file to support.'
+  },
+  support_report_error: {
+    id: 'gui.RobboGui.support_report_error',
+    description: 'About window: the support report could not be saved',
+    defaultMessage: 'Could not save the report: {message}'
+  },
+  show_in_folder: {
+    id: 'gui.RobboGui.show_in_folder',
+    description: 'About window: open the folder with the saved support report',
+    defaultMessage: 'Show in folder'
   }
 });
 
@@ -236,13 +267,17 @@ class AboutWindowComponent extends Component {
       systemInfo: null,
       profilingEnabled: false,
       profilingMetrics: { ...EMPTY_PROFILING_METRICS },
-      [COPY_BUTTON_FEEDBACK_KEY]: null
+      [COPY_BUTTON_FEEDBACK_KEY]: null,
+      // null | {status: 'saving'} | {status: 'saved', path, downloaded} | {status: 'error', message}
+      reportSave: null
     };
     this.onThisWindowClose = this.onThisWindowClose.bind(this);
     this.toggleProfiling = this.toggleProfiling.bind(this);
     this.onCheckForUpdatesClick = this.onCheckForUpdatesClick.bind(this);
     this.onStartUpdateClick = this.onStartUpdateClick.bind(this);
     this.onHelpClick = this.onHelpClick.bind(this);
+    this.onCopyReportClick = this.onCopyReportClick.bind(this);
+    this.onSaveReportClick = this.onSaveReportClick.bind(this);
   }
 
   onThisWindowClose () {
@@ -405,6 +440,7 @@ class AboutWindowComponent extends Component {
   }
 
   componentWillUnmount () {
+    this.unmounted = true;
     clearTransientButtonFeedbackTimer(this, COPY_BUTTON_FEEDBACK_KEY);
     if (this.state.profilingEnabled) {
       this.stopProfiling({ updateState: false });
@@ -541,13 +577,61 @@ class AboutWindowComponent extends Component {
     }
   }
 
-  onCopySystemInfoClick (systemInfoText) {
-    this.copyToClipboard(this.appendErrorJournal(systemInfoText), () => {
-      showTransientButtonFeedback(this, {
-        stateKey: COPY_BUTTON_FEEDBACK_KEY,
-        feedbackToken: COPY_FEEDBACK_TOKEN
+  onCopyReportClick () {
+    buildSupportReport({formatMessage: this.props.intl.formatMessage, dca: this.DCA}).then(report => {
+      this.copyToClipboard(report.text, () => {
+        showTransientButtonFeedback(this, {
+          stateKey: COPY_BUTTON_FEEDBACK_KEY,
+          feedbackToken: COPY_FEEDBACK_TOKEN
+        });
       });
     });
+  }
+
+  onSaveReportClick () {
+    if (this.state.reportSave && this.state.reportSave.status === 'saving') return;
+    this.setState({reportSave: {status: 'saving'}});
+    saveSupportReport({formatMessage: this.props.intl.formatMessage, dca: this.DCA})
+      .then(saved => {
+        if (this.unmounted) return;
+        this.setState({reportSave: {status: 'saved', path: saved.path, downloaded: saved.downloaded}});
+      })
+      .catch(error => {
+        if (this.unmounted) return;
+        this.setState({reportSave: {status: 'error', message: (error && error.message) || String(error)}});
+      });
+  }
+
+  renderReportSaveStatus () {
+    const reportSave = this.state.reportSave;
+    if (!reportSave || reportSave.status === 'saving') return null;
+    const intl = this.props.intl;
+    if (reportSave.status === 'error') {
+      return (
+        <div className={classNames(styles.about_report_status, styles.about_report_status_error)} role="alert">
+          {intl.formatMessage(messages.support_report_error, {message: reportSave.message})}
+        </div>
+      );
+    }
+    return (
+      <div className={styles.about_report_status} role="status">
+        <span className={styles.about_report_path}>
+          {reportSave.downloaded ?
+            intl.formatMessage(messages.support_report_downloaded) :
+            intl.formatMessage(messages.support_report_saved, {path: reportSave.path})}
+        </span>
+        {reportSave.path ? (
+          <button
+            type="button"
+            id="about-window-show-report"
+            className={styles.about_whats_new_link}
+            onClick={() => showReportInFolder(reportSave.path)}
+          >
+            {intl.formatMessage(messages.show_in_folder)}
+          </button>
+        ) : null}
+      </div>
+    );
   }
 
   copyToClipboard (textToCopy, onSuccess) {
@@ -601,27 +685,6 @@ class AboutWindowComponent extends Component {
       document.body.removeChild(textarea);
     }
     return copied;
-  }
-
-  appendErrorJournal (systemInfoText) {
-    const journalText = getErrorJournalText();
-    if (!journalText) return systemInfoText;
-
-    const logFilePath = getErrorJournalFilePath();
-    return [
-      systemInfoText,
-      '',
-      `Recent errors${logFilePath ? ` (full log: ${logFilePath})` : ''}:`,
-      journalText
-    ].join('\n');
-  }
-
-  buildSystemInfoText(rows) {
-    const details = rows
-      .filter(row => row && row.label && row.value)
-      .map(row => `${row.label}${row.value}`);
-
-    return [DISPLAY_VERSION].concat(details).join('\n');
   }
 
   renderInfoRow (rowId, label, value) {
@@ -700,7 +763,6 @@ class AboutWindowComponent extends Component {
       }
     ];
     const infoRows = isWebSystemInfo ? webRows : desktopRows;
-    const systemInfoText = this.buildSystemInfoText(infoRows);
     const { profilingEnabled, profilingMetrics } = this.state;
     const copyFeedbackActive = isTransientButtonFeedbackActive(
       this.state,
@@ -708,6 +770,7 @@ class AboutWindowComponent extends Component {
       COPY_FEEDBACK_TOKEN
     );
     const updateIndicator = this.renderUpdateIndicator();
+    const reportSaving = this.state.reportSave && this.state.reportSave.status === 'saving';
     return (
       <div id="about-window" className={classNames(sharedStyles.palette, styles.about_window)}>
         <div
@@ -852,16 +915,16 @@ class AboutWindowComponent extends Component {
             <div className={classNames(formStyles.section, styles.about_section)}>
               <h3 className={classNames(formStyles.section_title, styles.about_section_title, styles.about_title_with_action)}>
                 <span>{intl.formatMessage(messages.system_section)}</span>
-                {/* Copies the system information and the error journal for support. */}
+                {/* Copies the support report (system, devices, search journal, errors). */}
                 <button
                   type="button"
                   id="about-window-copy-system-info"
                   className={classNames(styles.about_copy_icon_button, {
                     [styles.about_copy_icon_done]: copyFeedbackActive
                   })}
-                  title={intl.formatMessage(copyFeedbackActive ? messages.copied_to_clipboard : messages.copy_system_info)}
-                  aria-label={intl.formatMessage(copyFeedbackActive ? messages.copied_to_clipboard : messages.copy_system_info)}
-                  onClick={() => this.onCopySystemInfoClick(systemInfoText)}
+                  title={intl.formatMessage(copyFeedbackActive ? messages.copied_to_clipboard : messages.copy_support_report)}
+                  aria-label={intl.formatMessage(copyFeedbackActive ? messages.copied_to_clipboard : messages.copy_support_report)}
+                  onClick={this.onCopyReportClick}
                 />
               </h3>
               <div className={styles.about_info_list}>
@@ -893,7 +956,19 @@ class AboutWindowComponent extends Component {
                 {intl.formatMessage(messages.help)}
               </span>
             </button>
+            <button
+              type="button"
+              id="about-window-save-report"
+              className={formStyles.action_button}
+              disabled={Boolean(reportSaving)}
+              onClick={this.onSaveReportClick}
+            >
+              <span className={formStyles.action_button_label}>
+                {intl.formatMessage(reportSaving ? messages.saving_support_report : messages.save_support_report)}
+              </span>
+            </button>
           </div>
+          {this.renderReportSaveStatus()}
         </div>
       </div>
     );
@@ -902,7 +977,7 @@ class AboutWindowComponent extends Component {
 
 const mapStateToProps = state => ({
   license: state.scratchGui.license,
-  hasWhatsNew: Boolean(state.scratchGui.whats_new.data)
+  hasWhatsNew: hasWhatsNew(state.scratchGui.whats_new)
 });
 
 const mapDispatchToProps = dispatch => ({

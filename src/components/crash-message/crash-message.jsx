@@ -44,16 +44,59 @@ const CrashMessage = props => (
             {props.errorMessage && (
                 <p className={styles.errorMessage}>{props.errorMessage}</p>
             )}
-            <button
-                className={styles.reloadButton}
-                onClick={props.onReload}
-            >
-                <FormattedMessage
-                    defaultMessage="Reload"
-                    description="Button to reload the page when page crashes"
-                    id="gui.crashMessage.reload"
-                />
-            </button>
+            <div className={styles.actions}>
+                <button
+                    className={styles.reloadButton}
+                    onClick={props.onReload}
+                >
+                    <FormattedMessage
+                        defaultMessage="Reload"
+                        description="Button to reload the page when page crashes"
+                        id="gui.crashMessage.reload"
+                    />
+                </button>
+                {props.onSaveReport && (
+                    <button
+                        className={styles.reportButton}
+                        disabled={props.reportSave && props.reportSave.status === 'saving'}
+                        onClick={props.onSaveReport}
+                    >
+                        <FormattedMessage
+                            defaultMessage="Save report for support"
+                            description="Crash screen: save the support report to a file"
+                            id="gui.RobboGui.save_support_report"
+                        />
+                    </button>
+                )}
+            </div>
+            {props.reportSave && props.reportSave.status === 'saved' && (
+                <p className={styles.reportStatus}>
+                    {props.reportSave.downloaded ? (
+                        <FormattedMessage
+                            defaultMessage="Report downloaded. Send the file to support."
+                            description="About window: the support report was downloaded (web)"
+                            id="gui.RobboGui.support_report_downloaded"
+                        />
+                    ) : (
+                        <FormattedMessage
+                            defaultMessage="Report saved: {path}"
+                            description="About window: where the support report was saved"
+                            id="gui.RobboGui.support_report_saved"
+                            values={{path: props.reportSave.path}}
+                        />
+                    )}
+                </p>
+            )}
+            {props.reportSave && props.reportSave.status === 'error' && (
+                <p className={styles.reportStatus}>
+                    <FormattedMessage
+                        defaultMessage="Could not save the report: {message}"
+                        description="About window: the support report could not be saved"
+                        id="gui.RobboGui.support_report_error"
+                        values={{message: props.reportSave.message}}
+                    />
+                </p>
+            )}
         </Box>
     </div>
 );
@@ -61,7 +104,14 @@ const CrashMessage = props => (
 CrashMessage.propTypes = {
     errorMessage: PropTypes.string,
     eventId: PropTypes.string,
-    onReload: PropTypes.func.isRequired
+    onReload: PropTypes.func.isRequired,
+    onSaveReport: PropTypes.func,
+    reportSave: PropTypes.shape({
+        status: PropTypes.oneOf(['saving', 'saved', 'error']),
+        path: PropTypes.string,
+        downloaded: PropTypes.bool,
+        message: PropTypes.string
+    })
 };
 
 export default CrashMessage;
