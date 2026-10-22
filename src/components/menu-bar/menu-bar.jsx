@@ -93,6 +93,7 @@ import robboScratchIcon from './icon--robboscratch3.png';
 import sharedMessages from '../../lib/shared-messages';
 
 import {ActionTriggerRobboMenu} from '../../RobboGui/actions/sensor_actions.js'; //Robbo //modified_by_Yaroslav
+import {hasUnreadWhatsNew} from '../../RobboGui/reducers/whats_new';
 import MenuBarDeviceControls from '../../RobboGui/MenuBarDeviceControls';
 import {setRobboUiHidden} from '../../reducers/layout-visibility';
 import storage from '../../lib/storage';
@@ -1407,7 +1408,7 @@ const mapStateToProps = (state, ownProps) => {
 
     return {
         aboutMenuOpen: aboutMenuOpen(state),
-        hasUnreadWhatsNew: state.scratchGui.whats_new.unread.length > 0,
+        hasUnreadWhatsNew: hasUnreadWhatsNew(state.scratchGui.whats_new),
         accountMenuOpen: accountMenuOpen(state),
         cloudProjectPageId: robboAccount.cloudProjectPageId || '',
         cloudSaveError: robboAccount.saveError || '',

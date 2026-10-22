@@ -178,6 +178,39 @@
 
 .about_footer_actions {
     justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* The footer holds the buttons and, under them, where the support report was saved. */
+.about_footer_outside {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.about_report_status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    text-align: center;
+    color: $text-primary;
+}
+
+.about_report_path {
+    overflow-wrap: anywhere;
+}
+
+.about_report_status > button {
+    align-self: center;
+    font-size: 0.75rem;
+}
+
+.about_report_status_error {
+    color: $error-primary;
 }
 
 .about_help_button {
