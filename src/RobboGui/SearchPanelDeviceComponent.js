@@ -14,6 +14,8 @@ import {notifyFirmwareFlashing, notifySearchButtonFeedback} from './search-butto
 
 import { getFirmwareSettingsFromRuntime } from '../lib/settingsLoader';
 import { resolveCf2FirmwareVersionLabel, applyCf2FlashLine } from '../lib/crazyflie-flash-ui';
+import {blocksPortOf} from '../lib/device-rows';
+import {isDesktopWithBluetooth} from '../lib/platform';
 import {
     COPTER_FLASH_STEP_MESSAGES,
     FLASH_STEP_MESSAGES,
@@ -39,6 +41,16 @@ const messages = defineMessages({
         id: 'gui.SearchPanelDeviceComponent.pill_detecting',
         description: 'Device row status: asking the device who it is',
         defaultMessage: 'Detecting…'
+    },
+    pill_disconnected: {
+        id: 'gui.SearchPanelDeviceComponent.pill_disconnected',
+        description: 'Device row status: the USB cable of the device was pulled out; {gender} as in pill_connected',
+        defaultMessage: '{gender, select, f {Disconnected} n {Disconnected} other {Disconnected}}'
+    },
+    hint_disconnected: {
+        id: 'gui.SearchPanelDeviceComponent.hint_disconnected',
+        description: 'Device row hint (desktop): the USB cable was pulled out; the app finds the device again by itself',
+        defaultMessage: 'Plug the cable back in: Robbo Scratch will find the device by itself.'
     },
     pill_reconnecting: {
         id: 'gui.SearchPanelDeviceComponent.pill_reconnecting',
@@ -102,13 +114,8 @@ const messages = defineMessages({
     },
     row_attempt: {
         id: 'gui.SearchPanelDeviceComponent.row_attempt',
-        description: 'Under the device name while detecting: {port} and the try number {attempt}',
-        defaultMessage: '{port}, try {attempt}'
-    },
-    row_title_port: {
-        id: 'gui.SearchPanelDeviceComponent.row_title_port',
-        description: 'Device row title while the device is not known yet; {port} is like ttyUSB0 or COM3',
-        defaultMessage: 'Device on {port}'
+        description: 'Next to the connection under the device name while detecting: the try number {attempt}',
+        defaultMessage: 'try {attempt}'
     },
     row_title_unknown: {
         id: 'gui.SearchPanelDeviceComponent.row_title_unknown',
@@ -146,6 +153,11 @@ const messages = defineMessages({
         description: 'Device row hint: the serial port could not be opened',
         defaultMessage: 'Could not open the port. Reconnect the device or plug the cable into another USB port.'
     },
+    hint_port_error_web: {
+        id: 'gui.SearchPanelDeviceComponent.hint_port_error_web',
+        description: 'Device row hint (web): the USB port could not be opened; the browser does not find a plugged in device by itself',
+        defaultMessage: 'Could not open the port. Reconnect the device or plug the cable into another USB port, then press «Search again».'
+    },
     hint_bluetooth_off: {
         id: 'gui.SearchPanelDeviceComponent.hint_bluetooth_off',
         description: 'Device row hint: Bluetooth adapter of the computer is off',
@@ -166,11 +178,6 @@ const messages = defineMessages({
         description: 'Device row button: repeat the failed flash',
         defaultMessage: 'Try again'
     },
-    details_port: {
-        id: 'gui.SearchPanelDeviceComponent.details_port',
-        description: 'Device details: port label',
-        defaultMessage: 'Port'
-    },
     details_firmware: {
         id: 'gui.SearchPanelDeviceComponent.details_firmware',
         description: 'Device details: firmware label',
@@ -190,6 +197,21 @@ const messages = defineMessages({
         id: 'gui.SearchPanelDeviceComponent.details_serial',
         description: 'Device details: serial number label',
         defaultMessage: 'Serial number'
+    },
+    details_links: {
+        id: 'gui.SearchPanelDeviceComponent.details_links',
+        description: 'Device details: label of the list of connections (USB and Bluetooth) of the same device',
+        defaultMessage: 'Connection'
+    },
+    link_blocks: {
+        id: 'gui.SearchPanelDeviceComponent.link_blocks',
+        description: 'Device connections: the blocks work through this connection (USB port or Bluetooth)',
+        defaultMessage: 'blocks'
+    },
+    link_reserve: {
+        id: 'gui.SearchPanelDeviceComponent.link_reserve',
+        description: 'Device connections: the other connection of the same device, kept in reserve',
+        defaultMessage: 'reserve'
     },
     details_error: {
         id: 'gui.SearchPanelDeviceComponent.details_error',
@@ -419,11 +441,6 @@ const messages = defineMessages({
         id: 'gui.SearchPanelDeviceComponent.details_radio_value',
         description: 'Quadcopter row details: radio group and channel of this computer',
         defaultMessage: 'group {group}, channel {channel}'
-    },
-    device_unknown: {
-        id: 'gui.FirmwareFlasherDeviceComponent.device_unknown',
-        description: ' ',
-        defaultMessage: 'Unknown device'
     },
     firmware_not_available_mobile: {
         id: 'gui.SearchPanel.firmware_not_available_mobile',
@@ -842,7 +859,7 @@ class SearchPanelDeviceComponent extends Component {
             case 1: case 2: case 4: return this.props.intl.formatMessage(messages.device_lab);
             case 5: return this.props.intl.formatMessage(messages.device_otto);
             case 6: return this.props.intl.formatMessage(messages.device_arduino);
-            default: return this.props.intl.formatMessage(messages.device_unknown);
+            default: return this.props.intl.formatMessage(messages.row_title_unknown);
         }
     }
 
@@ -887,6 +904,68 @@ class SearchPanelDeviceComponent extends Component {
         return port.replace(/^\/dev\//, '');
     }
 
+    /**
+     * Links of the device row (USB port, Bluetooth), the row's own link first; a device connected twice has both.
+     * Active is the link of a connected device the blocks use. Empty for the copter (it talks over Crazyradio).
+     */
+    _links() {
+        if (this.props.isQuadcopter) return [];
+        const connected = this.state.deviceState === 6;
+        const also = connected && Array.isArray(this.props.alsoPorts) ? this.props.alsoPorts : [];
+        const links = [{port: this.props.devicePort, isBluetooth: Boolean(this.props.isBluetooth)}].concat(also);
+        let activePort = null;
+        if (also.length) {
+            const blocksPort = blocksPortOf(this.state.deviceId, this.props);
+            activePort = links.some(link => link.port === blocksPort) ? blocksPort : null;
+        } else if (connected) {
+            activePort = this.props.devicePort;
+        }
+        return links.map(link => {
+            const port = link.port || '';
+            const name = port.indexOf('bluetooth_') === 0 ? port.slice('bluetooth_'.length) : '';
+            return {
+                port,
+                isBluetooth: link.isBluetooth || port.indexOf('bluetooth_') === 0,
+                short: link.isBluetooth || name ? (name || 'Bluetooth') : this._usbLabel(port),
+                full: link.isBluetooth || name ? (name ? `Bluetooth (${name})` : 'Bluetooth') : port.replace(/^webserial:.*/, 'USB'),
+                name,
+                active: port === activePort
+            };
+        });
+    }
+
+    /** Short USB port for a chip: ttyUSB0, COM3; a Web Serial port is just USB. */
+    _usbLabel(port) {
+        if ((port || '').indexOf('webserial:') === 0) return 'USB';
+        return (port || '').replace(/^\/dev\//, '');
+    }
+
+    /** USB plug or Bluetooth rune for a link. */
+    _linkIcon(isBluetooth) {
+        return (
+            <svg className={styles.link_icon} viewBox="0 0 16 16" aria-hidden="true">
+                {isBluetooth ?
+                    <path d="M4.5 5l7 6-3.5 3V2l3.5 3-7 6" /> :
+                    <path d="M6 1.5v3M10 1.5v3M4.5 4.5h7V8a3.5 3.5 0 0 1-7 0zM8 11.5v3" />}
+            </svg>
+        );
+    }
+
+    /** One line of the connection list in the details: icon, link, what it is for (when the blocks' link is known). */
+    _linkLine(link, roleKnown) {
+        const intl = this.props.intl;
+        return (
+            <span key={link.port} className={classNames(styles.link_line, link.active && styles.link_line_active)}>
+                {this._linkIcon(link.isBluetooth)}
+                <span>{link.full}</span>
+                {roleKnown ?
+                    <span className={styles.link_role}>
+                        {intl.formatMessage(link.active ? messages.link_blocks : messages.link_reserve)}
+                    </span> : null}
+            </span>
+        );
+    }
+
     /** Device icon of the row: the same pictures as the device buttons in the menu bar. */
     _rowIcon() {
         if (this.props.isQuadcopter) return 'quadcopter';
@@ -897,12 +976,22 @@ class SearchPanelDeviceComponent extends Component {
         if (id === 1 || id === 2 || id === 4) return 'lab';
         if (id === 5) return 'otto';
         if (id === 6 || id === 7) return 'arduino';
-        // Not answered yet: a Bluetooth name tells the kind (ROBBO-R-…, ROB-R-…, ROBBO-L-…, OTTO…)
+        return this._bluetoothKind() || 'unknown';
+    }
+
+    /** Not answered yet: a Bluetooth name tells the kind (ROBBO-R-…, ROB-R-…, ROBBO-L-…, OTTO…), else null. */
+    _bluetoothKind() {
         const btName = this.props.isBluetooth ? (this.props.devicePort || '').replace(/^bluetooth_/, '') : '';
         if (/^ROBB?O?-R-/i.test(btName) || /^ROB-R-/i.test(btName)) return 'robot';
         if (/^ROBBO-L-/i.test(btName)) return 'lab';
         if (/OTTO|Dancing/i.test(btName)) return 'otto';
-        return 'unknown';
+        return null;
+    }
+
+    /** Title of a device that has not told what it is: the kind from its Bluetooth name, else «Unknown device». */
+    _unknownTitle() {
+        const kindId = {robot: 0, lab: 1, otto: 5}[this._bluetoothKind()];
+        return kindId === undefined ? this.props.intl.formatMessage(messages.row_title_unknown) : this.getDeviceName(kindId);
     }
 
     /** Human text for a port / connection error (state 7); the raw message goes to the details. */
@@ -923,7 +1012,8 @@ class SearchPanelDeviceComponent extends Component {
         if (error && error.errorCode && byCode[error.errorCode]) return this.props.intl.formatMessage(byCode[error.errorCode]);
         // a cable and a USB port say nothing to a Bluetooth robot
         if (this.props.isBluetooth) return this.props.intl.formatMessage(messages.hint_bluetooth_no_answer);
-        return this.props.intl.formatMessage(messages.hint_port_error);
+        // desktop opens a plugged in cable by itself, the browser waits for a search
+        return this.props.intl.formatMessage(isDesktopWithBluetooth() ? messages.hint_port_error : messages.hint_port_error_web);
     }
 
     /**
@@ -999,8 +1089,7 @@ class SearchPanelDeviceComponent extends Component {
         const shownId = flashUi && flashUi.deviceId !== null && flashUi.deviceId !== undefined ? flashUi.deviceId : deviceId;
         const known = shownId !== -1 && shownId !== undefined && shownId !== null;
         const name = known ? this.getDeviceName(shownId) : '';
-        const btName = (this.props.devicePort || '').replace(/^bluetooth_/, '');
-        view.title = name || (this.props.isBluetooth ? btName : intl.formatMessage(messages.row_title_port, {port}));
+        view.title = name || this._unknownTitle();
 
         if (flashUi && flashUi.active) {
             view.tone = 'wait';
@@ -1025,6 +1114,12 @@ class SearchPanelDeviceComponent extends Component {
                 intl.formatMessage(messages.pill_connected, {gender: this._deviceGender(record.deviceId)}) :
                 intl.formatMessage(messages.pill_flash_done);
             if (record.deviceId !== null && record.deviceId !== undefined) view.title = this.getDeviceName(record.deviceId);
+            return view;
+        }
+        if (this._isUnplugged()) {
+            view.tone = 'unknown';
+            view.pill = intl.formatMessage(messages.pill_disconnected, {gender: this._deviceGender(shownId)});
+            view.hint = intl.formatMessage(messages.hint_disconnected);
             return view;
         }
         if (deviceState === 6) {
@@ -1054,7 +1149,7 @@ class SearchPanelDeviceComponent extends Component {
         }
         if (deviceState === 8) {
             view.tone = 'unknown';
-            view.title = this.props.isBluetooth ? btName : intl.formatMessage(messages.row_title_unknown);
+            view.title = this._unknownTitle();
             view.pill = intl.formatMessage(messages.pill_no_answer);
             if (this.props.isBluetooth) {
                 view.hint = intl.formatMessage(messages.device_cannot_open_old_bluetooth_com);
@@ -1069,7 +1164,7 @@ class SearchPanelDeviceComponent extends Component {
             return view;
         }
         view.pill = intl.formatMessage(messages.pill_detecting);
-        if (identifyAttempt > 1) view.subtitle = intl.formatMessage(messages.row_attempt, {port, attempt: identifyAttempt});
+        if (identifyAttempt > 1) view.attempt = intl.formatMessage(messages.row_attempt, {attempt: identifyAttempt});
         return view;
     }
 
@@ -1158,7 +1253,11 @@ class SearchPanelDeviceComponent extends Component {
         const firmware = device ? safe(() => device.getFirmwareVersion()) : null;
         const serial = device ? safe(() => device.getSerialNumber()) : null;
         const {firmwareDiffers, deviceState, deviceError} = this.state;
-        const rows = [[this.props.intl.formatMessage(messages.details_port), this.props.devicePort]];
+        const links = this._links();
+        // the role (blocks · reserve) matters only when the device is connected twice
+        const roleKnown = links.length > 1 && links.some(link => link.active);
+        const rows = [[this.props.intl.formatMessage(messages.details_links),
+            <span className={styles.link_list}>{links.map(link => this._linkLine(link, roleKnown))}</span>]];
         if (deviceState === 6 && firmware !== null && firmware !== undefined && !Number.isNaN(Number(firmware))) {
             rows.push([this.props.intl.formatMessage(messages.details_firmware), firmwareDiffers ?
                 this.props.intl.formatMessage(messages.details_firmware_old, firmwareDiffers) :
@@ -1319,6 +1418,13 @@ class SearchPanelDeviceComponent extends Component {
                 quadcopterRowPhase: 'searching'
             });
         }
+    }
+
+    /** The USB cable was pulled out (DCA watches the ports of the system). */
+    _isUnplugged() {
+        const dca = this.props.DCA;
+        return !this.props.isBluetooth && Boolean(dca) && typeof dca.isPortUnplugged === 'function' &&
+            dca.isPortUnplugged(this.props.devicePort);
     }
 
     componentWillUnmount() {
@@ -1665,6 +1771,7 @@ class SearchPanelDeviceComponent extends Component {
 
 
     onStatusChange(result_obj) {
+        if (typeof this.props.onDeviceStateChange === 'function') this.props.onDeviceStateChange();
         // Проверяем, что этот callback вызван для правильного устройства
         // Получаем реальное устройство по порту и проверяем его deviceId
         const allDevices = this.props.DCA.getDevices();
@@ -2202,6 +2309,7 @@ class SearchPanelDeviceComponent extends Component {
             [quadcopterHintText, quadcopterFlashStatus, ...viewHints] :
             viewHints).filter(Boolean);
         const canExpand = true;
+        const links = this._links();
         const detailsOpen = canExpand && this.state.detailsOpen;
         const detailsId = `search-panel-device-details-${this.props.Id}`;
         const flashing = this.flashSessionActive;
@@ -2219,7 +2327,21 @@ class SearchPanelDeviceComponent extends Component {
                 </span>
                 <span className={styles.row_text}>
                     <span className={styles.row_title}>{view.title}</span>
-                    <span className={styles.row_subtitle}>{view.subtitle}</span>
+                    {links.length ? (
+                        <span className={classNames(styles.row_subtitle, styles.row_links)}>
+                            {links.map(link => (
+                                <span
+                                    key={link.port}
+                                    className={classNames(styles.link_chip, link.active && styles.link_chip_active)}
+                                    title={link.full}
+                                >
+                                    {this._linkIcon(link.isBluetooth)}
+                                    {link.short}
+                                </span>
+                            ))}
+                            {view.attempt ? <span className={styles.link_attempt}>{view.attempt}</span> : null}
+                        </span>
+                    ) : <span className={styles.row_subtitle}>{view.subtitle}</span>}
                 </span>
                 <span className={styles.row_status}>
                     <span className={styles.row_pill}>{view.pill}</span>
