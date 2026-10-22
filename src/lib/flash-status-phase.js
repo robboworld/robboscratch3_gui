@@ -90,6 +90,11 @@ const messages = defineMessages({
         description: 'Firmware flashing failed',
         defaultMessage: 'The firmware was not updated. Open the details or try again'
     },
+    errorBoardSilent: {
+        id: 'gui.FlashStatus.errorBoardSilent',
+        description: 'Firmware flashing failed: the bootloader of the board never answered',
+        defaultMessage: 'The board does not answer: the firmware was not written'
+    },
     deviceRobot: {
         id: 'gui.FlashStatus.deviceRobot',
         description: 'Device name in firmware flashing phases',
@@ -216,8 +221,21 @@ export const createFlashProgress = () => ({
     deviceId: null,
     recognized: false,
     block: 0,
-    blockTotal: 0
+    blockTotal: 0,
+    // the bootloader answered at least once (something was written or the device told its id)
+    boardAnswered: false,
+    // a bootloader request got no byte back
+    boardSilent: false
 });
+
+/**
+ * Why a failed flash failed, as far as the flasher lines tell.
+ * @param {object} progress from {@link createFlashProgress}
+ * @returns {?string} 'board_silent' — the bootloader never answered: often something else holds the RX line
+ *     of the board (a Bluetooth module on pins 0/1 of the Dancing robot); null — not known
+ */
+export const flashFailureOf = progress => (progress && progress.boardSilent && !progress.boardAnswered ?
+    'board_silent' : null);
 
 /**
  * @param {string} status raw flasher line
@@ -250,6 +268,10 @@ export const flashPhaseOf = (status, progress) => {
 
 /** Remember what a flasher line tells about the device. */
 const trackDevice = (status, progress) => {
+    if (status.indexOf('Uploading') !== -1 || BLOCK_PATTERN.test(status) || DEVICE_ID_PATTERN.test(status)) {
+        progress.boardAnswered = true;
+    }
+    if (status.indexOf('no bytes') !== -1 || status.indexOf('receivedBytes=0') !== -1) progress.boardSilent = true;
     const diagnostic = DIAGNOSTIC_PATTERN.exec(status);
     if (diagnostic) {
         progress.diagnostic = true;
@@ -344,6 +366,8 @@ export const applyFlashStatus = (el, status, intl, progress) => {
         text = device ? intl.formatMessage(messages.identified, {device}) : intl.formatMessage(messages.prepare);
     } else if (phase === 'done' && device) {
         text = intl.formatMessage(messages.doneDevice, {device});
+    } else if (phase === 'error' && flashFailureOf(progress)) {
+        text = intl.formatMessage(messages.errorBoardSilent);
     } else {
         text = intl.formatMessage(messages[phase]);
         if (phase === 'verify') percent = 100;

@@ -97,6 +97,8 @@ const diagnose = function (snapshot) {
     const allEvents = (snapshot.search && snapshot.search.events) || [];
     const probes = probesByPort(events);
     const readyPorts = Object.keys(probes).filter(port => probes[port].result === 'ready');
+    // A search keeps connected devices without probing them again: «something works» looks at the whole journal
+    const everReady = allEvents.some(event => event.kind === 'probe' && event.data.result === 'ready');
     const portList = snapshot.search && snapshot.search.lastPortList;
     const acceptedPorts = portList ? portList.ports.filter(port => port.verdict === 'accepted') : [];
 
@@ -104,6 +106,10 @@ const diagnose = function (snapshot) {
     const web = snapshot.web;
     if (snapshot.runtime === 'web' && web && !web.robbolink && (!web.serialApi || !web.secureContext)) {
         add('RS-WEB-01', 'error');
+    } else if (snapshot.runtime === 'web' && events.some(event => event.kind === 'port_choice_cancelled') &&
+        !(portList && portList.ports.length)) {
+        // the browser shows its own port dialog: nothing chosen there, nothing to connect
+        add('RS-WEB-02', 'warning');
     }
 
     // The serialport module or the port list is broken: nothing else about the ports can be trusted
@@ -112,7 +118,7 @@ const diagnose = function (snapshot) {
     }
 
     // Windows: copied instead of installed, and nothing works yet
-    if (platform === 'win32' && snapshot.install && snapshot.install.state === 'copied' && readyPorts.length === 0) {
+    if (platform === 'win32' && snapshot.install && snapshot.install.state === 'copied' && !everReady) {
         add('RS-INST-01', 'error');
     }
 
