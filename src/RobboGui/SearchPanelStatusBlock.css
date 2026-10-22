@@ -45,31 +45,6 @@
     margin-top: 0.25rem;
 }
 
-/* «Save report for support»: a quiet link under the main action */
-.statusSecondaryAction {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: $motion-primary;
-    font: inherit;
-    font-size: $popup-font-size-sm;
-    text-decoration: underline;
-    cursor: pointer;
-}
-
-.statusSecondaryAction:focus-visible {
-    outline: 2px solid $motion-primary;
-    outline-offset: 2px;
-}
-
-.statusNote {
-    font-size: $popup-font-size-sm;
-    line-height: 1.4;
-    color: rgba(0, 0, 0, 0.62);
-    overflow-wrap: anywhere;
-}
-
 .statusTitle {
     font-weight: bold;
     font-size: 0.9375rem;
@@ -81,28 +56,6 @@
     font-size: $popup-font-size-sm;
     line-height: 1.5;
     color: $text-primary;
-}
-
-.statusAction {
-    margin-top: 0.25rem;
-    padding: 0.4375rem 0.875rem;
-    border: 0;
-    border-radius: $form-radius;
-    background-color: rgb(0, 175, 65);
-    color: #fff;
-    font: inherit;
-    font-size: $popup-font-size-sm;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.statusAction:hover {
-    background-color: rgb(0, 154, 58);
-}
-
-.statusAction:focus-visible {
-    outline: 2px solid $motion-primary;
-    outline-offset: 2px;
 }
 
 .statusTitle {

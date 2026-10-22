@@ -14,7 +14,7 @@ import {notifyDeviceCount, notifySearchIdle} from './search-button-feedback';
 import {registerEscapeClosable} from '../lib/robbo-popup-escape';
 import {buildDeviceRows, deviceRowsDiffer} from '../lib/device-rows';
 import {updateSettingsInStorage} from '../lib/settingsLoader';
-import {findEmptyPanelCause, saveSupportReport} from '../lib/support-report';
+import {findEmptyPanelCause} from '../lib/support-report';
 import {findingMessages} from '../lib/support-report/messages';
 
 import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
@@ -133,31 +133,6 @@ const messages = defineMessages({
     id: 'gui.RobboGui.try_to_install_drivers',
     description: ' ',
     defaultMessage: 'Try installing or updating USB port drivers.'
-  },
-  save_support_report: {
-    id: 'gui.RobboGui.save_support_report',
-    description: 'Devices panel: save the support report to a file',
-    defaultMessage: 'Save report for support'
-  },
-  saving_support_report: {
-    id: 'gui.RobboGui.saving_support_report',
-    description: 'Devices panel: the support report is being collected',
-    defaultMessage: 'Collecting the report…'
-  },
-  support_report_saved: {
-    id: 'gui.RobboGui.support_report_saved',
-    description: 'Devices panel: where the support report was saved',
-    defaultMessage: 'Report saved: {path}'
-  },
-  support_report_downloaded: {
-    id: 'gui.RobboGui.support_report_downloaded',
-    description: 'Devices panel: the support report was downloaded (web)',
-    defaultMessage: 'Report downloaded. Send the file to support.'
-  },
-  support_report_error: {
-    id: 'gui.RobboGui.support_report_error',
-    description: 'Devices panel: the support report could not be saved',
-    defaultMessage: 'Could not save the report: {message}'
   }
 });
 
@@ -177,8 +152,6 @@ class SearchPanelComponent extends Component {
       searchEpoch: 0,
       // a known reason why nothing was found (support-report diagnose), for this searchEpoch
       emptyCause: null,
-      // null | {status: 'saving'} | {status: 'saved', path, downloaded} | {status: 'error', message}
-      reportSave: null,
       isShowing: false,
       anchorStyle: {}
     };
@@ -344,7 +317,7 @@ class SearchPanelComponent extends Component {
         this.bluetooth_search_finished = true;
       }
       if (this._isMounted) {
-        this.setState(prev => ({ uiRev: Date.now(), searchEpoch: prev.searchEpoch + 1, emptyCause: null, reportSave: null }));
+        this.setState(prev => ({ uiRev: Date.now(), searchEpoch: prev.searchEpoch + 1, emptyCause: null }));
       }
       // the search at the app start works in the background
       if (!searchOptions.quiet) showSearchPanel();
@@ -540,32 +513,6 @@ class SearchPanelComponent extends Component {
     });
   }
 
-  onSaveReportClick () {
-    if (this.state.reportSave && this.state.reportSave.status === 'saving') return;
-    this.setState({ reportSave: { status: 'saving' } });
-    saveSupportReport({ formatMessage: this.props.intl.formatMessage, dca: this.DCA })
-      .then(saved => {
-        if (!this._isMounted) return;
-        this.setState({ reportSave: { status: 'saved', path: saved.path, downloaded: saved.downloaded } });
-      })
-      .catch(error => {
-        if (!this._isMounted) return;
-        this.setState({ reportSave: { status: 'error', message: (error && error.message) || String(error) } });
-      });
-  }
-
-  renderReportNote () {
-    const reportSave = this.state.reportSave;
-    if (!reportSave || reportSave.status === 'saving') return null;
-    const intl = this.props.intl;
-    if (reportSave.status === 'error') {
-      return intl.formatMessage(messages.support_report_error, { message: reportSave.message });
-    }
-    return reportSave.downloaded ?
-      intl.formatMessage(messages.support_report_downloaded) :
-      intl.formatMessage(messages.support_report_saved, { path: reportSave.path });
-  }
-
   componentWillUnmount() {
     this._isMounted = false;
     if (this._unregisterEscape) this._unregisterEscape();
@@ -621,7 +568,6 @@ class SearchPanelComponent extends Component {
     void this.state.uiRev;
     this._emptyPanelVisible = showDevicesNotFound && this.state.isShowing;
     const emptyCause = this.state.emptyCause;
-    const reportSaving = this.state.reportSave && this.state.reportSave.status === 'saving';
 
     const panelStyle = {
       zIndex: this.state.popupZIndex,
@@ -741,12 +687,6 @@ class SearchPanelComponent extends Component {
                         bluetoothSwitch && !bluetoothSearchEnabled ?
                           this.props.intl.formatMessage(messages.devices_not_found_step_bluetooth_disabled) : null
                       ].filter(Boolean)}
-                      actionLabel={this.props.intl.formatMessage(messages.search_again)}
-                      onAction={this.searchAgain}
-                      secondaryActionLabel={this.props.intl.formatMessage(
-                        reportSaving ? messages.saving_support_report : messages.save_support_report)}
-                      onSecondaryAction={() => this.onSaveReportClick()}
-                      note={this.renderReportNote()}
                   />
                 ) : null
               }
