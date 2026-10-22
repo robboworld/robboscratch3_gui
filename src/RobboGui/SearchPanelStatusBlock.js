@@ -9,12 +9,7 @@ const SearchPanelStatusBlock = ({
     title,
     hint,
     steps,
-    cause,
-    actionLabel,
-    onAction,
-    secondaryActionLabel,
-    onSecondaryAction,
-    note
+    cause
 }) => (
     <div
         className={classNames(
@@ -46,32 +41,6 @@ const SearchPanelStatusBlock = ({
                 {steps.map(step => <li key={step}>{step}</li>)}
             </ol>
         ) : null}
-        {actionLabel && onAction ? (
-            <button
-                type="button"
-                className={styles.statusAction}
-                onClick={onAction}
-            >
-                {actionLabel}
-            </button>
-        ) : null}
-        {secondaryActionLabel && onSecondaryAction ? (
-            <button
-                type="button"
-                className={styles.statusSecondaryAction}
-                onClick={onSecondaryAction}
-            >
-                {secondaryActionLabel}
-            </button>
-        ) : null}
-        {note ? (
-            <div
-                className={styles.statusNote}
-                role="status"
-            >
-                {note}
-            </div>
-        ) : null}
     </div>
 );
 
@@ -84,12 +53,7 @@ SearchPanelStatusBlock.propTypes = {
     cause: PropTypes.shape({
         title: PropTypes.node.isRequired,
         action: PropTypes.node
-    }),
-    actionLabel: PropTypes.node,
-    onAction: PropTypes.func,
-    secondaryActionLabel: PropTypes.node,
-    onSecondaryAction: PropTypes.func,
-    note: PropTypes.node
+    })
 };
 
 export default SearchPanelStatusBlock;
