@@ -12,6 +12,7 @@ import {
 } from './search-panel-visibility';
 import {notifyDeviceCount, notifySearchIdle} from './search-button-feedback';
 import {registerEscapeClosable} from '../lib/robbo-popup-escape';
+import {buildDeviceRows, deviceRowsDiffer} from '../lib/device-rows';
 import {updateSettingsInStorage} from '../lib/settingsLoader';
 
 import SearchPanelDeviceComponent from './SearchPanelDeviceComponent';
@@ -157,6 +158,8 @@ class SearchPanelComponent extends Component {
     this._handleWindowResize = this._handleWindowResize.bind(this);
     this._handleTransitionEntered = this._handleTransitionEntered.bind(this);
     this.onThisWindowClose = this.onThisWindowClose.bind(this);
+    // a link became ready (its serial number is known) or went away: the same device may join or leave a row
+    this._onRowDeviceState = () => this._refreshDeviceList();
     // «Search again» presses the menu bar search button: the same search (and the port chooser on web)
     this.searchAgain = () => {
       const button = document.getElementById('robbo_search_devices');
@@ -279,7 +282,7 @@ class SearchPanelComponent extends Component {
 
     });
 
-    this.DCA.registerDevicesStartSearchingCallback(() => {
+    this.DCA.registerDevicesStartSearchingCallback((searchOptions = {}) => {
       this._quadcopterAwaitingFirstSearchingEmit = shouldProbeQuadcopterOnDeviceSearch(this.QCA);
       // No Crazyradio plugged in: there is no copter to wait for
       if (this._quadcopterAwaitingFirstSearchingEmit && typeof this.QCA.checkDonglePresent === 'function') {
@@ -299,7 +302,7 @@ class SearchPanelComponent extends Component {
       // Same condition as DeviceControlAPI.searchAllDevices — Chrome Bluetooth scan only on Win/Linux desktop
       const useChromeBluetooth = typeof node_process !== 'undefined' &&
         (node_process.platform === 'win32' || node_process.platform === 'linux');
-      const willRunBtScan = useChromeBluetooth &&
+      const willRunBtScan = useChromeBluetooth && searchOptions.bluetooth !== false &&
         typeof this.DCA.isBluetoothSearchEnabled === 'function' &&
         this.DCA.isBluetoothSearchEnabled();
       if (willRunBtScan) {
@@ -312,7 +315,8 @@ class SearchPanelComponent extends Component {
       if (this._isMounted) {
         this.setState(prev => ({ uiRev: Date.now(), searchEpoch: prev.searchEpoch + 1 }));
       }
-      showSearchPanel();
+      // the search at the app start works in the background
+      if (!searchOptions.quiet) showSearchPanel();
     });
 
     this.DCA.registerDevicesNotFoundCallback(() => {
@@ -461,15 +465,7 @@ class SearchPanelComponent extends Component {
   }
 
   _refreshDeviceList() {
-    let allDevices = this.DCA.getDevices().filter(Boolean);
-    let newList = [];
-    for (let index = 0; index < allDevices.length; index++) {
-      newList.push({
-        devicePort: allDevices[index].getPortName(),
-        isBluetooth: allDevices[index].isBluetoothDevice(),
-        isMacBluetooth: false
-      });
-    }
+    const newList = buildDeviceRows(this.DCA.getDevices());
     const qcaDongleAvailable = this.QCA && typeof this.QCA.isDongleAvailable === 'function' && this.QCA.isDongleAvailable();
     const qcaFirmwareBusy = this.QCA && (
       this.QCA._firmwareFlashInProgress === true ||
@@ -494,8 +490,7 @@ class SearchPanelComponent extends Component {
     }
     if (!this._isMounted) return;
     const prev = this.state.devices;
-    const listChanged = prev.length !== newList.length ||
-      newList.some((d, i) => !prev[i] || prev[i].devicePort !== d.devicePort || Boolean(prev[i].isQuadcopter) !== Boolean(d.isQuadcopter));
+    const listChanged = deviceRowsDiffer(prev, newList);
     if (listChanged) {
       this.setState({ devices: newList });
       // the menu bar shows how many rows the panel has: opening it does not need a new search
@@ -633,6 +628,8 @@ class SearchPanelComponent extends Component {
                       isBluetooth={device.isBluetooth}
                       isMacBluetooth={device.isMacBluetooth}
                       isQuadcopter={device.isQuadcopter}
+                      alsoPorts={device.alsoPorts}
+                      onDeviceStateChange={this._onRowDeviceState}
                       disableFirmwareUi={!showFirmwareUi}
                       VM={this.VM}
                       DCA={this.DCA}

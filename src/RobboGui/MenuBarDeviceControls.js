@@ -22,6 +22,9 @@ import {
 } from '../lib/transient-button-feedback';
 import styles from './MenuBarDeviceControls.css';
 
+/** The start search waits for the saved settings (search timeouts) to reach DCA. */
+const STARTUP_USB_SEARCH_DELAY_MS = 1500;
+
 const messages = defineMessages({
     search_devices: {
         id: 'gui.RobboGui.search_devices',
@@ -88,6 +91,8 @@ class MenuBarDeviceControls extends Component {
         };
         this.unsubscribeSearchFeedback = null;
         this.searchDevices = this.searchDevices.bind(this);
+        this.pickUpPluggedDevice = this.pickUpPluggedDevice.bind(this);
+        this.searchUsbDevicesAtStart = this.searchUsbDevicesAtStart.bind(this);
         this.triggerSensorsPalette = this.triggerSensorsPalette.bind(this);
     }
 
@@ -122,9 +127,38 @@ class MenuBarDeviceControls extends Component {
                 ));
             }, TRANSIENT_BUTTON_FEEDBACK_MS);
         });
+        // A cable plugged in while the app runs (desktop): only the palette of the new device looks for it,
+        // like the search button does for every kind
+        const dca = this.props.vm && this.props.vm.getDCA();
+        if (dca && typeof dca.registerUsbDeviceReadyCallback === 'function') {
+            dca.registerUsbDeviceReadyCallback(this.pickUpPluggedDevice);
+            // A device plugged in before the start is there to work with: detect USB devices right away
+            // (after the settings with the search timeouts are applied); this also starts watching the cable
+            this._startupSearchTimer = setTimeout(this.searchUsbDevicesAtStart, STARTUP_USB_SEARCH_DELAY_MS);
+        }
+    }
+
+    searchUsbDevicesAtStart () {
+        const vm = this.props.vm;
+        if (!vm || !isDesktopWithBluetooth() || this.state.searchBusy || this.state.firmwareFlashing) return;
+        vm.getDCA().searchAllDevices({bluetooth: false, quiet: true});
+        vm.getRCA().searchRobotDevices();
+        vm.getLCA().searchLaboratoryDevices();
+        vm.getOCA().searchOttoDevices();
+        vm.getACA().searchArduinoDevices();
+    }
+
+    pickUpPluggedDevice (deviceId) {
+        const vm = this.props.vm;
+        if (!vm) return;
+        if (deviceId === 0 || deviceId === 3) vm.getRCA().searchRobotDevices();
+        else if (deviceId === 1 || deviceId === 2 || deviceId === 4) vm.getLCA().searchLaboratoryDevices();
+        else if (deviceId === 5) vm.getOCA().searchOttoDevices();
+        else if (deviceId === 6) vm.getACA().searchArduinoDevices();
     }
 
     componentWillUnmount () {
+        clearTimeout(this._startupSearchTimer);
         if (this.unsubscribeSearchRequest) this.unsubscribeSearchRequest();
         if (this.unsubscribeFirmwareFlashing) this.unsubscribeFirmwareFlashing();
         if (this.unsubscribeDeviceCount) this.unsubscribeDeviceCount();
