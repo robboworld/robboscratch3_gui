@@ -55,16 +55,16 @@ export const getDefaultSimulationCopterSpriteJson = function () {
                 baseLayerID: -1,
                 baseLayerMD5: 'robbo_quadcopter_topdown_v2.png',
                 bitmapResolution: 2,
-                rotationCenterX: 32,
-                rotationCenterY: 32
+                rotationCenterX: 64,
+                rotationCenterY: 64
             },
             {
                 costumeName: COPTER_COSTUME_FLYING,
                 baseLayerID: -1,
                 baseLayerMD5: 'robbo_quadcopter_topdown_v2_spinning.png',
                 bitmapResolution: 2,
-                rotationCenterX: 32,
-                rotationCenterY: 32
+                rotationCenterX: 64,
+                rotationCenterY: 64
             }
         ],
         currentCostumeIndex: 0,
