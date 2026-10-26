@@ -14963,8 +14963,8 @@
                 "bitmapResolution": 2,
                 "md5ext": "robbo_quadcopter_topdown_v2.png",
                 "dataFormat": "png",
-                "rotationCenterX": 32,
-                "rotationCenterY": 32
+                "rotationCenterX": 64,
+                "rotationCenterY": 64
             },
             {
                 "assetId": "robbo_quadcopter_topdown_v2_spinning",
@@ -14972,8 +14972,8 @@
                 "bitmapResolution": 2,
                 "md5ext": "robbo_quadcopter_topdown_v2_spinning.png",
                 "dataFormat": "png",
-                "rotationCenterX": 32,
-                "rotationCenterY": 32
+                "rotationCenterX": 64,
+                "rotationCenterY": 64
             }
         ],
         "sounds": [],

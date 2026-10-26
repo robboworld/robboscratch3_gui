@@ -1316,8 +1316,11 @@ class QuadcopterPalleteComponent extends Component {
                         {this.renderCoords(copter.x, copter.y, copter.z)}
                     </div>
                 )}
-                {low ? this.renderAttention([{
-                    kind: copter.batteryPercent <= 0 ? 'danger' : 'warning',
+                {low ? this.renderAttention([copter.batteryPercent <= 0 ? {
+                    kind: 'danger',
+                    text: intl.formatMessage(messages.attentionNoChargeToFly)
+                } : {
+                    kind: 'warning',
                     text: intl.formatMessage(messages.attentionLowBattery)
                 }]) : null}
             </div>
