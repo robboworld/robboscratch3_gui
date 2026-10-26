@@ -1,6 +1,11 @@
 /**
  * Stable device fingerprint for license binding (Desktop NW.js preferred).
  * Hashed SHA-256 hex string; same machine => same value across restarts.
+ *
+ * Desktop: the OS machine id (Linux machine-id, Windows MachineGuid) plus host name. No MAC:
+ * networkInterfaces() lists only interfaces with an address, so with the cable out or Wi-Fi off
+ * the MAC would vanish and the licence would look bound to another computer. The host name keeps
+ * cloned class images (same machine id) apart.
  */
 
 const LS_FP_CACHE = 'rs3_license_device_fingerprint';
@@ -72,24 +77,36 @@ function firstNonInternalMac (osMod) {
     return '';
 }
 
-function collectDesktopMaterial () {
-    const osMod = typeof window !== 'undefined' && window.__node_os__;
-    if (!osMod) {
-        return null;
-    }
+function readMachineId () {
+    return readLinuxMachineId() || readWindowsMachineGuid();
+}
+
+/**
+ * @param {object} osMod Node `os` module
+ * @param {string} machineId OS machine id, '' when unreadable
+ * @returns {?string} material to hash; without a machine id the MAC stands in for it
+ */
+export function desktopMaterial (osMod, machineId) {
     const parts = [
-        'rs3-desktop-v1',
+        'rs3-desktop-v2',
         String(osMod.platform && osMod.platform() || ''),
         String(osMod.arch && osMod.arch() || ''),
         String(osMod.hostname && osMod.hostname() || ''),
-        firstNonInternalMac(osMod),
-        readLinuxMachineId(),
-        readWindowsMachineGuid()
+        machineId || firstNonInternalMac(osMod)
     ].filter(Boolean);
     if (parts.length <= 1) {
         return null;
     }
     return parts.join('|');
+}
+
+function nodeOs () {
+    return (typeof window !== 'undefined' && window.__node_os__) || null;
+}
+
+function collectDesktopMaterial () {
+    const osMod = nodeOs();
+    return osMod ? desktopMaterial(osMod, readMachineId()) : null;
 }
 
 function collectWebMaterial () {
