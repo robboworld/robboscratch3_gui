@@ -14,7 +14,8 @@
  * is read through latest.txt, the same file; the installer is downloaded from the first mirror that
  * has it (resolveDownloadUrl).
  *
- * Plain GET through Node http(s) (no CORS in NW.js, no identifiers sent); no network — nothing shown.
+ * Plain GET through Node http(s) (no CORS in NW.js); no network — nothing shown. The User-Agent names
+ * the version, OS, architecture and package kind (download statistics), no identifiers of the user.
  * The result is cached in localStorage and the mirrors are asked at most every CHECK_INTERVAL_MS.
  */
 
@@ -102,14 +103,34 @@ export const packageKind = () => {
     return 'deb';
 };
 
-const requestText = (url, redirects = 0, method = 'GET') => new Promise((resolve, reject) => {
+/**
+ * @param {string} current this build's version
+ * @param {string} kind package kind of this computer
+ * @returns {string} e.g. RobboScratch/3.138.2 (win32; x64; windows): what the mirror logs count by
+ */
+export const updateUserAgent = (current, kind) => {
+    let os = 'unknown';
+    let arch = 'unknown';
+    try {
+        const proc = nwRequire()('process');
+        os = proc.platform;
+        arch = proc.arch;
+    } catch (e) {
+        // keep unknown: the version alone still counts
+    }
+    return `RobboScratch/${current || 'unknown'} (${os}; ${arch}; ${kind || 'unknown'})`;
+};
+
+const requestText = (url, redirects = 0, method = 'GET', agent = '') => new Promise((resolve, reject) => {
     const req = nwRequire();
     const lib = req(url.startsWith('https:') ? 'https' : 'http');
-    const request = lib.request(url, {method, timeout: REQUEST_TIMEOUT_MS}, response => {
+    const options = {method, timeout: REQUEST_TIMEOUT_MS};
+    if (agent) options.headers = {'User-Agent': agent};
+    const request = lib.request(url, options, response => {
         const {statusCode, headers} = response;
         if (statusCode >= 300 && statusCode < 400 && headers.location && redirects < MAX_REDIRECTS) {
             response.resume();
-            resolve(requestText(new URL(headers.location, url).href, redirects + 1, method));
+            resolve(requestText(new URL(headers.location, url).href, redirects + 1, method, agent));
             return;
         }
         if (statusCode !== 200) {
@@ -144,10 +165,11 @@ const mirrorLinks = (relative, channel, first) => [first].concat(MIRRORS.filter(
 /**
  * @param {string} mirror mirror base URL
  * @param {string} channel release | alpha
+ * @param {string} agent User-Agent of the request
  * @returns {Promise<object>} parsed latest.json of the mirror (its .json, else its .txt copy)
  */
-const fetchFromMirror = (mirror, channel) => {
-    const read = file => requestText(`${mirror}${file}`).then(text => {
+const fetchFromMirror = (mirror, channel, agent) => {
+    const read = file => requestText(`${mirror}${file}`, 0, 'GET', agent).then(text => {
         const data = JSON.parse(text);
         if (!isLatest(data)) throw new Error('not a latest.json');
         return data;
@@ -157,11 +179,12 @@ const fetchFromMirror = (mirror, channel) => {
 
 /**
  * @param {string} channel release | alpha
+ * @param {string} agent User-Agent of the requests
  * @returns {Promise<object|null>} latest.json of the channel from the first mirror that answers, with
  *     absolute download links (`mirrors`: the same file on every mirror); null when no mirror answered
  */
-const fetchChannel = channel => MIRRORS.reduce(
-    (previous, mirror) => previous.catch(() => fetchFromMirror(mirror, channel).then(data => {
+const fetchChannel = (channel, agent) => MIRRORS.reduce(
+    (previous, mirror) => previous.catch(() => fetchFromMirror(mirror, channel, agent).then(data => {
         const downloads = {};
         const mirrors = {};
         Object.keys(data.downloads).forEach(kind => {
@@ -272,7 +295,8 @@ export const checkForUpdates = (current, opts = {}) => {
     if (!opts.force && cache && Date.now() - cache.at < CHECK_INTERVAL_MS) {
         return Promise.resolve(selectOffers(cache.latest, current, kind));
     }
-    return Promise.all(Object.keys(CHANNEL_FILES).map(fetchChannel)).then(latest => {
+    const agent = updateUserAgent(current, kind);
+    return Promise.all(Object.keys(CHANNEL_FILES).map(channel => fetchChannel(channel, agent))).then(latest => {
         // offline: keep the previous answer instead of forgetting a known update
         if (latest.some(Boolean)) writeKey(CACHE_KEY, JSON.stringify({at: Date.now(), latest}));
         return selectOffers(latest.some(Boolean) ? latest : ((cache && cache.latest) || []), current, kind);
