@@ -46,6 +46,28 @@ describe('update-check selectOffers', () => {
             .toEqual(['3.137.0']);
     });
 
+    test('each OS gets its own version from packages', () => {
+        const item = Object.assign(latest('alpha', '3.138.2-alpha'), {
+            downloads: {windows: 'https://mirror/alpha/robboScratch-3.138.2-alpha-x64.exe'},
+            packages: {
+                windows: {version: '3.138.2-alpha', download: 'https://mirror/alpha/robboScratch-3.138.2-alpha-x64.exe'},
+                deb: {version: '3.138.1-alpha', download: 'https://mirror/alpha/robboScratch_3.138.1~alpha_amd64.deb'}
+            },
+            releases: {
+                '3.138.2-alpha': {date: '26.10.2026', important: false, notes: null},
+                '3.138.1-alpha': {date: '22.10.2026', important: true, notes: null}
+            }
+        });
+        const win = selectOffers([item], '3.138.1-alpha', 'windows');
+        expect(win.map(o => [o.version, o.downloadUrl])).toEqual([
+            ['3.138.2-alpha', 'https://mirror/alpha/robboScratch-3.138.2-alpha-x64.exe']
+        ]);
+        expect(selectOffers([item], '3.138.1-alpha', 'deb')).toEqual([]);
+        const deb = selectOffers([item], '3.138.0-alpha', 'deb');
+        expect(deb.map(o => [o.version, o.date, o.important])).toEqual([['3.138.1-alpha', '22.10.2026', true]]);
+        expect(selectOffers([item], '3.138.0-alpha', 'rpm')).toEqual([]);
+    });
+
     test('no package for this computer: not offered', () => {
         expect(selectOffers([latest('release', '3.140.0')], '3.124.1', 'rpm')).toEqual([]);
     });

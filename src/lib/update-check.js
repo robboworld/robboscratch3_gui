@@ -2,8 +2,13 @@
  * New version check (desktop): latest.json on the file mirrors, written by scripts/release.sh
  * (scripts/lib/latest-json.mjs). Two channels, offered alike: the stable release and the alpha.
  *
- *   RobboScratch3.0/latest.json        {channel, version, date, important, downloads, notes}
+ *   RobboScratch3.0/latest.json        {channel, version, date, important, downloads, notes,
+ *                                       packages: {windows|deb|rpm: {version, download}},
+ *                                       releases: {<version>: {date, important, notes}}}
  *   RobboScratch3.0/alpha/latest.json  downloads are relative to the file: release/Linux/…, Linux/…
+ *
+ * Each OS has its own version in `packages` (a Windows build is offered before the Linux packages of
+ * that version are out); a latest.json without `packages` has one version for every kind.
  *
  * Plain GET through Node http(s) (no CORS in NW.js, no identifiers sent); no network — nothing shown.
  * The result is cached in localStorage and the mirrors are asked at most every CHECK_INTERVAL_MS.
@@ -131,11 +136,50 @@ const fetchChannel = channel => MIRRORS.reduce(
             Object.keys(data.downloads).forEach(kind => {
                 downloads[kind] = new URL(data.downloads[kind], url).href;
             });
-            return Object.assign({}, data, {channel, downloads});
+            const packages = {};
+            if (data.packages && typeof data.packages === 'object') {
+                Object.keys(data.packages).forEach(kind => {
+                    const entry = data.packages[kind];
+                    if (entry && typeof entry.version === 'string' && typeof entry.download === 'string') {
+                        packages[kind] = {version: entry.version, download: new URL(entry.download, url).href};
+                    }
+                });
+            }
+            return Object.assign({}, data, {channel, downloads, packages});
         });
     }),
     Promise.reject(new Error('no mirror'))
 ).catch(() => null);
+
+/**
+ * What a channel offers to this kind of package: its own entry in `packages`, else the common version.
+ * @param {object} item latest.json of a channel
+ * @param {string} kind package kind of this computer
+ * @returns {object|null} {channel, version, date, important, notes, downloadUrl}
+ */
+const offerFor = (item, kind) => {
+    const own = item.packages && item.packages[kind];
+    if (own) {
+        const release = (item.releases && item.releases[own.version]) || {};
+        return {
+            channel: item.channel,
+            version: own.version,
+            date: release.date || '',
+            important: Boolean(release.important),
+            notes: release.notes || null,
+            downloadUrl: own.download
+        };
+    }
+    if (!item.downloads[kind]) return null;
+    return {
+        channel: item.channel,
+        version: item.version,
+        date: item.date || '',
+        important: Boolean(item.important),
+        notes: item.notes || null,
+        downloadUrl: item.downloads[kind]
+    };
+};
 
 /**
  * Versions to offer: newer than this build; an alpha only when it is newer than the stable one too.
@@ -145,20 +189,14 @@ const fetchChannel = channel => MIRRORS.reduce(
  * @returns {Array<object>} offers, stable first: {channel, version, date, important, notes, downloadUrl}
  */
 export const selectOffers = (latest, current, kind) => {
-    const valid = latest.filter(item => item && compareVersions(item.version, current) > 0 && item.downloads[kind]);
-    const stable = valid.find(item => item.channel === 'release');
+    const valid = latest
+        .map(item => (item ? offerFor(item, kind) : null))
+        .filter(offer => offer && compareVersions(offer.version, current) > 0);
+    const stable = valid.find(offer => offer.channel === 'release');
     return valid
-        .filter(item => item.channel === 'release' ||
-            !stable || compareVersions(item.version, stable.version) > 0)
-        .sort((a, b) => (a.channel === 'release' ? 0 : 1) - (b.channel === 'release' ? 0 : 1))
-        .map(item => ({
-            channel: item.channel,
-            version: item.version,
-            date: item.date || '',
-            important: Boolean(item.important),
-            notes: item.notes || null,
-            downloadUrl: item.downloads[kind]
-        }));
+        .filter(offer => offer.channel === 'release' ||
+            !stable || compareVersions(offer.version, stable.version) > 0)
+        .sort((a, b) => (a.channel === 'release' ? 0 : 1) - (b.channel === 'release' ? 0 : 1));
 };
 
 const readCache = () => {
