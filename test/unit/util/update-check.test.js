@@ -1,4 +1,4 @@
-import {selectOffers} from '../../../src/lib/update-check';
+import {resolveDownloadUrl, selectOffers} from '../../../src/lib/update-check';
 
 const latest = (channel, version, important = false) => ({
     channel,
@@ -66,6 +66,30 @@ describe('update-check selectOffers', () => {
         const deb = selectOffers([item], '3.138.0-alpha', 'deb');
         expect(deb.map(o => [o.version, o.date, o.important])).toEqual([['3.138.1-alpha', '22.10.2026', true]]);
         expect(selectOffers([item], '3.138.0-alpha', 'rpm')).toEqual([]);
+    });
+
+    test('the offer carries the installer on every mirror, the answering one first', () => {
+        const item = Object.assign(latest('alpha', '3.138.3-alpha'), {
+            mirrors: {
+                'https://mirror/alpha/robboScratch-3.138.3-alpha-x64.exe': [
+                    'https://mirror/alpha/robboScratch-3.138.3-alpha-x64.exe',
+                    'https://backup/alpha/robboScratch-3.138.3-alpha-x64.exe'
+                ]
+            },
+            downloads: {windows: 'https://mirror/alpha/robboScratch-3.138.3-alpha-x64.exe'}
+        });
+        const [offer] = selectOffers([item], '3.138.2-alpha', 'windows');
+        expect(offer.downloadUrls).toEqual([
+            'https://mirror/alpha/robboScratch-3.138.3-alpha-x64.exe',
+            'https://backup/alpha/robboScratch-3.138.3-alpha-x64.exe'
+        ]);
+        const [old] = selectOffers([latest('alpha', '3.138.3-alpha')], '3.138.2-alpha', 'windows');
+        expect(old.downloadUrls).toEqual([old.downloadUrl]);
+    });
+
+    test('resolveDownloadUrl outside the desktop app: the first link', () => {
+        const offer = {downloadUrl: 'https://a/x.exe', downloadUrls: ['https://a/x.exe', 'https://b/x.exe']};
+        return expect(resolveDownloadUrl(offer)).resolves.toBe('https://a/x.exe');
     });
 
     test('no package for this computer: not offered', () => {
