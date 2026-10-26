@@ -10,6 +10,10 @@
  * Each OS has its own version in `packages` (a Windows build is offered before the Linux packages of
  * that version are out); a latest.json without `packages` has one version for every kind.
  *
+ * Mirrors back each other up: a mirror whose web server refuses .json (files.robbo.world answers 403)
+ * is read through latest.txt, the same file; the installer is downloaded from the first mirror that
+ * has it (resolveDownloadUrl).
+ *
  * Plain GET through Node http(s) (no CORS in NW.js, no identifiers sent); no network — nothing shown.
  * The result is cached in localStorage and the mirrors are asked at most every CHECK_INTERVAL_MS.
  */
@@ -21,6 +25,12 @@ const MIRRORS = [
     'https://files.robbo.world/Software/RobboScratch3.0/'
 ];
 const CHANNEL_FILES = {release: 'latest.json', alpha: 'alpha/latest.json'};
+/**
+ * The same latest.json under a name every web server hands out as a plain file.
+ * @param {string} file latest.json path
+ * @returns {string} latest.txt path
+ */
+const textCopy = file => file.replace(/\.json$/, '.txt');
 const CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15000;
 const MAX_REDIRECTS = 3;
@@ -92,14 +102,14 @@ export const packageKind = () => {
     return 'deb';
 };
 
-const requestText = (url, redirects = 0) => new Promise((resolve, reject) => {
+const requestText = (url, redirects = 0, method = 'GET') => new Promise((resolve, reject) => {
     const req = nwRequire();
     const lib = req(url.startsWith('https:') ? 'https' : 'http');
-    const request = lib.get(url, {timeout: REQUEST_TIMEOUT_MS}, response => {
+    const request = lib.request(url, {method, timeout: REQUEST_TIMEOUT_MS}, response => {
         const {statusCode, headers} = response;
         if (statusCode >= 300 && statusCode < 400 && headers.location && redirects < MAX_REDIRECTS) {
             response.resume();
-            resolve(requestText(new URL(headers.location, url).href, redirects + 1));
+            resolve(requestText(new URL(headers.location, url).href, redirects + 1, method));
             return;
         }
         if (statusCode !== 200) {
@@ -116,38 +126,62 @@ const requestText = (url, redirects = 0) => new Promise((resolve, reject) => {
     });
     request.on('timeout', () => request.destroy(new Error('timeout')));
     request.on('error', reject);
+    request.end();
 });
 
 const isLatest = data => Boolean(data && typeof data.version === 'string' && data.downloads &&
     typeof data.downloads === 'object');
 
 /**
+ * @param {string} relative download path from latest.json
+ * @param {string} channel release | alpha
+ * @param {string} first mirror the latest.json came from
+ * @returns {Array<string>} absolute links, that mirror first, then the others
+ */
+const mirrorLinks = (relative, channel, first) => [first].concat(MIRRORS.filter(m => m !== first))
+    .map(mirror => new URL(relative, `${mirror}${CHANNEL_FILES[channel]}`).href);
+
+/**
+ * @param {string} mirror mirror base URL
+ * @param {string} channel release | alpha
+ * @returns {Promise<object>} parsed latest.json of the mirror (its .json, else its .txt copy)
+ */
+const fetchFromMirror = (mirror, channel) => {
+    const read = file => requestText(`${mirror}${file}`).then(text => {
+        const data = JSON.parse(text);
+        if (!isLatest(data)) throw new Error('not a latest.json');
+        return data;
+    });
+    return read(CHANNEL_FILES[channel]).catch(() => read(textCopy(CHANNEL_FILES[channel])));
+};
+
+/**
  * @param {string} channel release | alpha
  * @returns {Promise<object|null>} latest.json of the channel from the first mirror that answers, with
- *     absolute download links; null when no mirror answered
+ *     absolute download links (`mirrors`: the same file on every mirror); null when no mirror answered
  */
 const fetchChannel = channel => MIRRORS.reduce(
-    (previous, mirror) => previous.catch(() => {
-        const url = `${mirror}${CHANNEL_FILES[channel]}`;
-        return requestText(url).then(text => {
-            const data = JSON.parse(text);
-            if (!isLatest(data)) throw new Error('not a latest.json');
-            const downloads = {};
-            Object.keys(data.downloads).forEach(kind => {
-                downloads[kind] = new URL(data.downloads[kind], url).href;
-            });
-            const packages = {};
-            if (data.packages && typeof data.packages === 'object') {
-                Object.keys(data.packages).forEach(kind => {
-                    const entry = data.packages[kind];
-                    if (entry && typeof entry.version === 'string' && typeof entry.download === 'string') {
-                        packages[kind] = {version: entry.version, download: new URL(entry.download, url).href};
-                    }
-                });
-            }
-            return Object.assign({}, data, {channel, downloads, packages});
+    (previous, mirror) => previous.catch(() => fetchFromMirror(mirror, channel).then(data => {
+        const downloads = {};
+        const mirrors = {};
+        Object.keys(data.downloads).forEach(kind => {
+            const links = mirrorLinks(data.downloads[kind], channel, mirror);
+            downloads[kind] = links[0];
+            mirrors[links[0]] = links;
         });
-    }),
+        const packages = {};
+        if (data.packages && typeof data.packages === 'object') {
+            Object.keys(data.packages).forEach(kind => {
+                const entry = data.packages[kind];
+                if (entry && typeof entry.version === 'string' && typeof entry.download === 'string') {
+                    const links = mirrorLinks(entry.download, channel, mirror);
+                    packages[kind] = {version: entry.version, download: links[0]};
+                    mirrors[links[0]] = links;
+                }
+            });
+        }
+        return Object.assign({}, data, {channel, downloads, packages, mirrors});
+    })),
     Promise.reject(new Error('no mirror'))
 ).catch(() => null);
 
@@ -158,6 +192,7 @@ const fetchChannel = channel => MIRRORS.reduce(
  * @returns {object|null} {channel, version, date, important, notes, downloadUrl}
  */
 const offerFor = (item, kind) => {
+    const linksOf = url => (item.mirrors && item.mirrors[url]) || [url];
     const own = item.packages && item.packages[kind];
     if (own) {
         const release = (item.releases && item.releases[own.version]) || {};
@@ -167,7 +202,8 @@ const offerFor = (item, kind) => {
             date: release.date || '',
             important: Boolean(release.important),
             notes: release.notes || null,
-            downloadUrl: own.download
+            downloadUrl: own.download,
+            downloadUrls: linksOf(own.download)
         };
     }
     if (!item.downloads[kind]) return null;
@@ -177,7 +213,8 @@ const offerFor = (item, kind) => {
         date: item.date || '',
         important: Boolean(item.important),
         notes: item.notes || null,
-        downloadUrl: item.downloads[kind]
+        downloadUrl: item.downloads[kind],
+        downloadUrls: linksOf(item.downloads[kind])
     };
 };
 
@@ -197,6 +234,21 @@ export const selectOffers = (latest, current, kind) => {
         .filter(offer => offer.channel === 'release' ||
             !stable || compareVersions(offer.version, stable.version) > 0)
         .sort((a, b) => (a.channel === 'release' ? 0 : 1) - (b.channel === 'release' ? 0 : 1));
+};
+
+/**
+ * The installer link to open: the first mirror whose file answers, so a mirror that is down or
+ * missed the upload does not leave the user with a browser error.
+ * @param {object} offer from checkForUpdates
+ * @returns {Promise<string>} download link (the first one when no mirror answered: the browser says why)
+ */
+export const resolveDownloadUrl = offer => {
+    const links = (offer.downloadUrls && offer.downloadUrls.length) ? offer.downloadUrls : [offer.downloadUrl];
+    if (!nwRequire()) return Promise.resolve(links[0]);
+    return links.reduce(
+        (previous, link) => previous.catch(() => requestText(link, 0, 'HEAD').then(() => link)),
+        Promise.reject(new Error('no mirror'))
+    ).catch(() => links[0]);
 };
 
 const readCache = () => {

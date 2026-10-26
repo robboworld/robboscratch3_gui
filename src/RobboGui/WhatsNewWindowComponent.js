@@ -18,6 +18,7 @@ import {premiumDownloadAndInstallThunk} from './actions/licenseActions';
 import {hasPremiumAutoUpdateCapability} from '../lib/licensing/capabilityGateway';
 import {whatsNewLanguage} from '../lib/whats-new-state';
 import {openExternalUrl} from '../lib/platform';
+import {resolveDownloadUrl} from '../lib/update-check';
 import {closeMessage} from './sensor-type-messages';
 
 const messages = defineMessages({
@@ -173,13 +174,16 @@ class WhatsNewWindowComponent extends Component {
     }
 
     handleUpdate (offer) {
-        if (this.props.canInstall) {
-            // the paid addon downloads and runs the installer; its progress window takes over
-            this.props.onClose();
-            this.props.onInstall(offer);
-        } else {
-            openExternalUrl(offer.downloadUrl);
-        }
+        // the first mirror that has the installer: one mirror may be down or miss the upload
+        resolveDownloadUrl(offer).then(downloadUrl => {
+            if (this.props.canInstall) {
+                // the paid addon downloads and runs the installer; its progress window takes over
+                this.props.onClose();
+                this.props.onInstall(Object.assign({}, offer, {downloadUrl}));
+            } else {
+                openExternalUrl(downloadUrl);
+            }
+        });
     }
 
     renderNotes (text) {
@@ -426,6 +430,7 @@ WhatsNewWindowComponent.propTypes = {
         version: PropTypes.string.isRequired,
         date: PropTypes.string,
         downloadUrl: PropTypes.string.isRequired,
+        downloadUrls: PropTypes.arrayOf(PropTypes.string),
         notes: PropTypes.object // eslint-disable-line react/forbid-prop-types
     })),
     intl: intlShape.isRequired,
