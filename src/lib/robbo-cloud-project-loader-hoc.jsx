@@ -11,13 +11,15 @@ import {
     extractPlayToken,
     getProjectPage,
     isCloudProjectMissingError,
-    isCloudProjectUnavailableError
+    isCloudProjectUnavailableError,
+    isOwnHomeworkLocked
 } from './robbo-account/robboAccountClient';
 import {canonicalizeLoopbackEditorHost} from './robbo-account/robboAccountConfig';
 import {
     checkSessionThunk,
     setCloudProjectAccessBlocked,
-    setCloudProjectPageId
+    setCloudProjectPageId,
+    setHomeworkLockedAlert
 } from '../RobboGui/actions/robboAccountActions';
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
@@ -44,6 +46,7 @@ const CLOUD_LOADER_PROP_KEYS = [
     'onCloudLoadFinished',
     'onCloudProjectAccessBlocked',
     'onCloudProjectAccessUnblocked',
+    'onHomeworkLocked',
     'onSetCloudProjectPageId',
     'onSetProjectUnchanged',
     'onUpdateProjectTitle',
@@ -217,6 +220,7 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
                 .then(resp => {
                     const page = resp && resp.projectPage;
                     const title = (page && page.title) || '';
+                    this.props.onHomeworkLocked(isOwnHomeworkLocked(page));
                     const playToken = extractPlayToken(resp && resp.playToken);
                     const sb3Promise = authenticated ?
                         downloadProjectSb3(projectPageId) :
@@ -307,6 +311,7 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
         onCloudLoadFinished: PropTypes.func,
         onCloudProjectAccessBlocked: PropTypes.func,
         onCloudProjectAccessUnblocked: PropTypes.func,
+        onHomeworkLocked: PropTypes.func,
         onSetCloudProjectPageId: PropTypes.func,
         onSetProjectUnchanged: PropTypes.func,
         onUpdateProjectTitle: PropTypes.func,
@@ -337,6 +342,7 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
             dispatch(closeLoadingProject());
         },
         onCloudProjectAccessUnblocked: () => dispatch(setCloudProjectAccessBlocked(false)),
+        onHomeworkLocked: locked => dispatch(setHomeworkLockedAlert(locked)),
         onCloudLoadFinished: (loadingState, success) => {
             const canSave = typeof ownProps.canSave === 'boolean' ? ownProps.canSave : true;
             dispatch(onLoadedProject(loadingState, canSave, success));

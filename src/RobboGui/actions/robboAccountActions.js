@@ -11,7 +11,9 @@ import {
     updateProjectPage,
     uploadProjectSb3,
     uploadProjectPreview,
-    clearAccessTokenMemory
+    clearAccessTokenMemory,
+    HOMEWORK_LOCKED,
+    isOwnHomeworkLocked
 } from '../../lib/robbo-account/robboAccountClient';
 import {
     bffLogoutClearUrl,
@@ -45,6 +47,7 @@ import {
     requestProjectUpload
 } from '../../reducers/project-state';
 import {openLoadingProject, closeLoadingProject} from '../../reducers/modals';
+import {closeAlertsWithId, showStandardAlert} from '../../reducers/alerts';
 import {removeSnapshot} from '../../lib/project-session-store';
 import storage from '../../lib/storage';
 
@@ -96,6 +99,15 @@ export function setCloudProjectAccessBlocked (blocked) {
         payload: {blocked: !!blocked}
     };
 }
+
+/**
+ * Warn about (or stop warning about) handed-in homework that ЛК will not save.
+ * @param {boolean} locked whether the open cloud project is the viewer's locked homework
+ * @returns {object} alerts action
+ */
+export const setHomeworkLockedAlert = function (locked) {
+    return locked ? showStandardAlert('homeworkLocked') : closeAlertsWithId('homeworkLocked');
+};
 
 export function clearSaveStatus () {
     return {type: ROBBO_ACCOUNT_CLEAR_SAVE_STATUS};
@@ -149,6 +161,7 @@ export function loadCloudProjectIntoEditorThunk (projectPageId, options = {}) {
         const metaPromise = getProjectPage(projectPageId)
             .then(resp => {
                 const page = resp && resp.projectPage;
+                dispatch(setHomeworkLockedAlert(isOwnHomeworkLocked(page)));
                 return (page && page.title) || '';
             })
             .catch(err => {
@@ -524,10 +537,15 @@ export function saveToCloudThunk (options) {
             })
             .catch(err => {
                 log.warn('cloud save failed', err);
+                // The message is ЛК's code (e.g. HOMEWORK_LOCKED); the project stays in the
+                // editor, still "changed", so the student can save it to the computer.
                 dispatch({
                     type: ROBBO_ACCOUNT_SAVE_FAILURE,
                     payload: {message: (err && err.message) || 'save_failed'}
                 });
+                if (err && err.errorCode === HOMEWORK_LOCKED) {
+                    dispatch(setHomeworkLockedAlert(true));
+                }
                 return false;
             });
     };
@@ -559,6 +577,15 @@ export function updateCloudProjectTitleThunk (newTitle) {
             })
             .catch(err => {
                 log.warn('cloud rename failed', err);
+                if (err && err.errorCode === HOMEWORK_LOCKED) {
+                    // The title was not saved: say why instead of "title changed".
+                    dispatch({
+                        type: ROBBO_ACCOUNT_SAVE_FAILURE,
+                        payload: {message: HOMEWORK_LOCKED}
+                    });
+                    dispatch(setHomeworkLockedAlert(true));
+                    return;
+                }
                 showTitleChangedStatus(dispatch);
             });
     };

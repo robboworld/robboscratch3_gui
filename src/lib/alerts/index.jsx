@@ -141,6 +141,22 @@ const alerts = [
         level: AlertLevels.WARN
     },
     {
+        // Robbo: ЛК refuses to save class homework handed in to the teacher (HOMEWORK_LOCKED).
+        alertId: 'homeworkLocked',
+        alertType: AlertTypes.STANDARD,
+        clearList: ['homeworkLocked'],
+        closeButton: true,
+        showDownload: true,
+        content: (
+            <FormattedMessage
+                defaultMessage="This work is handed in to the teacher: changes here will not be saved to your account. You can edit it again if the teacher returns it for rework. To keep your changes, download the project to your computer." // eslint-disable-line max-len
+                description="Shown when a student opens or saves class homework that is handed in to the teacher"
+                id="gui.alerts.robboHomeworkLocked"
+            />
+        ),
+        level: AlertLevels.WARN
+    },
+    {
         alertId: 'saveSuccess',
         alertType: AlertTypes.INLINE,
         clearList: ['saveSuccess', 'saving', 'savingError'],

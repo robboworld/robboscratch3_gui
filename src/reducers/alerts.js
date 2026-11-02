@@ -195,6 +195,7 @@ export {
     reducer as default,
     initialState as alertsInitialState,
     closeAlert,
+    closeAlertsWithId,
     filterInlineAlerts,
     filterPopupAlerts,
     showAlertWithTimeout,

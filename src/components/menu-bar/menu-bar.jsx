@@ -84,6 +84,7 @@ import {
 import LogoutUnsavedModal from '../../RobboGui/LogoutUnsavedModal.jsx';
 import {startBffSessionWatch} from '../../lib/robbo-account/authEcosystemSync';
 import {shouldPromptSaveBeforeLeave} from '../../lib/robbo-account/editorContent';
+import {HOMEWORK_LOCKED} from '../../lib/robbo-account/robboAccountClient';
 import {
     myProjectsUrl,
     projectPageUrl,
@@ -177,6 +178,18 @@ const messages = defineMessages({
         id: 'gui.menuBar.robboSaveToCloudError',
         defaultMessage: 'Save failed',
         description: 'Shown when cloud save fails'
+    },
+    saveToCloudHomeworkLocked: {
+        id: 'gui.menuBar.robboSaveToCloudHomeworkLocked',
+        defaultMessage: 'Handed in — not saved',
+        description: 'Shown when ЛК refuses to save class homework that is handed in to the teacher'
+    },
+    saveToCloudHomeworkLockedHint: {
+        id: 'gui.menuBar.robboSaveToCloudHomeworkLockedHint',
+        defaultMessage: 'The work is handed in to the teacher and can\'t be changed. ' +
+            'You can edit it again if the teacher returns it for rework. ' +
+            'To keep your changes, save the project to your computer.',
+        description: 'Tooltip for the handed-in homework save error'
     }
 });
 const ariaMessages = defineMessages({
@@ -919,7 +932,15 @@ class MenuBar extends React.Component {
                             {this.props.intl.formatMessage(messages.savedToCloud)}
                         </div>
                     ) : null}
-                    {this.props.cloudSaveStatus === 'error' ? (
+                    {this.props.cloudSaveStatus === 'error' && this.props.cloudSaveError === HOMEWORK_LOCKED ? (
+                        <div
+                            className={classNames(styles.menuBarItem, styles.cloudSaveStatusError)}
+                            title={this.props.intl.formatMessage(messages.saveToCloudHomeworkLockedHint)}
+                        >
+                            {this.props.intl.formatMessage(messages.saveToCloudHomeworkLocked)}
+                        </div>
+                    ) : null}
+                    {this.props.cloudSaveStatus === 'error' && this.props.cloudSaveError !== HOMEWORK_LOCKED ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatusError)}>
                             {this.props.intl.formatMessage(messages.saveToCloudError)}
                         </div>
@@ -1026,6 +1047,7 @@ MenuBar.propTypes = {
     canShare: PropTypes.bool,
     className: PropTypes.string,
     cloudProjectPageId: PropTypes.string,
+    cloudSaveError: PropTypes.string,
     cloudSaveStatus: PropTypes.string,
     editMenuOpen: PropTypes.bool,
     enableCommunity: PropTypes.bool,
@@ -1092,6 +1114,7 @@ const mapStateToProps = state => {
     return {
         accountMenuOpen: accountMenuOpen(state),
         cloudProjectPageId: robboAccount.cloudProjectPageId || '',
+        cloudSaveError: robboAccount.saveError || '',
         cloudSaveStatus: robboAccount.saveStatus || 'idle',
         fileMenuOpen: fileMenuOpen(state),
         editMenuOpen: editMenuOpen(state),

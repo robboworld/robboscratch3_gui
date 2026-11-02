@@ -106,6 +106,21 @@ function parseJsonSafe (text) {
     }
 }
 
+/**
+ * ЛК refuses every write to class homework handed in to the teacher (submitted, accepted,
+ * shown in class) with 409 and this code, until the teacher returns it for rework.
+ */
+export const HOMEWORK_LOCKED = 'HOMEWORK_LOCKED';
+
+/**
+ * Whether ЛК's projectPage is the viewer's own handed-in homework, which ЛК will not let them save.
+ * @param {object} page projectPage from GET /projectPage/:id (reviewLocked, isOwner)
+ * @returns {boolean} true for the owner of a locked copy; a teacher viewing it never edits it anyway
+ */
+export const isOwnHomeworkLocked = function (page) {
+    return Boolean(page && page.reviewLocked && page.isOwner);
+};
+
 function throwHttpError (res, json, fallbackCode) {
     const message = (json && (json.error || json.errorCode || json.message)) ||
         `${fallbackCode}_${res.status}`;
