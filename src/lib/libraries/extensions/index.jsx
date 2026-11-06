@@ -10,12 +10,6 @@ import penInsetIconURL from './pen/pen-small.svg';
 import videoSensingIconURL from './videoSensing/video-sensing.png';
 import videoSensingInsetIconURL from './videoSensing/video-sensing-small.svg';
 
-import text2speechIconURL from './text2speech/text2speech.png';
-import text2speechInsetIconURL from './text2speech/text2speech-small.svg';
-
-import translateIconURL from './translate/translate.png';
-import translateInsetIconURL from './translate/translate-small.png';
-
 export default [
     {
         name: (
@@ -76,50 +70,6 @@ export default [
             />
         ),
         featured: true
-    },
-    {
-        name: (
-            <FormattedMessage
-                defaultMessage="Text to Speech"
-                description="Name for the Text to Speech extension"
-                id="gui.extension.text2speech.name"
-            />
-        ),
-        extensionId: 'text2speech',
-        collaborator: 'Amazon Web Services',
-        iconURL: text2speechIconURL,
-        insetIconURL: text2speechInsetIconURL,
-        description: (
-            <FormattedMessage
-                defaultMessage="Make your projects talk."
-                description="Description for the Text to speech extension"
-                id="gui.extension.text2speech.description"
-            />
-        ),
-        featured: true,
-        internetConnectionRequired: true
-    },
-    {
-        name: (
-            <FormattedMessage
-                defaultMessage="Translate"
-                description="Name for the Translate extension"
-                id="gui.extension.translate.name"
-            />
-        ),
-        extensionId: 'translate',
-        collaborator: 'Google',
-        iconURL: translateIconURL,
-        insetIconURL: translateInsetIconURL,
-        description: (
-            <FormattedMessage
-                defaultMessage="Translate text into many languages."
-                description="Description for the Translate extension"
-                id="gui.extension.translate.description"
-            />
-        ),
-        featured: true,
-        internetConnectionRequired: true
     }
     // Robbo: Makey Makey, micro:bit, LEGO EV3 / BOOST / WeDo 2.0 and Vernier Go Direct are not offered
     // (competing hardware, Scratch Link is not available on Linux). Their VM extensions stay so that

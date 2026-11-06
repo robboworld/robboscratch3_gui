@@ -7,6 +7,7 @@ import {connect} from 'react-redux';
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
     LoadingStates,
+    defaultProjectId,
     getIsCreatingNew,
     getIsFetchingWithId,
     getIsLoading,
@@ -124,6 +125,11 @@ const ProjectFetcherHOC = function (WrappedComponent) {
                 .then(projectAsset => {
                     if (projectAsset) {
                         this.props.onFetchedProjectData(projectAsset.data, loadingState);
+                    } else if (isDefaultProjectId(projectId)) {
+                        this.props.onError(new Error(`Project ${projectId} not found`));
+                    } else {
+                        // Projects are not fetched from Scratch servers, so an id in the URL opens the default one.
+                        return this.loadProjectFromStorage(defaultProjectId, loadingState);
                     }
                 })
                 .catch(err => this.props.onError(err));
@@ -230,10 +236,6 @@ const ProjectFetcherHOC = function (WrappedComponent) {
         projectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         reduxProjectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         setProjectId: PropTypes.func
-    };
-    ProjectFetcherComponent.defaultProps = {
-        assetHost: 'https://assets.scratch.mit.edu',
-        projectHost: 'https://projects.scratch.mit.edu'
     };
 
     const mapStateToProps = state => ({
