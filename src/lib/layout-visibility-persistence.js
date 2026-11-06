@@ -9,11 +9,12 @@ const STORAGE_KEY = 'scratch-gui-layout-visibility-v1';
 const SELECT_LOCALE = 'scratch-gui/locales/SELECT_LOCALE';
 
 const readPersistedLayoutVisibility = function () {
-    if (typeof window === 'undefined' || !window.localStorage) {
+    if (typeof window === 'undefined') {
         return null;
     }
     try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        // Inside try: with cookies blocked, reading window.localStorage itself throws SecurityError.
+        const raw = window.localStorage && window.localStorage.getItem(STORAGE_KEY);
         if (!raw) {
             return null;
         }
@@ -58,10 +59,13 @@ const readPersistedLocale = function (supportedLocales) {
 };
 
 const writePersistedLayoutVisibility = function (layout, locale) {
-    if (typeof window === 'undefined' || !window.localStorage || !layout) {
+    if (typeof window === 'undefined' || !layout) {
         return;
     }
     try {
+        if (!window.localStorage) {
+            return;
+        }
         const persisted = readPersistedLayoutVisibility();
         const payload = {
             isRightPanelHidden: layout.isRightPanelHidden,
@@ -76,7 +80,7 @@ const writePersistedLayoutVisibility = function (layout, locale) {
         }
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
-        // Ignore quota / private mode errors.
+        // Ignore quota / private mode / blocked storage errors.
     }
 };
 
