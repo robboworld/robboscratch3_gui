@@ -310,9 +310,10 @@ const seenVersions = () => {
 
 /**
  * @param {Array<object>} offers from checkForUpdates
- * @returns {boolean} some offered version has not been seen in the window yet
+ * @returns {string[]} offered versions the user has not seen in the window yet
  */
-export const hasUnseenOffers = offers => offers.some(offer => !seenVersions().includes(offer.version));
+export const unseenOffers = offers => offers.map(offer => offer.version)
+    .filter(version => !seenVersions().includes(version));
 
 /** @param {Array<object>} offers shown in the closed window */
 export const markOffersSeen = offers => {

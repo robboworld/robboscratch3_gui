@@ -293,7 +293,8 @@ class RobboGui extends Component {
     <div className={styles.robbo_gui}>
 
     {/* Hiding the ROBBO UI (menu bar toggle) hides the device palettes and windows; the licence
-        window and its notices stay: they open from the account menu too. */}
+        window and its notices stay: they open from the account menu too. «What's new» stays as well:
+        it opens by itself for [Important] items, and the ROBBO UI is hidden by default. */}
     <div
       className={styles.robbo_gui}
       style={{display: this.props.isRobboUiHidden ? 'none' : undefined}}
@@ -345,15 +346,6 @@ class RobboGui extends Component {
 
          </NewDraggableWindowComponent>
 
-         <NewDraggableWindowComponent
-           draggableWindowId={WHATS_NEW_WINDOW_ID}
-           centerOnCreate
-           estimatedPopupSize={ROBBO_POPUP_SIZE_WHATS_NEW}
-         >
-
-            <WhatsNewWindowComponent />
-
-         </NewDraggableWindowComponent>
 
         {/*  <NewDraggableWindowComponent draggableWindowId={"iot_connection"} initialCoords={initial_coords_iot}>
 
@@ -363,6 +355,16 @@ class RobboGui extends Component {
         
 
     </div>
+
+         <NewDraggableWindowComponent
+           draggableWindowId={WHATS_NEW_WINDOW_ID}
+           centerOnCreate
+           estimatedPopupSize={ROBBO_POPUP_SIZE_WHATS_NEW}
+         >
+
+            <WhatsNewWindowComponent />
+
+         </NewDraggableWindowComponent>
 
          {LICENSE_UI_ENABLED ? <PremiumUpdateProgress /> : null}
          {LICENSE_UI_ENABLED ? <LicenseActivationFeedback /> : null}

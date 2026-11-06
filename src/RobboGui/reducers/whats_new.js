@@ -15,13 +15,13 @@ import {
 } from '../../lib/whats-new-state';
 import {
     checkForUpdates,
-    hasUnseenOffers,
     isUpdateCheckEnabled,
     isUpdateCheckSupported,
     markOfferPrompted,
     markOffersSeen,
     offerToPrompt,
-    setUpdateCheckEnabled
+    setUpdateCheckEnabled,
+    unseenOffers
 } from '../../lib/update-check';
 import {ActionTriggerNewDraggableWindow} from '../actions/sensor_actions';
 
@@ -29,7 +29,6 @@ export const WHATS_NEW_WINDOW_ID = 'whats-new-window';
 
 const WHATS_NEW_LOADED = 'WHATS_NEW_LOADED';
 const WHATS_NEW_SEEN = 'WHATS_NEW_SEEN';
-const WHATS_NEW_SHOW_ALL = 'WHATS_NEW_SHOW_ALL';
 const WHATS_NEW_UPDATES = 'WHATS_NEW_UPDATES';
 const WHATS_NEW_UPDATE_CHECK = 'WHATS_NEW_UPDATE_CHECK';
 
@@ -43,9 +42,8 @@ export const whats_new_InitialState = {
     data: null,
     unread: [],
     sinceVersion: '',
-    showAll: false,
     updates: [],
-    updatesUnseen: false
+    unseenUpdates: []
 };
 
 export default function whatsNewReducer (state, action) {
@@ -61,13 +59,11 @@ export default function whatsNewReducer (state, action) {
             sinceVersion: action.payload.sinceVersion
         });
     case WHATS_NEW_SEEN:
-        return Object.assign({}, state, {unread: [], sinceVersion: '', showAll: false, updatesUnseen: false});
-    case WHATS_NEW_SHOW_ALL:
-        return Object.assign({}, state, {showAll: true});
+        return Object.assign({}, state, {unread: [], sinceVersion: '', unseenUpdates: []});
     case WHATS_NEW_UPDATE_CHECK:
         return Object.assign({}, state, {updateCheckEnabled: action.payload.enabled});
     case WHATS_NEW_UPDATES:
-        return Object.assign({}, state, {updates: action.payload.updates, updatesUnseen: action.payload.unseen});
+        return Object.assign({}, state, {updates: action.payload.updates, unseenUpdates: action.payload.unseen});
     default:
         return state;
     }
@@ -77,7 +73,7 @@ export default function whatsNewReducer (state, action) {
 export const hasWhatsNew = whatsNew => Boolean(whatsNew.data || whatsNew.updates.length || whatsNew.updateCheckSupported);
 
 /** @returns {boolean} the dot on «Robbo menu» and «What's new»: unread releases or an unseen update */
-export const hasUnreadWhatsNew = whatsNew => whatsNew.unread.length > 0 || whatsNew.updatesUnseen;
+export const hasUnreadWhatsNew = whatsNew => whatsNew.unread.length > 0 || whatsNew.unseenUpdates.length > 0;
 
 const isWindowShowing = getState => {
     const w = getState().scratchGui.new_draggable_window[WHATS_NEW_WINDOW_ID];
@@ -97,7 +93,7 @@ export const checkUpdatesThunk = (opts = {}) => (dispatch, getState) => {
     const current = getState().scratchGui.whats_new.current;
     if (!current) return Promise.resolve();
     return checkForUpdates(current, opts).then(updates => {
-        dispatch({type: WHATS_NEW_UPDATES, payload: {updates, unseen: hasUnseenOffers(updates)}});
+        dispatch({type: WHATS_NEW_UPDATES, payload: {updates, unseen: unseenOffers(updates)}});
         const prompt = offerToPrompt(updates);
         if (prompt) {
             markOfferPrompted(prompt.version);
@@ -116,7 +112,7 @@ export const setUpdateCheckThunk = enabled => dispatch => {
     setUpdateCheckEnabled(enabled);
     dispatch({type: WHATS_NEW_UPDATE_CHECK, payload: {enabled}});
     if (!enabled) {
-        dispatch({type: WHATS_NEW_UPDATES, payload: {updates: [], unseen: false}});
+        dispatch({type: WHATS_NEW_UPDATES, payload: {updates: [], unseen: []}});
         return Promise.resolve();
     }
     return dispatch(checkUpdatesThunk({force: true}));
@@ -167,6 +163,3 @@ export const whatsNewSeen = version => (dispatch, getState) => {
     markOffersSeen(getState().scratchGui.whats_new.updates);
     dispatch({type: WHATS_NEW_SEEN});
 };
-
-/** @returns {object} action: show every release of the build, not only the newest */
-export const whatsNewShowAll = () => ({type: WHATS_NEW_SHOW_ALL});

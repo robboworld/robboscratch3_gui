@@ -1,6 +1,8 @@
 @import "../css/colors.css";
 @import "../css/units.css";
 
+$channel-orange: hsla(30, 100%, 55%, 1);
+
 .whats_new_window {
     box-sizing: border-box;
     width: 32rem;
@@ -8,152 +10,217 @@
     pointer-events: auto;
 }
 
-/* the body scrolls (popupBody); releases must not shrink inside it, or their text is clipped */
+/* the body scrolls (popupBody); versions must not shrink inside it, or their text is clipped */
 .content {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
     max-height: 62vh;
-    padding: 12px 16px 16px;
+    padding: 6px 16px 12px;
 }
 
 .content > * {
     flex-shrink: 0;
 }
 
-.release + .release {
-    padding-top: 0.75rem;
-    border-top: 1px solid rgba(0, 175, 65, 0.2);
-}
-
-.release_title {
+/* the heading stays on top while the items of its version scroll, with the download button */
+.version_title {
+    position: sticky;
+    top: -6px; /* the top padding of .content, or the items show above the heading */
+    z-index: 1;
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     gap: 0.75rem;
-    margin: 0 0 0.75rem;
-    font-size: 1rem;
+    margin: 0 -16px;
+    padding: 0.375rem 16px;
+    background-color: $ui-white;
+    font-size: 0.9375rem;
     font-weight: bold;
-    line-height: 1.35;
-    color: $text-primary;
-}
-
-.release_date {
-    flex-shrink: 0;
-    font-size: $popup-font-size-sm;
-    font-weight: normal;
-    color: $text-primary-transparent;
-}
-
-.intro {
-    margin: 0 0 1rem;
-    padding: 0.625rem 0.75rem;
-    border-left: 3px solid $motion-primary;
-    border-radius: 0 $form-radius $form-radius 0;
-    background-color: rgba(0, 175, 65, 0.06);
-    font-size: $popup-font-size;
     line-height: 1.5;
     color: $text-primary;
 }
 
-.group + .group {
-    margin-top: 1rem;
+.version_name {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
 }
 
-.group_title {
-    display: inline-block;
-    margin: 0 0 0.5rem;
-    padding: 0.125rem 0.5rem;
-    border-radius: 999px;
+.date {
     font-size: $popup-font-size-sm;
-    font-weight: bold;
-    line-height: 1.45;
+    font-weight: normal;
+    white-space: nowrap;
+    color: $text-primary-transparent;
 }
 
-.group_title_added {
-    background-color: rgba(0, 175, 65, 0.14);
+.unread_dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: $motion-primary;
+}
+
+.channel_badge {
+    padding: 0 0.4375rem;
+    border-radius: 999px;
+    background-color: $channel-orange;
+    color: $ui-white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.installed {
+    font-size: $popup-font-size-sm;
+    font-weight: normal;
     color: rgb(0, 128, 48);
 }
 
-.group_title_changed {
-    background-color: hsla(215, 100%, 65%, 0.16);
-    color: hsla(215, 70%, 40%, 1);
+.topic_title {
+    margin: 0 0 0.125rem;
+    font-size: $popup-font-size;
+    font-weight: bold;
+    line-height: 1.5;
+    color: $text-primary;
 }
 
-.group_title_fixed {
-    background-color: hsla(38, 100%, 55%, 0.2);
-    color: hsla(30, 80%, 32%, 1);
+/* the offered version: above the tabs, it is the same on both */
+.update {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 16px;
+    border-bottom: 1px solid rgba(0, 175, 65, 0.2);
+    background-color: rgba(0, 175, 65, 0.06);
+    color: $text-primary;
+}
+
+.update_text {
+    min-width: 0;
+}
+
+.update_title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.375rem 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: bold;
+}
+
+.update_hint,
+.update_alpha_link {
+    font-size: $popup-font-size-sm;
+    color: $text-primary-transparent;
+}
+
+.update_alpha_link {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.tabs {
+    display: flex;
+    gap: 1.125rem;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(0, 175, 65, 0.2);
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    margin: 0 0 -1px;
+    padding: 0.5rem 0;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: $text-primary-transparent;
+    font-family: inherit;
+    font-size: $popup-font-size;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.tab_selected {
+    border-bottom-color: $motion-primary;
+    color: $text-primary;
+}
+
+.tab_count {
+    min-width: 1.125rem;
+    padding: 0 0.3125rem;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background-color: $motion-primary;
+    color: $ui-white;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: center;
 }
 
 .items {
     margin: 0;
-    padding: 0;
-    list-style: none;
+    padding: 0 0 0 1.125rem;
 }
 
 .item {
-    padding: 0.5rem 0;
+    margin: 0.1875rem 0;
     font-size: $popup-font-size;
     line-height: 1.5;
     color: $text-primary;
 }
 
-.item + .item {
-    border-top: 1px solid $ui-black-transparent;
-}
-
-.item_title {
-    font-weight: bold;
-}
-
-.item_text {
-    margin-top: 0.125rem;
-}
-
-.item_text code {
+.item code {
     padding: 0 0.25em;
     border-radius: 3px;
     background-color: $ui-black-transparent;
     font-size: 0.95em;
 }
 
-.item_text a {
+.item a {
     color: $motion-primary;
 }
 
 .item_important {
-    margin: 0.25rem 0;
-    padding: 0.5rem 0.75rem;
-    border-left: 3px solid $red-primary;
-    border-radius: 0 $form-radius $form-radius 0;
-    background-color: hsla(20, 100%, 55%, 0.08);
+    margin: 0.375rem 0 0.375rem -1.125rem;
+    padding: 0.375rem 0.625rem;
+    border-left: 3px solid $motion-primary;
+    background-color: rgba(0, 175, 65, 0.08);
+    list-style: none;
 }
 
-/* the frame of an important item replaces the divider */
-.item_important + .item,
-.item + .item_important {
-    border-top: none;
+.important_items {
+    margin: 0.25rem 0 0;
+    padding: 0;
 }
 
-.important_tag {
-    display: inline-block;
-    margin-right: 0.375rem;
-    padding: 0 0.375rem;
-    border-radius: 3px;
-    background-color: $red-primary;
-    color: $ui-white;
-    font-size: 0.8em;
-    line-height: 1.5;
-    vertical-align: 0.1em;
+.important_items .item_important {
+    margin-left: 0;
 }
 
-.show_all {
-    align-self: flex-start;
+.download {
+    flex-shrink: 0;
+}
+
+.download_alpha {
+    border-color: hsla(30, 100%, 55%, 0.6);
+    background-color: hsla(30, 100%, 55%, 0.12);
 }
 
 .footer {
     box-sizing: border-box;
-    padding: 0.75rem 16px 16px;
+    padding: 0.625rem 16px 0.75rem;
     border-top: 1px solid rgba(0, 175, 65, 0.2);
 }
 
@@ -161,40 +228,6 @@
     justify-content: center;
     align-items: center;
     gap: 0.75rem;
-}
-
-/* new version on the mirrors (src/lib/update-check.js) */
-.update {
-    padding: 0.75rem 0.875rem;
-    border: 1px solid rgba(0, 175, 65, 0.35);
-    border-radius: $form-radius;
-    background-color: rgba(0, 175, 65, 0.06);
-}
-
-.update_alpha {
-    border-color: hsla(38, 100%, 45%, 0.45);
-    background-color: hsla(38, 100%, 55%, 0.08);
-}
-
-.alpha_hint {
-    margin: 0 0 0.625rem;
-    font-size: $popup-font-size-sm;
-    line-height: 1.45;
-    color: $text-primary-transparent;
-}
-
-.update_button {
-    align-self: flex-start;
-}
-
-.update_notes_toggle {
-    margin-top: 0.625rem;
-    font-size: $popup-font-size-sm;
-    color: $text-primary-transparent;
-}
-
-.update_notes_toggle + * {
-    margin-top: 0.5rem;
 }
 
 .up_to_date {
@@ -211,73 +244,4 @@
     font-size: $popup-font-size-sm;
     color: $text-primary;
     cursor: pointer;
-}
-
-/* Older releases are collapsed to one line: «Version A → B · N changes · date» */
-.release_name {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.375rem;
-    min-width: 0;
-}
-
-.test_tag {
-    padding: 0 0.375rem;
-    border-radius: 999px;
-    background-color: hsla(38, 100%, 55%, 0.22);
-    color: hsla(30, 80%, 32%, 1);
-    font-size: $popup-font-size-sm;
-    font-weight: bold;
-    line-height: 1.5;
-}
-
-.release_toggle {
-    display: flex;
-    flex: 1 1 auto;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.5rem;
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.release_toggle:focus-visible {
-    outline: 2px solid $motion-primary;
-    outline-offset: 2px;
-}
-
-.release_toggle .release_name {
-    flex: 1 1 auto;
-}
-
-.release_chevron {
-    flex: 0 0 auto;
-    display: inline-block;
-    width: 0.75rem;
-    color: $text-primary-transparent;
-    transition: transform 0.15s ease;
-}
-
-.release_chevron_open {
-    transform: rotate(90deg);
-}
-
-.release_collapsed .release_title {
-    margin-bottom: 0;
-}
-
-.release_collapsed + .release_collapsed {
-    padding-top: 0.75rem;
-}
-
-/* an opened release shows its intro and items under the toggle */
-.release:not(.release_collapsed) .release_title {
-    margin-bottom: 0.75rem;
 }
