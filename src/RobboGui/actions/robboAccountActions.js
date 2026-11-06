@@ -273,9 +273,14 @@ export function loadCloudProjectIntoEditorThunk (projectPageId, options = {}) {
 /**
  * After auth: bind id from Redux/URL, or list cloud projects — create empty draft
  * when none exist, otherwise open the most recently saved project.
+ * Editor only: the player shows the project it was opened with, and the viewer's
+ * own project would replace it there.
  */
 export function ensureCloudProjectPageThunk () {
     return function (dispatch, getState) {
+        if ((getState().scratchGui.mode || {}).isPlayerOnly) {
+            return Promise.resolve('');
+        }
         const account = getState().scratchGui.robboAccount || {};
         if (account.cloudProjectPageId) {
             return Promise.resolve(account.cloudProjectPageId);
