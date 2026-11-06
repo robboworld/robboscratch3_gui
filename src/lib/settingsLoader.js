@@ -5,6 +5,8 @@
 
 const PERSISTENT = 1;
 const SETTINGS_FILENAME = 'settings.json';
+// Browsers without the webkit file system (Firefox, Safari) keep the same text here
+const SETTINGS_FALLBACK_KEY = 'robbo-settings-json-v1';
 
 export const FIRMWARE_SETTINGS_DEFAULTS = Object.freeze({
   detect_timeout_ms: 3000,
@@ -165,9 +167,42 @@ export function applySimulationStepMsToRuntime(vm, settingsData = {}) {
 }
 
 /**
- * Reads settings.json from webkit persistent storage.
- * @returns {Promise<{ file_exists: boolean, file: string | null, err?: any }>}
+ * @returns {boolean} settings.json can live in webkit persistent storage
  */
+export function hasSettingsFileStorage() {
+  return typeof navigator !== 'undefined' &&
+    !!navigator.webkitPersistentStorage &&
+    typeof navigator.webkitPersistentStorage.requestQuota === 'function' &&
+    typeof window !== 'undefined' &&
+    typeof window.webkitRequestFileSystem === 'function';
+}
+
+function readSettingsFallback() {
+  try {
+    return window.localStorage.getItem(SETTINGS_FALLBACK_KEY);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Settings text for browsers without webkit persistent storage; empty text forgets the settings.
+ * @param {string} text settings.json text
+ * @returns {boolean} written
+ */
+export function writeSettingsFallback(text) {
+  try {
+    if (text) {
+      window.localStorage.setItem(SETTINGS_FALLBACK_KEY, text);
+    } else {
+      window.localStorage.removeItem(SETTINGS_FALLBACK_KEY);
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function isSettingsFileMissingError(e) {
   if (!e) {
     return false;
@@ -181,8 +216,18 @@ function isSettingsFileMissingError(e) {
   return false;
 }
 
+/**
+ * Reads settings.json from webkit persistent storage or its fallback.
+ * @returns {Promise<{ file_exists: boolean, file: string | null, err?: any }>}
+ */
 export function getSettingsFromStorage() {
   return new Promise((resolve) => {
+    if (!hasSettingsFileStorage()) {
+      const file = readSettingsFallback();
+      resolve({ file_exists: !!file, file: file || null, err: null });
+      return;
+    }
+
     function errorHandler(e) {
       console.error('File error during settings reading: ' + e);
       resolve({ file_exists: false, file: null, err: e });
@@ -215,17 +260,9 @@ export function getSettingsFromStorage() {
       }, onGetFileError);
     }
 
-    if (typeof navigator !== 'undefined' && navigator.webkitPersistentStorage && navigator.webkitPersistentStorage.requestQuota) {
-      navigator.webkitPersistentStorage.requestQuota(500 * 1024 * 1024, (grantedBytes) => {
-        if (typeof window !== 'undefined' && window.webkitRequestFileSystem) {
-          window.webkitRequestFileSystem(PERSISTENT, grantedBytes, onInitFs, errorHandler);
-        } else {
-          resolve({ file_exists: false, file: null, err: new Error('webkitRequestFileSystem not available') });
-        }
-      }, errorHandler);
-    } else {
-      resolve({ file_exists: false, file: null, err: new Error('webkitPersistentStorage not available') });
-    }
+    navigator.webkitPersistentStorage.requestQuota(500 * 1024 * 1024, (grantedBytes) => {
+      window.webkitRequestFileSystem(PERSISTENT, grantedBytes, onInitFs, errorHandler);
+    }, errorHandler);
   });
 }
 
@@ -266,8 +303,8 @@ export function updateSettingsInStorage(patch) {
           }, fail);
         }, fail);
       };
-      if (typeof navigator === 'undefined' || !navigator.webkitPersistentStorage || !window.webkitRequestFileSystem) {
-        resolve(false);
+      if (!hasSettingsFileStorage()) {
+        resolve(writeSettingsFallback(text));
         return;
       }
       navigator.webkitPersistentStorage.requestQuota(500 * 1024 * 1024, grantedBytes => {

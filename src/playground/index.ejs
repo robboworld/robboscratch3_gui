@@ -159,6 +159,23 @@
       // download them a second time wherever the browser cache skips large files. Any failure
       // (old browser, network) adds the plain <script src> tags instead.
       (function (scripts) {
+        // The bundle needs ES2018: older browsers cannot even parse it and would keep the splash forever
+        try {
+          new Function('return {...{}}');
+        } catch (e) {
+          if (e instanceof SyntaxError) {
+            var isRu = String(navigator.language || '').toLowerCase().indexOf('ru') === 0;
+            document.getElementById('app-loading-splash-title').textContent = isRu ?
+              'Этот браузер устарел' : 'This browser is out of date';
+            var message = document.querySelector('#app-loading-splash .splash-message');
+            message.style.height = 'auto';
+            message.textContent = isRu ?
+              'Обновите его или откройте сайт в Chrome, Edge, Яндекс Браузере, Firefox или Safari.' :
+              'Update it or open the site in Chrome, Edge, Firefox or Safari.';
+            document.querySelector('#app-loading-splash .splash-blocks').style.display = 'none';
+            return;
+          }
+        }
         var added = false;
         var addScripts = function (sources) {
           if (added) return;

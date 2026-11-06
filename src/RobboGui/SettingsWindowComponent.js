@@ -11,6 +11,8 @@ import styles from './SettingsWindowComponent.css';
 import { ActionTriggerDraggableWindow } from './actions/sensor_actions';
 import {
   getSettingsFromStorage,
+  hasSettingsFileStorage,
+  writeSettingsFallback,
   applySettingsToDCA,
   applyFirmwareSettingsToRuntime,
   FULLSCREEN_RENDER_QUALITY_DEFAULT,
@@ -340,6 +342,11 @@ class SettingsWindowComponent extends Component {
   saveSettingsData(settings_data) {
     console.warn("saveSettings" + " data: " + settings_data);
 
+    if (!hasSettingsFileStorage()) {
+      writeSettingsFallback(settings_data);
+      return;
+    }
+
     function errorHandler(e) {
       console.error("Error during saving settings: " + e);
     };
@@ -366,6 +373,12 @@ class SettingsWindowComponent extends Component {
   }
 
   deleteSettingsFile(callback) {
+    if (!hasSettingsFileStorage()) {
+      writeSettingsFallback('');
+      if (typeof (callback) === 'function') callback();
+      return;
+    }
+
     var errorHandler = function (e) {
       if (('' + e).localeCompare("NotFoundError: A requested file or directory could not be found at the time an operation was processed.") != 0)
         console.error("File error during removing bad settings file: " + e);

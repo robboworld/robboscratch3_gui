@@ -1,7 +1,7 @@
-# See https://scratch.mit.edu/faq
+# Lowest versions that parse the bundle: it needs ES2018 (object spread)
 Chrome >= 63
-Edge >= 15
+Edge >= 79
 Firefox >= 57
-Safari >= 11
+Safari >= 11.1
 Android >= 63
-iOS >= 11
+iOS >= 11.3

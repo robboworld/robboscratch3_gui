@@ -2,9 +2,9 @@ import bowser from 'bowser';
 
 const minVersions = {
     chrome: '63',
-    msedge: '15',
+    msedge: '79',
     firefox: '57',
-    safari: '11'
+    safari: '11.1'
 };
 
 /**
