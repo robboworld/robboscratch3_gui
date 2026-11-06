@@ -121,6 +121,31 @@ export const isOwnHomeworkLocked = function (page) {
     return Boolean(page && page.reviewLocked && page.isOwner);
 };
 
+/**
+ * Whether ЛК's projectPage is a student's work the viewer, a teacher of the class, may save.
+ * @param {object} page projectPage from GET /projectPage/:id (teacherCanEdit)
+ * @returns {boolean} true while the work is with the teachers
+ */
+export const isTeacherEditing = function (page) {
+    return Boolean(page && page.teacherCanEdit);
+};
+
+/**
+ * Tell ЛК the viewer still has handed-in work open. The rest of the class sees it for a while
+ * after the last signal, a closed tab sends nothing.
+ * @param {string} projectPageId
+ * @returns {Promise<{tracked: boolean, others?: Array<{role: string, name?: string}>}>}
+ */
+export function touchEditing (projectPageId) {
+    return fetchJson(`/projectPage/${encodeURIComponent(projectPageId)}/editing`, {method: 'POST'});
+}
+
+/** ЛК refuses a teacher's save with 409 and this code once the work is back with the student. */
+export const WORK_NOT_WITH_TEACHER = 'WORK_NOT_WITH_TEACHER';
+
+/** Set here, not by ЛК: the rename was refused with 403 and the old title is back. */
+export const TITLE_NOT_SAVED = 'TITLE_NOT_SAVED';
+
 function throwHttpError (res, json, fallbackCode) {
     const message = (json && (json.error || json.errorCode || json.message)) ||
         `${fallbackCode}_${res.status}`;

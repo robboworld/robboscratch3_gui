@@ -12,14 +12,17 @@ import {
     getProjectPage,
     isCloudProjectMissingError,
     isCloudProjectUnavailableError,
-    isOwnHomeworkLocked
+    isOwnHomeworkLocked,
+    isTeacherEditing
 } from './robbo-account/robboAccountClient';
 import {canonicalizeLoopbackEditorHost} from './robbo-account/robboAccountConfig';
 import {
     checkSessionThunk,
+    followEditingThunk,
     setCloudProjectAccessBlocked,
     setCloudProjectPageId,
-    setHomeworkLockedAlert
+    setHomeworkLockedAlert,
+    setTeacherEditingAlert
 } from '../RobboGui/actions/robboAccountActions';
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
@@ -46,9 +49,11 @@ const CLOUD_LOADER_PROP_KEYS = [
     'onCloudLoadFinished',
     'onCloudProjectAccessBlocked',
     'onCloudProjectAccessUnblocked',
+    'onFollowEditing',
     'onHomeworkLocked',
     'onSetCloudProjectPageId',
     'onSetProjectUnchanged',
+    'onTeacherEditing',
     'onUpdateProjectTitle',
     'openLoadingProject',
     'closeLoadingProject',
@@ -221,6 +226,8 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
                     const page = resp && resp.projectPage;
                     const title = (page && page.title) || '';
                     this.props.onHomeworkLocked(isOwnHomeworkLocked(page));
+                    this.props.onTeacherEditing(isTeacherEditing(page));
+                    this.props.onFollowEditing(projectPageId, page);
                     const playToken = extractPlayToken(resp && resp.playToken);
                     const sb3Promise = authenticated ?
                         downloadProjectSb3(projectPageId) :
@@ -311,9 +318,11 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
         onCloudLoadFinished: PropTypes.func,
         onCloudProjectAccessBlocked: PropTypes.func,
         onCloudProjectAccessUnblocked: PropTypes.func,
+        onFollowEditing: PropTypes.func,
         onHomeworkLocked: PropTypes.func,
         onSetCloudProjectPageId: PropTypes.func,
         onSetProjectUnchanged: PropTypes.func,
+        onTeacherEditing: PropTypes.func,
         onUpdateProjectTitle: PropTypes.func,
         openLoadingProject: PropTypes.func,
         closeLoadingProject: PropTypes.func,
@@ -343,6 +352,8 @@ const robboCloudProjectLoaderHOC = function (WrappedComponent) {
         },
         onCloudProjectAccessUnblocked: () => dispatch(setCloudProjectAccessBlocked(false)),
         onHomeworkLocked: locked => dispatch(setHomeworkLockedAlert(locked)),
+        onTeacherEditing: editing => dispatch(setTeacherEditingAlert(editing)),
+        onFollowEditing: (projectPageId, page) => dispatch(followEditingThunk(projectPageId, page)),
         onCloudLoadFinished: (loadingState, success) => {
             const canSave = typeof ownProps.canSave === 'boolean' ? ownProps.canSave : true;
             dispatch(onLoadedProject(loadingState, canSave, success));

@@ -157,6 +157,52 @@ const alerts = [
         level: AlertLevels.WARN
     },
     {
+        // Robbo: a teacher of the class opened a student's work that is on review.
+        alertId: 'teacherEditing',
+        alertType: AlertTypes.STANDARD,
+        clearList: ['teacherEditing'],
+        closeButton: true,
+        content: (
+            <FormattedMessage
+                defaultMessage="You are editing a student's work. Saving changes it, and the student is notified. The title of the work stays as it is." // eslint-disable-line max-len
+                description="Shown when a teacher opens a student's handed-in work that they may save"
+                id="gui.alerts.robboTeacherEditing"
+            />
+        ),
+        level: AlertLevels.WARN
+    },
+    {
+        // Robbo: another person has the same handed-in work open in the editor.
+        alertId: 'someoneElseEditing',
+        alertType: AlertTypes.STANDARD,
+        clearList: ['someoneElseEditing'],
+        closeButton: true,
+        content: (
+            <FormattedMessage
+                defaultMessage="Someone else is editing this work right now. Whoever saves last overwrites the other's changes." // eslint-disable-line max-len
+                description="Shown when ЛК reports that another person has the same handed-in work open in the editor"
+                id="gui.alerts.robboSomeoneElseEditing"
+            />
+        ),
+        level: AlertLevels.WARN
+    },
+    {
+        // Robbo: the work went back to the student while the teacher was changing it.
+        alertId: 'workNotWithTeacher',
+        alertType: AlertTypes.STANDARD,
+        clearList: ['teacherEditing', 'workNotWithTeacher'],
+        closeButton: true,
+        showDownload: true,
+        content: (
+            <FormattedMessage
+                defaultMessage="This work is back with the student, so your changes were not saved. To keep them, download the project to your computer." // eslint-disable-line max-len
+                description="Shown when ЛК refuses a teacher's save because the work was returned to the student"
+                id="gui.alerts.robboWorkNotWithTeacher"
+            />
+        ),
+        level: AlertLevels.WARN
+    },
+    {
         alertId: 'saveSuccess',
         alertType: AlertTypes.INLINE,
         clearList: ['saveSuccess', 'saving', 'savingError'],

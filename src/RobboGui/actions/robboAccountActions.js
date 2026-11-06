@@ -13,7 +13,11 @@ import {
     uploadProjectPreview,
     clearAccessTokenMemory,
     HOMEWORK_LOCKED,
-    isOwnHomeworkLocked
+    TITLE_NOT_SAVED,
+    WORK_NOT_WITH_TEACHER,
+    isOwnHomeworkLocked,
+    isTeacherEditing,
+    touchEditing
 } from '../../lib/robbo-account/robboAccountClient';
 import {
     bffLogoutClearUrl,
@@ -109,6 +113,50 @@ export const setHomeworkLockedAlert = function (locked) {
     return locked ? showStandardAlert('homeworkLocked') : closeAlertsWithId('homeworkLocked');
 };
 
+/**
+ * Warn a teacher that saving changes a student's work (or stop warning about it).
+ * @param {boolean} editing whether the viewer may save the open cloud project as its teacher
+ * @returns {object} alerts action
+ */
+export const setTeacherEditingAlert = function (editing) {
+    return editing ? showStandardAlert('teacherEditing') : closeAlertsWithId('teacherEditing');
+};
+
+const EDITING_SIGNAL_MS = 30000;
+let editingTimer = null;
+
+/**
+ * Follow the open cloud project: while the viewer may save handed-in work, ЛК hears about it every
+ * EDITING_SIGNAL_MS, and the editor warns if someone else has the same work open.
+ * @param {string} projectPageId
+ * @param {object} page projectPage from GET /projectPage/:id (editingTracked)
+ * @returns {function} thunk
+ */
+export function followEditingThunk (projectPageId, page) {
+    return function (dispatch) {
+        if (editingTimer) {
+            clearInterval(editingTimer);
+            editingTimer = null;
+        }
+        dispatch(closeAlertsWithId('someoneElseEditing'));
+        if (!page || !page.editingTracked) {
+            return;
+        }
+        const signal = () => touchEditing(projectPageId)
+            .then(state => {
+                const others = (state && state.others) || [];
+                dispatch(others.length ? showStandardAlert('someoneElseEditing') :
+                    closeAlertsWithId('someoneElseEditing'));
+            })
+            .catch(err => {
+                // Only a status for others; the work itself goes on.
+                log.warn('editing signal failed', err);
+            });
+        editingTimer = setInterval(signal, EDITING_SIGNAL_MS);
+        return signal();
+    };
+}
+
 export function clearSaveStatus () {
     return {type: ROBBO_ACCOUNT_CLEAR_SAVE_STATUS};
 }
@@ -162,6 +210,8 @@ export function loadCloudProjectIntoEditorThunk (projectPageId, options = {}) {
             .then(resp => {
                 const page = resp && resp.projectPage;
                 dispatch(setHomeworkLockedAlert(isOwnHomeworkLocked(page)));
+                dispatch(setTeacherEditingAlert(isTeacherEditing(page)));
+                dispatch(followEditingThunk(projectPageId, page));
                 return (page && page.title) || '';
             })
             .catch(err => {
@@ -546,6 +596,9 @@ export function saveToCloudThunk (options) {
                 if (err && err.errorCode === HOMEWORK_LOCKED) {
                     dispatch(setHomeworkLockedAlert(true));
                 }
+                if (err && err.errorCode === WORK_NOT_WITH_TEACHER) {
+                    dispatch(showStandardAlert('workNotWithTeacher'));
+                }
                 return false;
             });
     };
@@ -558,6 +611,7 @@ export function saveToCloudThunk (options) {
 export function updateCloudProjectTitleThunk (newTitle) {
     return function (dispatch, getState) {
         const title = (newTitle || '').trim();
+        const previousTitle = getState().scratchGui.projectTitle || '';
         dispatch(setProjectTitle(title));
         if (title && typeof document !== 'undefined') {
             document.title = title;
@@ -584,6 +638,18 @@ export function updateCloudProjectTitleThunk (newTitle) {
                         payload: {message: HOMEWORK_LOCKED}
                     });
                     dispatch(setHomeworkLockedAlert(true));
+                    return;
+                }
+                if (err && err.status === 403) {
+                    // A teacher changes the blocks of a student's work, the title stays the student's.
+                    dispatch(setProjectTitle(previousTitle));
+                    if (previousTitle && typeof document !== 'undefined') {
+                        document.title = previousTitle;
+                    }
+                    dispatch({
+                        type: ROBBO_ACCOUNT_SAVE_FAILURE,
+                        payload: {message: TITLE_NOT_SAVED}
+                    });
                     return;
                 }
                 showTitleChangedStatus(dispatch);

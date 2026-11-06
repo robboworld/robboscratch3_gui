@@ -84,7 +84,11 @@ import {
 import LogoutUnsavedModal from '../../RobboGui/LogoutUnsavedModal.jsx';
 import {startBffSessionWatch} from '../../lib/robbo-account/authEcosystemSync';
 import {shouldPromptSaveBeforeLeave} from '../../lib/robbo-account/editorContent';
-import {HOMEWORK_LOCKED} from '../../lib/robbo-account/robboAccountClient';
+import {
+    HOMEWORK_LOCKED,
+    TITLE_NOT_SAVED,
+    WORK_NOT_WITH_TEACHER
+} from '../../lib/robbo-account/robboAccountClient';
 import {
     myProjectsUrl,
     projectPageUrl,
@@ -190,8 +194,24 @@ const messages = defineMessages({
             'You can edit it again if the teacher returns it for rework. ' +
             'To keep your changes, save the project to your computer.',
         description: 'Tooltip for the handed-in homework save error'
+    },
+    saveToCloudNotWithTeacher: {
+        id: 'gui.menuBar.robboSaveToCloudNotWithTeacher',
+        defaultMessage: 'With the student — not saved',
+        description: 'Shown when ЛК refuses a teacher\'s save because the work was returned to the student'
+    },
+    titleNotSaved: {
+        id: 'gui.menuBar.robboTitleNotSaved',
+        defaultMessage: 'Title not changed',
+        description: 'Shown when ЛК refuses to rename the project: it is not the viewer\'s'
     }
 });
+
+// Menu text for what ЛК's refusal means; anything else is the plain "Save failed".
+const CLOUD_SAVE_ERROR_MESSAGES = {
+    [TITLE_NOT_SAVED]: messages.titleNotSaved,
+    [WORK_NOT_WITH_TEACHER]: messages.saveToCloudNotWithTeacher
+};
 const ariaMessages = defineMessages({
     language: {
         id: 'gui.menuBar.LanguageSelector',
@@ -942,7 +962,9 @@ class MenuBar extends React.Component {
                     ) : null}
                     {this.props.cloudSaveStatus === 'error' && this.props.cloudSaveError !== HOMEWORK_LOCKED ? (
                         <div className={classNames(styles.menuBarItem, styles.cloudSaveStatusError)}>
-                            {this.props.intl.formatMessage(messages.saveToCloudError)}
+                            {this.props.intl.formatMessage(
+                                CLOUD_SAVE_ERROR_MESSAGES[this.props.cloudSaveError] || messages.saveToCloudError
+                            )}
                         </div>
                     ) : null}
                 </div>
